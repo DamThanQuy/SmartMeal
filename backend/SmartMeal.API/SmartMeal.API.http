@@ -1,0 +1,6 @@
+@SmartMeal.API_HostAddress = http://localhost:5119
+
+GET {{SmartMeal.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
