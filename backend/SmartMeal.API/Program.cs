@@ -18,6 +18,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IHealthProfileService, HealthProfileService>();
+builder.Services.AddScoped<IRecipeService, RecipeService>();
+builder.Services.AddScoped<INutritionDiaryService, NutritionDiaryService>();
 
 // 3. Add JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "SmartMeal_SuperSecret_Jwt_Security_Key_2026_FPT_PRM393_VeryLongAndSecureKey!";
