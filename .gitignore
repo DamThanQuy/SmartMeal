@@ -1,0 +1,50 @@
+# Visual Studio & .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+appsettings.Development.json
+secrets.json
+
+# Flutter & Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+android/.gradle
+android/captures/
+android/gradlew
+android/gradlew.bat
+android/local.properties
+android/GeneratedPluginRegistrant.java
+ios/.symlinks/
+ios/Pods/
+ios/Podfile.lock
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/app.flx
+ios/Flutter/app.zip
+ios/Flutter/flutter_assets/
+ios/ServiceDefinitions.json
+.pub-cache/
+.pub/
+
+# Secrets & Credentials
+*.env
+*.env.*
+gdrive_credentials.json
+gcp-oauth.keys.json
+client_secret*.json
+token.json
+token.pickle
+
+# OS Files
+.DS_Store
+Thumbs.db
