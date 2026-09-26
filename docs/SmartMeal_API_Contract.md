@@ -65,11 +65,11 @@ Mọi API đều trả về định dạng wrapper thống nhất:
 | | | `/api/nutritiondiary/weekly-progress`| `GET` | ✅ Bearer |  **ĐÃ HOÀN THÀNH** |
 | | | `/api/nutritiondiary/items/{id}` | `DELETE` | ✅ Bearer |  **ĐÃ HOÀN THÀNH** |
 | | | `/api/nutritiondiary/water` | `POST` | ✅ Bearer | ⏳ *Chưa làm* |
-| **6** | **Meal Plan & Grocery**| `/api/mealplanner/week` | `GET` | ✅ Bearer | ⏳ *Chưa làm* |
-| | | `/api/mealplanner/assign` | `POST` | ✅ Bearer | ⏳ *Chưa làm* |
-| | | `/api/mealplanner/auto-generate` | `POST` | ✅ Bearer | ⏳ *Chưa làm* |
-| | | `/api/grocery/generate-from-plan`| `POST` | ✅ Bearer | ⏳ *Chưa làm* |
-| | | `/api/grocery/items/{id}/check` | `PATCH` | ✅ Bearer | ⏳ *Chưa làm* |
+| **6** | **Meal Plan & Grocery**| `/api/mealplanner/week` | `GET` | ✅ Bearer |  **ĐÃ HOÀN THÀNH** |
+| | | `/api/mealplanner/assign` | `POST` | ✅ Bearer |  **ĐÃ HOÀN THÀNH** |
+| | | `/api/mealplanner/auto-generate` | `POST` | ✅ Bearer |  **ĐÃ HOÀN THÀNH** |
+| | | `/api/grocery/generate-from-plan`| `POST` | ✅ Bearer |  **ĐÃ HOÀN THÀNH** |
+| | | `/api/grocery/items/{id}/check` | `PATCH` | ✅ Bearer |  **ĐÃ HOÀN THÀNH** |
 | **7** | **Health Sync** | `/api/health-sync/steps-and-calories`| `POST`| ✅ Bearer | ⏳ *Chưa làm* |
 | **8** | **Gamification** | `/api/gamification/pet` | `GET` | ✅ Bearer | ⏳ *Chưa làm* |
 | | | `/api/gamification/streak` | `GET` | ✅ Bearer | ⏳ *Chưa làm* |
@@ -502,7 +502,7 @@ Mọi API đều trả về định dạng wrapper thống nhất:
 
 ---
 
-### MODULE 6: THỰC ĐƠN TUẦN & DANH SÁCH ĐI CHỢ (`/api/mealplanner` & `/api/grocery`) — `[TRẠNG THÁI: ⏳ CHƯA LÀM]`
+### MODULE 6: THỰC ĐƠN TUẦN & DANH SÁCH ĐI CHỢ (`/api/mealplanner` & `/api/grocery`) — `[TRẠNG THÁI: ✅ ĐÃ HOÀN THÀNH]`
 
 #### 6.1. Lấy kế hoạch thực đơn theo tuần (Get Weekly Meal Plan)
 * **Endpoint**: `GET /api/mealplanner/week?startDate=2026-09-28`

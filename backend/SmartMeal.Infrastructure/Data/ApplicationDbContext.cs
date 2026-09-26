@@ -24,6 +24,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<NutritionDiary> NutritionDiaries => Set<NutritionDiary>();
     public DbSet<DiaryItem> DiaryItems => Set<DiaryItem>();
     public DbSet<MealPlan> MealPlans => Set<MealPlan>();
+    public DbSet<GroceryItem> GroceryItems => Set<GroceryItem>();
     public DbSet<UserFavorite> UserFavorites => Set<UserFavorite>();
     public DbSet<OtpVerification> OtpVerifications => Set<OtpVerification>();
 
