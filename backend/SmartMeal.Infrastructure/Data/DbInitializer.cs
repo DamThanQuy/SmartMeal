@@ -6,10 +6,8 @@ public static class DbInitializer
 {
     public static async Task SeedAsync(ApplicationDbContext db)
     {
-        if (db.Recipes.Any())
+        if (!db.Recipes.Any())
         {
-            return;
-        }
 
         // 1. Ingredients
         var ingUcGa = new Ingredient { Name = "Ức gà phi lê", Category = "Meat", DefaultUnit = "g", CaloriesPer100g = 165, ProteinPer100g = 31, CarbsPer100g = 0, FatPer100g = 3.6, EstimatedPriceVnd = 18000 };
@@ -176,6 +174,46 @@ public static class DbInitializer
                 new() { RecipeId = r6.Id, TagId = tagQuickMeal.Id },
             };
             await db.RecipeTags.AddRangeAsync(recipeTags);
+        }
+        }
+
+        // 5. Seed Challenges if empty
+        if (!db.Challenges.Any())
+        {
+            var challenges = new List<Challenge>
+            {
+                new()
+                {
+                    Title = "7 Ngày Uống Đủ 2L Nước",
+                    Description = "Uống tối thiểu 2000ml nước mỗi ngày liên tục trong 7 ngày để thanh lọc cơ thể và tăng cường chuyển hóa.",
+                    ImageUrl = "https://images.unsplash.com/photo-1550572017-ed22e43e2609",
+                    DurationDays = 7,
+                    RewardExp = 150,
+                    RewardBadge = "Hydration Master",
+                    IsActive = true
+                },
+                new()
+                {
+                    Title = "Eat Clean 14 Ngày",
+                    Description = "Duy trì ghi chép đầy đủ nhật ký dinh dưỡng và ăn theo kế hoạch bữa ăn trong 14 ngày.",
+                    ImageUrl = "https://images.unsplash.com/photo-1498837167922-ddd27525d352",
+                    DurationDays = 14,
+                    RewardExp = 300,
+                    RewardBadge = "Clean Eater Pro",
+                    IsActive = true
+                },
+                new()
+                {
+                    Title = "10.000 Bước Chân Mỗi Ngày",
+                    Description = "Đạt mục tiêu 10.000 bước đi bộ/chạy bộ mỗi ngày cùng SmartMeal Health Sync.",
+                    ImageUrl = "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8",
+                    DurationDays = 5,
+                    RewardExp = 200,
+                    RewardBadge = "Speed Runner",
+                    IsActive = true
+                }
+            };
+            await db.Challenges.AddRangeAsync(challenges);
         }
 
         await db.SaveChangesAsync();

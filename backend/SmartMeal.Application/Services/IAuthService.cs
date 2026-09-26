@@ -9,4 +9,5 @@ public interface IAuthService
     Task<ApiResponse<AuthResponseDto>> LoginAsync(LoginRequestDto dto);
     Task<ApiResponse<AuthResponseDto>> GoogleLoginAsync(GoogleAuthRequestDto dto);
     Task<ApiResponse<UserDto>> GetCurrentUserAsync(Guid userId);
+    Task<ApiResponse<UserDto>> UpdateProfileAsync(Guid userId, UpdateProfileRequestDto dto);
 }

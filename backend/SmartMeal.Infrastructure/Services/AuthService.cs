@@ -159,4 +159,39 @@ public class AuthService : IAuthService
 
         return ApiResponse<UserDto>.Ok(userDto);
     }
+
+    public async Task<ApiResponse<UserDto>> UpdateProfileAsync(Guid userId, UpdateProfileRequestDto dto)
+    {
+        var user = await _db.Users
+            .Include(u => u.HealthProfile)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user == null) return ApiResponse<UserDto>.Fail("Người dùng không tồn tại.");
+
+        if (!string.IsNullOrWhiteSpace(dto.FullName))
+        {
+            user.FullName = dto.FullName.Trim();
+        }
+
+        if (dto.AvatarUrl != null)
+        {
+            user.AvatarUrl = dto.AvatarUrl;
+        }
+
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        var userDto = new UserDto
+        {
+            Id = user.Id,
+            Email = user.Email,
+            FullName = user.FullName,
+            AvatarUrl = user.AvatarUrl,
+            IsPro = user.IsPro,
+            Role = user.Role,
+            HasCompletedSurvey = user.HealthProfile != null
+        };
+
+        return ApiResponse<UserDto>.Ok(userDto, "Cập nhật thông tin tài khoản thành công.");
+    }
 }

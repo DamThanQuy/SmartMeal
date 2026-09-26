@@ -65,4 +65,15 @@ public class NutritionDiaryController : ControllerBase
         if (!result.Success) return NotFound(result);
         return Ok(result);
     }
+
+    [HttpPost("water")]
+    public async Task<ActionResult<ApiResponse<WaterSummaryDto>>> LogWater([FromBody] LogWaterRequestDto dto)
+    {
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized(ApiResponse<WaterSummaryDto>.Fail("Phiên đăng nhập không hợp lệ."));
+
+        var result = await _diaryService.LogWaterAsync(userId, dto);
+        return Ok(result);
+    }
 }

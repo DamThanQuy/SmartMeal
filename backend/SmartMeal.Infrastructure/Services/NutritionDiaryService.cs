@@ -163,4 +163,35 @@ public class NutritionDiaryService : INutritionDiaryService
 
         return ApiResponse<bool>.Ok(true, "Xóa thành công.");
     }
+
+    public async Task<ApiResponse<WaterSummaryDto>> LogWaterAsync(Guid userId, LogWaterRequestDto dto)
+    {
+        var targetDate = dto.Date ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        
+        var waterLog = new WaterLog
+        {
+            UserId = userId,
+            LogDate = targetDate,
+            AmountMl = dto.AmountMl,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.WaterLogs.Add(waterLog);
+        await _db.SaveChangesAsync();
+
+        var totalWaterToday = await _db.WaterLogs
+            .Where(w => w.UserId == userId && w.LogDate == targetDate)
+            .SumAsync(w => w.AmountMl);
+
+        int goalWater = 2000;
+        double pct = Math.Round((double)totalWaterToday / goalWater * 100.0, 1);
+
+        return ApiResponse<WaterSummaryDto>.Ok(new WaterSummaryDto
+        {
+            Date = targetDate,
+            TotalWaterMl = totalWaterToday,
+            GoalWaterMl = goalWater,
+            Percentage = pct
+        }, "Ghi nhận lượng nước uống thành công.");
+    }
 }

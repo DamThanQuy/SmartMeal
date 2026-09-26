@@ -9,4 +9,5 @@ public interface INutritionDiaryService
     Task<ApiResponse<DailyDiarySummaryDto>> GetDailySummaryAsync(Guid userId, DateOnly date);
     Task<ApiResponse<WeeklyProgressDto>> GetWeeklyProgressAsync(Guid userId, DateOnly startDate);
     Task<ApiResponse<bool>> DeleteDiaryItemAsync(Guid userId, Guid itemId);
+    Task<ApiResponse<WaterSummaryDto>> LogWaterAsync(Guid userId, LogWaterRequestDto dto);
 }

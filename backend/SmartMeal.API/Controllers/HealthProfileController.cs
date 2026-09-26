@@ -20,6 +20,8 @@ public class HealthProfileController : ControllerBase
     }
 
     [HttpPost("survey")]
+    [HttpPost("setup")]
+    [HttpPost]
     public async Task<ActionResult<ApiResponse<HealthProfileDto>>> SubmitSurvey([FromBody] HealthSurveyRequestDto dto)
     {
         var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -38,6 +40,30 @@ public class HealthProfileController : ControllerBase
             return Unauthorized(ApiResponse<HealthProfileDto>.Fail("Phiên đăng nhập không hợp lệ."));
 
         var result = await _healthProfileService.GetProfileAsync(userId);
+        if (!result.Success) return NotFound(result);
+        return Ok(result);
+    }
+
+    [HttpPost("weight-log")]
+    public async Task<ActionResult<ApiResponse<WeightPointDto>>> LogWeight([FromBody] WeightLogRequestDto dto)
+    {
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized(ApiResponse<WeightPointDto>.Fail("Phiên đăng nhập không hợp lệ."));
+
+        var result = await _healthProfileService.LogWeightAsync(userId, dto);
+        if (!result.Success) return BadRequest(result);
+        return Ok(result);
+    }
+
+    [HttpGet("weight-history")]
+    public async Task<ActionResult<ApiResponse<WeightHistoryResponseDto>>> GetWeightHistory()
+    {
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized(ApiResponse<WeightHistoryResponseDto>.Fail("Phiên đăng nhập không hợp lệ."));
+
+        var result = await _healthProfileService.GetWeightHistoryAsync(userId);
         if (!result.Success) return NotFound(result);
         return Ok(result);
     }

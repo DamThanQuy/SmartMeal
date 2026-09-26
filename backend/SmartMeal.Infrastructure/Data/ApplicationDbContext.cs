@@ -27,10 +27,31 @@ public class ApplicationDbContext : DbContext
     public DbSet<GroceryItem> GroceryItems => Set<GroceryItem>();
     public DbSet<UserFavorite> UserFavorites => Set<UserFavorite>();
     public DbSet<OtpVerification> OtpVerifications => Set<OtpVerification>();
+    public DbSet<WaterLog> WaterLogs => Set<WaterLog>();
+    public DbSet<HealthSyncLog> HealthSyncLogs => Set<HealthSyncLog>();
+    public DbSet<HealthPet> HealthPets => Set<HealthPet>();
+    public DbSet<Challenge> Challenges => Set<Challenge>();
+    public DbSet<UserChallenge> UserChallenges => Set<UserChallenge>();
+    public DbSet<RecipeCollection> RecipeCollections => Set<RecipeCollection>();
+    public DbSet<CollectionRecipe> CollectionRecipes => Set<CollectionRecipe>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // CollectionRecipe (N-N)
+        modelBuilder.Entity<CollectionRecipe>()
+            .HasKey(cr => new { cr.CollectionId, cr.RecipeId });
+
+        modelBuilder.Entity<CollectionRecipe>()
+            .HasOne(cr => cr.Collection)
+            .WithMany(c => c.CollectionRecipes)
+            .HasForeignKey(cr => cr.CollectionId);
+
+        modelBuilder.Entity<CollectionRecipe>()
+            .HasOne(cr => cr.Recipe)
+            .WithMany()
+            .HasForeignKey(cr => cr.RecipeId);
 
         // User Indexes
         modelBuilder.Entity<User>()

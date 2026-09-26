@@ -55,4 +55,19 @@ public class AuthController : ControllerBase
         if (!result.Success) return NotFound(result);
         return Ok(result);
     }
+
+    [Authorize]
+    [HttpPut("profile")]
+    public async Task<ActionResult<ApiResponse<UserDto>>> UpdateProfile([FromBody] UpdateProfileRequestDto dto)
+    {
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdStr, out var userId))
+        {
+            return Unauthorized(ApiResponse<UserDto>.Fail("Không tìm thấy thông tin phiên đăng nhập."));
+        }
+
+        var result = await _authService.UpdateProfileAsync(userId, dto);
+        if (!result.Success) return BadRequest(result);
+        return Ok(result);
+    }
 }

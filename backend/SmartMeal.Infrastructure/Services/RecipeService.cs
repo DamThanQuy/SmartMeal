@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.Recipes;
 using SmartMeal.Application.Services;
+using SmartMeal.Domain.Entities;
 using SmartMeal.Infrastructure.Data;
 
 namespace SmartMeal.Infrastructure.Services;
@@ -174,5 +175,172 @@ public class RecipeService : IRecipeService
             .ToList();
 
         return ApiResponse<List<RecipeDto>>.Ok(ranked, "Đề xuất món ăn dựa trên tủ lạnh thành công.");
+    }
+
+    public async Task<ApiResponse<FavoriteToggleResponseDto>> ToggleFavoriteAsync(Guid userId, Guid recipeId)
+    {
+        var recipe = await _db.Recipes.FirstOrDefaultAsync(r => r.Id == recipeId);
+        if (recipe == null) return ApiResponse<FavoriteToggleResponseDto>.Fail("Không tìm thấy món ăn.");
+
+        var fav = await _db.UserFavorites.FirstOrDefaultAsync(f => f.UserId == userId && f.RecipeId == recipeId);
+        bool isFavorite;
+        if (fav != null)
+        {
+            _db.UserFavorites.Remove(fav);
+            isFavorite = false;
+        }
+        else
+        {
+            await _db.UserFavorites.AddAsync(new UserFavorite { UserId = userId, RecipeId = recipeId });
+            isFavorite = true;
+        }
+
+        await _db.SaveChangesAsync();
+        var total = await _db.UserFavorites.CountAsync(f => f.UserId == userId);
+
+        return ApiResponse<FavoriteToggleResponseDto>.Ok(new FavoriteToggleResponseDto
+        {
+            IsFavorite = isFavorite,
+            TotalFavorites = total
+        }, isFavorite ? "Đã lưu vào danh sách yêu thích." : "Đã bỏ khỏi danh sách yêu thích.");
+    }
+
+    public async Task<ApiResponse<List<RecipeDto>>> GetFavoritesAsync(Guid userId)
+    {
+        var favRecipeIds = await _db.UserFavorites.Where(f => f.UserId == userId).Select(f => f.RecipeId).ToListAsync();
+        var recipes = await _db.Recipes
+            .Include(r => r.RecipeTags).ThenInclude(rt => rt.Tag)
+            .Include(r => r.RecipeIngredients).ThenInclude(ri => ri.Ingredient)
+            .Where(r => favRecipeIds.Contains(r.Id))
+            .AsNoTracking()
+            .ToListAsync();
+
+        var dtos = recipes.Select(r => new RecipeDto
+        {
+            Id = r.Id,
+            Title = r.Title,
+            Description = r.Description,
+            ImageUrl = r.ImageUrl,
+            Instructions = r.Instructions,
+            PrepTimeMinutes = r.PrepTimeMinutes,
+            CookTimeMinutes = r.CookTimeMinutes,
+            Servings = r.Servings,
+            Difficulty = r.Difficulty,
+            IsPremium = r.IsPremium,
+            CaloriesPerServing = r.CaloriesPerServing,
+            CarbsPerServing = r.CarbsPerServing,
+            FatPerServing = r.FatPerServing,
+            ProteinPerServing = r.ProteinPerServing,
+            Tags = r.RecipeTags.Select(rt => rt.Tag.Name).ToList(),
+            Ingredients = r.RecipeIngredients.Select(ri => new RecipeIngredientDto
+            {
+                IngredientId = ri.IngredientId,
+                Name = ri.Ingredient.Name,
+                Amount = ri.Amount,
+                Unit = ri.Unit,
+                EstimatedPriceVnd = ri.Ingredient.EstimatedPriceVnd
+            }).ToList()
+        }).ToList();
+
+        return ApiResponse<List<RecipeDto>>.Ok(dtos, "Lấy danh sách món ăn yêu thích thành công.");
+    }
+
+    public async Task<ApiResponse<List<RecipeCollectionDto>>> GetCollectionsAsync(Guid userId)
+    {
+        var collections = await _db.RecipeCollections
+            .Include(c => c.CollectionRecipes).ThenInclude(cr => cr.Recipe).ThenInclude(r => r.RecipeTags).ThenInclude(rt => rt.Tag)
+            .Include(c => c.CollectionRecipes).ThenInclude(cr => cr.Recipe).ThenInclude(r => r.RecipeIngredients).ThenInclude(ri => ri.Ingredient)
+            .Where(c => c.UserId == userId || c.IsPublic)
+            .OrderByDescending(c => c.CreatedAt)
+            .ToListAsync();
+
+        var dtos = collections.Select(c => new RecipeCollectionDto
+        {
+            Id = c.Id,
+            Name = c.Name,
+            Description = c.Description,
+            CoverImageUrl = c.CoverImageUrl ?? c.CollectionRecipes.FirstOrDefault()?.Recipe.ImageUrl,
+            RecipeCount = c.CollectionRecipes.Count,
+            IsPublic = c.IsPublic,
+            Recipes = c.CollectionRecipes.Select(cr => new RecipeDto
+            {
+                Id = cr.Recipe.Id,
+                Title = cr.Recipe.Title,
+                Description = cr.Recipe.Description,
+                ImageUrl = cr.Recipe.ImageUrl,
+                Instructions = cr.Recipe.Instructions,
+                PrepTimeMinutes = cr.Recipe.PrepTimeMinutes,
+                CookTimeMinutes = cr.Recipe.CookTimeMinutes,
+                Servings = cr.Recipe.Servings,
+                Difficulty = cr.Recipe.Difficulty,
+                IsPremium = cr.Recipe.IsPremium,
+                CaloriesPerServing = cr.Recipe.CaloriesPerServing,
+                CarbsPerServing = cr.Recipe.CarbsPerServing,
+                FatPerServing = cr.Recipe.FatPerServing,
+                ProteinPerServing = cr.Recipe.ProteinPerServing,
+                Tags = cr.Recipe.RecipeTags.Select(rt => rt.Tag.Name).ToList(),
+                Ingredients = cr.Recipe.RecipeIngredients.Select(ri => new RecipeIngredientDto
+                {
+                    IngredientId = ri.IngredientId,
+                    Name = ri.Ingredient.Name,
+                    Amount = ri.Amount,
+                    Unit = ri.Unit,
+                    EstimatedPriceVnd = ri.Ingredient.EstimatedPriceVnd
+                }).ToList()
+            }).ToList()
+        }).ToList();
+
+        return ApiResponse<List<RecipeCollectionDto>>.Ok(dtos, "Lấy danh sách bộ sưu tập thành công.");
+    }
+
+    public async Task<ApiResponse<RecipeCollectionDto>> CreateCollectionAsync(Guid userId, CreateCollectionRequestDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Name)) return ApiResponse<RecipeCollectionDto>.Fail("Tên bộ sưu tập không được để trống.");
+
+        var col = new Domain.Entities.RecipeCollection
+        {
+            UserId = userId,
+            Name = dto.Name.Trim(),
+            Description = dto.Description,
+            CoverImageUrl = dto.CoverImageUrl,
+            IsPublic = dto.IsPublic
+        };
+
+        await _db.RecipeCollections.AddAsync(col);
+        await _db.SaveChangesAsync();
+
+        var resultDto = new RecipeCollectionDto
+        {
+            Id = col.Id,
+            Name = col.Name,
+            Description = col.Description,
+            CoverImageUrl = col.CoverImageUrl,
+            RecipeCount = 0,
+            IsPublic = col.IsPublic,
+            Recipes = new()
+        };
+
+        return ApiResponse<RecipeCollectionDto>.Ok(resultDto, $"Đã tạo bộ sưu tập '{col.Name}'.");
+    }
+
+    public async Task<ApiResponse<bool>> AddRecipeToCollectionAsync(Guid userId, Guid collectionId, Guid recipeId)
+    {
+        var col = await _db.RecipeCollections.FirstOrDefaultAsync(c => c.Id == collectionId && c.UserId == userId);
+        if (col == null) return ApiResponse<bool>.Fail("Không tìm thấy bộ sưu tập hoặc bạn không có quyền sửa.");
+
+        var recipe = await _db.Recipes.FirstOrDefaultAsync(r => r.Id == recipeId);
+        if (recipe == null) return ApiResponse<bool>.Fail("Không tìm thấy công thức món ăn.");
+
+        var exists = await _db.CollectionRecipes.AnyAsync(cr => cr.CollectionId == collectionId && cr.RecipeId == recipeId);
+        if (exists) return ApiResponse<bool>.Ok(true, "Món ăn đã có trong bộ sưu tập.");
+
+        await _db.CollectionRecipes.AddAsync(new Domain.Entities.CollectionRecipe
+        {
+            CollectionId = collectionId,
+            RecipeId = recipeId
+        });
+        await _db.SaveChangesAsync();
+
+        return ApiResponse<bool>.Ok(true, "Đã thêm món ăn vào bộ sưu tập.");
     }
 }

@@ -26,6 +26,10 @@ builder.Services.AddScoped<IRecipeService, RecipeService>();
 builder.Services.AddScoped<INutritionDiaryService, NutritionDiaryService>();
 builder.Services.AddScoped<IMealPlannerService, MealPlannerService>();
 builder.Services.AddScoped<IGroceryService, GroceryService>();
+builder.Services.AddScoped<IHealthSyncService, HealthSyncService>();
+builder.Services.AddScoped<IGamificationService, GamificationService>();
+builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+builder.Services.AddScoped<IFoodService, FoodService>();
 builder.Services.AddHttpClient<IAiVisionService, GeminiAiVisionService>();
 
 // 3. Add JWT Authentication
