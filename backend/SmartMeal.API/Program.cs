@@ -7,7 +7,11 @@ using SmartMeal.Application.Services;
 using SmartMeal.Infrastructure.Data;
 using SmartMeal.Infrastructure.Services;
 
+// Load .env configuration
+DotNetEnv.Env.TraversePath().Load();
+
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddEnvironmentVariables();
 
 // 1. Add Database Context (PostgreSQL)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -20,6 +24,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IHealthProfileService, HealthProfileService>();
 builder.Services.AddScoped<IRecipeService, RecipeService>();
 builder.Services.AddScoped<INutritionDiaryService, NutritionDiaryService>();
+builder.Services.AddHttpClient<IAiVisionService, GeminiAiVisionService>();
 
 // 3. Add JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "SmartMeal_SuperSecret_Jwt_Security_Key_2026_FPT_PRM393_VeryLongAndSecureKey!";

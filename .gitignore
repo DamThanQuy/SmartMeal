@@ -39,6 +39,7 @@ ios/ServiceDefinitions.json
 # Secrets & Credentials
 *.env
 *.env.*
+!.env.example
 gdrive_credentials.json
 gcp-oauth.keys.json
 client_secret*.json
