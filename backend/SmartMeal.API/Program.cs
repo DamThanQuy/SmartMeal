@@ -127,7 +127,8 @@ using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         db.Database.Migrate();
-        Console.WriteLine("[Database] Migration applied successfully.");
+        DbInitializer.SeedAsync(db).GetAwaiter().GetResult();
+        Console.WriteLine("[Database] Migration and Seed applied successfully.");
     }
     catch (Exception ex)
     {
