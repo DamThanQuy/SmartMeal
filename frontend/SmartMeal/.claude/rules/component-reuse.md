@@ -1,60 +1,70 @@
-﻿# Rule â€” Reuse-first UI (Ä‘á»“ng bá»™ component)
+﻿# Rule — Reuse-first UI (đồng bộ component)
 
-Má»¥c tiÃªu: má»i mÃ n hÃ¬nh trÃ´ng vÃ  hoáº¡t Ä‘á»™ng nháº¥t quÃ¡n vÃ¬ dÃ¹ng chung má»™t bá»™ component, khÃ´ng pháº£i vÃ¬ "style giá»‘ng nhau do copy-paste".
+Mục tiêu: mọi màn hình trông và hoạt động nhất quán vì dùng chung một bộ component, không phải vì "style giống nhau do copy-paste".
 
-## Thá»© tá»± báº¯t buá»™c kiá»ƒm tra trÆ°á»›c khi viáº¿t UI má»›i
+## Thứ tự bắt buộc kiểm tra trước khi viết UI mới
 
-1. `src/components/ui/` â€” UI primitive dÃ¹ng chung toÃ n app.
-2. `src/components/common/` â€” component chung cÃ³ logic hiá»ƒn thá»‹ cao hÆ¡n primitive (loading/empty/error/screen wrapper).
-3. `src/features/<feature-hiá»‡n-táº¡i>/components/` â€” component Ä‘áº·c thÃ¹ Ä‘Ã£ cÃ³ trong feature Ä‘ang lÃ m.
-4. Chá»‰ khi khÃ´ng cÃ³ gÃ¬ phÃ¹ há»£p â†’ táº¡o má»›i, vÃ  táº¡o Ä‘Ãºng layer (xem má»¥c "Äáº·t component á»Ÿ Ä‘Ã¢u" bÃªn dÆ°á»›i).
+1. `src/components/ui/` — UI primitive dùng chung toàn app.
+2. `src/components/common/` — component chung có logic hiển thị cao hơn primitive (loading/empty/error/screen wrapper).
+3. `src/features/<feature-hiện-tại>/components/` — component đặc thù đã có trong feature đang làm.
+4. Chỉ khi không có gì phù hợp → tạo mới, và tạo đúng layer (xem mục "Đặt component ở đâu" bên dưới).
 
-NguyÃªn táº¯c: **Reuse > Extend (thÃªm prop/variant) > Create new**. KhÃ´ng bao giá» copy má»™t component cÃ³ sáºµn rá»“i Ä‘á»•i tÃªn Ä‘á»ƒ chá»‰nh style riÃªng.
+Nguyên tắc: **Reuse > Extend (thêm prop/variant) > Create new**. Không bao giờ copy một component có sẵn rồi đổi tên để chỉnh style riêng.
 
-## `components/ui/` â€” UI primitive
+## `components/ui/` — UI primitive
 
-Chá»©a: `AppButton`, `AppCard`, `AppInput`, `AppText`, `AppChip`, `AppIconButton`, `AppBottomSheet`.
+Chứa: `AppButton`, `AppCard`, `AppInput`, `AppText`, `AppChip`, `AppIconButton`, `AppBottomSheet`.
 
-RÃ ng buá»™c báº¯t buá»™c vá»›i má»i component trong `ui/`:
+Ràng buộc bắt buộc với mọi component trong `ui/`:
 
-- KhÃ´ng gá»i API, khÃ´ng chá»©a business logic.
-- KhÃ´ng phá»¥ thuá»™c má»™t feature cá»¥ thá»ƒ (khÃ´ng import gÃ¬ tá»« `features/*`).
-- Nháº­n toÃ n bá»™ dá»¯ liá»‡u/hÃ nh vi qua props, khÃ´ng tá»± fetch, khÃ´ng tá»± biáº¿t "Ä‘ang á»Ÿ mÃ n hÃ¬nh nÃ o".
-- Biáº¿n thá»ƒ (variant, size, state) pháº£i xá»­ lÃ½ báº±ng prop (`variant="primary" | "secondary" | "outline"`), khÃ´ng táº¡o file má»›i cho má»—i biáº¿n thá»ƒ (khÃ´ng táº¡o `PrimaryButton.tsx`, `GreenButton.tsx`...).
+- Không gọi API/mock, không chứa business logic.
+- Không phụ thuộc một feature cụ thể (không import gì từ `features/*`).
+- Nhận toàn bộ dữ liệu/hành vi qua props, không tự fetch, không tự biết "đang ở màn hình nào".
+- Biến thể (variant, size, state) phải xử lý bằng prop (`variant="primary" | "secondary" | "outline"`)
+  hoặc `cva`, không tạo file mới cho mỗi biến thể (không tạo `PrimaryButton.tsx`, `GreenButton.tsx`...).
+- Style bằng NativeWind className token (`bg-surface`, `text-text-primary`, `p-md`, `rounded-card`…),
+  không hex, không màu Tailwind mặc định — xem `.claude/rules/no-hardcode.md`.
 
-## `components/common/` â€” generic component cÃ³ logic hiá»ƒn thá»‹
+## `components/common/` — generic component có logic hiển thị
 
-Chá»©a: `EmptyState`, `ErrorState`, `LoadingState`, `ScreenContainer`, `SectionHeader`.
+Chứa: `EmptyState`, `ErrorState`, `LoadingState`, `ScreenContainer`, `SectionHeader`.
 
-Má»i screen cÃ³ dá»¯ liá»‡u báº¥t Ä‘á»“ng bá»™ (gá»i API/AI) pháº£i dÃ¹ng `LoadingState` / `ErrorState` / `EmptyState` tá»« Ä‘Ã¢y thay vÃ¬ tá»± viáº¿t loading/error UI riÃªng trong tá»«ng screen.
+Mọi screen có dữ liệu bất đồng bộ (gọi service/mock/AI) phải dùng `LoadingState` / `ErrorState` /
+`EmptyState` từ đây thay vì tự viết loading/error UI riêng trong từng screen.
 
-## Component Ä‘áº·c thÃ¹ nghiá»‡p vá»¥
+## Component đặc thù nghiệp vụ
 
-Äáº·t trong `src/features/<feature>/components/`, vÃ­ dá»¥ `MealCard` â†’ `features/nutrition/components/`, `RecipeCard` â†’ `features/recipes/components/`. Component nÃ y Ä‘Æ°á»£c build **tá»«** cÃ¡c primitive trong `components/ui` (vÃ­ dá»¥ `MealCard` dÃ¹ng `AppCard` + `AppText` bÃªn trong), khÃ´ng viáº¿t láº¡i `View`/`Text` thÃ´ náº¿u primitive tÆ°Æ¡ng á»©ng Ä‘Ã£ tá»“n táº¡i.
+Đặt trong `src/features/<feature>/components/`, ví dụ `MealCard` → `features/nutrition/components/`,
+`RecipeCard` → `features/recipes/components/`. Component này được build **từ** các primitive trong
+`components/ui` (ví dụ `MealCard` dùng `AppCard` + `AppText` bên trong), không viết lại `View`/`Text`
+thô nếu primitive tương ứng đã tồn tại.
 
 ## Naming
 
-Theo chá»©c nÄƒng, khÃ´ng theo hÃ¬nh thá»©c hoáº·c theo screen:
+Theo chức năng, không theo hình thức hoặc theo screen:
 
 ```
-ÄÃºng: AppButton, AppCard, NutritionCard, MealCard, RecipeCard, PetCard
+Đúng: AppButton, AppCard, NutritionCard, MealCard, RecipeCard, PetCard
 Sai:  GreenButton1, DashboardButton, SpecialCard, CustomCard2, NewGreenButton
 ```
 
 ## Card system
 
-Chá»‰ cÃ³ cÃ¡c loáº¡i card sau, táº¥t cáº£ build trÃªn cÃ¹ng `AppCard` (cÃ¹ng radius/shadow/padding/typography â€” xem `docs/design.md` má»¥c 42):
+Chỉ có các loại card sau, tất cả build trên cùng `AppCard` (cùng radius/shadow/padding/typography —
+xem `docs/design.md` mục 42):
 
 ```
 Standard Card, Nutrition Card, Recipe Card, Meal Card, Pet Card, Alert Card
 ```
 
-KhÃ´ng táº¡o card má»›i náº¿u má»™t trong cÃ¡c loáº¡i trÃªn cÃ³ thá»ƒ má»Ÿ rá»™ng báº±ng prop/slot Ä‘á»ƒ dÃ¹ng láº¡i.
+Không tạo card mới nếu một trong các loại trên có thể mở rộng bằng prop/slot để dùng lại.
 
-## TrÆ°á»›c khi táº¡o file component má»›i, tá»± há»i
+## Trước khi tạo file component mới, tự hỏi
 
-1. Component tÆ°Æ¡ng tá»± Ä‘Ã£ tá»“n táº¡i á»Ÿ `ui/`, `common/`, hoáº·c feature khÃ¡c chÆ°a? (grep theo tÃªn/chá»©c nÄƒng, khÃ´ng chá»‰ theo tÃªn file).
-2. CÃ³ thá»ƒ thÃªm prop/variant vÃ o component cÃ³ sáºµn Ä‘á»ƒ Ä‘Ã¡p á»©ng use-case má»›i khÃ´ng?
-3. Náº¿u báº¯t buá»™c táº¡o má»›i: nÃ³ thuá»™c `ui/` (khÃ´ng business logic, generic) hay thuá»™c feature (gáº¯n vá»›i nghiá»‡p vá»¥)?
+1. Component tương tự đã tồn tại ở `ui/`, `common/`, hoặc feature khác chưa? (grep theo tên/chức năng,
+   không chỉ theo tên file).
+2. Có thể thêm prop/variant vào component có sẵn để đáp ứng use-case mới không?
+3. Nếu bắt buộc tạo mới: nó thuộc `ui/` (không business logic, generic) hay thuộc feature (gắn với
+   nghiệp vụ)?
 
-Náº¿u khÃ´ng cháº¯c, dÃ¹ng agent `ui-consistency-reviewer` hoáº·c command `/check-reuse` Ä‘á»ƒ rÃ  soÃ¡t trÆ°á»›c khi merge.
+Nếu không chắc, dùng agent `ui-consistency-reviewer` hoặc command `/check-reuse` để rà soát trước khi merge.

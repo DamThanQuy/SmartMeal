@@ -1,51 +1,60 @@
-﻿# Rule â€” State Management, API, Forms
+﻿# Rule — State Management, API, Forms
 
-## Server state â†’ TanStack Query
+## Server state → TanStack Query
 
-DÃ¹ng cho má»i dá»¯ liá»‡u Ä‘áº¿n tá»« Backend: user data, nutrition diary, recipes, meal planner, grocery, food database, AI results, notifications.
+Dùng cho mọi dữ liệu đến từ Backend: user data, nutrition diary, recipes, meal planner, grocery, food database, AI results, notifications.
 
 ```
-Screen â†’ useMeals() (hook, TanStack Query) â†’ mealService.getMeals() â†’ apiClient.get()
+Screen → useMeals() (hook, TanStack Query) → mealService.getMeals() → apiClient.get()
 ```
 
-- Query key Ä‘áº·t tÃªn rÃµ rÃ ng, nháº¥t quÃ¡n (`['meals', date]`), trÃ¡nh key trÃ¹ng Ã½ nghÄ©a khÃ¡c nhau.
-- Mutation (create/update/delete) pháº£i invalidate Ä‘Ãºng query liÃªn quan, khÃ´ng tá»± báº¯n `refetch` thá»§ cÃ´ng ráº£i rÃ¡c.
-- KhÃ´ng Ä‘Æ°a toÃ n bá»™ server data vÃ o Zustand "cho cháº¯c".
+Nhánh `feat/mock-ui`: `mealService.getMeals()` tạm trả dữ liệu từ `features/<feature>/mocks/`
+(delay 400–800 ms, theo `MOCK_SCENARIO`), có đúng 1 comment `// TODO: replace mock with real API`.
+Hook/Screen không đổi khi sau này service chuyển sang gọi `apiClient` thật.
 
-## Client state â†’ Zustand
+- Query key đặt tên rõ ràng, nhất quán (`['meals', date]`), tránh key trùng ý nghĩa khác nhau.
+- Mutation (create/update/delete) phải invalidate đúng query liên quan, không tự bắn `refetch` thủ công
+  rải rác. Trên nhánh mock, mutation cập nhật lại dữ liệu mock/cache trong service.
+- Không đưa toàn bộ server data vào Zustand "cho chắc".
 
-DÃ¹ng cho: authentication status, user preferences, theme, language, temporary UI state, app-level settings.
+## Client state → Zustand
+
+Dùng cho: authentication status, user preferences, theme, language, temporary UI state, app-level settings.
 
 ```
 src/state/
-â”œâ”€â”€ auth/authStore.ts
-â””â”€â”€ app/appStore.ts
+├── auth/authStore.ts
+└── app/appStore.ts
 ```
 
-Store Ä‘áº·t tÃªn `somethingStore.ts`. KhÃ´ng dÃ¹ng Zustand Ä‘á»ƒ cache toÃ n bá»™ dá»¯ liá»‡u server.
+Store đặt tên `somethingStore.ts`. Không dùng Zustand để cache toàn bộ dữ liệu server.
 
-## HTTP â†’ Axios (luÃ´n qua API client chung)
+## HTTP → Axios (luôn qua API client chung)
 
 ```
 src/services/api/
-â”œâ”€â”€ client.ts         # instance Axios + base config
-â”œâ”€â”€ interceptors.ts   # token, unauthorized, lá»—i HTTP dÃ¹ng chung
-â””â”€â”€ endpoints.ts       # danh sÃ¡ch endpoint, khÃ´ng hard-code string URL nÆ¡i khÃ¡c
+├── client.ts         # instance Axios + base config
+├── interceptors.ts   # token, unauthorized, lỗi HTTP dùng chung
+└── endpoints.ts      # danh sách endpoint, không hard-code string URL nơi khác
 ```
 
-KhÃ´ng bao giá» import `axios` trá»±c tiáº¿p trong Screen/component. Feature service gá»i `apiClient`, khÃ´ng tá»± táº¡o instance Axios riÃªng.
+Không bao giờ import `axios` trực tiếp trong Screen/component. Feature service gọi `apiClient`, không tự
+tạo instance Axios riêng.
+
+Nhánh `feat/mock-ui`: **không** gọi `apiClient`/Axios thật; service trả mock. Chỉ chuyển sang gọi `apiClient`
+khi nối API thật, và chỉ sửa bên trong service — chữ ký hàm giữ nguyên.
 
 ## Storage
 
 ```
 src/services/storage/
-â”œâ”€â”€ storage.ts        # MMKV â€” preference, theme, language, onboarding, cache khÃ´ng nháº¡y cáº£m
-â””â”€â”€ secureStorage.ts  # Keychain â€” access token, refresh token, credential nháº¡y cáº£m
+├── storage.ts        # MMKV — preference, theme, language, onboarding, cache không nhạy cảm
+└── secureStorage.ts  # Keychain — access token, refresh token, credential nhạy cảm
 ```
 
-Access/refresh token luÃ´n qua `secureStorage.ts`, khÃ´ng lÆ°u trong MMKV/plain storage/Zustand persist thÆ°á»ng.
+Access/refresh token luôn qua `secureStorage.ts`, không lưu trong MMKV/plain storage/Zustand persist thường.
 
-## Forms â†’ React Hook Form + Zod
+## Forms → React Hook Form + Zod
 
 ```ts
 const loginSchema = z.object({
@@ -54,25 +63,38 @@ const loginSchema = z.object({
 });
 ```
 
-Má»i form (login, register, profile, health profile, food input, meal planner, grocery, premium) dÃ¹ng React Hook Form Ä‘á»ƒ quáº£n lÃ½ field state + Zod Ä‘á»ƒ validate schema. KhÃ´ng tá»± viáº¿t validate thá»§ cÃ´ng báº±ng chuá»—i `if` láº·p láº¡i khi Zod schema cÃ³ thá»ƒ xá»­ lÃ½.
+Mọi form (login, register, profile, health profile, food input, meal planner, grocery, premium) dùng
+React Hook Form để quản lý field state + Zod để validate schema. Không tự viết validate thủ công bằng
+chuỗi `if` lặp lại khi Zod schema có thể xử lý.
 
 ## AI
 
 ```
-React Native â†’ SmartMeal API (backend) â†’ AI Service â†’ Gemini/LLM
+React Native → SmartMeal API (backend) → AI Service → Gemini/LLM
 ```
 
-Mobile khÃ´ng bao giá» gá»i tháº³ng Gemini/LLM báº±ng API key riÃªng. AI feature Ä‘áº·t trong `features/ai/` vá»›i `components/`, `hooks/`, `services/`, `types/` riÃªng.
+Mobile không bao giờ gọi thẳng Gemini/LLM bằng API key riêng. AI feature đặt trong `features/ai/` với
+`components/`, `hooks/`, `services/`, `mocks/`, `types/` riêng.
 
-Káº¿t quáº£ AI luÃ´n pháº£i:
-- Äi qua flow `AI Analysis â†’ User Review â†’ User Confirm â†’ Save` (khÃ´ng tá»± Ä‘á»™ng lÆ°u â€” BR-054).
-- Hiá»ƒn thá»‹ rÃµ nhÃ£n "Æ¯á»›c tÃ­nh/Estimated", khÃ´ng trÃ¬nh bÃ y nhÆ° sá»‘ liá»‡u chÃ­nh xÃ¡c tuyá»‡t Ä‘á»‘i (BR-061).
+Nhánh `feat/mock-ui`: AI service (AI Snap, Voice Logging, Fridge Scanner, OCR) trả kết quả giả lập từ
+`mocks/` theo đúng flow bên dưới, chưa gọi camera/mic/backend thật — chỉ có nút "giả lập kết quả".
+
+Kết quả AI luôn phải:
+- Đi qua flow `AI Analysis → User Review → User Confirm → Save` (không tự động lưu — BR-054).
+- Hiển thị rõ nhãn "Ước tính/Estimated" (≈), không trình bày như số liệu chính xác tuyệt đối (BR-061).
+- Cho phép user chỉnh sửa/xóa/thêm trước khi lưu (BR-062).
 
 ## Offline
 
-- Local cache (MMKV) chá»‰ dÃ¹ng cho preference, dá»¯ liá»‡u gáº§n Ä‘Ã¢y (recent meals/recipes), khÃ´ng thay tháº¿ Backend lÃ m source of truth (BR-260).
-- Khi máº¥t máº¡ng, dÃ¹ng `NetInfo` Ä‘á»ƒ hiá»ƒn thá»‹ offline state; thay Ä‘á»•i khi offline Ä‘Æ°a vÃ o sync queue, Ä‘áº©y lÃªn Backend khi cÃ³ máº¡ng láº¡i (BR-261).
+- Local cache (MMKV) chỉ dùng cho preference, dữ liệu gần đây (recent meals/recipes), không thay thế
+  Backend làm source of truth (BR-260).
+- Khi mất mạng, dùng `NetInfo` để hiển thị offline state; thay đổi khi offline đưa vào sync queue, đẩy
+  lên Backend khi có mạng lại (BR-261). Trên nhánh mock-ui, mô phỏng trạng thái này bằng UI
+  (banner "Đang offline") mà không cần `NetInfo` thật nếu task chưa yêu cầu.
 
-## Error/Loading/Empty (báº¯t buá»™c vá»›i má»i mÃ n hÃ¬nh cÃ³ dá»¯ liá»‡u báº¥t Ä‘á»“ng bá»™)
+## Error/Loading/Empty (bắt buộc với mọi màn hình có dữ liệu bất đồng bộ)
 
-Má»—i mÃ n hÃ¬nh dá»¯ liá»‡u tá»‘i thiá»ƒu pháº£i xá»­ lÃ½ 4 tráº¡ng thÃ¡i: `Loading`, `Success`, `Empty`, `Error` â€” dÃ¹ng `LoadingState`/`EmptyState`/`ErrorState` tá»« `components/common` (xem `@.claude/rules/component-reuse.md`). KhÃ´ng Ä‘á»ƒ mÃ n hÃ¬nh tráº¯ng khi API lá»—i hoáº·c Ä‘ang táº£i.
+Mỗi màn hình dữ liệu tối thiểu phải xử lý 4 trạng thái: `Loading`, `Success`, `Empty`, `Error` — dùng
+`LoadingState`/`EmptyState`/`ErrorState` từ `components/common` (xem `@.claude/rules/component-reuse.md`).
+Trên nhánh mock, dùng `MOCK_SCENARIO` trong `src/config/mock.ts` để kiểm tra đủ 4 trạng thái. Không để
+màn hình trắng khi API/mock lỗi hoặc đang tải.

@@ -1,0 +1,164 @@
+import { zodResolver } from '@hookform/resolvers/zod';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { ArrowRight, Leaf, Lock, Mail } from 'lucide-react-native';
+import React from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { Pressable, View } from 'react-native';
+import { z } from 'zod';
+import { ScreenContainer } from '@/components/common';
+import { AppButton, AppInput, AppText } from '@/components/ui';
+import { AUTH_ROUTES } from '@/constants/routes';
+import type { AuthStackParamList } from '@/navigation/types';
+import { useAuthStore } from '@/state/auth/authStore';
+import { useTheme } from '@/theme/ThemeProvider';
+import { AuthGoogleButton } from '../components/AuthGoogleButton';
+import { AuthSocialDivider } from '../components/AuthSocialDivider';
+import { useLogin } from '../hooks/useLogin';
+
+const loginSchema = z.object({
+  email: z.string().email({ message: 'Email không hợp lệ' }),
+  password: z.string().min(8, { message: 'Mật khẩu tối thiểu 8 ký tự' }),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
+
+type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
+
+// design/Main.dc.html (BR-013, BR-014). Mock: đăng nhập không kiểm tra thật — mọi email/mật
+// khẩu hợp lệ định dạng đều thành công, trừ khi Dev bật MOCK_SCENARIO='error'.
+export function LoginScreen({ navigation }: Props) {
+  const { colors } = useTheme();
+  const login = useAuthStore(state => state.login);
+  const loginMutation = useLogin();
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+  });
+
+  const onSubmit = handleSubmit(values => {
+    loginMutation.mutate(values, {
+      onSuccess: result => login(result.user),
+    });
+  });
+
+  return (
+    <ScreenContainer scroll contentContainerClassName="gap-xxl py-xxxl">
+      <View className="flex-row items-center gap-sm">
+        <View className="h-[48px] w-[48px] items-center justify-center rounded-lg bg-primary">
+          <Leaf size={24} color={colors.onPrimary} />
+        </View>
+        <AppText variant="h2">SmartMeal</AppText>
+      </View>
+
+      <View className="gap-xs">
+        <AppText variant="h1">Chào mừng trở lại</AppText>
+        <AppText variant="bodyLg" color="secondary">
+          Đăng nhập để tiếp tục theo dõi dinh dưỡng của bạn.
+        </AppText>
+      </View>
+
+      <View className="gap-md">
+        <Controller
+          control={control}
+          name="email"
+          render={({ field: { value, onChange, onBlur } }) => (
+            <AppInput
+              label="Email"
+              placeholder="ban@email.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              leftIcon={<Mail size={20} color={colors.textSecondary} />}
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              error={errors.email?.message}
+            />
+          )}
+        />
+
+        <View className="gap-xs">
+          <View className="flex-row items-center justify-between">
+            <AppText variant="bodyMedium" color="secondary">
+              Mật khẩu
+            </AppText>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Quên mật khẩu?"
+              className="min-h-[44px] items-center justify-center"
+              onPress={() => navigation.navigate(AUTH_ROUTES.FORGOT_PASSWORD)}
+            >
+              <AppText variant="bodyMedium" color="onPrimarySoft">
+                Quên mật khẩu?
+              </AppText>
+            </Pressable>
+          </View>
+          <Controller
+            control={control}
+            name="password"
+            render={({ field: { value, onChange, onBlur } }) => (
+              <AppInput
+                placeholder="Nhập mật khẩu"
+                secureTextEntry
+                leftIcon={<Lock size={20} color={colors.textSecondary} />}
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                error={errors.password?.message}
+              />
+            )}
+          />
+        </View>
+      </View>
+
+      <View className="gap-md">
+        <AppButton
+          label="Đăng nhập"
+          onPress={() => onSubmit()}
+          loading={loginMutation.isPending}
+        />
+        {loginMutation.isError ? (
+          <AppText variant="caption" color="error" className="text-center">
+            {loginMutation.error.message}
+          </AppText>
+        ) : null}
+
+        <AuthSocialDivider />
+        <AuthGoogleButton label="Tiếp tục với Google" onPress={() => {}} />
+      </View>
+
+      <View className="items-center gap-sm">
+        <View className="flex-row items-center gap-xs">
+          <AppText variant="body" color="secondary">
+            Chưa có tài khoản?
+          </AppText>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Đăng ký"
+            className="min-h-[44px] items-center justify-center"
+            onPress={() => navigation.navigate(AUTH_ROUTES.REGISTER)}
+          >
+            <AppText variant="bodyMedium" color="onPrimarySoft">
+              Đăng ký
+            </AppText>
+          </Pressable>
+        </View>
+        {/* TODO: điều hướng Discovery (guest access) khi Đợt 5 — recipes — hoàn thành. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Khám phá công thức không cần đăng nhập"
+          className="min-h-[44px] flex-row items-center gap-xs opacity-60"
+          disabled
+        >
+          <AppText variant="bodyMedium" color="onPrimarySoft">
+            Khám phá công thức không cần đăng nhập
+          </AppText>
+          <ArrowRight size={16} color={colors.onPrimarySoft} />
+        </Pressable>
+      </View>
+    </ScreenContainer>
+  );
+}

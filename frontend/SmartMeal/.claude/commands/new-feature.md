@@ -1,29 +1,65 @@
 ﻿---
-description: Scaffold má»™t feature module má»›i cho SmartMeal (src/features/<feature>/) Ä‘Ãºng kiáº¿n trÃºc feature-based + layered
-argument-hint: <tÃªn-feature>
+description: Scaffold một feature module mới cho SmartMeal (src/features/<feature>/) đúng kiến trúc feature-based + layered, dùng mock data trên nhánh feat/mock-ui
+argument-hint: <tên-feature> [artboard1,artboard2,...]
 ---
 
-YÃªu cáº§u: dá»±ng khung feature `$ARGUMENTS` cho app SmartMeal (`frontend/SmartMeal/`) theo `docs/structure_system.md`.
+Yêu cầu: dựng feature `$ARGUMENTS` cho app SmartMeal (`frontend/SmartMeal/`) theo `docs/structure_system.md`.
+Tham số 1 là tên feature; tham số 2 (tùy chọn) là danh sách artboard trong `design/` cần dựng.
 
-Thá»±c hiá»‡n theo Ä‘Ãºng thá»© tá»±:
+Giao việc cho agent `rn-feature-scaffolder`, thực hiện đúng thứ tự:
 
-1. Äá»c `frontend/SmartMeal/CLAUDE.md`, `.claude/rules/architecture.md`, `.claude/rules/state-and-api.md`.
-2. Äá»c pháº§n liÃªn quan trong `docs/business_rule.md` (nghiá»‡p vá»¥, rÃ ng buá»™c, thá»© tá»± Æ°u tiÃªn an toÃ n/dá»‹ á»©ng náº¿u Ã¡p dá»¥ng) vÃ  `docs/design.md` (layout, states cáº§n cÃ³) cho feature nÃ y.
-3. Kiá»ƒm tra feature nÃ y cÃ³ khá»›p vá»›i danh sÃ¡ch feature chuáº©n á»Ÿ `docs/structure_system.md` má»¥c 5 khÃ´ng (auth, dashboard, nutrition, recipes, meal-planner, grocery, health, scanner, ai, gamification, premium) â€” náº¿u Ä‘Ã£ cÃ³ tÃªn tÆ°Æ¡ng á»©ng, dÃ¹ng Ä‘Ãºng tÃªn Ä‘Ã³, khÃ´ng táº¡o feature trÃ¹ng Ã½ nghÄ©a.
-4. Táº¡o cáº¥u trÃºc chuáº©n, chá»‰ táº¡o thÆ° má»¥c con thá»±c sá»± cáº§n dÃ¹ng ngay:
-   ```
+1. **Đọc context**: `CLAUDE.md` §4–10, `.claude/rules/architecture.md`, `.claude/rules/state-and-api.md`,
+   `docs/ui-progress.md` (xem đã làm gì).
+
+2. **Nghiệp vụ & design**:
+   - Phần liên quan trong `docs/business_rule.md` (ghi lại mã BR-xxx: an toàn/dị ứng, AI cần xác nhận, premium…).
+   - `docs/design.md` và các artboard `design/*.dc.html` tương ứng (bố cục, nội dung, số liệu mẫu,
+     link `href="X.dc.html"`).
+   - Shape dữ liệu trong `docs/SmartMeal_API_Contract.md`.
+
+3. **Tên feature**: phải thuộc danh sách chuẩn — `auth`, `health`, `dashboard`, `nutrition`, `recipes`,
+   `meal-planner`, `grocery`, `scanner`, `ai`, `gamification`, `premium`, `profile`, `dev`.
+   Nếu đã có tên tương ứng thì dùng đúng tên đó, không tạo feature trùng ý nghĩa.
+
+4. **Cấu trúc** (chỉ tạo thư mục con dùng ngay):
+```
    src/features/<feature>/
-   â”œâ”€â”€ components/
-   â”œâ”€â”€ hooks/
-   â”œâ”€â”€ screens/
-   â”œâ”€â”€ services/
-   â”œâ”€â”€ types/
-   â””â”€â”€ index.ts
-   ```
-5. Service gá»i qua `src/services/api/client.ts` (táº¡o layer nÃ y náº¿u chÆ°a cÃ³), khÃ´ng gá»i axios trá»±c tiáº¿p.
-6. Screen chá»‰ render UI + gá»i hook + xá»­ lÃ½ loading/error/empty báº±ng component trong `src/components/common/` (táº¡o náº¿u chÆ°a cÃ³).
-7. ThÃªm route vÃ o `src/constants/routes.ts` vÃ  káº¿t ná»‘i `src/navigation/`, khÃ´ng hard-code route string.
-8. Náº¿u cáº§n state dÃ¹ng chung nhiá»u feature, Ä‘áº·t vÃ o `src/state/{auth,app}`; náº¿u chá»‰ feature nÃ y dÃ¹ng, giá»¯ trong feature.
-9. BÃ¡o cÃ¡o láº¡i: file Ä‘Ã£ táº¡o, component/service dÃ¹ng chung Ä‘Ã£ tÃ¡i sá»­ dá»¥ng, Ä‘iá»ƒm nÃ o trong `business_rule.md`/`design.md` cÃ²n mÆ¡ há»“ cáº§n xÃ¡c nháº­n thÃªm.
+   ├── components/
+   ├── hooks/
+   ├── screens/
+   ├── services/
+   ├── mocks/
+   ├── types/
+   └── index.ts
+```
 
-Viá»‡c nÃ y cÃ³ thá»ƒ giao cho agent `rn-feature-scaffolder`.
+5. **Service (mock UI)**:
+   - Trả Promise từ `mocks/`, delay 400–800 ms.
+   - Xử lý theo `MOCK_SCENARIO` trong `src/config/mock.ts` (`success | empty | error | slow`).
+   - Đúng 1 comment `// TODO: replace mock with real API` mỗi service.
+   - Không axios, không URL backend. Chữ ký hàm giữ nguyên như bản gọi API thật sau này.
+
+6. **Hook**: `useQuery` để đọc, `useMutation` cho hành động; chỉ gọi service, không import mocks.
+   Query keys khai báo 1 chỗ trong feature.
+
+7. **Screen**: chỉ render UI + gọi hook + điều hướng. Dùng `ScreenContainer`, `LoadingState`,
+   `EmptyState`, `ErrorState` trong `src/components/common/`. Thiếu component dùng chung →
+   giao cho `rn-component-builder`, không viết tạm trong screen.
+   Styling theo `CLAUDE.md` §6 (NativeWind token, không hex). Kiểm tra cả light và dark.
+
+8. **Navigation**: thêm route vào `src/constants/routes.ts`, param type vào `src/navigation/types.ts`,
+   đăng ký đúng navigator (Auth / tab Main / stack / modal cho bottom sheet & dialog).
+
+9. **Nghiệp vụ trên UI**: kết quả AI ghi "ước tính" (≈) và cần user xác nhận trước khi lưu;
+   món chứa dị ứng phải bị lọc hoặc cảnh báo; không khẳng định "an toàn tuyệt đối";
+   premium chỉ mở khi thanh toán thành công. Camera/mic/barcode/Health: chỉ UI + nút giả lập kết quả.
+
+10. **State dùng chung**: chỉ đưa vào `src/state/{auth,app}` khi nhiều feature thực sự cần.
+
+11. **Kiểm tra & cập nhật**: chạy `npx tsc --noEmit`, `npm run lint`; cập nhật `docs/ui-progress.md`.
+
+12. **Báo cáo**:
+    - File đã tạo/sửa, nhóm theo layer (screens / hooks / services / mocks / types / navigation).
+    - Component/service dùng chung đã tái sử dụng hoặc vừa yêu cầu tạo.
+    - Artboard đã dựng và chỗ lệch so với design.
+    - BR-xxx đã áp dụng; điểm còn mơ hồ trong `business_rule.md` / `design.md` / API contract cần xác nhận.

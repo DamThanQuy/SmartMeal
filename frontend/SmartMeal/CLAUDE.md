@@ -1,103 +1,190 @@
-﻿# CLAUDE.md â€” SmartMeal Mobile (React Native + TypeScript)
+﻿# CLAUDE.md — SmartMeal Mobile (React Native + TypeScript)
 
-HÆ°á»›ng dáº«n nÃ y Ã¡p dá»¥ng cho toÃ n bá»™ code trong `frontend/SmartMeal/`. Äá»c file nÃ y trÆ°á»›c khi implement báº¥t ká»³ mÃ n hÃ¬nh, component hay logic nÃ o.
+Áp dụng cho toàn bộ code trong `frontend/SmartMeal/`. Đọc file này trước khi implement bất kỳ màn hình, component hay logic nào.
 
-## 1. Dá»± Ã¡n lÃ  gÃ¬
+## 1. Dự án
 
-SmartMeal lÃ  mobile app (React Native + TypeScript) vá» dinh dÆ°á»¡ng, AI meal logging, sá»©c khá»e, meal planning vÃ  gamification. Backend lÃ  ASP.NET Core .NET 8 + PostgreSQL â€” mobile **khÃ´ng** bao giá» gá»i trá»±c tiáº¿p database hoáº·c AI provider.
+SmartMeal là mobile app (React Native CLI + TypeScript) về dinh dưỡng, AI meal logging, sức khỏe, meal planning và gamification.
+Backend: ASP.NET Core .NET 8 + PostgreSQL. Mobile **không bao giờ** gọi trực tiếp database hoặc AI provider.
 
-NhÃ¡nh hiá»‡n táº¡i `feat/mock-ui` Ä‘ang dá»±ng UI báº±ng dá»¯ liá»‡u giáº£ láº­p trÆ°á»›c khi ná»‘i API tháº­t â€” xem má»¥c 8 (Mock data) Ä‘á»ƒ biáº¿t cÃ¡ch lÃ m Ä‘Ãºng.
+Nhánh hiện tại `feat/mock-ui`: dựng toàn bộ UI bằng dữ liệu giả lập, **không gọi API**. Xem mục 8.
 
-## 2. TÃ i liá»‡u nguá»“n (Source of Truth) â€” báº¯t buá»™c Ä‘á»c trÆ°á»›c khi code
+## 2. Tài liệu nguồn (bắt buộc đọc trước khi code)
 
-| Thá»© tá»± | TÃ i liá»‡u | Ná»™i dung |
+| Thứ tự | Tài liệu | Nội dung |
 |---|---|---|
-| 1 | `docs/business_rule.md` | Nghiá»‡p vá»¥: auth, health profile, nutrition, AI, premium... |
-| 2 | `docs/design.md` | Design system, mÃ u, spacing, typography, UI/UX rules |
-| 3 | `docs/structure_system.md` | Kiáº¿n trÃºc thÆ° má»¥c, feature-based structure, layering |
-| 4 | `docs/tech_stack.md` | CÃ´ng nghá»‡ dÃ¹ng cho tá»«ng pháº§n, Definition of Done |
+| 1 | `docs/business_rule.md` | Nghiệp vụ (BR-xxx) |
+| 2 | `docs/design.md` | Design system, màu, spacing, typography, UI/UX |
+| 3 | `docs/structure_system.md` | Kiến trúc thư mục, feature-based, layering |
+| 4 | `docs/tech_stack.md` | Công nghệ, Definition of Done |
+| 5 | `docs/SmartMeal_API_Contract.md` | Shape dữ liệu (mock phải khớp) |
+| 6 | `design/README.md`, `design/screens.json`, `design/*.dc.html` | Mockup UI 47 màn (390px) |
+| 7 | `docs/ui-progress.md` | Tiến độ dựng UI theo từng artboard |
 
-Quy trÃ¬nh báº¯t buá»™c khi implement 1 feature:
+Quy trình: `business_rule → design.md → design/*.dc.html → structure_system → tech_stack → implement`.
+Không tự đổi nghiệp vụ/design để "code cho dễ". Tài liệu thiếu hoặc mâu thuẫn → hỏi lại, không tự suy diễn.
+
+## 3. Tech stack
+
+React Native CLI · TypeScript (strict) · **NativeWind** (styling) · React Navigation · TanStack Query (server state) · Zustand (client state) · Axios · React Hook Form + Zod · Reanimated + Gesture Handler · MMKV (storage) · React Native Keychain (secure storage) · Vision Camera + ML Kit · Notifee · react-native-gifted-charts · date-fns · Lucide React Native (icons).
+
+Không tự thêm: Redux, MobX, Apollo/GraphQL, Firebase, UI kit lớn (Paper, NativeBase, Tamagui…), Expo.
+Trước khi thêm package: kiểm tra đã có package tương đương chưa, tương thích RN/Android/iOS, cần native setup không.
+
+## 4. Kiến trúc & luồng phụ thuộc
 
 ```
-business_rule.md â†’ design.md â†’ structure_system.md â†’ tech_stack.md â†’ implementation
+Screen → Hook → Feature Service → API Client / Native Service → Backend / Native API
 ```
 
-KhÃ´ng tá»± Ã½ thay Ä‘á»•i nghiá»‡p vá»¥ hoáº·c design Ä‘á»ƒ "code cho dá»…". Náº¿u tÃ i liá»‡u thiáº¿u hoáº·c mÃ¢u thuáº«n vá»›i yÃªu cáº§u, há»i láº¡i thay vÃ¬ tá»± suy diá»…n.
+- Screen: chỉ render UI, gọi hook, navigation, xử lý loading/error/empty. Không business logic, không gọi Axios.
+- Business logic nằm ở `features/<feature>/services/`.
+- Server state qua TanStack Query. Client state (auth, theme, preferences) qua Zustand. Không dồn server data vào Zustand.
+- Chi tiết: `@.claude/rules/architecture.md`.
 
-## 3. Tech stack chÃ­nh
-
-React Native Â· TypeScript Â· NativeWind (styling) Â· React Navigation Â· TanStack Query (server state) Â· Zustand (client state) Â· Axios Â· React Hook Form + Zod Â· Reanimated + Gesture Handler Â· MMKV (storage) Â· React Native Keychain (secure storage) Â· Vision Camera + ML Kit (camera/OCR/barcode) Â· Notifee Â· react-native-gifted-charts Â· date-fns Â· Lucide React Native (icons).
-
-KhÃ´ng tá»± Ã½ thÃªm Redux, MobX, Apollo/GraphQL, Firebase, UI framework lá»›n, hoáº·c Expo náº¿u khÃ´ng cÃ³ yÃªu cáº§u rÃµ rÃ ng. TrÆ°á»›c khi thÃªm package má»›i: kiá»ƒm tra Ä‘Ã£ cÃ³ package tÆ°Æ¡ng Ä‘Æ°Æ¡ng chÆ°a, cÃ³ tÆ°Æ¡ng thÃ­ch RN/Android/iOS khÃ´ng, cÃ³ cáº§n native setup khÃ´ng.
-
-## 4. Kiáº¿n trÃºc & luá»“ng phá»¥ thuá»™c
-
-```
-Screen â†’ Hook â†’ Feature Service â†’ API Client / Native Service â†’ Backend / Native API
-```
-
-- Screen chá»‰ render UI, gá»i hook, xá»­ lÃ½ navigation vÃ  loading/error/empty. KhÃ´ng chá»©a business logic phá»©c táº¡p, khÃ´ng gá»i Axios trá»±c tiáº¿p.
-- Business logic thuá»™c vá» feature service tÆ°Æ¡ng á»©ng (`features/<feature>/services/`).
-- Server state luÃ´n qua TanStack Query. Client/global state (auth, theme, preferences) qua Zustand â€” khÃ´ng dá»“n toÃ n bá»™ server data vÃ o Zustand.
-- Chi tiáº¿t Ä‘áº§y Ä‘á»§: `@.claude/rules/architecture.md`.
-
-## 5. Cáº¥u trÃºc thÆ° má»¥c má»¥c tiÃªu
+## 5. Cấu trúc thư mục
 
 ```
 src/
-â”œâ”€â”€ assets/
-â”œâ”€â”€ components/{ui,common}/
-â”œâ”€â”€ config/
-â”œâ”€â”€ constants/
-â”œâ”€â”€ features/<feature>/{components,hooks,screens,services,types,index.ts}
-â”œâ”€â”€ hooks/
-â”œâ”€â”€ navigation/
-â”œâ”€â”€ services/{api,storage,permissions,notifications,analytics}
-â”œâ”€â”€ state/{auth,app}
-â”œâ”€â”€ theme/
-â”œâ”€â”€ types/
-â””â”€â”€ utils/
+├── assets/{images,icons,illustrations,fonts}
+├── components/{ui,common}/
+├── config/          # env.ts, api.ts, mock.ts
+├── constants/       # routes.ts, storage.ts, ...
+├── features/<feature>/{components,hooks,screens,services,types,mocks,index.ts}
+├── hooks/
+├── navigation/      # AppNavigator, AuthNavigator, MainNavigator, types.ts
+├── services/{api,storage,permissions,notifications,analytics}
+├── state/{auth,app}
+├── theme/           # nguồn token duy nhất
+├── types/
+└── utils/
 ```
 
-`src/` chÆ°a tá»“n táº¡i â€” táº¡o dáº§n theo nhu cáº§u feature, khÃ´ng táº¡o sáºµn toÃ n bá»™ khi chÆ°a cáº§n. TrÆ°á»›c khi táº¡o file má»›i: kiá»ƒm tra `components/ui` â†’ `components/common` â†’ feature hiá»‡n táº¡i â†’ `services`/`utils`. NguyÃªn táº¯c: **Reuse > Extend > Create new**.
+Feature: `auth`, `health`, `dashboard`, `nutrition`, `recipes`, `meal-planner`, `grocery`, `scanner`, `ai`, `gamification`, `premium`, `profile`, `dev`.
+Trước khi tạo file mới: kiểm tra `components/ui` → `components/common` → feature hiện tại → `services`/`utils`. Nguyên tắc: **Reuse > Extend > Create new**.
 
-## 6. Bá»‘n nguyÃªn táº¯c báº¯t buá»™c (khÃ´ng Ä‘Æ°á»£c vi pháº¡m)
+## 6. Styling — NativeWind + theme
 
-1. **UI Ä‘á»“ng bá»™ qua shared component** â€” luÃ´n táº­n dá»¥ng `components/ui` (AppButton, AppCard, AppInput, AppText, AppChip, AppIconButton, AppBottomSheet) vÃ  `components/common` (EmptyState, ErrorState, LoadingState, ScreenContainer, SectionHeader) trÆ°á»›c khi viáº¿t UI má»›i. Chi tiáº¿t: `@.claude/rules/component-reuse.md`.
-2. **KhÃ´ng hard-code** â€” mÃ u/spacing/radius/font pháº£i láº¥y tá»« `src/theme`, API base URL tá»« `src/config`, route name tá»« `src/constants/routes.ts`, khÃ´ng hard-code secret/API key. Chi tiáº¿t: `@.claude/rules/no-hardcode.md`.
-3. **TypeScript/TSX chuáº©n mobile** â€” strict types, khÃ´ng dÃ¹ng `any`, props qua interface, tá»‘i Æ°u re-render, accessibility, safe area. Chi tiáº¿t: `@.claude/rules/typescript-mobile.md`.
-4. **State & API Ä‘Ãºng layer** â€” TanStack Query / Zustand / Axios / RHF+Zod Ä‘Ãºng vai trÃ², khÃ´ng gá»i API trá»±c tiáº¿p trong component. Chi tiáº¿t: `@.claude/rules/state-and-api.md`.
+- `src/theme` là **nguồn token duy nhất** (colors light/dark, spacing, radius, typography, shadows, motion).
+- `tailwind.config.js` import token từ `src/theme`, không gõ lại mã màu.
+- Màu dùng CSS variables (`rgb(var(--color-xxx) / <alpha-value>)`) → `bg-surface`, `text-text-primary`… tự đổi theo dark mode.
+- Dùng className token ngữ nghĩa:
+  - Màu: `bg-background` `bg-surface` `bg-surface-elevated` `bg-primary` `bg-primary-soft` `text-text-primary` `text-text-secondary` `text-on-primary` `border-border` `text-error-text` …
+  - Spacing: `p-md` `gap-xs` `px-md` `mt-xl` (xxs 4, xs 8, sm 12, md 16, lg 20, xl 24, xxl 32, xxxl 40)
+  - Radius: `rounded-md` (12) `rounded-card` (16) `rounded-lg` (20) `rounded-sheet` (24) `rounded-pill`
+  - Chữ: `text-display` `text-h1` `text-h2` `text-h3` `text-body-lg` `text-body` `text-caption` + `font-sans` / `font-semibold` / `font-bold`
+- **Cấm**: hex trong className/style, màu Tailwind mặc định (`green-500`, `gray-200`…), `dark:` cho màu đã là token, spacing lẻ (13, 17, 19…).
+- `StyleSheet`/style inline chỉ dùng khi className không làm được (animation, giá trị động).
+- Giá trị JS (màu icon Lucide, chart, StatusBar, placeholderTextColor, React Navigation theme) lấy từ `useTheme()`.
+- Theme mode `system | light | dark` lưu bằng MMKV qua `src/services/storage`.
+- Font Inter: `Inter-Regular`, `Inter-SemiBold`, `Inter-Bold`. Không set `fontWeight` kèm fontFamily custom.
+- Variant component dùng `cva` hoặc object map, không nối chuỗi className rối.
 
-## 7. CÃ´ng cá»¥ há»— trá»£ trong `.claude/`
+## 7. Bốn nguyên tắc bắt buộc
 
-- **Skill** `smartmeal-dev-workflow` â€” quy trÃ¬nh Ä‘áº§y Ä‘á»§ khi thÃªm feature/screen má»›i (Ä‘á»c docs â†’ check reuse â†’ implement â†’ checklist). Gá»i báº±ng `/smartmeal-dev-workflow`.
-- **Commands**:
-  - `/new-feature <tÃªn-feature>` â€” scaffold Ä‘Ãºng cáº¥u trÃºc `features/<feature>/`.
-  - `/new-component <tÃªn>` â€” táº¡o component má»›i sau khi Ä‘Ã£ kiá»ƒm tra reuse, Ä‘áº·t Ä‘Ãºng layer (ui/common/feature).
-  - `/check-reuse` â€” rÃ  soÃ¡t diff hiá»‡n táº¡i tÃ¬m component trÃ¹ng láº·p vÃ  style hard-code.
-  - `/ui-review` â€” review diff so vá»›i `docs/design.md` + rules (loading/error/empty state, token, touch target...).
-- **Agents**:
-  - `rn-component-builder` â€” xÃ¢y/má»Ÿ rá»™ng shared component Ä‘Ãºng design system, khÃ´ng hard-code.
-  - `rn-feature-scaffolder` â€” dá»±ng khung 1 feature má»›i theo `structure_system.md`.
-  - `ui-consistency-reviewer` â€” review-only, tÃ¬m vi pháº¡m reuse/hard-code/layering, khÃ´ng tá»± sá»­a code.
+1. **UI đồng bộ qua shared component**
+   - `components/ui`: AppText, AppButton, AppIconButton, AppInput, AppCard, AppChip, AppBottomSheet
+   - `components/common`: ScreenContainer, SectionHeader, LoadingState, EmptyState, ErrorState
+   - Dùng trước khi viết UI mới. Chi tiết: `@.claude/rules/component-reuse.md`.
+2. **Không hard-code**: màu/spacing/radius/font từ theme; base URL từ `src/config`; route name từ `src/constants/routes.ts`; không secret/API key. Chi tiết: `@.claude/rules/no-hardcode.md`.
+3. **TypeScript chuẩn mobile**: strict, không `any`, props qua interface, tránh re-render thừa, SafeArea, touch target ≥ 44, `accessibilityLabel` cho icon button. Chi tiết: `@.claude/rules/typescript-mobile.md`.
+4. **State & API đúng layer**: TanStack Query / Zustand / Axios / RHF+Zod đúng vai trò, không gọi API trong component. Chi tiết: `@.claude/rules/state-and-api.md`.
 
-## 8. Mock data (nhÃ¡nh `feat/mock-ui`)
+## 8. Mock UI (nhánh `feat/mock-ui`)
 
-Khi chÆ°a ná»‘i API tháº­t:
+- **Không gọi API thật**: không Axios request, không URL backend.
+- Mock data: `src/features/<feature>/mocks/*.mock.ts`, shape khớp `docs/SmartMeal_API_Contract.md`. Lấy số liệu mẫu từ design (1.420 kcal, Bún bò, Gà kho, Bé Mầm…).
+- Service vẫn đúng layer: `useX()` → `xService.getX()` trả Promise từ mock, delay 400–800 ms.
+  Đánh dấu `// TODO: replace mock with real API` **đúng 1 chỗ** trong service.
+- Hook dùng TanStack Query với `queryFn` là service mock. Hành động (lưu, xóa, xác nhận, check-off) dùng `useMutation` cập nhật cache/state local.
+- Không hard-code mock data trong Screen/UI component.
+- `src/config/mock.ts`: `MOCK_SCENARIO = 'success' | 'empty' | 'error' | 'slow'`. Service mock trả kết quả theo scenario để xem đủ mọi state. Có công tắc trong màn Dev.
+- Đăng nhập mock: bấm Đăng nhập → vào MainNavigator, không kiểm tra thật.
+- Camera / mic / barcode / Health Connect: chỉ dựng UI + nút "giả lập kết quả", chưa gọi native.
 
-- Mock data Ä‘áº·t trong `__mocks__/` hoáº·c `src/features/<feature>/mocks/`, khÃ´ng trá»™n vÃ o component/hook tháº­t.
-- Shape cá»§a mock data pháº£i khá»›p vá»›i `docs/SmartMeal_API_Contract.md` (root `docs/`) Ä‘á»ƒ khi ná»‘i API tháº­t chá»‰ cáº§n thay implementation cá»§a service, khÃ´ng sá»­a UI.
-- Hook/service váº«n pháº£i Ä‘i qua Ä‘Ãºng layer (`useX()` â†’ `xService.getX()`), chá»‰ khÃ¡c lÃ  `xService` táº¡m thá»i tráº£ mock thay vÃ¬ gá»i Axios. ÄÃ¡nh dáº¥u rÃµ báº±ng comment `// TODO: replace mock with real API` táº¡i Ä‘Ãºng 1 chá»— (service), khÃ´ng ráº£i rÃ¡c nhiá»u nÆ¡i.
-- KhÃ´ng hard-code mock data trá»±c tiáº¿p trong Screen/UI component.
+## 9. Dựng UI từ design
 
-## 9. Definition of Done (trÆ°á»›c khi coi 1 feature/PR lÃ  xong)
+- `design/*.dc.html` là mockup HTML tĩnh: đọc để lấy bố cục, nội dung, thứ tự, token. **Không copy HTML/CSS**, dựng lại bằng RN + NativeWind.
+- Bỏ qua `<x-dc>`, `<helmet>`, `<script type="text/x-dc">` (thuộc công cụ design).
+- `<a href="X.dc.html">` = điều hướng tới màn X.
+- Ảnh món ăn trong design là placeholder → dùng component placeholder có thể thay ảnh thật.
+- Navigation:
+  - AuthNavigator: Login (Main), Register, OTP, ForgotPassword, HealthProfile (các bước), HealthResult
+  - MainNavigator: bottom tab 5 mục — Trang chủ · Khám phá · Nhật ký · Thực đơn · Cá nhân + stack màn con
+  - Bottom sheet / dialog (QuickLog, FilterSheet, StateAILimit, DeleteConfirm) làm dạng modal/bottom sheet
+- Business rule phải thể hiện trên UI:
+  - Kết quả AI luôn ghi "ước tính" (≈) và cần user xác nhận trước khi lưu (BR-054, BR-061, BR-062)
+  - Dị ứng là ràng buộc bắt buộc: lọc khỏi gợi ý hoặc cảnh báo rõ (BR-102, BR-140)
+  - Không khẳng định "an toàn tuyệt đối", không thay thế tư vấn y tế (BR-112, BR-291)
+  - Premium chỉ kích hoạt khi thanh toán thành công (BR-241)
+- Mọi màn dữ liệu có Loading (skeleton) / Empty / Error / Success. Kiểm tra cả light và dark.
 
-- ÄÃºng `business_rule.md`, Ä‘Ãºng `design.md`, Ä‘Ãºng cáº¥u trÃºc thÆ° má»¥c.
-- KhÃ´ng táº¡o component/service trÃ¹ng láº·p; khÃ´ng gá»i API trá»±c tiáº¿p tá»« UI; khÃ´ng hard-code URL/secret/mÃ u/spacing.
-- CÃ³ loading / error / empty state khi mÃ n hÃ¬nh cÃ³ dá»¯ liá»‡u báº¥t Ä‘á»“ng bá»™.
-- TypeScript khÃ´ng lá»—i, khÃ´ng dÃ¹ng `any` khÃ´ng cáº§n thiáº¿t.
-- KhÃ´ng cÃ³ import path quÃ¡ sÃ¢u (`../../../..`), dÃ¹ng alias `@/`.
-- ÄÃ£ test logic quan trá»ng (BMI/BMR/TDEE, validation, macro calculation...).
+## 10. Tiến độ & chia đợt
 
-Chi tiáº¿t Ä‘áº§y Ä‘á»§: `docs/tech_stack.md` má»¥c 34, `docs/structure_system.md` má»¥c 34.
+`docs/ui-progress.md` — bảng: `| Artboard | Feature | Screen file | Trạng thái (todo/doing/done) | Ghi chú |`. Cập nhật sau mỗi màn.
+
+| Đợt | Phạm vi | Artboard |
+|---|---|---|
+| 0 | Nền tảng | NativeWind + theme + MMKV, UI primitives, navigation khung, màn Dev/ThemePreview |
+| 1 | auth + health | Main, Register, OTP, ForgotPassword, HealthProfile, HPActivity, HPAllergy, HealthResult |
+| 2 | dashboard + log | Dashboard, QuickLog, AICamera, AIAnalyzing, AISnap, VoiceLog, StateLoading, StateAIFailed, StateAILimit |
+| 3 | nutrition | Diary, FoodSearch, FoodDetail, EditMealLog, ProgressChart, DeleteConfirm, SaveSuccess |
+| 4 | scanner | Barcode, ProductNotFound, OCRReview, Fridge, StatePermission |
+| 5 | recipes | Discovery, FilterSheet, RecipeDetail, Favorites, StateError |
+| 6 | planner + grocery | MealPlanner, SlotPicker, Grocery |
+| 7 | profile | Profile, HealthSettings, WeightHistory, HealthConnect, Reminders, Notifications |
+| 8 | gamification + premium | Pet, Premium, PaymentSuccess, PaymentPending |
+
+Mỗi lần chỉ làm **1 đợt**, xong thì dừng và báo cáo: file đã tạo/sửa, component dùng chung mới, chỗ lệch so với design, TODO còn lại.
+
+## 11. Công cụ trong `.claude/`
+
+- Skill `smartmeal-dev-workflow` (`/smartmeal-dev-workflow`): quy trình thêm feature/screen.
+- Commands:
+  - `/new-feature <tên>`: scaffold `features/<feature>/`
+  - `/new-component <tên>`: tạo component sau khi check reuse
+  - `/check-reuse`: tìm component trùng và style hard-code trong diff
+  - `/ui-review`: review diff theo `design.md` + rules
+- Agents:
+  - `rn-component-builder`: xây shared component đúng design system
+  - `rn-feature-scaffolder`: dựng khung feature
+  - `ui-consistency-reviewer`: review-only, không tự sửa code
+
+## 12. Lệnh thường dùng
+
+```bash
+npm install                        # cài dependency (iOS: cd ios && bundle install && bundle exec pod install)
+npm start                          # Metro
+npm start -- --reset-cache         # bắt buộc sau khi đổi cấu hình NativeWind/babel/tailwind
+npm run android                    # build & chạy Android
+npm run ios                        # build & chạy iOS (macOS)
+npm run lint                       # ESLint
+npx tsc --noEmit                   # type-check
+npm test                           # Jest
+npm test -- <pattern>              # chạy 1 test
+```
+
+Prettier (`.prettierrc.js`: `singleQuote`, `trailingComma: all`, `arrowParens: avoid`) chạy qua editor hoặc `eslint --fix`.
+
+## 13. Definition of Done
+
+- Đúng `business_rule.md`, `design.md`, artboard tương ứng, đúng cấu trúc thư mục.
+- Không component/service trùng lặp; không gọi API từ UI; không hard-code URL/secret/màu/spacing.
+- Có Loading / Empty / Error khi dữ liệu bất đồng bộ; đúng ở cả light và dark.
+- `npx tsc --noEmit` và `npm run lint` sạch; không `any` thừa.
+- Import dùng alias `@/`, không `../../../`.
+- Có test cho logic quan trọng (BMI/BMR/TDEE, macro, validation).
+- `docs/ui-progress.md` đã cập nhật.
+
+## 14. Encoding
+
+Mọi file text lưu **UTF-8 không BOM**, line ending **LF**. Trên PowerShell 5 luôn dùng `-Encoding utf8` khi ghi file.
+
+## 15. Trạng thái hiện tại (đọc trước khi giả định đã có gì)
+
+- `src/` mới có thư mục rỗng; chưa có code thật trong feature/service/state/theme.
+- `App.tsx` vẫn là `NewAppScreen` mặc định; chưa có navigation, ThemeProvider, QueryClient.
+- `package.json` mới có `react`, `react-native`, `react-native-safe-area-context`. Toàn bộ stack ở mục 3 **chưa cài**.
+- `src/theme`, `src/config/*`, `src/constants/routes.ts`, store Zustand… **chưa tồn tại** → tạo mới đúng cấu trúc, không đi tìm file có sẵn.
+- Test có sẵn duy nhất: `__tests__/App.test.tsx`.
+- Canvas design gốc: https://claude.ai/artifact/Fqipf9uFUt3ebwvhnd2MzW (bản dùng để code nằm ở `design/`).

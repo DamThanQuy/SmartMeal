@@ -1,57 +1,87 @@
-﻿# Rule â€” TypeScript/TSX cho React Native (mobile)
+﻿# Rule — TypeScript/TSX cho React Native (mobile)
 
 ## Types
 
-- Báº­t strict mode (káº¿ thá»«a `@react-native/typescript-config`), khÃ´ng táº¯t strict Ä‘á»ƒ nÃ© lá»—i.
-- KhÃ´ng dÃ¹ng `any`. Náº¿u thá»±c sá»± chÆ°a biáº¿t shape, dÃ¹ng `unknown` + narrow, hoáº·c khai bÃ¡o type táº¡m rÃµ rÃ ng kÃ¨m `// TODO` giáº£i thÃ­ch lÃ½ do.
-- Má»i props cá»§a component pháº£i cÃ³ `interface <ComponentName>Props`, Ä‘áº·t ngay trÃªn component, export náº¿u screen/hook khÃ¡c cáº§n dÃ¹ng láº¡i.
-- Type dÃ¹ng chung toÃ n app â†’ `src/types/`. Type riÃªng feature â†’ `src/features/<feature>/types/`. KhÃ´ng Ä‘áº·t type dÃ¹ng chung trong 1 feature cá»¥ thá»ƒ.
-- Naming file type riÃªng: `something.types.ts` (theo `docs/structure_system.md` má»¥c 19).
-- Dá»¯ liá»‡u tá»« API pháº£i cÃ³ type khá»›p `docs/SmartMeal_API_Contract.md`; khÃ´ng dÃ¹ng object literal tuá»³ Ã½ rá»“i Ã©p kiá»ƒu (`as any`, `as SomeType` khi shape khÃ´ng khá»›p tháº­t).
+- Bật strict mode (kế thừa `@react-native/typescript-config`), không tắt strict để né lỗi.
+- Không dùng `any`. Nếu thực sự chưa biết shape, dùng `unknown` + narrow, hoặc khai báo type tạm rõ
+  ràng kèm `// TODO` giải thích lý do.
+- Mọi props của component phải có `interface <ComponentName>Props`, đặt ngay trên component, export
+  nếu screen/hook khác cần dùng lại.
+- Type dùng chung toàn app → `src/types/`. Type riêng feature → `src/features/<feature>/types/`.
+  Type của theme (`Theme`, `ThemeColors`, `ThemeMode`…) đặt trong `src/theme/`. Không đặt type dùng
+  chung trong 1 feature cụ thể.
+- Naming file type riêng: `something.types.ts` (theo `docs/structure_system.md` mục 19).
+- Dữ liệu từ API/mock phải có type khớp `docs/SmartMeal_API_Contract.md`; không dùng object literal
+  tùy ý rồi ép kiểu (`as any`, `as SomeType` khi shape không khớp thật).
 
 ## Component
 
-- Function component, arrow function, named export (trá»« `App.tsx`/entry file theo yÃªu cáº§u cá»§a React Native).
-- KhÃ´ng viáº¿t business logic trong component UI â€” xem `@.claude/rules/component-reuse.md` vÃ  `@.claude/rules/state-and-api.md`.
-- Props destructure ngay trong signature, cÃ³ default value rÃµ rÃ ng thay vÃ¬ `??`/`||` ráº£i rÃ¡c trong thÃ¢n hÃ m.
-- KhÃ´ng táº¡o component vÃ´ danh lá»“ng bÃªn trong component khÃ¡c (Ä‘á»‹nh nghÄ©a 1 component má»—i file, trá»« sub-component ná»™i bá»™ ráº¥t nhá» vÃ  khÃ´ng tÃ¡i sá»­ dá»¥ng).
+- Function component, arrow function, named export (trừ `App.tsx`/entry file theo yêu cầu của
+  React Native).
+- Không viết business logic trong component UI — xem `@.claude/rules/component-reuse.md` và
+  `@.claude/rules/state-and-api.md`.
+- Props destructure ngay trong signature, có default value rõ ràng thay vì `??`/`||` rải rác trong
+  thân hàm.
+- Không tạo component vô danh lồng bên trong component khác (định nghĩa 1 component mỗi file, trừ
+  sub-component nội bộ rất nhỏ và không tái sử dụng).
 
 ## Styling (NativeWind)
 
-- Æ¯u tiÃªn `className` (NativeWind) cho layout/spacing/color/typography/border/radius/flex.
-- DÃ¹ng `StyleSheet.create` chá»‰ cho style Ä‘á»™ng/phá»©c táº¡p NativeWind chÆ°a há»— trá»£ tá»‘t (vÃ­ dá»¥ transform phá»©c táº¡p vá»›i Reanimated).
-- KhÃ´ng dÃ¹ng inline style object literal láº·p láº¡i nhiá»u nÆ¡i â€” náº¿u láº·p láº¡i â‰¥ 2 chá»—, tÃ¡ch thÃ nh style/token dÃ¹ng chung.
+- Ưu tiên `className` (NativeWind) cho layout/spacing/color/typography/border/radius/flex, dùng
+  token ngữ nghĩa theo `@.claude/rules/no-hardcode.md` — không hex, không màu Tailwind mặc định,
+  không `dark:` cho màu token.
+- Biến thể (variant, size) dùng `cva` hoặc object map, không nối chuỗi className bằng nhiều `?:` lồng nhau.
+- Dùng `StyleSheet.create` (qua `useThemedStyles`) chỉ cho style động/phức tạp NativeWind chưa hỗ trợ
+  tốt (ví dụ transform phức tạp với Reanimated).
+- Giá trị màu cần dùng trong JS (icon Lucide, `ActivityIndicator`, `placeholderTextColor`, chart,
+  `StatusBar`) lấy từ `useTheme()`, không viết hex tay.
+- Không dùng inline style object literal lặp lại nhiều nơi — nếu lặp lại ≥ 2 chỗ, tách thành
+  component hoặc style dùng chung.
 
 ## Performance
 
-- `FlatList`/`FlashList`: luÃ´n cÃ³ `keyExtractor` á»•n Ä‘á»‹nh, trÃ¡nh táº¡o function/object má»›i trong `renderItem` khi danh sÃ¡ch dÃ i (Ä‘Æ°a ra ngoÃ i hoáº·c `useCallback`).
-- DÃ¹ng `React.memo` cho component hiá»ƒn thá»‹ trong list láº·p láº¡i nhiá»u (`MealCard`, `RecipeCard`...) khi props á»•n Ä‘á»‹nh.
-- Animation dÃ¹ng Reanimated/Gesture Handler cháº¡y trÃªn UI thread; khÃ´ng tá»± viáº¿t animation báº±ng `setInterval`/`setState` liÃªn tá»¥c náº¿u Reanimated xá»­ lÃ½ Ä‘Æ°á»£c (theo `docs/tech_stack.md` má»¥c 10).
-- KhÃ´ng gá»i API trong vÃ²ng láº·p render; fetch qua hook + TanStack Query.
+- `FlatList`/`FlashList`: luôn có `keyExtractor` ổn định, tránh tạo function/object mới trong
+  `renderItem` khi danh sách dài (đưa ra ngoài hoặc `useCallback`).
+- Dùng `React.memo` cho component hiển thị trong list lặp lại nhiều (`MealCard`, `RecipeCard`...)
+  khi props ổn định.
+- Animation dùng Reanimated/Gesture Handler chạy trên UI thread; không tự viết animation bằng
+  `setInterval`/`setState` liên tục nếu Reanimated xử lý được (theo `docs/tech_stack.md` mục 10).
+- Không gọi API/service trong vòng lặp render; fetch qua hook + TanStack Query.
 
-## Null-safety & lá»—i
+## Null-safety & lỗi
 
-- KhÃ´ng dÃ¹ng non-null assertion (`!`) Ä‘á»ƒ nÃ© lá»—i TypeScript trá»« khi cháº¯c cháº¯n 100% vÃ  cÃ³ comment giáº£i thÃ­ch invariant.
-- Optional chaining (`?.`) + nullish coalescing (`??`) khi dá»¯ liá»‡u cÃ³ thá»ƒ thiáº¿u (Ä‘áº·c biá»‡t dá»¯ liá»‡u tá»« AI/estimate â€” xem business rule BR-054, BR-061).
-- Má»i request async (API, native module) pháº£i cÃ³ try/catch hoáº·c Ä‘Æ°á»£c TanStack Query quáº£n lÃ½ lá»—i; khÃ´ng Ä‘á»ƒ Promise reject khÃ´ng Ä‘Æ°á»£c xá»­ lÃ½.
+- Không dùng non-null assertion (`!`) để né lỗi TypeScript trừ khi chắc chắn 100% và có comment
+  giải thích invariant.
+- Optional chaining (`?.`) + nullish coalescing (`??`) khi dữ liệu có thể thiếu (đặc biệt dữ liệu từ
+  AI/estimate — xem business rule BR-054, BR-061).
+- Mọi request async (API/mock, native module) phải có try/catch hoặc được TanStack Query quản lý lỗi;
+  không để Promise reject không được xử lý.
 
-## Accessibility & Mobile UX (báº¯t buá»™c theo `docs/design.md`)
+## Accessibility & Mobile UX (bắt buộc theo `docs/design.md`)
 
-- Má»i pháº§n tá»­ tap Ä‘Æ°á»£c: `accessibilityRole`, `accessibilityLabel` khi khÃ´ng cÃ³ text hiá»ƒn thá»‹ rÃµ (icon button).
-- Touch target tá»‘i thiá»ƒu 44Ã—44 (iOS) / 48Ã—48dp (Android) â€” khÃ´ng thu nhá» icon button dÆ°á»›i má»©c nÃ y.
-- TÃ´n trá»ng safe area (`react-native-safe-area-context`) cho má»i screen, khÃ´ng hard-code padding-top Ä‘á»ƒ nÃ© notch.
-- KhÃ´ng dÃ¹ng mÃ u lÃ  tÃ­n hiá»‡u duy nháº¥t (success/error) â€” luÃ´n kÃ¨m icon hoáº·c text.
+- Mọi phần tử tap được: `accessibilityRole`, `accessibilityLabel` khi không có text hiển thị rõ
+  (icon button), `accessibilityState` cho selected/disabled/busy.
+- Touch target tối thiểu 44×44 (iOS) / 48×48dp (Android) — không thu nhỏ icon button dưới mức này;
+  dùng `hitSlop` nếu vùng vẽ nhỏ hơn.
+- Tôn trọng safe area (`react-native-safe-area-context`) cho mọi screen, không hard-code padding-top
+  để né notch.
+- Không dùng màu là tín hiệu duy nhất (success/error) — luôn kèm icon hoặc text.
+- Kiểm tra hiển thị đúng ở cả light và dark mode trước khi coi là xong.
 
 ## Platform-specific code
 
-- Logic khÃ¡c biá»‡t Android/iOS xá»­ lÃ½ qua `Platform.select`/`Platform.OS`, hoáº·c file `.ios.tsx`/`.android.tsx` náº¿u khÃ¡c biá»‡t lá»›n â€” khÃ´ng ráº½ nhÃ¡nh platform ráº£i rÃ¡c trong nhiá»u component khÃ´ng liÃªn quan.
+- Logic khác biệt Android/iOS xử lý qua `Platform.select`/`Platform.OS`, hoặc file
+  `.ios.tsx`/`.android.tsx` nếu khác biệt lớn — không rẽ nhánh platform rải rác trong nhiều component
+  không liên quan.
 
 ## Import
 
-- DÃ¹ng alias tuyá»‡t Ä‘á»‘i `@/...` (theo `docs/structure_system.md` má»¥c 20), trÃ¡nh `../../../..`.
-- Feature khÃ¡c chá»‰ import qua `features/<feature>/index.ts` (public entry point), khÃ´ng import tháº³ng file ná»™i bá»™ cá»§a feature khÃ¡c.
+- Dùng alias tuyệt đối `@/...` (theo `docs/structure_system.md` mục 20), tránh `../../../..`.
+- Feature khác chỉ import qua `features/<feature>/index.ts` (public entry point), không import thẳng
+  file nội bộ của feature khác.
 
 ## Lint & format
 
-- Code pháº£i pass `npm run lint` (ESLint `@react-native` config) vÃ  Prettier (`singleQuote`, `trailingComma: all`, `arrowParens: avoid`) trÆ°á»›c khi coi lÃ  xong.
-- KhÃ´ng dÃ¹ng `// eslint-disable` Ä‘á»ƒ nÃ© lá»—i trá»« khi cÃ³ lÃ½ do rÃµ rÃ ng kÃ¨m comment.
+- Code phải pass `npm run lint` (ESLint `@react-native` config) và Prettier (`singleQuote`,
+  `trailingComma: all`, `arrowParens: avoid`) trước khi coi là xong.
+- Không dùng `// eslint-disable` để né lỗi trừ khi có lý do rõ ràng kèm comment.

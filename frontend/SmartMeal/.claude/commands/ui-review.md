@@ -1,29 +1,57 @@
 ﻿---
-description: Review UI/UX cá»§a diff hiá»‡n táº¡i so vá»›i docs/design.md vÃ  design-review checklist
-argument-hint: [tÃªn mÃ n hÃ¬nh/feature, tuá»³ chá»n]
+description: Review UI/UX của diff hiện tại so với docs/design.md, artboard trong design/ và checklist §57
+argument-hint: [tên màn hình / feature / artboard, tùy chọn]
 ---
 
-Review cÃ¡c thay Ä‘á»•i UI hiá»‡n táº¡i trong `frontend/SmartMeal/` ($ARGUMENTS náº¿u cÃ³ nÃªu mÃ n hÃ¬nh/feature cá»¥ thá»ƒ, khÃ´ng thÃ¬ dÃ¹ng `git diff` working tree) Ä‘á»‘i chiáº¿u vá»›i `docs/design.md`, Ä‘áº·c biá»‡t checklist á»Ÿ má»¥c 57:
+Review các thay đổi UI trong `frontend/SmartMeal/`.
+Phạm vi: $ARGUMENTS nếu có (màn hình, feature hoặc artboard); nếu không, dùng `git status` + `git diff`.
+
+Giao việc cho agent `ui-consistency-reviewer` (chỉ review, KHÔNG sửa code).
+Với mỗi screen thay đổi: mở artboard tương ứng trong `design/*.dc.html` và đối chiếu với
+`docs/design.md` (đặc biệt checklist §57) và `CLAUDE.md` §6, §9.
 
 ### Structure
-- Screen cÃ³ má»™t má»¥c tiÃªu chÃ­nh, primary action rÃµ rÃ ng, ná»™i dung nhÃ³m logic, khÃ´ng cÃ³ section dÆ° thá»«a.
+- Mỗi màn có một mục tiêu chính, primary action rõ ràng, chỉ 1 nút primary.
+- Thứ tự section, nội dung và điều hướng đúng artboard (link `href="X.dc.html"`).
+- Nội dung nhóm hợp lý, không có section thừa hay thiếu so với design.
 
 ### Visual
-- Chá»‰ dÃ¹ng design tokens (`docs/design.md` má»¥c 4/6/7/8/9/58), khÃ´ng thÃªm mÃ u/spacing/radius tuá»³ Ã½.
-- Typography nháº¥t quÃ¡n, khÃ´ng dÃ¹ng quÃ¡ nhiá»u cá»¡ chá»¯ trÃªn má»™t mÃ n hÃ¬nh.
-- Shadow nháº¹, khÃ´ng neumorphism toÃ n app.
+- Chỉ dùng token NativeWind ngữ nghĩa (`bg-surface`, `text-text-secondary`, `p-md`, `rounded-card`,
+  `text-h3`…). Không hex, không màu Tailwind mặc định, không giá trị tùy ý, không `dark:` cho màu token.
+- Typography đúng thang (Display / H1 / H2 / H3 / Body / Caption), không quá nhiều cỡ chữ trên một màn.
+- Spacing theo hệ 4px; radius đúng (button/input 12, card 16, hero 20, sheet 24, chip pill).
+- Shadow nhẹ; semantic color chỉ dùng cho trạng thái (design §4.8).
+
+### Dark mode
+- Màn hiển thị đúng ở cả light và dark: không màu cố định chỉ hợp light, contrast đủ,
+  màu icon/placeholder lấy từ `useTheme()`.
 
 ### Mobile UX
-- Touch target â‰¥ 44px (iOS) / 48dp (Android), khoáº£ng cÃ¡ch giá»¯a action â‰¥ 8px.
-- CÃ³ safe area, cÃ³ scroll náº¿u ná»™i dung dÃ i, khÃ´ng nhá»“i quÃ¡ nhiá»u ná»™i dung má»™t mÃ n hÃ¬nh.
+- Touch target ≥ 44×44 (hoặc có `hitSlop`), khoảng cách giữa các action ≥ 8.
+- Có SafeArea, cuộn được khi nội dung dài, bottom sheet/dialog đúng pattern.
+- Bàn phím không che input (KeyboardAvoidingView / scroll) ở màn có form.
 
 ### State
-- CÃ³ Ä‘á»§ Loading / Empty / Error / Success / Disabled khi mÃ n hÃ¬nh cÃ³ dá»¯ liá»‡u báº¥t Ä‘á»“ng bá»™, dÃ¹ng `components/common` thay vÃ¬ tá»± viáº¿t inline.
+- Đủ Loading (skeleton) / Empty / Error / Success / Disabled cho dữ liệu bất đồng bộ,
+  dùng `LoadingState` / `EmptyState` / `ErrorState` thay vì viết tay.
+- Service mock xử lý đúng `MOCK_SCENARIO` để xem được mọi trạng thái.
+- Error message thân thiện, có hành động ("Thử lại"), không hiện lỗi kỹ thuật.
+
+### Nghiệp vụ trên UI
+- Kết quả AI ghi "ước tính" (≈) và cần user xác nhận / chỉnh sửa trước khi lưu (BR-054, BR-061, BR-062).
+- Món/sản phẩm chứa dị ứng bị lọc hoặc cảnh báo rõ, cảnh báo không tô đỏ toàn card (BR-102, BR-140, design §30).
+- Không khẳng định "an toàn tuyệt đối" hay thay thế tư vấn y tế (BR-112, BR-291).
+- Premium chỉ mở sau khi thanh toán được xác nhận (BR-241).
 
 ### Accessibility
-- Text dá»… Ä‘á»c, contrast Ä‘á»§, khÃ´ng phá»¥ thuá»™c hoÃ n toÃ n vÃ o mÃ u Ä‘á»ƒ truyá»n táº£i tráº¡ng thÃ¡i, icon cÃ³ accessibility label rÃµ rÃ ng.
+- Text đủ contrast (caption dùng `text-text-secondary`, không dùng `text-text-muted`).
+- Không truyền tải trạng thái chỉ bằng màu (phải có icon hoặc chữ đi kèm).
+- Icon-only có `accessibilityLabel`; có `accessibilityRole` / `accessibilityState` phù hợp.
 
 ### Consistency
-- Component dÃ¹ng Ä‘Ãºng bá»™ chung (`components/ui`, `components/common`) thay vÃ¬ style riÃªng cho tá»«ng screen â€” náº¿u phÃ¡t hiá»‡n style riÃªng láº½ ra nÃªn dÃ¹ng component chung, coi Ä‘Ã³ lÃ  má»™t finding.
+- Dùng `components/ui` và `components/common` thay vì style riêng cho từng screen.
+  Style riêng lẽ ra nên dùng component chung được tính là một finding.
 
-Tráº£ káº¿t quáº£ dáº¡ng danh sÃ¡ch ngáº¯n gá»n theo má»©c Ä‘á»™ nghiÃªm trá»ng (Blocking / Should fix / Note), kÃ¨m `file:line` vÃ  Ä‘á» xuáº¥t sá»­a cá»¥ thá»ƒ, khÃ´ng liá»‡t kÃª má»¥c khÃ´ng cÃ³ váº¥n Ä‘á».
+**Kết quả**: danh sách ngắn gọn theo mức độ **Blocking / Should fix / Note**, mỗi mục có
+`file:line` và cách sửa cụ thể; kèm danh sách artboard đã đối chiếu. Bỏ qua mục không có vấn đề.
+Không tự sửa code; chỉ sửa khi người dùng yêu cầu sau khi xem báo cáo.

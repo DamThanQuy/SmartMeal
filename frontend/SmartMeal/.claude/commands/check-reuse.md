@@ -1,15 +1,41 @@
 ﻿---
-description: RÃ  soÃ¡t diff/branch hiá»‡n táº¡i cá»§a SmartMeal tÃ¬m component trÃ¹ng láº·p vÃ  giÃ¡ trá»‹ hard-code
-argument-hint: [pháº¡m vi diff, máº·c Ä‘á»‹nh lÃ  working tree hiá»‡n táº¡i]
+description: Rà soát diff/branch hiện tại của SmartMeal tìm component trùng lặp, giá trị hard-code và lỗi layering
+argument-hint: [phạm vi diff, mặc định là working tree hiện tại]
 ---
 
-RÃ  soÃ¡t thay Ä‘á»•i hiá»‡n táº¡i trong `frontend/SmartMeal/` ($ARGUMENTS náº¿u cÃ³ chá»‰ Ä‘á»‹nh pháº¡m vi khÃ¡c, máº·c Ä‘á»‹nh dÃ¹ng `git diff`/`git status` working tree) Ä‘á»ƒ tÃ¬m:
+Rà soát thay đổi trong `frontend/SmartMeal/`.
+Phạm vi: $ARGUMENTS nếu có; nếu không, dùng `git status` + `git diff` (working tree và staged).
 
-1. **Component trÃ¹ng láº·p** â€” component má»›i cÃ³ chá»©c nÄƒng/giao diá»‡n tÆ°Æ¡ng tá»± component Ä‘Ã£ cÃ³ trong `src/components/ui/`, `src/components/common/`, hoáº·c feature khÃ¡c. Äá»c cáº£ hai Ä‘á»ƒ xÃ¡c nháº­n trÆ°á»›c khi káº¿t luáº­n trÃ¹ng.
-2. **Hard-code** â€” mÃ u hex/rgba viáº¿t tay, sá»‘ spacing/radius tuá»³ Ã½ ngoÃ i há»‡ 4px, URL/base path API viáº¿t tay, API key/secret, route string viáº¿t tay thay vÃ¬ `src/constants/routes.ts`.
-3. **Layering sai** â€” gá»i `axios`/`fetch` trá»±c tiáº¿p trong screen/component thay vÃ¬ qua feature service â†’ API client.
-4. **Thiáº¿u state** â€” mÃ n hÃ¬nh cÃ³ dá»¯ liá»‡u báº¥t Ä‘á»“ng bá»™ nhÆ°ng thiáº¿u loading/error/empty state.
+Giao việc cho agent `ui-consistency-reviewer` (chỉ review, KHÔNG sửa code), tập trung vào:
 
-Tham chiáº¿u chi tiáº¿t: `.claude/rules/component-reuse.md`, `.claude/rules/no-hardcode.md`, `.claude/rules/architecture.md`.
+1. **Component trùng lặp**
+   - Component mới có chức năng/giao diện giống component đã có trong `src/components/ui/`,
+     `src/components/common/` hoặc feature khác. Đọc cả hai bên để xác nhận trước khi kết luận.
+   - Dùng `Text` / `Pressable` / `TextInput` thô trong khi `AppText` / `AppButton` /
+     `AppIconButton` / `AppInput` đã đáp ứng.
+   - Loading / error / empty viết tay thay vì dùng `LoadingState` / `ErrorState` / `EmptyState`.
 
-Káº¿t quáº£ tráº£ vá» dáº¡ng danh sÃ¡ch ngáº¯n gá»n, sáº¯p xáº¿p theo má»©c Ä‘á»™ nghiÃªm trá»ng, kÃ¨m `file:line` vÃ  Ä‘á» xuáº¥t sá»­a cá»¥ thá»ƒ. KhÃ´ng cáº§n liá»‡t kÃª má»¥c khÃ´ng cÃ³ váº¥n Ä‘á». Viá»‡c nÃ y cÃ³ thá»ƒ giao cho agent `ui-consistency-reviewer` Ä‘á»ƒ review Ä‘á»™c láº­p (khÃ´ng tá»± sá»­a code).
+2. **Hard-code & token**
+   - Mã màu hex/rgba viết tay trong className, style hoặc props (màu icon phải lấy từ `useTheme()`).
+   - Class màu Tailwind mặc định (`green-500`, `gray-200`, `text-black`…) hoặc giá trị tùy ý
+     (`p-[13px]`, `rounded-[10px]`) thay vì token (`bg-surface`, `p-md`, `rounded-card`…).
+   - `dark:` cho màu đã là token; spacing/radius/font ngoài thang của `docs/design.md`.
+   - URL/base path API, API key/secret, route name viết tay thay vì `src/config/` và
+     `src/constants/routes.ts`.
+   - Công thức BMI/BMR/TDEE/macro bị lặp ở nhiều nơi.
+
+3. **Layering sai**
+   - `axios` / `fetch` trực tiếp trong screen/component thay vì qua feature service → API client.
+   - Screen/component import thẳng từ `mocks/` hoặc hard-code mock data trong UI.
+   - Import vào ruột feature khác thay vì qua `index.ts`; server data để trong Zustand.
+
+4. **Thiếu state**
+   - Màn có dữ liệu bất đồng bộ nhưng thiếu Loading / Empty / Error, hoặc service mock không
+     xử lý `MOCK_SCENARIO`.
+
+Tham chiếu: `CLAUDE.md` §6–8, `.claude/rules/component-reuse.md`, `.claude/rules/no-hardcode.md`,
+`.claude/rules/architecture.md`, `.claude/rules/state-and-api.md`.
+
+Kết quả: danh sách ngắn gọn, xếp theo mức độ (Blocking → Should fix → Notes), mỗi mục có
+`file:line` và cách sửa cụ thể. Bỏ qua mục không có vấn đề. Không tự sửa code; chỉ sửa khi
+người dùng yêu cầu sau khi xem báo cáo.
