@@ -88,14 +88,15 @@ SmartMeal được xây dựng trên nền tảng công nghệ hiện đại và
 
 | Thành phần | Công nghệ sử dụng |
 | :--- | :--- |
-| Mobile | Flutter 3.13.2 |
+| Mobile | ReactNative + TypeScript |
 | Backend | ASP.NET Core |
 | Database | PostgreSQL |
-| State Management | Provider |
-| HTTP Client | Dio |
-| Local Storage | SharedPreferences |
-| Authentication | Google Sign-In |
-| Charts | fl_chart |
+| State Management | Zustand + TanStack Query |
+| HTTP Client | Axios |
+| Local Storage | AsyncStorage |
+| Authentication | JWT + Google Sign-In |
+| UI | NativeWind + Custom Components |
+| Charts | react-native-gifted-charts |
 
 ---
 

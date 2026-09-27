@@ -7,7 +7,7 @@
 ---
 
 ### 1. Giới thiệu tổng quan
-**SmartMeal** là ứng dụng di động toàn diện kết hợp trí tuệ nhân tạo (AI) giúp người dùng quản lý dinh dưỡng, theo dõi sức khỏe, tối ưu chi phí sinh hoạt và tìm kiếm công thức nấu ăn thông minh. Với nền tảng **Flutter** hiện đại và backend **ASP.NET Core + PostgreSQL**, ứng dụng mang lại trải nghiệm mượt mà, tiện lợi, loại bỏ sự rườm rà của việc nhập liệu thủ công truyền thống.
+**SmartMeal** là ứng dụng di động toàn diện kết hợp trí tuệ nhân tạo (AI) giúp người dùng quản lý dinh dưỡng, theo dõi sức khỏe, tối ưu chi phí sinh hoạt và tìm kiếm công thức nấu ăn thông minh. Với nền tảng **REACTNATIVE** hiện đại và backend **ASP.NET Core + PostgreSQL**, ứng dụng mang lại trải nghiệm mượt mà, tiện lợi, loại bỏ sự rườm rà của việc nhập liệu thủ công truyền thống.
 
 Ứng dụng tập trung giải quyết các bài toán thực tế:
 - **Tự động hóa ghi nhận dinh dưỡng**: Nhận diện món ăn qua hình ảnh và giọng nói bằng AI.
@@ -94,20 +94,24 @@
 
 ### 3. Công nghệ & Kiến trúc hệ thống
 SmartMeal kết hợp kiến trúc phân tầng hiện đại giữa nền tảng Mobile và Backend:
-
-| Thành phần | Công nghệ sử dụng | Mục đích / Vai trò |
-| :--- | :--- | :--- |
-| **Mobile Framework** | Flutter 3.13.2+ | Phát triển ứng dụng đa nền tảng iOS & Android |
-| **Backend Framework** | ASP.NET Core (.NET 8) | RESTful API hiệu năng cao, bảo mật và mở rộng tốt |
-| **Database** | PostgreSQL | Cơ sở dữ liệu quan hệ mạnh mẽ, lưu trữ an toàn |
-| **State Management** | Provider / Riverpod | Quản lý trạng thái ứng dụng phản trực quan |
-| **HTTP Client** | Dio | Xử lý mạng, interceptor JWT token, cache |
-| **Local Storage** | SharedPreferences / Hive | Lưu trữ token, cài đặt ứng dụng và cache offline |
-| **Authentication** | JWT + Google Sign-In | Xác thực phân quyền người dùng an toàn |
-| **AI Vision & NLP** | Google Gemini API / LLM | Nhận diện món ăn qua ảnh, quét tủ lạnh, bóc tách giọng nói |
-| **On-device ML / OCR** | Google ML Kit | Quét mã vạch và OCR nhận diện bảng thành phần bao bì |
-| **Health Sync** | Health Connect / Apple HealthKit | Đồng bộ bước chân và calo tiêu hao từ thiết bị đeo |
-| **Data Visualization** | fl_chart | Vẽ biểu đồ dinh dưỡng, cân nặng và calo trực quan |
+| **Nhóm**       | **Công nghệ**                  | **Mục đích**                       |
+| -------------- | ------------------------------ | ---------------------------------- |
+| Mobile         | React Native + TypeScript      | Phát triển app iOS & Android       |
+| Backend        | ASP.NET Core .NET 8            | RESTful API                        |
+| Database       | PostgreSQL                     | Lưu trữ dữ liệu                    |
+| State          | Zustand + TanStack Query       | Client state và server state       |
+| HTTP           | Axios                          | Giao tiếp với Backend              |
+| UI             | NativeWind + Custom Components | Xây dựng giao diện                 |
+| Navigation     | React Navigation               | Điều hướng ứng dụng                |
+| Form           | React Hook Form + Zod          | Form và validation                 |
+| Storage        | MMKV + Keychain                | Local storage và secure storage    |
+| Authentication | JWT + Google Sign-In           | Đăng nhập và xác thực              |
+| AI             | Gemini API / LLM               | AI Vision, NLP và phân tích bữa ăn |
+| ML/OCR         | Google ML Kit                  | OCR và barcode                     |
+| Camera         | Vision Camera                  | Camera và scanning                 |
+| Health         | Health Connect / HealthKit     | Đồng bộ dữ liệu sức khỏe           |
+| Charts         | react-native-gifted-charts     | Biểu đồ dinh dưỡng                 |
+| Notification   | Notifee                        | Thông báo và nhắc lịch             |
 
 ---
 
