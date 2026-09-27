@@ -1,136 +1,76 @@
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { CalendarDays, Compass, Home, NotebookText, User } from 'lucide-react-native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import { EmptyState, ScreenContainer } from '@/components/common';
-import { MAIN_TAB_ROUTES } from '@/constants/routes';
-import { ThemePreviewScreen } from '@/features/dev';
-import { useTheme } from '@/theme/ThemeProvider';
-import type { MainTabParamList } from './types';
+import {
+  AICameraScreen,
+  AIAnalyzingScreen,
+  AISnapResultScreen,
+  StateAIFailedScreen,
+  StateAILimitScreen,
+  VoiceLogScreen,
+} from '@/features/ai';
+import { QuickLogScreen } from '@/features/dashboard';
+import {
+  DeleteConfirmScreen,
+  EditMealLogScreen,
+  FoodDetailScreen,
+  FoodSearchScreen,
+  ProgressChartScreen,
+} from '@/features/nutrition';
+import {
+  FavoritesScreen,
+  FilterSheetScreen,
+  RecipeDetailScreen,
+} from '@/features/recipes';
+import {
+  BarcodeScreen,
+  FridgeScreen,
+  OCRReviewScreen,
+  ProductNotFoundScreen,
+  StatePermissionScreen,
+} from '@/features/scanner';
+import { MAIN_STACK_ROUTES } from '@/constants/routes';
+import { MainTabNavigator } from './MainTabNavigator';
+import type { MainStackParamList } from './types';
 
-const Tab = createBottomTabNavigator<MainTabParamList>();
+const Stack = createNativeStackNavigator<MainStackParamList>();
 
-interface TabIconProps {
-  color: string;
-  size: number;
-}
-
-// Định nghĩa ở module scope (không phải trong MainNavigator) để tránh tạo component mới mỗi
-// lần render (react/no-unstable-nested-components).
-function HomeTabIcon({ color, size }: TabIconProps) {
-  return <Home color={color} size={size} />;
-}
-
-function DiscoverTabIcon({ color, size }: TabIconProps) {
-  return <Compass color={color} size={size} />;
-}
-
-function DiaryTabIcon({ color, size }: TabIconProps) {
-  return <NotebookText color={color} size={size} />;
-}
-
-function PlannerTabIcon({ color, size }: TabIconProps) {
-  return <CalendarDays color={color} size={size} />;
-}
-
-function ProfileTabIcon({ color, size }: TabIconProps) {
-  return <User color={color} size={size} />;
-}
-
-interface ComingSoonTabProps {
-  title: string;
-}
-
-// Placeholder cho các tab chưa được dựng UI (Đợt 2/5/3/6) — thay bằng Screen thật đúng feature
-// khi tới đợt tương ứng trong CLAUDE.md mục 10. Không tạo file Screen riêng trong feature vì
-// đây chỉ là khung điều hướng tạm, không phải artboard thật.
-function ComingSoonTab({ title }: ComingSoonTabProps) {
-  return (
-    <ScreenContainer>
-      <EmptyState
-        title={title}
-        description="Màn hình này sẽ được dựng UI ở đợt tiếp theo."
-      />
-    </ScreenContainer>
-  );
-}
-
-function HomeTab() {
-  return <ComingSoonTab title="Trang chủ" />;
-}
-
-function DiscoverTab() {
-  return <ComingSoonTab title="Khám phá" />;
-}
-
-function DiaryTab() {
-  return <ComingSoonTab title="Nhật ký" />;
-}
-
-function PlannerTab() {
-  return <ComingSoonTab title="Thực đơn" />;
-}
-
-// TODO: thay bằng ProfileScreen thật ở Đợt 7 (docs/ui-mock-prompts.md Phase 7) — tạm dùng
-// ThemePreviewScreen làm entry point để xem token/toggle theme trong lúc chưa có màn Cá nhân.
-function ProfileTab() {
-  return <ThemePreviewScreen />;
-}
-
+// Đợt 2/3 — QuickLog/AISnap/VoiceLog/FoodSearch... không thuộc riêng 1 tab (mở được từ cả
+// Dashboard lẫn Diary) nên đặt làm sibling của MainTabs trong Stack này thay vì lồng theo tab
+// (xem src/navigation/types.ts). Toàn bộ header dùng ScreenHeader tự dựng trong từng Screen.
 export function MainNavigator() {
-  const { colors } = useTheme();
-
   return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-        },
-      }}
-    >
-      <Tab.Screen
-        name={MAIN_TAB_ROUTES.HOME}
-        component={HomeTab}
-        options={{
-          title: 'Trang chủ',
-          tabBarIcon: HomeTabIcon,
-        }}
-      />
-      <Tab.Screen
-        name={MAIN_TAB_ROUTES.DISCOVER}
-        component={DiscoverTab}
-        options={{
-          title: 'Khám phá',
-          tabBarIcon: DiscoverTabIcon,
-        }}
-      />
-      <Tab.Screen
-        name={MAIN_TAB_ROUTES.DIARY}
-        component={DiaryTab}
-        options={{
-          title: 'Nhật ký',
-          tabBarIcon: DiaryTabIcon,
-        }}
-      />
-      <Tab.Screen
-        name={MAIN_TAB_ROUTES.PLANNER}
-        component={PlannerTab}
-        options={{
-          title: 'Thực đơn',
-          tabBarIcon: PlannerTabIcon,
-        }}
-      />
-      <Tab.Screen
-        name={MAIN_TAB_ROUTES.PROFILE}
-        component={ProfileTab}
-        options={{
-          title: 'Cá nhân',
-          tabBarIcon: ProfileTabIcon,
-        }}
-      />
-    </Tab.Navigator>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name={MAIN_STACK_ROUTES.MAIN_TABS} component={MainTabNavigator} />
+
+      <Stack.Screen name={MAIN_STACK_ROUTES.AI_CAMERA} component={AICameraScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.AI_ANALYZING} component={AIAnalyzingScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.AI_SNAP_RESULT} component={AISnapResultScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.VOICE_LOG} component={VoiceLogScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.STATE_AI_FAILED} component={StateAIFailedScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.FOOD_SEARCH} component={FoodSearchScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.FOOD_DETAIL} component={FoodDetailScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.EDIT_MEAL_LOG} component={EditMealLogScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.PROGRESS_CHART} component={ProgressChartScreen} />
+
+      {/* Đợt 4 — scanner. */}
+      <Stack.Screen name={MAIN_STACK_ROUTES.BARCODE} component={BarcodeScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.PRODUCT_NOT_FOUND} component={ProductNotFoundScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.OCR_REVIEW} component={OCRReviewScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.FRIDGE} component={FridgeScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.STATE_PERMISSION} component={StatePermissionScreen} />
+
+      {/* Đợt 5 — recipes. */}
+      <Stack.Screen name={MAIN_STACK_ROUTES.RECIPE_DETAIL} component={RecipeDetailScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.FAVORITES} component={FavoritesScreen} />
+
+      {/* Bottom sheet / dialog — CLAUDE.md mục 10: QuickLog, StateAILimit, DeleteConfirm,
+          FilterSheet. */}
+      <Stack.Group screenOptions={{ presentation: 'transparentModal', animation: 'fade' }}>
+        <Stack.Screen name={MAIN_STACK_ROUTES.QUICK_LOG} component={QuickLogScreen} />
+        <Stack.Screen name={MAIN_STACK_ROUTES.STATE_AI_LIMIT} component={StateAILimitScreen} />
+        <Stack.Screen name={MAIN_STACK_ROUTES.DELETE_CONFIRM} component={DeleteConfirmScreen} />
+        <Stack.Screen name={MAIN_STACK_ROUTES.FILTER_SHEET} component={FilterSheetScreen} />
+      </Stack.Group>
+    </Stack.Navigator>
   );
 }

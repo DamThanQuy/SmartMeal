@@ -8,6 +8,9 @@ export interface ErrorStateProps {
   description?: string;
   actionLabel?: string;
   onRetry?: () => void;
+  /** Hành động phụ tùy chọn, vd. "Xem công thức đã lưu" — design/StateError.dc.html. */
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
   className?: string;
 }
 
@@ -17,6 +20,8 @@ export function ErrorState({
   description,
   actionLabel = 'Thử lại',
   onRetry,
+  secondaryActionLabel,
+  onSecondaryAction,
   className = '',
 }: ErrorStateProps) {
   return (
@@ -38,6 +43,13 @@ export function ErrorState({
           variant="primary"
           onPress={onRetry}
           className="mt-sm"
+        />
+      ) : null}
+      {secondaryActionLabel && onSecondaryAction ? (
+        <AppButton
+          label={secondaryActionLabel}
+          variant="outline"
+          onPress={onSecondaryAction}
         />
       ) : null}
     </View>

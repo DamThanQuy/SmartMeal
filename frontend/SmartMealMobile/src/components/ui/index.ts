@@ -5,4 +5,5 @@ export * from './AppInput';
 export * from './AppCard';
 export * from './AppChip';
 export * from './AppCheckbox';
+export * from './AppBadge';
 export * from './AppBottomSheet';
