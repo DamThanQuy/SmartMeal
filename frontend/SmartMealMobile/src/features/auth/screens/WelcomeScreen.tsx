@@ -45,12 +45,12 @@ export function WelcomeScreen({ navigation }: Props) {
 
   return (
     <ScreenContainer scroll contentContainerClassName="gap-xl py-xxxl">
-      <View className="flex-row items-center gap-sm">
+      <View className="items-start">
         <Image
-          source={require('../../../../assets/images/SmartMeal_App_Icon.png')}
-          style={{ width: 48, height: 48, borderRadius: 12 }}
+          source={require('../../../../assets/images/SmartMeal_Logo.png')}
+          style={{ width: 220, height: 60 }}
+          resizeMode="contain"
         />
-        <AppText variant="h2">SmartMeal</AppText>
       </View>
 
       <View className="h-[190px] items-center justify-center overflow-hidden rounded-lg bg-primary-soft">

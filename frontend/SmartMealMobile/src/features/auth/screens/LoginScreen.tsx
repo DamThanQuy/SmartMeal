@@ -48,12 +48,12 @@ export function LoginScreen({ navigation }: Props) {
 
   return (
     <ScreenContainer scroll contentContainerClassName="gap-xxl py-xxxl">
-      <View className="flex-row items-center gap-sm">
+      <View className="items-start">
         <Image
-          source={require('../../../../assets/images/SmartMeal_App_Icon.png')}
-          style={{ width: 48, height: 48, borderRadius: 12 }}
+          source={require('../../../../assets/images/SmartMeal_Logo.png')}
+          style={{ width: 220, height: 60 }}
+          resizeMode="contain"
         />
-        <AppText variant="h2">SmartMeal</AppText>
       </View>
 
       <View className="gap-xs">
