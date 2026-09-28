@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "SmartMealMobile",
+    "slug": "SmartMealMobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/SmartMeal_App_Icon.png",
+    "scheme": "smartmealmobile",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "icon": "./assets/images/SmartMeal_App_Icon.png"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/images/SmartMeal_App_Icon.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "single",
+      "favicon": "./assets/images/SmartMeal_Favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/images/SmartMeal_Logo.png",
+          "imageWidth": 76
+        }
+      ],
+      "expo-secure-store",
+      "expo-status-bar"
+    ],
+    "experiments": {
+      "reactCompiler": true
+    }
+  }
+}

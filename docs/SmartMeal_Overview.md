@@ -88,15 +88,16 @@ SmartMeal được xây dựng trên nền tảng công nghệ hiện đại và
 
 | Thành phần | Công nghệ sử dụng |
 | :--- | :--- |
-| Mobile | ReactNative + TypeScript |
+| Mobile | ReactNative(Expo Go) + TypeScript |
 | Backend | ASP.NET Core |
 | Database | PostgreSQL |
 | State Management | Zustand + TanStack Query |
 | HTTP Client | Axios |
-| Local Storage | AsyncStorage |
 | Authentication | JWT + Google Sign-In |
-| UI | NativeWind + Custom Components |
+| Navigation | React Navigation |
+| Form | React Hook Form | Zod |
 | Charts | react-native-gifted-charts |
+| Date | date-fns |
 
 ---
 
