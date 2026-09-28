@@ -208,12 +208,14 @@ export function DashboardScreen(_props: Props) {
         <View className="gap-sm">
           <View className="flex-row items-center justify-between">
             <AppText variant="h2">Gợi ý bữa tối</AppText>
-            {/* TODO: nối Discovery/RecipeDetail khi Đợt 5 dựng xong. */}
             <AppText variant="bodyMedium" color="onPrimarySoft" className="opacity-40">
               Xem thêm
             </AppText>
           </View>
-          <RecommendedMealCard meal={recommendedMeal} />
+          <RecommendedMealCard
+            meal={recommendedMeal}
+            onPress={() => navigation.navigate(MAIN_STACK_ROUTES.RECIPE_DETAIL, { recipeId: recommendedMeal.recipeId })}
+          />
         </View>
       </View>
     </ScreenContainer>

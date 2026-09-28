@@ -173,6 +173,10 @@ export function MealPlannerScreen({ navigation, route }: Props) {
             mealTitle={MEAL_TYPE_TITLES[mealType]}
             slot={selectedDay.meals[mealType]}
             onPressChange={() => openSlotPicker(selectedDay.dateIso, mealType)}
+            onPressDetail={() => {
+              const recipeId = selectedDay.meals[mealType]?.recipeId;
+              if (recipeId) outerNavigation?.navigate(MAIN_STACK_ROUTES.RECIPE_DETAIL, { recipeId });
+            }}
           />
         </AppCard>
       ))}

@@ -118,6 +118,7 @@ const radius = {
   lg: 20,
   sheet: 24,
   pill: 999,
+  full: 9999,
 };
 
 // docs/design.md mục 6.2 — Typography Scale (size/lineHeight tính theo px)

@@ -40,7 +40,7 @@ export function AppCheckbox({
       {...rest}
     >
       <View
-        className={`h-[22px] w-[22px] items-center justify-center rounded-sm border ${
+        className={`h-[22px] w-[22px] items-center justify-center rounded-full border ${
           checked ? 'border-primary bg-primary' : 'border-border bg-surface'
         }`}
       >

@@ -31,7 +31,7 @@ export function AppSwitch({
       disabled={disabled}
       hitSlop={8}
       onPress={() => onChange(!checked)}
-      className={`h-[28px] w-[48px] flex-row rounded-pill p-[3px] ${
+      className={`h-[28px] w-[48px] flex-row rounded-full p-[3px] ${
         checked ? 'bg-primary' : 'bg-border'
       } ${disabled ? 'opacity-40' : ''} ${className}`}
       style={{ alignItems: 'center', justifyContent: checked ? 'flex-end' : 'flex-start' }}

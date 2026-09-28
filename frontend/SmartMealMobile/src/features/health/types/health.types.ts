@@ -115,6 +115,7 @@ export const ALLERGY_OPTIONS: ChipOption[] = [
   { id: 'soy', label: 'Đậu nành' },
   { id: 'treeNut', label: 'Các loại hạt' },
   { id: 'sesame', label: 'Mè' },
+  { id: 'other', label: 'Khác' },
 ];
 
 // Bước 6/7 — Sức khỏe (BR-110, BR-111 chỉ nêu 3 bệnh lý này).
@@ -122,6 +123,7 @@ export const HEALTH_CONDITION_OPTIONS: ChipOption[] = [
   { id: 'diabetes', label: 'Tiểu đường' },
   { id: 'gout', label: 'Gút' },
   { id: 'hypertension', label: 'Cao huyết áp' },
+  { id: 'other', label: 'Khác' },
 ];
 
 // Bước 7/7 — Chế độ ăn (BR-100).

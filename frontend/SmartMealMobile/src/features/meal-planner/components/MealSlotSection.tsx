@@ -9,6 +9,7 @@ export interface MealSlotSectionProps {
   mealTitle: string;
   slot: PlannedMealSlot | null;
   onPressChange: () => void;
+  onPressDetail?: () => void;
   className?: string;
 }
 
@@ -18,6 +19,7 @@ export function MealSlotSection({
   mealTitle,
   slot,
   onPressChange,
+  onPressDetail,
   className = '',
 }: MealSlotSectionProps) {
   const { colors } = useTheme();
@@ -29,17 +31,24 @@ export function MealSlotSection({
       </AppText>
       {slot ? (
         <View className="flex-row items-center gap-sm">
-          <View className="h-[56px] w-[56px] items-center justify-center rounded-md bg-primary-soft">
-            <UtensilsCrossed size={20} color={colors.primary} />
-          </View>
-          <View className="flex-1 gap-xxs">
-            <AppText variant="bodyLg" numberOfLines={1}>
-              {slot.recipeName}
-            </AppText>
-            <AppText variant="caption" color="secondary">
-              {`${slot.durationMinutes} phút · ${slot.calories} kcal`}
-            </AppText>
-          </View>
+          <Pressable
+            className="flex-1 flex-row items-center gap-sm"
+            accessibilityRole="button"
+            accessibilityLabel={`Xem chi tiết ${slot.recipeName}`}
+            onPress={onPressDetail}
+          >
+            <View className="h-[56px] w-[56px] items-center justify-center rounded-md bg-primary-soft">
+              <UtensilsCrossed size={20} color={colors.primary} />
+            </View>
+            <View className="flex-1 gap-xxs">
+              <AppText variant="bodyLg" numberOfLines={1}>
+                {slot.recipeName}
+              </AppText>
+              <AppText variant="caption" color="secondary">
+                {`${slot.durationMinutes} phút · ${slot.calories} kcal`}
+              </AppText>
+            </View>
+          </Pressable>
           <AppIconButton
             accessibilityLabel={`Đổi món ${slot.recipeName}`}
             icon={<ArrowLeftRight size={20} color={colors.textSecondary} />}

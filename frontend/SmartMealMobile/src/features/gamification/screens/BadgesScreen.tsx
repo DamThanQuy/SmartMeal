@@ -71,11 +71,12 @@ export function BadgesScreen({ navigation }: Props) {
 
         <View className="gap-sm">
           <AppText variant="h2">Huy hiệu</AppText>
-          <View className="flex-row flex-wrap gap-sm">
+          <View className="flex-row flex-wrap justify-between gap-y-sm">
             {data.badges.map(badge => (
               <View
                 key={badge.id}
-                className={`w-[31%] items-center gap-xxs rounded-card p-sm ${
+                style={{ width: '31.5%' }}
+                className={`items-center gap-xxs rounded-card p-sm ${
                   badge.unlocked ? 'bg-primary-soft' : 'bg-surface-subtle'
                 }`}
               >
@@ -101,51 +102,7 @@ export function BadgesScreen({ navigation }: Props) {
           </View>
         </View>
 
-        <AppCard className="gap-xxs">
-          <AppText variant="h3" className="mb-xxs">
-            Trang phục của Bé Mầm
-          </AppText>
-          {data.costumes.map(costume => (
-            <Pressable
-              key={costume.id}
-              accessibilityRole={costume.unlocked ? 'button' : undefined}
-              accessibilityLabel={costume.title}
-              accessibilityState={{ disabled: !costume.unlocked, selected: costume.equipped }}
-              disabled={!costume.unlocked || costume.equipped}
-              onPress={() => equipCostume.mutate(costume.id)}
-              className="min-h-[44px] flex-row items-center gap-sm border-t border-border py-xs"
-            >
-              <View
-                className={`h-[44px] w-[44px] items-center justify-center rounded-md ${
-                  costume.unlocked ? 'bg-primary-soft' : 'bg-surface-subtle'
-                }`}
-              >
-                {costume.unlocked ? (
-                  <Shirt size={22} color={colors.primary} />
-                ) : (
-                  <Lock size={20} color={colors.textSecondary} />
-                )}
-              </View>
-              <View className="flex-1 gap-xxs">
-                <AppText variant="bodyMedium">{costume.title}</AppText>
-                <AppText variant="caption" color="secondary">
-                  {costume.unlockDescription}
-                </AppText>
-              </View>
-              <AppBadge
-                label={costume.equipped ? 'Đang mặc' : costume.unlocked ? 'Đã mở' : 'Chưa mở'}
-                tone={costume.equipped || costume.unlocked ? 'primary' : 'neutral'}
-                icon={
-                  costume.equipped || costume.unlocked ? (
-                    <Check size={12} color={colors.onPrimarySoft} />
-                  ) : (
-                    <Lock size={12} color={colors.textSecondary} />
-                  )
-                }
-              />
-            </Pressable>
-          ))}
-        </AppCard>
+
       </ScrollView>
     </ScreenContainer>
   );

@@ -14,6 +14,7 @@ export const ACTIVITY_SUMMARY_MOCK: ActivitySummary = {
 };
 
 export const RECOMMENDED_MEAL_MOCK: RecommendedMeal = {
+  recipeId: 'recipe1',
   name: 'Gà áp chảo rau củ',
   durationMinutes: 25,
   calories: 420,

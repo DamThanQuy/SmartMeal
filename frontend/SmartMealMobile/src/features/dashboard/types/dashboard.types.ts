@@ -16,6 +16,7 @@ export interface PetSnippet {
 }
 
 export interface RecommendedMeal {
+  recipeId: string;
   name: string;
   durationMinutes: number;
   calories: number;
