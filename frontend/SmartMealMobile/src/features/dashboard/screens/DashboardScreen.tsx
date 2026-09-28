@@ -6,6 +6,7 @@ import React from 'react';
 import { Pressable, View } from 'react-native';
 import { ErrorState, LoadingState, ScreenContainer } from '@/components/common';
 import { AppButton, AppText } from '@/components/ui';
+import { useAiQuotaStore } from '@/features/ai';
 import { MacroProgressList } from '@/features/nutrition';
 import { MAIN_STACK_ROUTES, MAIN_TAB_ROUTES } from '@/constants/routes';
 import type { MainStackParamList, MainTabParamList } from '@/navigation/types';
@@ -36,6 +37,7 @@ export function DashboardScreen(_props: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { colors } = useTheme();
   const user = useAuthStore(state => state.user);
+  const micPermissionGranted = useAiQuotaStore(state => state.micPermissionGranted);
   const { data, isLoading, isError, error, refetch } = useDashboard();
 
   if (isLoading) {
@@ -112,6 +114,7 @@ export function DashboardScreen(_props: Props) {
           consumedCalories={totalConsumed}
           calorieTarget={diary.calorieTarget}
           activityCalories={diary.activityCalories}
+          onPress={() => navigation.navigate(MAIN_STACK_ROUTES.CALORIE_BUDGET)}
         />
 
         <MacroProgressList
@@ -129,7 +132,14 @@ export function DashboardScreen(_props: Props) {
           />
           <QuickActionGrid
             onSnap={() => navigation.navigate(MAIN_STACK_ROUTES.AI_CAMERA, { mealType: 'dinner' })}
-            onVoice={() => navigation.navigate(MAIN_STACK_ROUTES.VOICE_LOG, { mealType: 'breakfast' })}
+            onVoice={() =>
+              navigation.navigate(
+                micPermissionGranted
+                  ? MAIN_STACK_ROUTES.VOICE_LOG
+                  : MAIN_STACK_ROUTES.VOICE_PERMISSION,
+                { mealType: 'breakfast' },
+              )
+            }
             onSearch={() => navigation.navigate(MAIN_STACK_ROUTES.FOOD_SEARCH, { mealType: 'dinner' })}
           />
         </View>

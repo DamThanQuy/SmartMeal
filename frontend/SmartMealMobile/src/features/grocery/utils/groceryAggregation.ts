@@ -1,24 +1,33 @@
-// BR-172 — nhóm nguyên liệu theo loại. Thứ tự cũng là thứ tự hiển thị (design/Grocery.dc.html).
-export const GROCERY_CATEGORY_ORDER = ['Rau củ', 'Thịt cá', 'Sữa', 'Gia vị', 'Khác'] as const;
+// BR-172 — nhóm nguyên liệu theo loại. Thứ tự cũng là thứ tự hiển thị (design/Grocery.dc.html,
+// GroceryAdd.dc.html). Là nguồn DUY NHẤT cho cả phân loại nguyên liệu từ Meal Plan
+// (categorizeIngredient) và chip chọn nhóm ở GroceryAddScreen — không hard-code lại ở screen nào.
+export const GROCERY_CATEGORY_ORDER = [
+  'Rau củ',
+  'Thịt cá',
+  'Sữa',
+  'Ngũ cốc',
+  'Gia vị',
+  'Đồ khô',
+] as const;
 export type GroceryCategory = (typeof GROCERY_CATEGORY_ORDER)[number];
 
 const CATEGORY_KEYWORDS: { category: GroceryCategory; keywords: string[] }[] = [
   { category: 'Rau củ', keywords: ['cà chua', 'xà lách', 'bông cải', 'cà rốt', 'bí đỏ', 'hành tây'] },
   { category: 'Thịt cá', keywords: ['ức gà', 'thịt bò', 'đậu hũ', 'trứng', 'cá basa'] },
   { category: 'Sữa', keywords: ['sữa tươi', 'sữa chua', 'kem tươi', 'sữa'] },
-  {
-    category: 'Gia vị',
-    keywords: ['tỏi', 'hành lá', 'muối', 'tiêu', 'dầu ô liu', 'dầu hào', 'chanh', 'mật ong'],
-  },
+  { category: 'Ngũ cốc', keywords: ['yến mạch', 'gạo', 'bánh mì'] },
+  { category: 'Gia vị', keywords: ['tỏi', 'hành lá', 'muối', 'tiêu', 'dầu ô liu', 'dầu hào', 'chanh'] },
+  { category: 'Đồ khô', keywords: ['mật ong'] },
 ];
 
-// BR-172 — không có category rõ ràng (yến mạch, chuối...) rơi vào 'Khác' thay vì đoán sai loại.
+// BR-172 — không có category rõ ràng rơi vào 'Đồ khô' (nhóm tạp hoá/pantry tổng quát) thay vì
+// đoán sai loại — thay cho 'Khác' cũ (design v2 không còn liệt kê nhóm này).
 export function categorizeIngredient(name: string): GroceryCategory {
   const normalized = name.toLowerCase();
   const match = CATEGORY_KEYWORDS.find(rule =>
     rule.keywords.some(keyword => normalized.includes(keyword)),
   );
-  return match?.category ?? 'Khác';
+  return match?.category ?? 'Đồ khô';
 }
 
 export type ParsedUnitKind = 'g' | 'ml' | 'piece';
@@ -46,6 +55,17 @@ export function parseIngredientAmount(amount: string): ParsedAmount | null {
   if (firstToken === 'ml') return { quantity, unitKind: 'ml', unitLabel: 'ml' };
   if (firstToken === 'l') return { quantity: quantity * 1000, unitKind: 'ml', unitLabel: 'ml' };
   return { quantity, unitKind: 'piece', unitLabel: unitText || 'phần' };
+}
+
+// design/GroceryAdd.dc.html — chip đơn vị (g/kg/ml/quả/bó/gói...) nhập tay, khác parseIngredientAmount
+// (bóc tách từ chuỗi "300 g" có sẵn trong Recipe) vì ở đây số lượng + đơn vị đã tách sẵn theo form.
+export function manualQuantityToParsedAmount(quantity: number, unit: string): ParsedAmount {
+  const normalizedUnit = unit.trim().toLowerCase();
+  if (normalizedUnit === 'g') return { quantity, unitKind: 'g', unitLabel: 'g' };
+  if (normalizedUnit === 'kg') return { quantity: quantity * 1000, unitKind: 'g', unitLabel: 'g' };
+  if (normalizedUnit === 'ml') return { quantity, unitKind: 'ml', unitLabel: 'ml' };
+  if (normalizedUnit === 'l') return { quantity: quantity * 1000, unitKind: 'ml', unitLabel: 'ml' };
+  return { quantity, unitKind: 'piece', unitLabel: unit };
 }
 
 export function formatAmountLabel(quantity: number, unitKind: ParsedUnitKind, unitLabel: string): string {

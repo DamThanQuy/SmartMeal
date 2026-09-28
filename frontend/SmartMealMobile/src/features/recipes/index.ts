@@ -8,3 +8,5 @@ export * from './screens/DiscoveryScreen';
 export * from './screens/FilterSheetScreen';
 export * from './screens/RecipeDetailScreen';
 export * from './screens/FavoritesScreen';
+export * from './screens/CollectionDetailScreen';
+export * from './screens/CreateCollectionScreen';

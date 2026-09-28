@@ -6,10 +6,19 @@ import {
 import { STORAGE_KEYS } from '@/constants/storage';
 import { storageService } from '@/services/storage/storage';
 
+export type AppLanguage = 'vi' | 'en';
+
 export interface AppState {
   /** Scenario mock hiện tại (CLAUDE.md mục 8) — mọi feature service đọc qua getCurrentMockScenario(). */
   mockScenario: MockScenario;
   setMockScenario: (scenario: MockScenario) => void;
+  /** SettingsScreen (Đợt 9) — chỉ lưu lựa chọn, CHƯA có i18n đầy đủ (chưa dịch string trong app). */
+  language: AppLanguage;
+  setLanguage: (language: AppLanguage) => void;
+  /** Màn Dev (Đợt 11, BR-261/262) — mô phỏng "đang offline" cho DiaryScreen (StateOffline.dc.html),
+   * KHÔNG dùng NetInfo thật. Công tắc dev/QA nên không đăng ký resetUserData, giống mockScenario. */
+  isOfflineDevOverride: boolean;
+  setOfflineDevOverride: (value: boolean) => void;
 }
 
 function isMockScenario(value: string | undefined): value is MockScenario {
@@ -19,6 +28,10 @@ function isMockScenario(value: string | undefined): value is MockScenario {
     value === 'error' ||
     value === 'slow'
   );
+}
+
+function isAppLanguage(value: string | undefined): value is AppLanguage {
+  return value === 'vi' || value === 'en';
 }
 
 // Global client state (app-level settings) — dùng Zustand theo docs/state-and-api.md.
@@ -35,13 +48,34 @@ export const useAppStore = create<AppState>()(set => ({
     void storageService.setString(STORAGE_KEYS.MOCK_SCENARIO, scenario);
     set({ mockScenario: scenario });
   },
+  language: 'vi',
+  setLanguage: language => {
+    void storageService.setString(STORAGE_KEYS.LANGUAGE, language);
+    set({ language });
+  },
+  isOfflineDevOverride: false,
+  setOfflineDevOverride: value => set({ isOfflineDevOverride: value }),
 }));
+
+/** Đọc trạng thái offline mô phỏng ngoài React tree (trong service/hook, không dùng hook được). */
+export function isOfflineDevOverrideActive(): boolean {
+  return useAppStore.getState().isOfflineDevOverride;
+}
 
 /** Đọc lại mock scenario đã lưu từ AsyncStorage — gọi 1 lần lúc App khởi động. */
 export async function hydrateMockScenario(): Promise<void> {
   const stored = await storageService.getString(STORAGE_KEYS.MOCK_SCENARIO);
   if (isMockScenario(stored)) {
     useAppStore.setState({ mockScenario: stored });
+  }
+}
+
+/** Đọc lại ngôn ngữ đã lưu từ AsyncStorage — gọi 1 lần lúc App khởi động, cùng lúc với
+ * hydrateMockScenario() (không phải dữ liệu nhạy cảm nên không cần chặn splash screen). */
+export async function hydrateLanguage(): Promise<void> {
+  const stored = await storageService.getString(STORAGE_KEYS.LANGUAGE);
+  if (isAppLanguage(stored)) {
+    useAppStore.setState({ language: stored });
   }
 }
 

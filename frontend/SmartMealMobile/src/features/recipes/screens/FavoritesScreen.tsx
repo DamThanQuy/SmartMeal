@@ -72,22 +72,29 @@ export function FavoritesScreen({ navigation }: Props) {
                 key={collection.id}
                 accessibilityRole="button"
                 accessibilityLabel={collection.name}
+                onPress={() =>
+                  navigation.navigate(MAIN_STACK_ROUTES.COLLECTION_DETAIL, { collectionId: collection.id })
+                }
                 className="w-[47%] gap-xs rounded-card bg-surface p-sm"
               >
                 <View className="h-[52px] rounded-md bg-primary-soft" />
                 <AppText variant="bodyMedium">{collection.name}</AppText>
                 <AppText variant="caption" color="secondary">
-                  {`${collection.recipeCount} món`}
+                  {`${collection.recipeIds.length} món`}
                 </AppText>
               </Pressable>
             ))}
-            {/* TODO: chưa có artboard tạo bộ sưu tập — để đợt sau. */}
-            <View className="h-[150px] w-[47%] items-center justify-center gap-xs rounded-card border border-dashed border-border-strong opacity-40">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Tạo bộ sưu tập"
+              onPress={() => navigation.navigate(MAIN_STACK_ROUTES.CREATE_COLLECTION)}
+              className="h-[150px] w-[47%] items-center justify-center gap-xs rounded-card border border-dashed border-border-strong"
+            >
               <Plus size={24} color={colors.onPrimarySoft} />
               <AppText variant="bodyMedium" color="onPrimarySoft">
                 Tạo bộ sưu tập
               </AppText>
-            </View>
+            </Pressable>
           </View>
 
           <View className="gap-sm">

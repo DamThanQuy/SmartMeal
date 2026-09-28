@@ -4,14 +4,19 @@ import type { MealLogEntry, NutritionInfo } from '../types/nutrition.types';
 import { nutritionPerGram } from '../utils/nutritionMath';
 
 // Mục tiêu ngày của user hiện tại (mock) — khớp design/Dashboard.dc.html, Diary.dc.html,
-// ProgressChart.dc.html (2.000 kcal + 180 kcal vận động = 2.180, macro 120/250/65g).
+// ProgressChart.dc.html (2.000 kcal, macro 120/250/65g).
 // TODO: khi Đợt 7 (HealthSettings) có store hồ sơ user đã đăng nhập, thay hằng số này bằng
 // giá trị đọc từ đó thay vì hard-code ở đây.
 export const CURRENT_USER_DAILY_TARGET = {
   calorieTarget: 2000,
-  activityCalories: 180,
   macroTargets: { proteinG: 120, carbsG: 250, fatG: 65 },
 };
+
+// design/CalorieBudget.dc.html "Nguồn vận động" — nguồn Health Connect duy nhất được TÍNH vào
+// ngân sách hôm nay (đồng hồ thông minh báo cùng khung giờ nên bị bỏ qua, BR-042). Đây là
+// nguồn RAW duy nhất — nutritionService.buildSummary()/dashboard.mock.ts đều đọc từ đây thay vì
+// tự khai 1 hằng số 180 riêng (từng bị lệch/trùng trước Đợt 11).
+export const TODAY_ACTIVITY_CALORIES_BURNED_MOCK = 180;
 
 let seedCounter = 0;
 function nextId(prefix: string): string {

@@ -31,9 +31,10 @@ export function AppSwitch({
       disabled={disabled}
       hitSlop={8}
       onPress={() => onChange(!checked)}
-      className={`h-[28px] w-[48px] justify-center rounded-pill p-[3px] disabled:opacity-40 ${
-        checked ? 'items-end bg-primary' : 'items-start bg-border'
-      } ${className}`}
+      className={`h-[28px] w-[48px] flex-row rounded-pill p-[3px] ${
+        checked ? 'bg-primary' : 'bg-border'
+      } ${disabled ? 'opacity-40' : ''} ${className}`}
+      style={{ alignItems: 'center', justifyContent: checked ? 'flex-end' : 'flex-start' }}
       {...rest}
     >
       <View className="h-[22px] w-[22px] rounded-full bg-surface" style={shadows.card} />

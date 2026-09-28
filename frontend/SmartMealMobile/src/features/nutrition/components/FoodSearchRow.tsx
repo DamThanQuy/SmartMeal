@@ -1,4 +1,4 @@
-import { ChevronRight, ShieldCheck } from 'lucide-react-native';
+import { ChevronRight, PenLine, ShieldCheck } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { AppText } from '@/components/ui';
@@ -33,6 +33,9 @@ export function FoodSearchRow({ food, onPress, className = '' }: FoodSearchRowPr
           </AppText>
           {food.verified ? (
             <ShieldCheck size={14} color={colors.primary} accessibilityLabel="Dữ liệu đã xác minh" />
+          ) : null}
+          {food.isUserCreated ? (
+            <PenLine size={14} color={colors.textSecondary} accessibilityLabel="Do bạn nhập" />
           ) : null}
         </View>
       </View>

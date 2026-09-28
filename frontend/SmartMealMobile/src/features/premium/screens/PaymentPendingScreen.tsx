@@ -9,26 +9,47 @@ import type { MainStackParamList } from '@/navigation/types';
 import { usePremiumStore } from '@/state/premium/premiumStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useCheckoutPremium } from '../hooks/useCheckoutPremium';
+import { BILLING_PLAN_OPTIONS } from '../mocks/premium.mock';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PaymentPending'>;
 
 // design/PaymentPending.dc.html (BR-241/242 — Payment Verification: chỉ xác thực Premium khi
 // "Backend" (mock: sau khi Promise checkout resolve) xác nhận, không tin client-side callback
 // nên activatePremium() chỉ gọi ở đây, không gọi ngay lúc bấm "Nâng cấp Pro" ở PremiumScreen).
+// Đợt 13: mỗi lần chạy (kể cả bấm "Thử lại") tạo 1 dòng trong SubscriptionScreen "Lịch sử giao
+// dịch" — pending lúc bắt đầu, cập nhật success/failed khi checkout() resolve/reject.
 export function PaymentPendingScreen({ navigation, route }: Props) {
   const { planId, paymentMethodId } = route.params;
   const { colors } = useTheme();
   const checkout = useCheckoutPremium();
   const activatePremium = usePremiumStore(state => state.activatePremium);
+  const addTransaction = usePremiumStore(state => state.addTransaction);
+  const updateTransactionStatus = usePremiumStore(state => state.updateTransactionStatus);
   const hasStarted = useRef(false);
 
   const runCheckout = () => {
+    const plan = BILLING_PLAN_OPTIONS.find(option => option.id === planId);
+    const pendingId = `txn-${Date.now()}`;
+    addTransaction({
+      id: pendingId,
+      planId,
+      paymentMethodId,
+      amountVnd: plan?.priceVnd ?? 0,
+      status: 'pending',
+      createdAtIso: new Date().toISOString(),
+      note: 'Pro chỉ kích hoạt sau khi giao dịch được xác nhận',
+    });
+
     checkout.mutate(
       { planId, paymentMethodId },
       {
         onSuccess: result => {
+          updateTransactionStatus(pendingId, 'success', '');
           activatePremium(result.planId, result.expiresAtIso);
           navigation.replace(MAIN_STACK_ROUTES.PAYMENT_SUCCESS, { result });
+        },
+        onError: error => {
+          updateTransactionStatus(pendingId, 'failed', error.message);
         },
       },
     );

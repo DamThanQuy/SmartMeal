@@ -6,5 +6,6 @@ export * from './screens/AICameraScreen';
 export * from './screens/AIAnalyzingScreen';
 export * from './screens/AISnapResultScreen';
 export * from './screens/VoiceLogScreen';
+export * from './screens/VoicePermissionScreen';
 export * from './screens/StateAIFailedScreen';
 export * from './screens/StateAILimitScreen';

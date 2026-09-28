@@ -1,9 +1,15 @@
 import { format } from 'date-fns';
 import { getMockDelayMs, wait } from '@/config/mock';
 import { getCurrentMockScenario } from '@/state/app/appStore';
+import { registerUserDataReset } from '@/state/resetUserData';
+import { getIncludeActivityCalories } from '@/state/user/userProfileStore';
 import type { MealType } from '@/types/meal.types';
 import { MEAL_TYPES } from '@/types/meal.types';
-import { CURRENT_USER_DAILY_TARGET, createTodaySeedEntries } from '../mocks/diary.mock';
+import {
+  CURRENT_USER_DAILY_TARGET,
+  createTodaySeedEntries,
+  TODAY_ACTIVITY_CALORIES_BURNED_MOCK,
+} from '../mocks/diary.mock';
 import { FOOD_DATABASE_MOCK } from '../mocks/foods.mock';
 import { createWeeklyProgressMock } from '../mocks/progress.mock';
 import type {
@@ -11,10 +17,11 @@ import type {
   FoodItem,
   FoodLogSource,
   MealLogEntry,
+  NewFoodInput,
   NutritionInfo,
   WeeklyProgressSummary,
 } from '../types/nutrition.types';
-import { nutritionPerGram, sumNutrition } from '../utils/nutritionMath';
+import { calculateCalorieBudget, nutritionPerGram, sumNutrition } from '../utils/nutritionMath';
 
 // TODO: replace mock with real API — toàn bộ "database" dưới đây chỉ là in-memory store mô
 // phỏng Backend cho nhánh feat/mock-ui (CLAUDE.md mục 8). Khi nối API thật, các hàm export
@@ -43,10 +50,17 @@ function buildSummary(
   dateIso: string,
   entriesByMeal: Record<MealType, MealLogEntry[]>,
 ): DiaryDaySummary {
+  // BR-040→042 — đúng 1 hàm tính (calculateCalorieBudget) dùng chung với CalorieBudgetScreen,
+  // tôn trọng công tắc "Cộng calo vận động vào ngân sách" (userProfileStore).
+  const { activityCalories } = calculateCalorieBudget({
+    calorieTarget: CURRENT_USER_DAILY_TARGET.calorieTarget,
+    activityCaloriesBurned: TODAY_ACTIVITY_CALORIES_BURNED_MOCK,
+    includeActivityCalories: getIncludeActivityCalories(),
+  });
   return {
     date: dateIso,
     calorieTarget: CURRENT_USER_DAILY_TARGET.calorieTarget,
-    activityCalories: CURRENT_USER_DAILY_TARGET.activityCalories,
+    activityCalories,
     entriesByMeal,
     macroTargets: CURRENT_USER_DAILY_TARGET.macroTargets,
   };
@@ -75,6 +89,18 @@ export interface NewMealLogInput {
 export type FoodSearchFilter = 'all' | 'recent' | 'favorite' | 'mine';
 
 const RECENT_FOOD_IDS = ['bun-bo', 'sua-chua'];
+
+// BR-121 — CreateFoodScreen (Đợt 10): món do user tự nhập, gắn nhãn "Do bạn nhập", không bịa dữ
+// liệu thay Backend. Giữ tách khỏi FOOD_DATABASE_MOCK (dữ liệu "đã xác minh") để reset độc lập.
+let userCreatedFoods: FoodItem[] = [];
+let userFoodIdCounter = 0;
+
+export function findFoodById(foodId: string): FoodItem | undefined {
+  return (
+    FOOD_DATABASE_MOCK.find(food => food.id === foodId) ??
+    userCreatedFoods.find(food => food.id === foodId)
+  );
+}
 
 export const nutritionService = {
   // BR-050, BR-051 — đọc nhật ký 1 ngày, gộp theo bữa.
@@ -191,9 +217,13 @@ export const nutritionService = {
     }
     if (scenario === 'empty') return [];
 
-    if (filter === 'favorite' || filter === 'mine') {
-      // Chưa có luồng lưu yêu thích / tạo món thủ công trong Đợt 3 — trả rỗng để hiện EmptyState.
+    if (filter === 'favorite') {
+      // Chưa có luồng lưu yêu thích món ăn trong Đợt 3 — trả rỗng để hiện EmptyState.
       return [];
+    }
+    // BR-121 — "Món của tôi" (CreateFoodScreen, Đợt 10): danh sách món user đã tự nhập.
+    if (filter === 'mine') {
+      return userCreatedFoods;
     }
 
     const normalizedQuery = query.trim().toLowerCase();
@@ -203,7 +233,9 @@ export const nutritionService = {
     if (!normalizedQuery) {
       return FOOD_DATABASE_MOCK.filter(food => RECENT_FOOD_IDS.includes(food.id));
     }
-    return FOOD_DATABASE_MOCK.filter(food => food.name.toLowerCase().includes(normalizedQuery));
+    return [...FOOD_DATABASE_MOCK, ...userCreatedFoods].filter(food =>
+      food.name.toLowerCase().includes(normalizedQuery),
+    );
   },
 
   async getFoodById(foodId: string): Promise<FoodItem | undefined> {
@@ -212,7 +244,32 @@ export const nutritionService = {
     if (scenario === 'error') {
       throw new Error('Không thể tải chi tiết món ăn.');
     }
-    return FOOD_DATABASE_MOCK.find(food => food.id === foodId);
+    return findFoodById(foodId);
+  },
+
+  // BR-121 — CreateFoodScreen: lưu món do user tự nhập vào food database mock, gắn
+  // isUserCreated=true (không bịa dữ liệu thay Backend, chỉ ghi đúng số user đã nhập).
+  async createFood(input: NewFoodInput): Promise<FoodItem> {
+    const scenario = getCurrentMockScenario();
+    await wait(getMockDelayMs(scenario));
+    if (scenario === 'error') {
+      throw new Error('Không thể lưu món ăn, vui lòng thử lại.');
+    }
+
+    userFoodIdCounter += 1;
+    const food: FoodItem = {
+      id: `user-food-${Date.now()}-${userFoodIdCounter}`,
+      name: input.name,
+      verified: false,
+      isUserCreated: true,
+      servingOptions: [
+        { id: 'default', label: `${input.amount} ${input.unit}`, grams: input.amount },
+      ],
+      defaultServingId: 'default',
+      nutritionPerServing: input.nutrition,
+    };
+    userCreatedFoods = [food, ...userCreatedFoods];
+    return food;
   },
 
   // dùng cho ProgressChart.dc.html (react-native-gifted-charts, 7 ngày).
@@ -226,3 +283,11 @@ export const nutritionService = {
     return createWeeklyProgressMock(dateIso, totalCaloriesForDay(day));
   },
 };
+
+// BR-271 — DeleteDataScreen: xóa nhật ký ăn uống đã ghi (ngày hôm nay sẽ được seed lại từ đầu ở
+// lần đọc kế tiếp — xem getOrSeedDay — giống trạng thái 1 tài khoản mới, xem src/state/resetUserData.ts).
+registerUserDataReset('nutritionDiary', () => diaryByDate.clear());
+// BR-271 — xóa món do user tự nhập (CreateFoodScreen, Đợt 10).
+registerUserDataReset('userCreatedFoods', () => {
+  userCreatedFoods = [];
+});

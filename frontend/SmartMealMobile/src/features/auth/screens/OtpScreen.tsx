@@ -1,11 +1,11 @@
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { NavigationProp, ParamListBase } from '@react-navigation/native';
 import { Info, Mail } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { InlineBanner, ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppButton, AppText } from '@/components/ui';
-import { AUTH_ROUTES } from '@/constants/routes';
-import type { AuthStackParamList } from '@/navigation/types';
+import { AUTH_ROUTES, MAIN_STACK_ROUTES } from '@/constants/routes';
+import type { ForgotPasswordReturnTo, OtpPurpose } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { OtpCodeInput } from '../components/OtpCodeInput';
 import { useResendOtp, useVerifyOtp } from '../hooks/useOtp';
@@ -28,12 +28,18 @@ function formatCountdown(totalSeconds: number): string {
   return `${minutes}:${seconds}`;
 }
 
-type Props = NativeStackScreenProps<AuthStackParamList, 'Otp'>;
+// Đăng ký ở cả AuthNavigator và MainNavigator (SettingsScreen "Đổi mật khẩu" — sửa lệch sau Đợt
+// 9, xem ForgotPasswordScreen.tsx) nên navigation prop không gắn cứng vào 1 ParamList — cùng cách
+// làm với ForgotPasswordScreen.tsx.
+interface OtpScreenProps {
+  navigation: NavigationProp<ParamListBase>;
+  route: { params: { email: string; purpose: OtpPurpose; returnTo?: ForgotPasswordReturnTo } };
+}
 
 // design/OTP.dc.html. Dùng chung cho 2 luồng theo BR-010 (xác thực đăng ký) và luồng quên
 // mật khẩu (chưa có mã BR riêng) — phân biệt qua route.params.purpose.
-export function OtpScreen({ navigation, route }: Props) {
-  const { email, purpose } = route.params;
+export function OtpScreen({ navigation, route }: OtpScreenProps) {
+  const { email, purpose, returnTo } = route.params;
   const { colors } = useTheme();
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(''));
   const [secondsLeft, setSecondsLeft] = useState(RESEND_COOLDOWN_SECONDS);
@@ -58,6 +64,9 @@ export function OtpScreen({ navigation, route }: Props) {
         onSuccess: () => {
           if (purpose === 'register') {
             navigation.navigate(AUTH_ROUTES.HEALTH_PROFILE_BASIC_INFO);
+          } else if (returnTo === 'Settings') {
+            // Đổi mật khẩu từ Settings (đã đăng nhập) — quay lại Settings thay vì Login.
+            navigation.navigate(MAIN_STACK_ROUTES.SETTINGS);
           } else {
             navigation.navigate(AUTH_ROUTES.LOGIN);
           }

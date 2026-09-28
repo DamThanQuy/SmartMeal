@@ -18,7 +18,7 @@ Nhánh hiện tại `feat/mock-ui`: dựng toàn bộ UI bằng dữ liệu gi�
 | 3 | `docs/structure_system.md` | Kiến trúc thư mục, feature-based, layering, giới hạn Expo Go |
 | 4 | `docs/tech_stack.md` | Công nghệ, Definition of Done |
 | 5 | `docs/SmartMeal_API_Contract.md` | Shape dữ liệu (mock phải khớp) |
-| 6 | `design/README.md`, `design/screens.json`, `design/*.dc.html` | Mockup UI 47 màn (390px) |
+| 6 | `design/README.md`, `design/screens.json`, `design/*.dc.html` | Mockup UI 73 màn (390px) — v2, thêm 26 màn so với bản v1 (47 màn) |
 | 7 | `docs/ui-progress.md` | Tiến độ dựng UI theo từng artboard |
 
 Quy trình: `business_rule → design.md → design/*.dc.html → structure_system → tech_stack → implement`.
@@ -105,6 +105,13 @@ Không có `android/`, `ios/` khi còn ở chế độ Expo Go — Expo tự qu�
 - `src/config/mock.ts`: `MOCK_SCENARIO = 'success' | 'empty' | 'error' | 'slow'`. Service mock trả kết quả theo scenario để xem đủ mọi state. Có công tắc trong màn Dev.
 - Đăng nhập mock: bấm Đăng nhập → vào MainNavigator, không kiểm tra thật.
 - Camera / mic / barcode / Health Connect: chỉ dựng UI + nút "giả lập kết quả", chưa gọi native (kể cả Expo SDK) thật.
+- **Xóa dữ liệu cá nhân (BR-271)**: `src/state/resetUserData.ts` là registry chung — mọi store/service
+  giữ **dữ liệu của user hiện tại** (nhật ký ăn uống, hồ sơ sức khỏe, yêu thích/bộ sưu tập, meal plan,
+  grocery, gamification, AI usage, và các store tương tự tạo ở phase sau như `waterStore`, `challenges`...)
+  **PHẢI** gọi `registerUserDataReset(name, fn)` lúc module load để đăng ký hàm reset về giá trị khởi
+  tạo/seed. `DeleteDataScreen` chỉ gọi `resetUserData()` một lần, không biết danh sách store cụ thể.
+  KHÔNG đăng ký: `authStore`, `appStore` (theme/ngôn ngữ), `premiumStore` và lịch sử giao dịch thanh
+  toán (dữ liệu thanh toán được giữ lại theo BR-271).
 
 ## 9. Native services & giới hạn Expo Go
 
@@ -156,7 +163,16 @@ Không dùng `react-native-vision-camera`, ML Kit, `react-native-mmkv`, `react-n
 | 6 | planner + grocery | MealPlanner, SlotPicker, Grocery |
 | 7 | profile | Profile, HealthSettings, WeightHistory, HealthConnect, Reminders, Notifications |
 | 8 | gamification + premium | Pet, Premium, PaymentSuccess, PaymentPending |
+| 8.5 | Đồng bộ design v2 (chỉ tài liệu, không code UI) | — |
+| 9 | auth + profile | Welcome, GuestPrompt, StateSession, Settings, EditProfile, DeleteData |
+| 10 | ai + scanner | FridgeCamera, OCRCamera, AISnapUncertain, VoicePermission, RecipeAllergy, CreateFood |
+| 11 | meal-planner + grocery | GroceryEmpty, GroceryAdd, GroceryDone, PlannerRegenerate, CalorieBudget, StateOffline |
+| 12 | gamification | WaterLog, Challenges, ChallengeComplete, Badges, CollectionDetail, CreateCollection |
+| 13 | premium | Subscription, PaymentMethod |
+| 14 | rà soát | Đối chiếu 73/73 artboard, link lệch design, `/check-reuse`, `/ui-review`, smoke test |
 
+Đợt 0-8 dùng bản design v1 (47 màn). Đợt 9-14 dùng bản design v2 (73 màn, xem `design/README.md`) —
+chi tiết từng phase (nghiệp vụ, business rule liên quan) xem `docs/ui-mock-prompts.md`.
 Mỗi lần chỉ làm **1 đợt**, xong thì dừng và báo cáo: file đã tạo/sửa, component dùng chung mới, chỗ lệch so với design, TODO còn lại.
 
 ## 12. Công cụ trong `.claude/`

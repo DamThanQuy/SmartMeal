@@ -169,6 +169,206 @@ Artboard: Pet, Premium, PaymentSuccess, PaymentPending
 - Premium: bấm "Nâng cấp Pro" → PaymentPending (mock) → PaymentSuccess hoặc trạng thái lỗi, KHÔNG tự
   kích hoạt Premium khi chưa qua bước "xác nhận thành công" (BR-241, BR-242).
 - NativeWind token, light/dark.
+# SmartMeal — Prompt cập nhật mock UI (Phase 9 → 14)
+
+Nối tiếp `ui-mock-prompts.md` (Phase 0–8 đã xong 47/47 artboard). Design v2 có thêm 26 màn (tổng 73).
+Dán từng khối vào Claude Code. `/clear` giữa các phase. "Phase" ở đây tương đương "Đợt" trong CLAUDE.md §11.
+
+## Phase 8.5 — Đồng bộ design v2 (làm trước, chỉ sửa tài liệu, không code UI)
+
+Trước khi chạy: giải nén `smartmeal-design-v2.zip`, chép thư mục `design/` mới đè lên `frontend/SmartMealMobile/design/`.
+
+```
+Design v2 vừa được chép đè vào design/ (73 màn, thêm 26 màn mới so với bản 47 màn).
+Đọc CLAUDE.md, docs/ui-progress.md, design/README.md, design/screens.json.
+
+Chỉ cập nhật tài liệu, KHÔNG viết code UI ở bước này:
+1. So sánh design/screens.json với docs/ui-progress.md, liệt kê đúng 26 artboard mới:
+   Welcome, GuestPrompt, StateSession, Settings, EditProfile, DeleteData,
+   FridgeCamera, OCRCamera, AISnapUncertain, VoicePermission, RecipeAllergy, CreateFood,
+   GroceryEmpty, GroceryAdd, GroceryDone, PlannerRegenerate, CalorieBudget, StateOffline,
+   WaterLog, Challenges, ChallengeComplete, Badges, CollectionDetail, CreateCollection,
+   Subscription, PaymentMethod.
+2. Thêm 26 hàng vào docs/ui-progress.md, trạng thái = todo, cột Feature theo bảng phase bên dưới.
+3. Ghi chú các màn cũ đã đổi link trong design v2 (Profile, Dashboard, Discovery, ProductNotFound,
+   Favorites, Pet, Grocery, Premium) vào cột Ghi chú — đây là chỗ code hiện tại cần nối lại.
+4. Cập nhật CLAUDE.md: §2 (mockup 73 màn), §11 (thêm Phase 9–14 vào bảng chia đợt).
+5. Liệt kê chỗ code đang lệch design v2 (chỉ báo cáo, chưa sửa), ví dụ nút/link đang trỏ tạm
+   (ProductNotFound "Nhập thủ công", Favorites "Tạo bộ sưu tập", Notifications → Grocery…).
+
+Báo cáo rồi DỪNG.
+```
+
+Bảng phase:
+
+```
+Phase 9   auth/profile     Welcome, GuestPrompt, StateSession, Settings, EditProfile, DeleteData
+Phase 10  ai/scanner       FridgeCamera, OCRCamera, AISnapUncertain, VoicePermission, RecipeAllergy, CreateFood
+Phase 11  planner/grocery  GroceryEmpty, GroceryAdd, GroceryDone, PlannerRegenerate, CalorieBudget, StateOffline
+Phase 12  gamification     WaterLog, Challenges, ChallengeComplete, Badges, CollectionDetail, CreateCollection
+Phase 13  premium          Subscription, PaymentMethod
+Phase 14  rà soát          đồng bộ lệch design, /ui-review, /check-reuse, smoke test
+```
+
+## Phase 9 — Onboarding, Guest, Tài khoản, Cài đặt
+
+```
+Đọc CLAUDE.md, docs/ui-progress.md. Xác nhận Phase 8.5 đã xong và tsc/lint sạch, chưa thì dừng và báo.
+
+Làm Phase 9 — auth/profile:
+Artboard: Welcome, GuestPrompt, StateSession, Settings, EditProfile, DeleteData
+
+- Đọc business_rule.md (§2 Guest, BR-001→BR-003, BR-010→BR-014, BR-270, BR-271) và đúng artboard trong design/.
+- Mock UI only. Welcome là màn đầu khi chưa đăng nhập (trước Login); "Khám phá không cần đăng nhập"
+  vào Discovery ở chế độ Guest.
+- Guest: xem được Discovery/RecipeDetail. Bấm hành động cần tài khoản (yêu thích, thêm vào thực đơn,
+  ghi nhật ký) → mở GuestPrompt (bottom sheet/modal). Cần cờ isGuest trong authStore.
+- StateSession: mô phỏng phiên hết hạn (BR-014) và tài khoản bị khóa (BR-013) qua MOCK_SCENARIO
+  hoặc công tắc trong màn Dev; nút "Đăng nhập lại" xóa session rồi về Login.
+- Settings: chế độ giao diện Hệ thống/Sáng/Tối dùng đúng themeMode trong appStore đã có;
+  ngôn ngữ VI/EN chỉ lưu lựa chọn (chưa cần i18n đầy đủ, ghi rõ trong ui-progress);
+  "Đăng xuất" xóa authStore; icon bánh răng ở Profile đang trỏ ThemePreview → đổi sang Settings,
+  ThemePreview chuyển vào mục Dev trong Settings.
+- EditProfile: sửa họ tên/năm sinh/giới tính/chiều cao trong userProfileStore; đổi chiều cao hoặc tuổi
+  phải tính lại BMI/BMR/TDEE bằng ĐÚNG hàm calculateHealthProfileResult hiện có (BR-003).
+  Email chỉ đọc. Đổi avatar: chỉ UI + nút giả lập, không gọi expo-image-picker.
+- DeleteData: hiển thị 3 nhóm xóa / giữ / ẩn danh (BR-271); xác nhận bằng checkbox rồi mới bật nút Xóa;
+  Xóa = reset các store mock của user rồi về Welcome. Không xóa thật dữ liệu nào ngoài mock.
+- NativeWind token, light/dark, Loading/Error khi lưu.
+
+Xong: tsc --noEmit + lint sạch, cập nhật ui-progress.md, báo cáo theo mẫu CLAUDE.md §11. DỪNG, không tự làm Phase 10.
+```
+
+## Phase 10 — AI Vision bổ sung & cảnh báo dị ứng
+
+```
+Đọc CLAUDE.md, docs/ui-progress.md. Xác nhận Phase 9 đã done, chưa thì dừng và báo.
+
+Làm Phase 10 — ai/scanner:
+Artboard: FridgeCamera, OCRCamera, AISnapUncertain, VoicePermission, RecipeAllergy, CreateFood
+
+- Đọc business_rule.md (BR-072, BR-080→BR-083, BR-121, BR-130→BR-132, BR-162, BR-252, BR-290, BR-291)
+  và đúng artboard trong design/.
+- Mock UI only. Camera/mic/OCR: KHÔNG gọi expo-camera/expo-av/ML Kit thật — nền tĩnh + nút "giả lập chụp".
+- FridgeCamera → Fridge: cho phép nhiều ảnh (mock), chỉ Pro; Free bị chặn bằng StateAILimit/Premium.
+  Nguyên liệu vẫn phải qua bước user xác nhận trước khi gợi ý món (BR-082).
+- OCRCamera → OCRReview; tab "Mã vạch" quay lại Barcode. Trạng thái đã có từ Phase 4 giữ nguyên.
+- AISnapUncertain: khi kết quả AI mock có món độ tin cậy thấp → hỏi lại user chọn đúng món + khẩu phần,
+  CHƯA lưu vào diary cho tới khi user trả lời và bấm xác nhận (BR-072, BR-054). Nút xác nhận disabled khi chưa chọn.
+- VoicePermission: hiện khi mô phỏng chưa có quyền micro; có đường thay thế gõ tay (BR-252) → vẫn qua aiService
+  và bước review như VoiceLog.
+- RecipeAllergy: RecipeDetail phải tự chuyển sang bản cảnh báo khi món chứa thành phần trùng
+  dị ứng trong userProfileStore, KHÔNG dựng màn riêng cố định. Cảnh báo chỉ tô icon/viền (design §30).
+  Thành phần không rõ → không ghi "an toàn" (BR-291). Nút "Thêm vào thực đơn" disable cho món dị ứng (BR-162).
+- CreateFood: tạo món do user nhập, lưu vào food DB mock, gắn nhãn "Do bạn nhập" (BR-121: không tự bịa dữ liệu).
+  ProductNotFound "Nhập thủ công" trỏ đến đây (đang trỏ tạm FoodSearch).
+- NativeWind token, light/dark.
+
+Xong: tsc --noEmit + lint sạch, cập nhật ui-progress.md, báo cáo. DỪNG, không tự làm Phase 11.
+```
+
+## Phase 11 — Đi chợ, Thực đơn, Ngân sách calo, Offline
+
+```
+Đọc CLAUDE.md, docs/ui-progress.md. Xác nhận Phase 10 đã done, chưa thì dừng và báo.
+
+Làm Phase 11 — meal-planner/grocery:
+Artboard: GroceryEmpty, GroceryAdd, GroceryDone, PlannerRegenerate, CalorieBudget, StateOffline
+
+- Đọc business_rule.md (BR-040→BR-042, BR-160→BR-174, BR-260→BR-262) và đúng artboard trong design/.
+- Mock UI only.
+- Grocery: khi Meal Plan trống → GroceryEmpty; "Thêm thủ công" → GroceryAdd (thêm nguyên liệu vào danh sách,
+  có nhóm + đơn vị + giá ước tính); "Hoàn tất mua sắm" → GroceryDone (tóm tắt còn mấy món chưa mua,
+  xác nhận rồi mới đóng danh sách). Tách Grocery thành route riêng nếu cần để Notifications/deep link trỏ được
+  (TODO cũ trong ui-progress.md).
+- PlannerRegenerate: 2 lựa chọn "Giữ bữa tôi đã chọn" / "Tạo lại toàn bộ"; mặc định giữ, KHÔNG âm thầm ghi đè
+  bữa user đã sửa (BR-163). Gợi ý luôn lọc dị ứng (BR-162). Gate theo Premium (Meal Plan nâng cao là tính năng Pro,
+  BR-230/231) — nếu chưa rõ có bắt buộc gate không thì HỎI tôi trước khi làm.
+- CalorieBudget: Ngân sách = Mục tiêu + Calo vận động hợp lệ (BR-041). Nguồn trùng khung giờ chỉ cộng 1 lần
+  (BR-042) — viết đúng 1 hàm tính dùng chung với Dashboard. Công tắc "Cộng calo vận động" ảnh hưởng số hiển thị
+  ở Dashboard. Thẻ calo ở Dashboard mở màn này.
+- StateOffline: banner "Đang offline" + số thay đổi chờ đồng bộ (BR-261); mô phỏng bằng công tắc Dev,
+  KHÔNG cần NetInfo thật. Thao tác khi offline vào hàng đợi mock, hết offline thì đồng bộ và không nhân đôi (BR-262).
+- NativeWind token, light/dark, đủ Loading/Empty/Error.
+
+Xong: tsc --noEmit + lint sạch, cập nhật ui-progress.md, báo cáo. DỪNG, không tự làm Phase 12.
+```
+
+## Phase 12 — Nước uống, Thử thách, Huy hiệu, Bộ sưu tập
+
+```
+Đọc CLAUDE.md, docs/ui-progress.md. Xác nhận Phase 11 đã done, chưa thì dừng và báo.
+
+Làm Phase 12 — gamification:
+Artboard: WaterLog, Challenges, ChallengeComplete, Badges, CollectionDetail, CreateCollection
+
+- Đọc business_rule.md (BR-031, BR-150→BR-152, BR-200→BR-212, BR-221) và đúng artboard trong design/.
+  Lưu ý business_rule.md có BR-203 và BR-204 cùng tiêu đề "Streak" — nếu bản trong repo khác, báo tôi.
+- Mock UI only.
+- WaterLog: waterStore (ml theo ngày, mục tiêu 2.000 ml), thêm/xóa/hoàn tác. Dữ liệu này thay số "5/8 ly" tĩnh
+  ở Dashboard, Pet mission "Uống đủ nước" và Reminders. Đủ mục tiêu → cộng XP đúng 1 lần/ngày (BR-202, dùng
+  awardXpOnce hiện có).
+- Challenges: 4 trạng thái (đang tham gia / mở đăng ký / chưa đến ngày / đã kết thúc). Chỉ cho tham gia khi
+  hôm nay nằm trong [Start, End] (BR-211) — dùng date-fns, không so chuỗi. Hoàn thành → ChallengeComplete
+  (thưởng XP/huy hiệu đúng 1 lần, BR-212).
+- Badges: huy hiệu mở khóa theo dữ liệu thật đang có (streak, Diary, WaterLog); trang phục Bé Mầm mở theo Level/streak.
+  Chưa mở phải có icon khóa + chữ, không chỉ đổi màu.
+- CollectionDetail: đổi tên/xóa/bỏ món khỏi bộ sưu tập, chỉ chủ sở hữu (BR-152); Chia sẻ chỉ tạo link xem giả lập.
+  CreateCollection: tạo mới trong useFavoritesStore/collections đã có từ Phase 5. Favorites đang trỏ các bộ sưu tập
+  và nút "Tạo bộ sưu tập" → nối lại đúng.
+- Pet có nút vào Challenges/Badges.
+- NativeWind token, light/dark.
+
+Xong: tsc --noEmit + lint sạch, cập nhật ui-progress.md, báo cáo. DỪNG, không tự làm Phase 13.
+```
+
+## Phase 13 — Quản lý gói & Thanh toán
+
+```
+Đọc CLAUDE.md, docs/ui-progress.md. Xác nhận Phase 12 đã done, chưa thì dừng và báo.
+
+Làm Phase 13 — premium:
+Artboard: Subscription, PaymentMethod
+
+- Đọc business_rule.md (BR-230→BR-233, BR-240→BR-242) và đúng artboard trong design/.
+- Mock UI only. Subscription đọc từ premiumStore hiện có: trạng thái Free/Premium/Expired/Cancelled
+  (BR-230), hiệu lực đến, tự gia hạn, lịch sử giao dịch với 5 trạng thái (Pending/Success/Failed/Cancelled/Expired).
+  Hết hạn → về Free nhưng KHÔNG xóa dữ liệu cũ (BR-232).
+- PaymentMethod (VNPAY/MoMo/thẻ) → PaymentPending → PaymentSuccess/lỗi đã có. Premium chỉ kích hoạt khi bước
+  "xác nhận thành công" ở phía service mock trả về (BR-241, BR-242) — không kích hoạt dựa vào callback UI.
+- Nút "Nâng cấp Pro" ở Premium trỏ PaymentMethod; giá/ngày dùng placeholder hằng số trong 1 file, ghi rõ CẦN GIÁ THẬT.
+- NativeWind token, light/dark.
+
+Xong: tsc --noEmit + lint sạch, cập nhật ui-progress.md, báo cáo. DỪNG, không tự làm Phase 14.
+```
+
+## Phase 14 — Rà soát tổng, đồng bộ lệch design
+
+```
+Đọc CLAUDE.md, docs/ui-progress.md. Xác nhận Phase 9–13 đều done.
+
+1. Đối chiếu design/screens.json (73 màn) với docs/ui-progress.md: phải đủ 73 hàng, không hàng nào todo.
+2. Với mọi href="X.dc.html" trong design/*.dc.html, kiểm tra màn code tương ứng có điều hướng đến đúng X
+   (bảng: màn nguồn → link → đã nối/chưa). Liệt kê chỗ chưa nối.
+3. Chạy /check-reuse và /ui-review trên toàn bộ diff của Phase 9–13, sửa mọi mục Blocking.
+4. Danh sách chỗ code lệch design (FoodSearch bỏ giỏ nhiều món, EditMealLog bỏ chip đơn vị,
+   HealthSettings dùng chip thay checkbox, StateError gộp vào Discovery…) — với từng mục, hỏi tôi chọn:
+   sửa code cho khớp design hay giữ code và cập nhật design.
+5. Kiểm tra dark mode trên toàn bộ màn mới; xác nhận không có package ngoài Expo SDK / không tương thích Expo Go.
+6. Viết 1 smoke test render App + kiểm tra điều hướng chính (Welcome → Login → Dashboard) bằng jest-expo.
+7. npx tsc --noEmit, npx expo lint, npx jest đều sạch.
+
+Báo cáo tổng: số màn done, danh sách TODO còn lại của cả dự án mock UI, các mục cần quyết định của tôi.
+```
+
+## Prompt chạy nhanh từng phase
+
+```
+Đọc CLAUDE.md và docs/ui-progress.md. Làm PHASE [SỐ] theo đúng khối prompt tương ứng trong
+docs/ui-mock-prompts-phase9-13.md (mock UI, NativeWind token, Loading/Error, light/dark, reuse component có sẵn,
+đúng business rule và artboard trong design/). Kiểm tra phase trước đã done và tsc/lint sạch chưa; chưa thì dừng và báo.
+Xong: npx tsc --noEmit + npx expo lint, cập nhật ui-progress.md, báo cáo theo mẫu CLAUDE.md, rồi DỪNG.
+```
 
 Xong: tsc --noEmit + lint sạch, cập nhật ui-progress.md, báo cáo.
 Đây là phase cuối — tổng kết: liệt kê toàn bộ 47 artboard trong ui-progress.md kèm trạng thái,

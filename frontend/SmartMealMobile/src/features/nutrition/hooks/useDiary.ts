@@ -1,6 +1,10 @@
+import { format } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { MealType } from '@/types/meal.types';
+import { isOfflineDevOverrideActive } from '@/state/app/appStore';
+import { useUserProfileStore } from '@/state/user/userProfileStore';
+import { MEAL_TYPE_TITLES, type MealType } from '@/types/meal.types';
 import { nutritionService, type NewMealLogInput } from '../services/nutritionService';
+import { useOfflineSyncStore } from '../state/offlineSyncStore';
 
 export const diaryQueryKey = (dateIso: string) => ['diary', dateIso] as const;
 
@@ -27,7 +31,21 @@ export function useAddMealLogEntries(dateIso: string) {
   return useMutation({
     mutationFn: ({ mealType, entries }: { mealType: MealType; entries: NewMealLogInput[] }) =>
       nutritionService.addLogEntries(dateIso, mealType, entries),
-    onSuccess: invalidate,
+    onSuccess: (created, variables) => {
+      // BR-261/262 — mock luôn áp dụng ngay (không có network layer thật); khi đang mô phỏng
+      // offline (màn Dev), chỉ thêm badge "Chờ đồng bộ" vào hàng đợi, không đổi hành vi lưu.
+      if (isOfflineDevOverrideActive()) {
+        const mealTitle = MEAL_TYPE_TITLES[variables.mealType];
+        created.forEach(entry => {
+          useOfflineSyncStore.getState().enqueue({
+            id: entry.id,
+            label: `Thêm ${entry.foodName} · ${mealTitle}`,
+            timeLabel: format(new Date(entry.loggedAt), 'HH:mm'),
+          });
+        });
+      }
+      invalidate();
+    },
   });
 }
 
@@ -51,6 +69,20 @@ export function useDeleteMealLogEntry(dateIso: string) {
     mutationFn: (entryId: string) => nutritionService.deleteLogEntry(dateIso, entryId),
     onSuccess: invalidate,
   });
+}
+
+// BR-040→042 — đổi công tắc "Cộng calo vận động" (CalorieBudgetScreen) phải làm mới ngay số
+// hiển thị ở Dashboard/Diary/ProgressChart (cả 3 đều đọc activityCalories qua
+// nutritionService.buildSummary → calculateCalorieBudget).
+export function useSetIncludeActivityCalories() {
+  const queryClient = useQueryClient();
+  const setIncludeActivityCalories = useUserProfileStore(state => state.setIncludeActivityCalories);
+  return (value: boolean) => {
+    setIncludeActivityCalories(value);
+    void queryClient.invalidateQueries({ queryKey: ['diary'] });
+    void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    void queryClient.invalidateQueries({ queryKey: ['progress'] });
+  };
 }
 
 export function useMealLogEntry(dateIso: string, entryId: string | undefined) {

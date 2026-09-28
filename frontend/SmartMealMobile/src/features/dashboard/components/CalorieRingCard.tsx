@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Circle, Svg } from 'react-native-svg';
 import { AppCard, AppText } from '@/components/ui';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -8,6 +8,8 @@ export interface CalorieRingCardProps {
   consumedCalories: number;
   calorieTarget: number;
   activityCalories: number;
+  /** Mở CalorieBudgetScreen (Đợt 11) — design v2 đổi thẻ calo Dashboard thành link. */
+  onPress?: () => void;
   className?: string;
 }
 
@@ -26,6 +28,7 @@ export function CalorieRingCard({
   consumedCalories,
   calorieTarget,
   activityCalories,
+  onPress,
   className = '',
 }: CalorieRingCardProps) {
   const { colors } = useTheme();
@@ -34,7 +37,12 @@ export function CalorieRingCard({
   const percent = effectiveTarget > 0 ? Math.min(consumedCalories / effectiveTarget, 1) : 0;
 
   return (
-    <AppCard className={`flex-row items-center gap-md ${className}`}>
+    <Pressable
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress ? 'Xem ngân sách calo' : undefined}
+      onPress={onPress}
+    >
+      <AppCard className={`flex-row items-center gap-md ${className}`}>
       <View style={{ width: RING_SIZE, height: RING_SIZE }}>
         <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
           <Circle
@@ -89,6 +97,7 @@ export function CalorieRingCard({
           <AppText variant="bodyMedium">{formatNumber(activityCalories)}</AppText>
         </View>
       </View>
-    </AppCard>
+      </AppCard>
+    </Pressable>
   );
 }

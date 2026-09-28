@@ -3,7 +3,7 @@ import { Barcode, Camera, ChevronRight, Mic, Search, Sparkles, X } from 'lucide-
 import React, { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAiQuota } from '@/features/ai';
+import { useAiQuota, useAiQuotaStore } from '@/features/ai';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { MEAL_TYPE_OPTIONS, getMealTypeForHour, type MealType } from '@/types/meal.types';
@@ -60,16 +60,26 @@ export function QuickLogScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { remaining, limit, hasRemaining } = useAiQuota();
+  const micPermissionGranted = useAiQuotaStore(state => state.micPermissionGranted);
   const [mealType, setMealType] = useState<MealType>(
     route.params?.mealType ?? getMealTypeForHour(new Date().getHours()),
   );
 
-  const goToAiFlow = (target: typeof MAIN_STACK_ROUTES.AI_CAMERA | typeof MAIN_STACK_ROUTES.VOICE_LOG) => {
+  // BR-233 — hết quota AI chặn cả 2 luồng. BR-252 — mic chưa cấp quyền (mock luôn giả lập chưa
+  // cấp) thì "Nói để ghi" phải qua VoicePermission trước, không vào thẳng VoiceLog.
+  const goToAiFlow = (kind: 'photo' | 'voice') => {
     if (!hasRemaining) {
       navigation.navigate(MAIN_STACK_ROUTES.STATE_AI_LIMIT, { mealType });
       return;
     }
-    navigation.navigate(target, { mealType });
+    if (kind === 'photo') {
+      navigation.navigate(MAIN_STACK_ROUTES.AI_CAMERA, { mealType });
+      return;
+    }
+    navigation.navigate(
+      micPermissionGranted ? MAIN_STACK_ROUTES.VOICE_LOG : MAIN_STACK_ROUTES.VOICE_PERMISSION,
+      { mealType },
+    );
   };
 
   return (
@@ -111,14 +121,14 @@ export function QuickLogScreen({ navigation, route }: Props) {
             title="Chụp món ăn"
             description="AI ước tính món, khẩu phần và calo"
             aiBadge
-            onPress={() => goToAiFlow(MAIN_STACK_ROUTES.AI_CAMERA)}
+            onPress={() => goToAiFlow('photo')}
           />
           <QuickLogActionRow
             icon={<Mic size={24} color={colors.primary} />}
             title="Nói để ghi"
             description={'"Tối nay ăn một bát phở bò…"'}
             aiBadge
-            onPress={() => goToAiFlow(MAIN_STACK_ROUTES.VOICE_LOG)}
+            onPress={() => goToAiFlow('voice')}
           />
           <QuickLogActionRow
             icon={<Search size={24} color={colors.primary} />}

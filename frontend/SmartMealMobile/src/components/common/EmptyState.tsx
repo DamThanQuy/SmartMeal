@@ -9,6 +9,10 @@ export interface EmptyStateProps {
   icon?: React.ReactNode;
   actionLabel?: string;
   onAction?: () => void;
+  /** Hành động phụ tùy chọn, vd. "Thêm nguyên liệu thủ công" — design/GroceryEmpty.dc.html,
+   * cùng cách mở rộng với ErrorState (.claude/rules/component-reuse.md). */
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
   className?: string;
 }
 
@@ -20,6 +24,8 @@ export function EmptyState({
   icon,
   actionLabel,
   onAction,
+  secondaryActionLabel,
+  onSecondaryAction,
   className = '',
 }: EmptyStateProps) {
   return (
@@ -42,6 +48,9 @@ export function EmptyState({
           onPress={onAction}
           className="mt-sm"
         />
+      ) : null}
+      {secondaryActionLabel && onSecondaryAction ? (
+        <AppButton label={secondaryActionLabel} variant="outline" onPress={onSecondaryAction} />
       ) : null}
     </View>
   );

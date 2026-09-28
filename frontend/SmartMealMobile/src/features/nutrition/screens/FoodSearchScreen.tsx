@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Barcode, Search } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { EmptyState, ErrorState, LoadingState, ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppCard, AppChip, AppIconButton, AppInput, AppText } from '@/components/ui';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
@@ -107,15 +107,19 @@ export function FoodSearchScreen({ navigation, route }: Props) {
           </AppCard>
         )}
 
-        <View className="items-center gap-xxs pt-sm">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Tạo món thủ công"
+          onPress={() => navigation.navigate(MAIN_STACK_ROUTES.CREATE_FOOD, { mealType })}
+          className="min-h-[44px] items-center gap-xxs pt-sm"
+        >
           <AppText variant="body" color="secondary">
             Không tìm thấy món?
           </AppText>
-          {/* TODO: chưa có artboard "Tạo món thủ công" — để đợt sau. */}
-          <AppText variant="bodyMedium" color="onPrimarySoft" className="opacity-40">
+          <AppText variant="bodyMedium" color="onPrimarySoft">
             Tạo món thủ công
           </AppText>
-        </View>
+        </Pressable>
       </ScrollView>
     </ScreenContainer>
   );

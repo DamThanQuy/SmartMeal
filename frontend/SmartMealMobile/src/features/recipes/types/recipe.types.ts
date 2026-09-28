@@ -14,6 +14,11 @@ export type RecipeTag =
 export interface RecipeIngredient {
   name: string;
   amount: string;
+  /** Id trong ALLERGY_OPTIONS (features/health) — gắn đúng nguyên liệu gây dị ứng, dùng cho
+   * RecipeDetailScreen bản cảnh báo (design/RecipeAllergy.dc.html, BR-101/102/162). */
+  allergenId?: string;
+  /** true khi chưa rõ đủ thành phần (BR-291) — không được ghi "an toàn" cho nguyên liệu này. */
+  unknownComposition?: boolean;
 }
 
 export interface RecipeStep {
@@ -60,8 +65,11 @@ export interface RecipeFilters {
   calorie?: CalorieFilter;
 }
 
+// design/CollectionDetail.dc.html, CreateCollection.dc.html (BR-150→152 — business_rule.md
+// chưa có đúng số BR này, dựng theo docs/design.md + artboard). recipeIds là nguồn DUY NHẤT xác
+// định thành viên bộ sưu tập — không lưu recipeCount tách rời (dễ lệch khi thêm/bớt món).
 export interface RecipeCollection {
   id: string;
   name: string;
-  recipeCount: number;
+  recipeIds: string[];
 }

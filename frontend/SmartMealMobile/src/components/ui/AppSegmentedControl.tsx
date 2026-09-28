@@ -26,7 +26,7 @@ export function AppSegmentedControl<T extends string>({
   className = '',
 }: AppSegmentedControlProps<T>) {
   return (
-    <View className={`flex-row gap-xxs rounded-md bg-primary-soft p-xxs ${className}`}>
+    <View className={`flex-row gap-xxs rounded-lg bg-primary-soft p-xxs ${className}`}>
       {options.map(option => {
         const selected = option.id === value;
         return (
@@ -37,7 +37,7 @@ export function AppSegmentedControl<T extends string>({
             accessibilityState={{ selected }}
             onPress={() => onChange(option.id)}
             style={selected ? shadows.card : undefined}
-            className={`h-[40px] flex-1 items-center justify-center rounded-sm ${
+            className={`h-[40px] flex-1 items-center justify-center rounded-md ${
               selected ? 'bg-surface' : 'bg-transparent'
             }`}
           >

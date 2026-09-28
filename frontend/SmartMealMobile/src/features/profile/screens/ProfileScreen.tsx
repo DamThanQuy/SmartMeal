@@ -16,6 +16,7 @@ import { Pressable, View } from 'react-native';
 import { ScreenContainer } from '@/components/common';
 import { AppBadge, AppCard, AppText } from '@/components/ui';
 import { ALLERGY_OPTIONS, DIETARY_PREFERENCE_OPTIONS } from '@/features/health';
+import { MEMBERSHIP_BADGE_LABEL } from '@/features/premium';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useAuthStore } from '@/state/auth/authStore';
@@ -24,16 +25,9 @@ import { useUserProfileStore } from '@/state/user/userProfileStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { ProfileMenuRow } from '../components/ProfileMenuRow';
 
-const MEMBERSHIP_BADGE_LABEL: Record<'free' | 'premium' | 'expired' | 'cancelled', string> = {
-  free: 'Gói Free',
-  premium: 'Gói Pro',
-  expired: 'Đã hết hạn',
-  cancelled: 'Đã hủy',
-};
-
-// design/Profile.dc.html (BR-001→BR-003). Là MAIN_TAB_ROUTES.PROFILE — Screen thật thay cho
-// ThemePreviewScreen tạm dùng ở Đợt 0-6 (xem MainTabNavigator). ThemePreviewScreen chuyển vào
-// icon "Cài đặt" (MAIN_STACK_ROUTES.DEV).
+// design/Profile.dc.html (BR-001→BR-003). Là MAIN_TAB_ROUTES.PROFILE. Icon "Cài đặt" mở
+// SettingsScreen (Đợt 9, design v2) — ThemePreviewScreen (MAIN_STACK_ROUTES.DEV) nay nằm trong
+// mục Dev của Settings, không còn mở trực tiếp từ đây.
 export function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { colors } = useTheme();
@@ -69,7 +63,7 @@ export function ProfileScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Cài đặt"
-          onPress={() => navigation.navigate(MAIN_STACK_ROUTES.DEV)}
+          onPress={() => navigation.navigate(MAIN_STACK_ROUTES.SETTINGS)}
           className="h-[44px] w-[44px] items-center justify-center rounded-md bg-surface"
         >
           <Settings size={22} color={colors.textPrimary} />

@@ -26,19 +26,33 @@ type Phase = 'recording' | 'processing' | 'reviewing';
 
 const WAVEFORM_HEIGHTS = [10, 18, 28, 16, 34, 22, 12, 26, 36, 20, 14, 24, 10];
 
+function resolvePortionIdFor(result: VoiceLogResult): string | null {
+  return (
+    result.portionQuestion?.options.find(
+      option =>
+        option.grams === result.items.find(item => item.id === result.portionQuestion?.itemId)?.grams,
+    )?.id ?? null
+  );
+}
+
 // design/VoiceLog.dc.html (BR-070). Ghi âm thật (expo-av) chưa nối ở Đợt 2 — nút mic chỉ mô
 // phỏng "dừng ghi âm" rồi gọi thẳng aiService.transcribeVoice() (CLAUDE.md mục 8).
+//
+// `route.params.initialResult` — đến từ VoicePermissionScreen "Hoặc gõ bữa ăn của bạn" (BR-252):
+// bỏ qua bước ghi âm/mic, vào thẳng phase 'reviewing' với kết quả aiService đã trả sẵn.
 export function VoiceLogScreen({ navigation, route }: Props) {
-  const { mealType } = route.params;
+  const { mealType, initialResult } = route.params;
   const { colors } = useTheme();
   const { consumeQuota } = useAiQuota();
   const transcribeVoice = useTranscribeVoice();
   const addMealLogEntries = useAddMealLogEntries(todayIso());
 
-  const [phase, setPhase] = useState<Phase>('recording');
-  const [voiceResult, setVoiceResult] = useState<VoiceLogResult | null>(null);
-  const [items, setItems] = useState<AIRecognizedItem[]>([]);
-  const [selectedPortionId, setSelectedPortionId] = useState<string | null>(null);
+  const [phase, setPhase] = useState<Phase>(initialResult ? 'reviewing' : 'recording');
+  const [voiceResult, setVoiceResult] = useState<VoiceLogResult | null>(initialResult ?? null);
+  const [items, setItems] = useState<AIRecognizedItem[]>(initialResult?.items ?? []);
+  const [selectedPortionId, setSelectedPortionId] = useState<string | null>(
+    initialResult ? resolvePortionIdFor(initialResult) : null,
+  );
 
   const startTranscribe = () => {
     setPhase('processing');
@@ -47,11 +61,7 @@ export function VoiceLogScreen({ navigation, route }: Props) {
         consumeQuota();
         setVoiceResult(result);
         setItems(result.items);
-        setSelectedPortionId(
-          result.portionQuestion?.options.find(
-            option => option.grams === result.items.find(item => item.id === result.portionQuestion?.itemId)?.grams,
-          )?.id ?? null,
-        );
+        setSelectedPortionId(resolvePortionIdFor(result));
         setPhase('reviewing');
       },
       onError: error => {

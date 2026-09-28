@@ -1,35 +1,26 @@
 import { nutritionService, todayIso } from '@/features/nutrition';
 import { getMockDelayMs, wait } from '@/config/mock';
 import { getCurrentMockScenario } from '@/state/app/appStore';
+import { registerUserDataReset } from '@/state/resetUserData';
+import { CUP_ML, waterService } from './waterService';
+import {
+  awardXpOnce,
+  computeLevel,
+  getStreakDays,
+  getWeekCompletion,
+  resetXpLedger,
+  XP_PER_LEVEL,
+} from './xpLedger';
 import type { PetState, PetTaskItem } from '../types/gamification.types';
 
-// TODO: replace mock with real API — xpTotal/streak là in-memory store mô phỏng Backend
-// (CLAUDE.md mục 8). "Ghi bữa sáng"/"Đạt mục tiêu protein" đọc thật từ nutritionService.getDiaryDay
-// (Đợt 3) để XP phản ánh hành động thật trong Diary; "Uống đủ nước" chưa có tính năng ghi nước
-// thật trong app nên giữ tiến độ mock tĩnh (CẦN xác nhận khi có Water Log).
+// BR-200→BR-212 — business_rule.md hiện chưa có đúng số BR này (chỉ có BR-230+ Premium); dựng
+// theo docs/design.md mục 36/37 (Gamification/Challenge) + design/Pet.dc.html. BR-202 ("không
+// cộng trùng XP cho cùng 1 sự kiện") áp dụng qua awardXpOnce (xpLedger.ts, dùng chung với
+// WaterLog/Challenges từ Đợt 12).
 
-export const XP_PER_LEVEL = 500;
 const BREAKFAST_XP = 10;
 const PROTEIN_XP = 20;
-
-// Seed khớp design/Pet.dc.html: Level 5, 400/500 XP → tổng XP từng nhận = (5-1)*500+400 = 2400.
-let xpTotal = 2400;
-let streakDays = 5;
-const weekCompletion = [true, true, true, true, true, false, false];
-
-// BR-202 — không cộng trùng XP cho cùng 1 sự kiện: mỗi eventId (gắn theo ngày) chỉ được cộng
-// XP đúng 1 lần, dù getPetState() được gọi lại nhiều lần trong ngày đó.
-const awardedEventIds = new Set<string>();
-
-function awardXpOnce(eventId: string, xp: number): void {
-  if (awardedEventIds.has(eventId)) return;
-  awardedEventIds.add(eventId);
-  xpTotal += xp;
-}
-
-function computeLevel(): { level: number; xpIntoLevel: number } {
-  return { level: Math.floor(xpTotal / XP_PER_LEVEL) + 1, xpIntoLevel: xpTotal % XP_PER_LEVEL };
-}
+export const WATER_XP = 10;
 
 export const gamificationService = {
   // design/Pet.dc.html — Pet card + Nhiệm vụ hôm nay + Challenge.
@@ -49,8 +40,15 @@ export const gamificationService = {
     const proteinTarget = diary.macroTargets.proteinG;
     const proteinDone = proteinTarget > 0 && proteinConsumed >= proteinTarget;
 
+    // Đợt 12 — "Uống đủ nước" đọc thật từ waterService (WaterLog.dc.html) thay vì mock tĩnh "5/8 ly".
+    const waterSummary = await waterService.getDaySummary(dateIso);
+    const cupsToday = Math.round(waterSummary.totalMl / CUP_ML);
+    const cupsTarget = Math.round(waterSummary.goalMl / CUP_ML);
+    const waterDone = waterSummary.totalMl >= waterSummary.goalMl;
+
     if (breakfastDone) awardXpOnce(`breakfast-${dateIso}`, BREAKFAST_XP);
     if (proteinDone) awardXpOnce(`protein-${dateIso}`, PROTEIN_XP);
+    if (waterDone) awardXpOnce(`water-${dateIso}`, WATER_XP);
 
     const tasks: PetTaskItem[] = [
       {
@@ -74,11 +72,11 @@ export const gamificationService = {
       {
         id: 'water',
         label: 'Uống đủ nước',
-        xpReward: 10,
-        progressCurrent: 5,
-        progressTarget: 8,
-        progressLabel: '5/8 ly',
-        completed: false,
+        xpReward: WATER_XP,
+        progressCurrent: cupsToday,
+        progressTarget: cupsTarget,
+        progressLabel: `${cupsToday}/${cupsTarget} ly`,
+        completed: waterDone,
       },
     ];
 
@@ -89,8 +87,8 @@ export const gamificationService = {
       level,
       xpIntoLevel,
       xpPerLevel: XP_PER_LEVEL,
-      streakDays,
-      weekCompletion: [...weekCompletion],
+      streakDays: getStreakDays(),
+      weekCompletion: getWeekCompletion(),
       tasks,
       challenge: { title: '7 ngày Eat Clean', dayCurrent: 4, dayTotal: 7, xpReward: 100 },
       message:
@@ -100,3 +98,7 @@ export const gamificationService = {
     };
   },
 };
+
+// BR-271 — DeleteDataScreen: tiến độ Bé Mầm (XP/streak/huy hiệu) về lại seed khởi tạo
+// (xem src/state/resetUserData.ts).
+registerUserDataReset('gamification', resetXpLedger);

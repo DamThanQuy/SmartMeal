@@ -1,6 +1,8 @@
 import { addDays, format, subDays } from 'date-fns';
+import { getIncludeActivityCalories } from '@/state/user/userProfileStore';
 import type { WeeklyProgressDay, WeeklyProgressSummary } from '../types/nutrition.types';
-import { CURRENT_USER_DAILY_TARGET } from './diary.mock';
+import { calculateCalorieBudget } from '../utils/nutritionMath';
+import { CURRENT_USER_DAILY_TARGET, TODAY_ACTIVITY_CALORIES_BURNED_MOCK } from './diary.mock';
 
 // design/ProgressChart.dc.html — 7 ngày gần nhất (Thứ 2 → hôm nay), 1 ngày vượt mục tiêu.
 const HISTORICAL_CALORIES = [1850, 2100, 1760, 1990, 2320, 1680];
@@ -35,8 +37,11 @@ export function createWeeklyProgressMock(
   todayCalories: number,
 ): WeeklyProgressSummary {
   const days = buildWeekDays(todayCalories, todayIso);
-  const calorieTarget =
-    CURRENT_USER_DAILY_TARGET.calorieTarget + CURRENT_USER_DAILY_TARGET.activityCalories;
+  const { budget: calorieTarget } = calculateCalorieBudget({
+    calorieTarget: CURRENT_USER_DAILY_TARGET.calorieTarget,
+    activityCaloriesBurned: TODAY_ACTIVITY_CALORIES_BURNED_MOCK,
+    includeActivityCalories: getIncludeActivityCalories(),
+  });
   const averageCalories = Math.round(
     days.reduce((sum, day) => sum + day.calories, 0) / days.length,
   );

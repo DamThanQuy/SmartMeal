@@ -1,5 +1,7 @@
 import { getMockDelayMs, wait } from '@/config/mock';
+import { CUP_ML } from '@/features/gamification';
 import { getCurrentMockScenario } from '@/state/app/appStore';
+import { getWaterGoalMl } from '@/state/user/userProfileStore';
 import type { MealType } from '@/types/meal.types';
 import { REMINDERS_SETTINGS_MOCK } from '../mocks/reminders.mock';
 import type { OtherReminderId, RemindersSettings } from '../types/profile.types';
@@ -20,7 +22,13 @@ export const remindersService = {
     if (scenario === 'error') {
       throw new Error('Không thể tải cài đặt nhắc nhở, vui lòng thử lại.');
     }
-    return { ...state, meals: state.meals.map(meal => ({ ...meal })), other: state.other.map(item => ({ ...item })) };
+    const cupsPerDay = Math.round(getWaterGoalMl() / CUP_ML);
+    return {
+      ...state,
+      meals: state.meals.map(meal => ({ ...meal })),
+      water: { ...state.water, summaryLabel: `Mỗi 2 giờ · 08:00–20:00 · ${cupsPerDay} ly/ngày` },
+      other: state.other.map(item => ({ ...item })),
+    };
   },
 
   async toggleMealReminder(mealType: MealType): Promise<void> {

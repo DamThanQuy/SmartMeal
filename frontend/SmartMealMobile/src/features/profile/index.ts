@@ -12,3 +12,6 @@ export * from './screens/WeightHistoryScreen';
 export * from './screens/HealthConnectScreen';
 export * from './screens/RemindersScreen';
 export * from './screens/NotificationsScreen';
+export * from './screens/SettingsScreen';
+export * from './screens/EditProfileScreen';
+export * from './screens/DeleteDataScreen';

@@ -1,4 +1,4 @@
-import { ChevronRight, Sparkles } from 'lucide-react-native';
+import { ChevronRight, Clock, Sparkles } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { AppBadge, AppText } from '@/components/ui';
@@ -8,11 +8,14 @@ import type { MealLogEntry } from '../types/nutrition.types';
 export interface DiaryFoodRowProps {
   entry: MealLogEntry;
   onPress: () => void;
+  /** true khi món này còn trong hàng đợi offline (StateOffline.dc.html, BR-261). */
+  pendingSync?: boolean;
   className?: string;
 }
 
-// design/Diary.dc.html — row món trong 1 bữa, tap để sửa (EditMealLog, BR-053).
-export function DiaryFoodRow({ entry, onPress, className = '' }: DiaryFoodRowProps) {
+// design/Diary.dc.html + StateOffline.dc.html — row món trong 1 bữa, tap để sửa (EditMealLog,
+// BR-053). Badge "Chờ đồng bộ" hiện khi món vừa ghi lúc đang mô phỏng offline.
+export function DiaryFoodRow({ entry, onPress, pendingSync = false, className = '' }: DiaryFoodRowProps) {
   const { colors } = useTheme();
 
   return (
@@ -30,6 +33,9 @@ export function DiaryFoodRow({ entry, onPress, className = '' }: DiaryFoodRowPro
           </AppText>
           {entry.aiConfirmed ? (
             <AppBadge label="AI · đã xác nhận" icon={<Sparkles size={12} color={colors.onPrimarySoft} />} />
+          ) : null}
+          {pendingSync ? (
+            <AppBadge label="Chờ đồng bộ" tone="info" icon={<Clock size={12} color={colors.infoText} />} />
           ) : null}
         </View>
       </View>

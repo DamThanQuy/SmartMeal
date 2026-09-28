@@ -44,6 +44,14 @@ export function useAutoFillWeek(weekStartIso: string) {
   });
 }
 
+export function useRegenerateWeek(weekStartIso: string) {
+  const invalidate = useInvalidateWeekPlan(weekStartIso);
+  return useMutation({
+    mutationFn: () => mealPlannerService.regenerateWeek(weekStartIso),
+    onSuccess: invalidate,
+  });
+}
+
 export function useSlotSuggestions(enabled: boolean) {
   return useQuery({
     queryKey: ['meal-plan', 'slot-suggestions'],

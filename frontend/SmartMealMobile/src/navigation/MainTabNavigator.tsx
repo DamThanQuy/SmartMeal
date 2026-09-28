@@ -1,15 +1,16 @@
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createBottomTabNavigator, type BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CalendarDays, Compass, Home, NotebookText, User } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React from 'react';
 import { DashboardScreen } from '@/features/dashboard';
-import { GroceryScreen } from '@/features/grocery';
-import { currentWeekStartIso, MealPlannerScreen } from '@/features/meal-planner';
 import { DiaryScreen } from '@/features/nutrition';
 import { ProfileScreen } from '@/features/profile';
 import { DiscoveryScreen } from '@/features/recipes';
-import { MAIN_TAB_ROUTES } from '@/constants/routes';
+import { MAIN_STACK_ROUTES, MAIN_TAB_ROUTES } from '@/constants/routes';
+import { useAuthStore } from '@/state/auth/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
-import type { MainTabParamList } from './types';
+import { PlannerStackNavigator } from './PlannerStackNavigator';
+import type { MainStackParamList, MainTabParamList } from './types';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -40,35 +41,30 @@ function ProfileTabIcon({ color, size }: TabIconProps) {
   return <User color={color} size={size} />;
 }
 
-// Đợt 6 — Thực đơn/Đi chợ là 1 tab với toggle cục bộ (AppSegmentedControl trong mỗi Screen),
-// không phải 2 bottom tab riêng hay 1 Stack lồng — cả 2 màn đều cần giữ bottom nav hiển thị
-// (đúng design/MealPlanner.dc.html, Grocery.dc.html) nên dùng state cục bộ thay vì Stack.Screen
-// con (Stack con sẽ che navigator Tab bên ngoài). weekStartIso lift lên đây để cả 2 màn dùng
-// chung 1 tuần đang xem (BR-170: Grocery phải tổng hợp đúng thực đơn tuần MealPlanner đang mở).
-function PlannerTab() {
-  const [view, setView] = useState<'planner' | 'grocery'>('planner');
-  const [weekStartIso, setWeekStartIso] = useState(currentWeekStartIso());
-
-  if (view === 'grocery') {
-    return (
-      <GroceryScreen weekStartIso={weekStartIso} onOpenMealPlanner={() => setView('planner')} />
-    );
-  }
-
-  return (
-    <MealPlannerScreen
-      weekStartIso={weekStartIso}
-      onChangeWeek={setWeekStartIso}
-      onOpenGrocery={() => setView('grocery')}
-    />
-  );
+// Đợt 9 (design v2, BR §2.1) — Guest chỉ được xem Discovery/RecipeDetail, các tab còn lại (đọc
+// dữ liệu cá nhân: Dashboard/Diary/Planner/Profile) mở GuestPromptScreen thay vì chuyển tab.
+// getParent() vì GuestPrompt là route ở MainStackParamList (sibling của MainTabs), không nằm
+// trong MainTabParamList — xem MainNavigator.tsx.
+function useGuestTabGuardListeners(isGuest: boolean) {
+  return ({ navigation }: { navigation: BottomTabNavigationProp<MainTabParamList> }) => ({
+    tabPress: (e: { preventDefault: () => void }) => {
+      if (!isGuest) return;
+      e.preventDefault();
+      navigation
+        .getParent<NativeStackNavigationProp<MainStackParamList>>()
+        ?.navigate(MAIN_STACK_ROUTES.GUEST_PROMPT);
+    },
+  });
 }
 
 export function MainTabNavigator() {
   const { colors } = useTheme();
+  const isGuest = useAuthStore(state => state.isGuest);
+  const guestGuardListeners = useGuestTabGuardListeners(isGuest);
 
   return (
     <Tab.Navigator
+      initialRouteName={isGuest ? MAIN_TAB_ROUTES.DISCOVER : MAIN_TAB_ROUTES.HOME}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
@@ -86,6 +82,7 @@ export function MainTabNavigator() {
           title: 'Trang chủ',
           tabBarIcon: HomeTabIcon,
         }}
+        listeners={guestGuardListeners}
       />
       <Tab.Screen
         name={MAIN_TAB_ROUTES.DISCOVER}
@@ -102,14 +99,16 @@ export function MainTabNavigator() {
           title: 'Nhật ký',
           tabBarIcon: DiaryTabIcon,
         }}
+        listeners={guestGuardListeners}
       />
       <Tab.Screen
         name={MAIN_TAB_ROUTES.PLANNER}
-        component={PlannerTab}
+        component={PlannerStackNavigator}
         options={{
           title: 'Thực đơn',
           tabBarIcon: PlannerTabIcon,
         }}
+        listeners={guestGuardListeners}
       />
       <Tab.Screen
         name={MAIN_TAB_ROUTES.PROFILE}
@@ -118,6 +117,7 @@ export function MainTabNavigator() {
           title: 'Cá nhân',
           tabBarIcon: ProfileTabIcon,
         }}
+        listeners={guestGuardListeners}
       />
     </Tab.Navigator>
   );

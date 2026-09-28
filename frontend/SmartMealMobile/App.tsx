@@ -14,7 +14,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppNavigator } from '@/navigation/AppNavigator';
 import { getNavigationTheme } from '@/navigation/navigationTheme';
-import { hydrateMockScenario } from '@/state/app/appStore';
+import { hydrateLanguage, hydrateMockScenario } from '@/state/app/appStore';
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
 
 // Giữ splash screen native hiển thị cho tới khi ThemeProvider đọc xong theme mode đã lưu
@@ -42,6 +42,7 @@ function App() {
   // như theme mode (xem ThemeProvider.onReady bên dưới).
   useEffect(() => {
     void hydrateMockScenario();
+    void hydrateLanguage();
   }, []);
 
   return (

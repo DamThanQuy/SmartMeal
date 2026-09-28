@@ -140,6 +140,7 @@ export function FoodDetailScreen({ navigation, route }: Props) {
                 icon={<ShieldCheck size={14} color={colors.onPrimarySoft} />}
               />
             ) : null}
+            {food.isUserCreated ? <AppBadge label="Do bạn nhập" tone="neutral" /> : null}
           </View>
         </View>
 

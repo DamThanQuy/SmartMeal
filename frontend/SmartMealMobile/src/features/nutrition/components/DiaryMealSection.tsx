@@ -13,11 +13,19 @@ export interface DiaryMealSectionProps {
   entries: MealLogEntry[];
   onAdd: () => void;
   onEditEntry: (logId: string) => void;
+  /** Id các MealLogEntry còn "Chờ đồng bộ" (StateOffline.dc.html, BR-261). */
+  pendingSyncIds?: Set<string>;
 }
 
 // design/Diary.dc.html — 1 card / bữa ăn, có Empty state riêng (design.md mục 20) khi chưa
 // ghi món nào cho bữa đó.
-export function DiaryMealSection({ mealType, entries, onAdd, onEditEntry }: DiaryMealSectionProps) {
+export function DiaryMealSection({
+  mealType,
+  entries,
+  onAdd,
+  onEditEntry,
+  pendingSyncIds,
+}: DiaryMealSectionProps) {
   const { colors } = useTheme();
   const mealTitle = MEAL_TYPE_TITLES[mealType];
 
@@ -55,7 +63,12 @@ export function DiaryMealSection({ mealType, entries, onAdd, onEditEntry }: Diar
         />
       </View>
       {entries.map(entry => (
-        <DiaryFoodRow key={entry.id} entry={entry} onPress={() => onEditEntry(entry.id)} />
+        <DiaryFoodRow
+          key={entry.id}
+          entry={entry}
+          onPress={() => onEditEntry(entry.id)}
+          pendingSync={pendingSyncIds?.has(entry.id)}
+        />
       ))}
     </AppCard>
   );

@@ -75,13 +75,13 @@ export function ProductNotFoundScreen({ navigation, route }: Props) {
             icon={<FileText size={24} color={colors.primary} />}
             title="Quét nhãn dinh dưỡng"
             description="Đọc bảng Nutrition Facts bằng camera"
-            onPress={() => navigation.replace(MAIN_STACK_ROUTES.OCR_REVIEW, { mealType })}
+            onPress={() => navigation.replace(MAIN_STACK_ROUTES.OCR_CAMERA, { mealType })}
           />
           <ActionRow
             icon={<Search size={24} color={colors.primary} />}
             title="Nhập thủ công"
             description="Tự nhập calo và macro từ bao bì"
-            onPress={() => navigation.replace(MAIN_STACK_ROUTES.FOOD_SEARCH, { mealType })}
+            onPress={() => navigation.replace(MAIN_STACK_ROUTES.CREATE_FOOD, { mealType })}
           />
         </View>
 

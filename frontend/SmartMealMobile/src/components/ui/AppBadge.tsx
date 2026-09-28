@@ -2,7 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import { AppText } from './AppText';
 
-export type AppBadgeTone = 'primary' | 'info' | 'warning' | 'neutral';
+export type AppBadgeTone = 'primary' | 'info' | 'warning' | 'error' | 'neutral';
 
 export interface AppBadgeProps {
   label: string;
@@ -19,6 +19,7 @@ const TONE_CLASSNAME: Record<AppBadgeTone, { container: string; text: string }> 
   primary: { container: 'bg-primary-soft', text: 'text-on-primary-soft' },
   info: { container: 'bg-info-soft', text: 'text-info-text' },
   warning: { container: 'bg-warning-soft', text: 'text-warning-text' },
+  error: { container: 'bg-error-soft', text: 'text-error-text' },
   neutral: { container: 'bg-surface-subtle', text: 'text-text-secondary' },
 };
 

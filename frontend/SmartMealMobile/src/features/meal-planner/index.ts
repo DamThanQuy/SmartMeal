@@ -6,3 +6,5 @@ export * from './components/MealSlotSection';
 export * from './components/SlotOptionRow';
 export * from './screens/MealPlannerScreen';
 export * from './screens/SlotPickerScreen';
+export * from './screens/AddToMealPlanScreen';
+export * from './screens/PlannerRegenerateScreen';

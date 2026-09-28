@@ -57,9 +57,9 @@ export const RECIPE_DATABASE_MOCK: Recipe[] = [
     tags: ['vegetarian', 'vegan'],
     allergenIds: ['soy'],
     ingredients: [
-      { name: 'Đậu hũ', amount: '300 g' },
+      { name: 'Đậu hũ', amount: '300 g', allergenId: 'soy' },
       { name: 'Cà chua', amount: '3 quả' },
-      { name: 'Hành lá, tỏi', amount: 'Vừa đủ' },
+      { name: 'Hành lá, tỏi', amount: 'Vừa đủ', unknownComposition: true },
     ],
     steps: [
       { order: 1, instruction: 'Chiên sơ đậu hũ cho vàng mặt.' },
@@ -97,7 +97,7 @@ export const RECIPE_DATABASE_MOCK: Recipe[] = [
     tags: ['quick'],
     allergenIds: ['egg'],
     ingredients: [
-      { name: 'Trứng', amount: '3 quả' },
+      { name: 'Trứng', amount: '3 quả', allergenId: 'egg' },
       { name: 'Cà chua', amount: '2 quả' },
     ],
     steps: [
@@ -115,7 +115,7 @@ export const RECIPE_DATABASE_MOCK: Recipe[] = [
     tags: ['quick'],
     allergenIds: ['egg'],
     ingredients: [
-      { name: 'Trứng luộc', amount: '2 quả' },
+      { name: 'Trứng luộc', amount: '2 quả', allergenId: 'egg' },
       { name: 'Xà lách', amount: '1 cây' },
       { name: 'Cà chua', amount: '1 quả' },
     ],
@@ -135,7 +135,7 @@ export const RECIPE_DATABASE_MOCK: Recipe[] = [
     allergenIds: ['dairy'],
     ingredients: [
       { name: 'Bí đỏ', amount: '400 g' },
-      { name: 'Kem tươi', amount: '100 ml' },
+      { name: 'Kem tươi', amount: '100 ml', allergenId: 'dairy' },
       { name: 'Hành tây', amount: '1 củ' },
     ],
     steps: [
@@ -159,8 +159,8 @@ export const RECIPE_DATABASE_MOCK: Recipe[] = [
     ingredients: [
       { name: 'Yến mạch', amount: '50 g' },
       { name: 'Chuối', amount: '1 quả' },
-      { name: 'Sữa tươi', amount: '200 ml' },
-      { name: 'Mật ong', amount: '1 thìa canh' },
+      { name: 'Sữa tươi', amount: '200 ml', allergenId: 'dairy' },
+      { name: 'Mật ong', amount: '1 thìa canh', unknownComposition: true },
     ],
     steps: [
       { order: 1, instruction: 'Nấu yến mạch với sữa tươi trên lửa nhỏ khoảng 5 phút.' },

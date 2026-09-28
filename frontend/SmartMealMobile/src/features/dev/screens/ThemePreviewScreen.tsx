@@ -1,3 +1,5 @@
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import {
@@ -14,10 +16,15 @@ import {
   AppChip,
   AppIconButton,
   AppInput,
+  AppSwitch,
   AppText,
 } from '@/components/ui';
 import { MOCK_SCENARIOS, type MockScenario } from '@/config/mock';
+import { MAIN_STACK_ROUTES } from '@/constants/routes';
+import { useOfflineSyncStore } from '@/features/nutrition';
+import type { MainStackParamList } from '@/navigation/types';
 import { useAppStore } from '@/state/app/appStore';
+import { usePremiumStore } from '@/state/premium/premiumStore';
 import { useTheme, type ThemeMode } from '@/theme/ThemeProvider';
 
 const MODE_OPTIONS: Array<{ label: string; value: ThemeMode }> = [
@@ -40,9 +47,16 @@ const MEAL_CHIPS = ['Sáng', 'Trưa', 'Tối'];
  * Không thuộc luồng người dùng thật — chỉ dùng nội bộ khi phát triển.
  */
 export function ThemePreviewScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { mode, resolvedScheme, setMode } = useTheme();
   const mockScenario = useAppStore(state => state.mockScenario);
   const setMockScenario = useAppStore(state => state.setMockScenario);
+  const isOffline = useAppStore(state => state.isOfflineDevOverride);
+  const setOfflineDevOverride = useAppStore(state => state.setOfflineDevOverride);
+  const clearOfflineQueue = useOfflineSyncStore(state => state.clear);
+  const premiumStatus = usePremiumStore(state => state.status);
+  const activatePremium = usePremiumStore(state => state.activatePremium);
+  const resetToFree = usePremiumStore(state => state.resetToFree);
   const [inputValue, setInputValue] = useState('');
   const [selectedChip, setSelectedChip] = useState(MEAL_CHIPS[0]);
   const [sheetVisible, setSheetVisible] = useState(false);
@@ -81,6 +95,63 @@ export function ThemePreviewScreen() {
               onPress={() => setMockScenario(scenario)}
             />
           ))}
+        </View>
+      </View>
+
+      <View className="gap-sm">
+        <SectionHeader title="StateSession (Đợt 9)" />
+        <AppText variant="caption" color="muted">
+          Chưa có API thật trả phiên hết hạn/tài khoản khóa — mô phỏng qua 2 nút demo này.
+        </AppText>
+        <AppButton
+          label="Xem: Phiên hết hạn"
+          variant="outline"
+          onPress={() =>
+            navigation.navigate(MAIN_STACK_ROUTES.STATE_SESSION, { variant: 'expired' })
+          }
+        />
+        <AppButton
+          label="Xem: Tài khoản bị khóa"
+          variant="outline"
+          onPress={() =>
+            navigation.navigate(MAIN_STACK_ROUTES.STATE_SESSION, { variant: 'locked' })
+          }
+        />
+      </View>
+
+      <View className="gap-sm">
+        <SectionHeader title="Free/Pro (Đợt 11)" />
+        <AppText variant="caption" color="muted">
+          Demo gate Premium (Fridge Scanner, Gợi ý thực đơn AI — BR-230/231) không cần đi hết luồng
+          thanh toán.
+        </AppText>
+        <View className="flex-row gap-sm">
+          <AppChip label="Free" selected={premiumStatus !== 'premium'} onPress={() => resetToFree()} />
+          <AppChip
+            label="Pro"
+            selected={premiumStatus === 'premium'}
+            onPress={() => activatePremium('monthly', '2099-12-31')}
+          />
+        </View>
+      </View>
+
+      <View className="gap-sm">
+        <SectionHeader title="Offline (Đợt 11)" />
+        <AppText variant="caption" color="muted">
+          Mô phỏng StateOffline.dc.html ở Diary — không dùng NetInfo thật (BR-261/262).
+        </AppText>
+        <View className="flex-row items-center gap-sm">
+          <AppSwitch
+            accessibilityLabel="Mô phỏng offline"
+            checked={isOffline}
+            onChange={value => {
+              setOfflineDevOverride(value);
+              if (!value) clearOfflineQueue();
+            }}
+          />
+          <AppText variant="body" color="secondary">
+            {isOffline ? 'Đang offline (mô phỏng)' : 'Đang online'}
+          </AppText>
         </View>
       </View>
 

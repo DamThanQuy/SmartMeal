@@ -24,10 +24,32 @@ export function createAiSnapResultMock(): AIAnalysisResult {
       {
         id: 'ai-snap-canh-cai',
         name: 'Canh cải',
-        servingLabel: '1 bát',
+        servingLabel: '1 bát · chưa xác nhận',
         grams: 200,
         nutrition: { calories: 45, proteinG: 3, carbsG: 7, fatG: 1, sugarG: 2, sodiumMg: 380, fiberG: 2 },
         isUncertain: true,
+        // design/AISnapUncertain.dc.html — nutritionPerGram suy từ ước tính 200g ở trên
+        // (45/200=0.225 kcal/g...) để không lệch số khi user xác nhận đúng khẩu phần "Vừa".
+        uncertainResolution: {
+          candidates: [
+            { id: 'canh-cai', name: 'Canh cải', confidencePercent: 55 },
+            { id: 'canh-rau-muong', name: 'Canh rau muống', confidencePercent: 30 },
+            { id: 'canh-rau-ngot', name: 'Canh rau ngót', confidencePercent: 15 },
+          ],
+          portionOptions: [
+            { id: 'small', label: 'Nhỏ', grams: 150 },
+            { id: 'medium', label: 'Vừa', grams: 200 },
+            { id: 'large', label: 'Lớn', grams: 280 },
+          ],
+          nutritionPerGram: {
+            calories: 0.225,
+            proteinG: 0.015,
+            carbsG: 0.035,
+            fatG: 0.005,
+            sugarG: 0.01,
+            sodiumMg: 1.9,
+          },
+        },
       },
     ],
   };

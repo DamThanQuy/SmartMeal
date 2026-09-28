@@ -4,7 +4,8 @@ import React from 'react';
 import { Pressable, SectionList, View } from 'react-native';
 import { EmptyState, ErrorState, LoadingState, ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppText } from '@/components/ui';
-import { MAIN_STACK_ROUTES, MAIN_TAB_ROUTES } from '@/constants/routes';
+import { currentWeekStartIso } from '@/features/meal-planner';
+import { MAIN_STACK_ROUTES, MAIN_TAB_ROUTES, PLANNER_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useMarkAllNotificationsRead, useNotifications } from '../hooks/useNotifications';
@@ -28,8 +29,8 @@ export function NotificationsScreen({ navigation }: Props) {
   const { data, isLoading, isError, error, refetch } = useNotifications();
   const markAllRead = useMarkAllNotificationsRead();
 
-  // "grocery" chưa có route riêng — Grocery chỉ là toggle cục bộ trong tab Planner (xem
-  // src/navigation/MainTabNavigator.tsx) nên tạm trỏ về tab Thực đơn (gần đúng, cách 1 lần chạm).
+  // Đợt 11 (sửa lệch) — "grocery" nay trỏ thẳng route Grocery (nested Stack của tab Thực đơn,
+  // xem PlannerStackNavigator.tsx), trước chỉ trỏ tạm về tab Thực đơn vì Grocery chưa có route riêng.
   const handlePress = (item: NotificationItem) => {
     if (item.icon === 'quickLog') {
       navigation.navigate(MAIN_STACK_ROUTES.QUICK_LOG, {});
@@ -38,7 +39,13 @@ export function NotificationsScreen({ navigation }: Props) {
     } else if (item.icon === 'pet' || item.icon === 'challenge') {
       navigation.navigate(MAIN_STACK_ROUTES.PET);
     } else if (item.icon === 'grocery') {
-      navigation.navigate(MAIN_STACK_ROUTES.MAIN_TABS, { screen: MAIN_TAB_ROUTES.PLANNER });
+      navigation.navigate(MAIN_STACK_ROUTES.MAIN_TABS, {
+        screen: MAIN_TAB_ROUTES.PLANNER,
+        params: {
+          screen: PLANNER_STACK_ROUTES.GROCERY,
+          params: { weekStartIso: currentWeekStartIso() },
+        },
+      });
     }
   };
 

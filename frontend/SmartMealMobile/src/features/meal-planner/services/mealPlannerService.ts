@@ -8,6 +8,7 @@ import {
 } from '@/features/recipes';
 import { getMockDelayMs, wait } from '@/config/mock';
 import { getCurrentMockScenario } from '@/state/app/appStore';
+import { registerUserDataReset } from '@/state/resetUserData';
 import { MEAL_TYPES, type MealType } from '@/types/meal.types';
 import { WEEK_PLAN_TEMPLATE } from '../mocks/mealPlan.mock';
 import type {
@@ -93,6 +94,33 @@ function reasonLabelForRecipe(recipe: Recipe): string {
   return tagLabel ?? 'Phù hợp mục tiêu hôm nay';
 }
 
+// Dùng chung cho autoFillWeek (overwrite=false, "Giữ các bữa tôi đã chọn") và regenerateWeek
+// (overwrite=true, "Tạo lại toàn bộ tuần") — chỉ khác đúng 1 điều kiện, tránh 2 bản logic lọc dị
+// ứng lệch nhau (BR-101/102).
+async function fillWeek(weekStartIso: string, options: { overwrite: boolean }): Promise<WeekPlan> {
+  const scenario = getCurrentMockScenario();
+  await wait(getMockDelayMs(scenario));
+  if (scenario === 'error') {
+    throw new Error('Không thể gợi ý thực đơn, vui lòng thử lại.');
+  }
+
+  const { allowed } = filterOutUserAllergens(RECIPE_DATABASE_MOCK);
+  const days = getOrSeedWeek(weekStartIso);
+  let cursor = 0;
+  for (let offset = 0; offset < 7; offset += 1) {
+    const dateIso = dateAtOffset(weekStartIso, offset);
+    const dayPlan = days[dateIso] ?? emptyDayPlan();
+    (['breakfast', 'lunch', 'dinner'] as MealType[]).forEach(mealType => {
+      if ((dayPlan[mealType] && !options.overwrite) || allowed.length === 0) return;
+      const recipe = allowed[cursor % allowed.length];
+      cursor += 1;
+      dayPlan[mealType] = recipeToSlot(recipe);
+    });
+    days[dateIso] = dayPlan;
+  }
+  return buildWeekPlan(weekStartIso, days);
+}
+
 export const mealPlannerService = {
   // BR-160 — kế hoạch 7 ngày (Thứ 2 → CN), mỗi ngày 4 bữa (BR-051).
   async getWeekPlan(weekStartIso: string): Promise<WeekPlan> {
@@ -137,30 +165,18 @@ export const mealPlannerService = {
     return slot;
   },
 
-  // "Gợi ý thực đơn tuần bằng AI" (design/MealPlanner.dc.html) — chỉ điền các slot Sáng/Trưa/Tối
-  // còn trống, luôn qua lọc dị ứng bắt buộc (BR-101/102) trước khi gợi ý, không đụng slot đã chọn.
+  // "Gợi ý thực đơn tuần bằng AI" (design/MealPlanner.dc.html, PlannerRegenerate.dc.html) — chỉ
+  // điền các slot Sáng/Trưa/Tối còn trống, luôn qua lọc dị ứng bắt buộc (BR-101/102) trước khi
+  // gợi ý, KHÔNG đụng slot đã chọn (BR-163, lựa chọn "Giữ các bữa tôi đã chọn").
   async autoFillWeek(weekStartIso: string): Promise<WeekPlan> {
-    const scenario = getCurrentMockScenario();
-    await wait(getMockDelayMs(scenario));
-    if (scenario === 'error') {
-      throw new Error('Không thể gợi ý thực đơn, vui lòng thử lại.');
-    }
+    return fillWeek(weekStartIso, { overwrite: false });
+  },
 
-    const { allowed } = filterOutUserAllergens(RECIPE_DATABASE_MOCK);
-    const days = getOrSeedWeek(weekStartIso);
-    let cursor = 0;
-    for (let offset = 0; offset < 7; offset += 1) {
-      const dateIso = dateAtOffset(weekStartIso, offset);
-      const dayPlan = days[dateIso] ?? emptyDayPlan();
-      (['breakfast', 'lunch', 'dinner'] as MealType[]).forEach(mealType => {
-        if (dayPlan[mealType] || allowed.length === 0) return;
-        const recipe = allowed[cursor % allowed.length];
-        cursor += 1;
-        dayPlan[mealType] = recipeToSlot(recipe);
-      });
-      days[dateIso] = dayPlan;
-    }
-    return buildWeekPlan(weekStartIso, days);
+  // PlannerRegenerate.dc.html "Tạo lại toàn bộ tuần" — ghi đè cả những bữa user đã sửa tay, vẫn
+  // qua lọc dị ứng bắt buộc như autoFillWeek. Chỉ chạy khi user CHỦ ĐỘNG chọn lựa chọn này (BR-163
+  // — không bao giờ âm thầm ghi đè).
+  async regenerateWeek(weekStartIso: string): Promise<WeekPlan> {
+    return fillWeek(weekStartIso, { overwrite: true });
   },
 
   // design/SlotPicker.dc.html tab "Gợi ý" — luôn qua lọc dị ứng bắt buộc (BR-101/102) trước
@@ -189,3 +205,7 @@ export const mealPlannerService = {
     return { options, excludedAllergenIds };
   },
 };
+
+// BR-271 — DeleteDataScreen: xóa thực đơn đã lên (tuần hiện tại sẽ được seed lại từ
+// WEEK_PLAN_TEMPLATE ở lần đọc kế tiếp — xem getOrSeedWeek, src/state/resetUserData.ts).
+registerUserDataReset('mealPlan', () => planByWeek.clear());

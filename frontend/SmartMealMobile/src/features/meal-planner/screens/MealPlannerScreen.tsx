@@ -1,19 +1,19 @@
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { format } from 'date-fns';
-import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { ErrorState, LoadingState, ScreenContainer } from '@/components/common';
-import { AppButton, AppCard, AppSegmentedControl, AppText } from '@/components/ui';
+import { AppBadge, AppButton, AppCard, AppSegmentedControl, AppText } from '@/components/ui';
 import { todayIso } from '@/features/nutrition';
-import { MAIN_STACK_ROUTES } from '@/constants/routes';
-import type { MainStackParamList } from '@/navigation/types';
+import { MAIN_STACK_ROUTES, PLANNER_STACK_ROUTES } from '@/constants/routes';
+import type { MainStackParamList, PlannerStackParamList } from '@/navigation/types';
+import { usePremiumStore } from '@/state/premium/premiumStore';
 import { MEAL_TYPE_TITLES, MEAL_TYPES, type MealType } from '@/types/meal.types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { MealSlotSection } from '../components/MealSlotSection';
-import { useAutoFillWeek, useWeekPlan } from '../hooks/useMealPlanner';
-import { shiftWeek } from '../services/mealPlannerService';
+import { useWeekPlan } from '../hooks/useMealPlanner';
+import { currentWeekStartIso, shiftWeek } from '../services/mealPlannerService';
 
 const WEEKDAY_SHORT_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 const WEEKDAY_FULL_LABELS = [
@@ -26,36 +26,38 @@ const WEEKDAY_FULL_LABELS = [
   'Chủ nhật',
 ];
 
-export interface MealPlannerScreenProps {
-  weekStartIso: string;
-  onChangeWeek: (weekStartIso: string) => void;
-  onOpenGrocery: () => void;
-}
+type Props = NativeStackScreenProps<PlannerStackParamList, 'MealPlanner'>;
 
-// design/MealPlanner.dc.html (BR-160). Là tab con của MAIN_TAB_ROUTES.PLANNER (toggle cục bộ
-// với GroceryScreen qua AppSegmentedControl — xem MainTabNavigator), không phải Stack.Screen
-// riêng nên không có route/navigation props chuẩn — chỉ cần điều hướng sang màn ngoài tab
-// (SlotPicker, RecipeDetail) qua useNavigation<MainStackParamList> giống DashboardScreen.
-export function MealPlannerScreen({
-  weekStartIso,
-  onChangeWeek,
-  onOpenGrocery,
-}: MealPlannerScreenProps) {
-  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+// design/MealPlanner.dc.html (BR-160). Đợt 11 (sửa lệch) — nay là Stack.Screen thật trong
+// PlannerStackNavigator (trước là toggle cục bộ với GroceryScreen qua AppSegmentedControl,
+// xem MainTabNavigator.tsx); weekStartIso đọc từ route.params, điều hướng sang Grocery (cùng
+// Stack) và SlotPicker/RecipeDetail/Premium (MainStackParamList ngoài) qua getParent().
+export function MealPlannerScreen({ navigation, route }: Props) {
+  const outerNavigation = navigation.getParent<NativeStackNavigationProp<MainStackParamList>>();
   const { colors } = useTheme();
+  const weekStartIso = route.params?.weekStartIso ?? currentWeekStartIso();
   const [selectedDateIso, setSelectedDateIso] = useState(todayIso());
   const { data, isLoading, isError, error, refetch } = useWeekPlan(weekStartIso);
-  const autoFillWeek = useAutoFillWeek(weekStartIso);
+  const isPremium = usePremiumStore(state => state.status === 'premium');
 
   const handleShiftWeek = (direction: 1 | -1) => {
     const nextWeek = shiftWeek(weekStartIso, direction);
-    onChangeWeek(nextWeek);
+    navigation.setParams({ weekStartIso: nextWeek });
     setSelectedDateIso(nextWeek);
   };
 
   const openSlotPicker = (dateIso: string, mealType: MealType) => {
-    navigation.navigate(MAIN_STACK_ROUTES.SLOT_PICKER, { weekStartIso, dateIso, mealType });
+    outerNavigation?.navigate(MAIN_STACK_ROUTES.SLOT_PICKER, { weekStartIso, dateIso, mealType });
   };
+
+  const openGrocery = () => navigation.navigate(PLANNER_STACK_ROUTES.GROCERY, { weekStartIso });
+
+  // BR-230/231 — "Gợi ý thực đơn tuần bằng AI" là tính năng Pro; Free bấm vào mở Premium thay
+  // vì chạy gợi ý. Chọn món thủ công qua SlotPicker vẫn miễn phí (không gate ở trên).
+  const openPlannerRegenerate = () =>
+    isPremium
+      ? outerNavigation?.navigate(MAIN_STACK_ROUTES.PLANNER_REGENERATE, { weekStartIso })
+      : outerNavigation?.navigate(MAIN_STACK_ROUTES.PREMIUM);
 
   if (isLoading) {
     return (
@@ -93,7 +95,7 @@ export function MealPlannerScreen({
           ]}
           value="planner"
           onChange={value => {
-            if (value === 'grocery') onOpenGrocery();
+            if (value === 'grocery') openGrocery();
           }}
         />
       </View>
@@ -176,13 +178,23 @@ export function MealPlannerScreen({
       ))}
 
       <View className="gap-md">
-        <AppButton
-          label="Gợi ý thực đơn tuần bằng AI"
-          variant="secondary"
-          loading={autoFillWeek.isPending}
-          onPress={() => autoFillWeek.mutate()}
-        />
-        <AppButton label="Tạo danh sách đi chợ" onPress={onOpenGrocery} />
+        <View className="gap-xxs">
+          <AppButton
+            label="Gợi ý thực đơn tuần bằng AI"
+            variant="secondary"
+            onPress={openPlannerRegenerate}
+          />
+          {!isPremium ? (
+            <View className="flex-row justify-center">
+              <AppBadge
+                label="Cần Pro"
+                tone="warning"
+                icon={<Sparkles size={12} color={colors.warningText} />}
+              />
+            </View>
+          ) : null}
+        </View>
+        <AppButton label="Tạo danh sách đi chợ" onPress={openGrocery} />
       </View>
     </ScreenContainer>
   );

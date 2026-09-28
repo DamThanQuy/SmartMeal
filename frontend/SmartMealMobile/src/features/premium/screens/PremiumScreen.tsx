@@ -3,22 +3,21 @@ import { Check, Minus, Sparkles } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { ScreenContainer, ScreenHeader } from '@/components/common';
-import { AppButton, AppCard, AppChip, AppText } from '@/components/ui';
+import { AppButton, AppCard, AppText } from '@/components/ui';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import type { BillingPlanId } from '@/state/premium/premiumStore';
 import { useTheme } from '@/theme/ThemeProvider';
-import { BILLING_PLAN_OPTIONS, FEATURE_COMPARISON_MOCK, PAYMENT_METHOD_OPTIONS } from '../mocks/premium.mock';
-import type { PaymentMethodId } from '../types/premium.types';
+import { BILLING_PLAN_OPTIONS, FEATURE_COMPARISON_MOCK } from '../mocks/premium.mock';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'Premium'>;
 
 // design/Premium.dc.html (docs/design.md mục 38, BR-230→BR-233, BR-241/242). "Nâng cấp Pro"
-// chỉ điều hướng sang PaymentPending — KHÔNG kích hoạt Premium ngay (BR-241/242).
+// chỉ điều hướng sang PaymentMethod (Đợt 13, tách khỏi màn này) rồi PaymentPending — KHÔNG kích
+// hoạt Premium ngay (BR-241/242).
 export function PremiumScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const [planId, setPlanId] = useState<BillingPlanId>('yearly');
-  const [paymentMethodId, setPaymentMethodId] = useState<PaymentMethodId>('vnpay');
 
   return (
     <ScreenContainer>
@@ -106,27 +105,12 @@ export function PremiumScreen({ navigation }: Props) {
           })}
         </View>
 
-        <View className="gap-sm">
-          <AppText variant="bodyMedium">Phương thức thanh toán</AppText>
-          <View className="flex-row gap-xs">
-            {PAYMENT_METHOD_OPTIONS.map(method => (
-              <AppChip
-                key={method.id}
-                label={method.label}
-                selected={method.id === paymentMethodId}
-                onPress={() => setPaymentMethodId(method.id)}
-              />
-            ))}
-          </View>
-        </View>
       </ScrollView>
 
       <View className="gap-sm py-md">
         <AppButton
           label="Nâng cấp Pro"
-          onPress={() =>
-            navigation.navigate(MAIN_STACK_ROUTES.PAYMENT_PENDING, { planId, paymentMethodId })
-          }
+          onPress={() => navigation.navigate(MAIN_STACK_ROUTES.PAYMENT_METHOD, { planId })}
         />
         <AppText variant="caption" color="secondary" className="text-center">
           Pro chỉ kích hoạt sau khi giao dịch được xác nhận. Khi gói hết hạn, dữ liệu của bạn vẫn

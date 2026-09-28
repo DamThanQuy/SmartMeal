@@ -29,6 +29,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 export function LoginScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const login = useAuthStore(state => state.login);
+  const continueAsGuest = useAuthStore(state => state.continueAsGuest);
   const loginMutation = useLogin();
   const {
     control,
@@ -146,12 +147,13 @@ export function LoginScreen({ navigation }: Props) {
             </AppText>
           </Pressable>
         </View>
-        {/* TODO: điều hướng Discovery (guest access) khi Đợt 5 — recipes — hoàn thành. */}
+        {/* isGuest=true → AppNavigator render Main, MainTabNavigator tự chọn tab Khám phá
+            (Đợt 9 — design v2 Welcome/Main.dc.html, BR §2.1). */}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Khám phá công thức không cần đăng nhập"
-          className="min-h-[44px] flex-row items-center gap-xs opacity-60"
-          disabled
+          className="min-h-[44px] flex-row items-center gap-xs"
+          onPress={() => continueAsGuest()}
         >
           <AppText variant="bodyMedium" color="onPrimarySoft">
             Khám phá công thức không cần đăng nhập

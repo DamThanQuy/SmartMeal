@@ -33,6 +33,16 @@ export interface FoodItem {
   nutritionPerServing: NutritionInfo;
   /** Id trong ALLERGY_OPTIONS (features/health/types) — dùng cảnh báo dị ứng BR-101/102. */
   allergenIds?: string[];
+  /** true khi món do chính user nhập tay (CreateFoodScreen, BR-121) — hiển thị nhãn "Do bạn
+   * nhập", không tính là dữ liệu đã xác minh (verified luôn false với món này). */
+  isUserCreated?: boolean;
+}
+
+export interface NewFoodInput {
+  name: string;
+  amount: number;
+  unit: 'g' | 'ml' | 'phần';
+  nutrition: NutritionInfo;
 }
 
 export interface MealLogEntry {

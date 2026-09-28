@@ -9,6 +9,8 @@ import { AppChip, AppIconButton, AppInput, AppText } from '@/components/ui';
 import { ALLERGY_OPTIONS } from '@/features/health';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList, MainTabParamList } from '@/navigation/types';
+import { useAuthStore } from '@/state/auth/authStore';
+import { usePremiumStore } from '@/state/premium/premiumStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { RecipeCard } from '../components/RecipeCard';
 import { useRecommendedRecipes } from '../hooks/useRecipes';
@@ -24,8 +26,24 @@ export function DiscoveryScreen({ route }: Props) {
   const { colors } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTag, setActiveTag] = useState<RecipeTag | undefined>(route.params?.filters?.tag);
+  const isGuest = useAuthStore(state => state.isGuest);
+  const isPremium = usePremiumStore(state => state.status === 'premium');
   const favoriteIds = useFavoritesStore(state => state.favoriteIds);
   const toggleFavorite = useFavoritesStore(state => state.toggleFavorite);
+
+  // BR-080, BR-230/231 — Fridge Scanner chỉ Pro; Free bấm vào mở màn Premium thay vì camera.
+  const openFridgeScanner = () =>
+    isPremium
+      ? navigation.navigate(MAIN_STACK_ROUTES.FRIDGE_CAMERA)
+      : navigation.navigate(MAIN_STACK_ROUTES.PREMIUM);
+
+  // BR §2.1 — Guest chỉ xem, "yêu thích"/"đã lưu" cần tài khoản → mở GuestPromptScreen (Đợt 9).
+  const openFavorites = () =>
+    isGuest
+      ? navigation.navigate(MAIN_STACK_ROUTES.GUEST_PROMPT)
+      : navigation.navigate(MAIN_STACK_ROUTES.FAVORITES);
+  const handleToggleFavorite = (recipeId: string) =>
+    isGuest ? navigation.navigate(MAIN_STACK_ROUTES.GUEST_PROMPT) : toggleFavorite(recipeId);
 
   // FilterSheet quay lại đây qua route.params.filters (Discover là tab, không remount) — đồng
   // bộ activeTag ngay trong render (React khuyến nghị cách này thay vì effect — xem
@@ -68,7 +86,7 @@ export function DiscoveryScreen({ route }: Props) {
             variant="elevated"
             shape="square"
             icon={<Bookmark size={22} color={colors.textPrimary} />}
-            onPress={() => navigation.navigate(MAIN_STACK_ROUTES.FAVORITES)}
+            onPress={openFavorites}
           />
         </View>
         <AppInput
@@ -107,7 +125,7 @@ export function DiscoveryScreen({ route }: Props) {
           accessibilityLabel="Tủ lạnh có gì?"
           icon={<Refrigerator size={26} color={colors.onPrimary} />}
           className="bg-primary"
-          onPress={() => navigation.navigate(MAIN_STACK_ROUTES.FRIDGE)}
+          onPress={openFridgeScanner}
         />
         <View className="flex-1 gap-xxs">
           <AppText variant="bodyMedium">Tủ lạnh có gì?</AppText>
@@ -125,7 +143,7 @@ export function DiscoveryScreen({ route }: Props) {
           description={`${error.message}\nCác công thức đã xem gần đây vẫn mở được khi offline.`}
           onRetry={refetch}
           secondaryActionLabel="Xem công thức đã lưu"
-          onSecondaryAction={() => navigation.navigate(MAIN_STACK_ROUTES.FAVORITES)}
+          onSecondaryAction={openFavorites}
         />
       ) : (
         <View className="gap-sm">
@@ -147,7 +165,7 @@ export function DiscoveryScreen({ route }: Props) {
                   <RecipeCard
                     recipe={recipe}
                     isFavorite={favoriteIds.includes(recipe.id)}
-                    onToggleFavorite={() => toggleFavorite(recipe.id)}
+                    onToggleFavorite={() => handleToggleFavorite(recipe.id)}
                     onPress={() =>
                       navigation.navigate(MAIN_STACK_ROUTES.RECIPE_DETAIL, { recipeId: recipe.id })
                     }

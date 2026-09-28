@@ -1,9 +1,10 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Check, Flame, PawPrint, Trophy } from 'lucide-react-native';
+import { Check, ChevronRight, Flame, PawPrint, Trophy } from 'lucide-react-native';
 import React from 'react';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { ErrorState, LoadingState, ScreenContainer, ScreenHeader } from '@/components/common';
-import { AppBadge, AppCard, AppText } from '@/components/ui';
+import { AppBadge, AppCard, AppIconButton, AppText } from '@/components/ui';
+import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { usePetState } from '../hooks/usePetState';
@@ -13,7 +14,7 @@ type Props = NativeStackScreenProps<MainStackParamList, 'Pet'>;
 const WEEKDAY_SHORT_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
 // design/Pet.dc.html (docs/design.md mục 36/37 — Gamification/Challenge, "hỗ trợ health habit,
-// không làm app giống game quá mức").
+// không làm app giống game quá mức"). Design v2: thêm icon "Thử thách và huy hiệu" → Challenges.
 export function PetScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const { data: pet, isLoading, isError, error, refetch } = usePetState();
@@ -42,7 +43,19 @@ export function PetScreen({ navigation }: Props) {
 
   return (
     <ScreenContainer>
-      <ScreenHeader title={pet.name} onBack={() => navigation.goBack()} />
+      <ScreenHeader
+        title={pet.name}
+        onBack={() => navigation.goBack()}
+        rightContent={
+          <AppIconButton
+            accessibilityLabel="Thử thách và huy hiệu"
+            variant="elevated"
+            shape="square"
+            icon={<Trophy size={22} color={colors.textPrimary} />}
+            onPress={() => navigation.navigate(MAIN_STACK_ROUTES.CHALLENGES)}
+          />
+        }
+      />
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
@@ -115,10 +128,10 @@ export function PetScreen({ navigation }: Props) {
               100,
               Math.round((task.progressCurrent / task.progressTarget) * 100),
             );
-            return (
-              <View key={task.id} className="flex-row items-center gap-sm border-t border-border py-xs">
+            const rowContent = (
+              <>
                 <View
-                  className={`h-[40px] w-[40px] items-center justify-center rounded-md ${
+                  className={`h-[40px] w-[40px] items-center justify-center rounded-full ${
                     task.completed ? 'bg-primary' : 'bg-primary-soft'
                   }`}
                 >
@@ -144,6 +157,26 @@ export function PetScreen({ navigation }: Props) {
                 <AppText variant="caption" color="success" className="min-w-[44px] text-right">
                   {`+${task.xpReward} XP`}
                 </AppText>
+              </>
+            );
+            // "Uống đủ nước" mở WaterLogScreen (Đợt 12) — điểm vào chính của tính năng ghi nước.
+            if (task.id === 'water') {
+              return (
+                <Pressable
+                  key={task.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${task.label} · ${task.progressLabel}`}
+                  onPress={() => navigation.navigate(MAIN_STACK_ROUTES.WATER_LOG)}
+                  className="min-h-[44px] flex-row items-center gap-sm border-t border-border py-xs"
+                >
+                  {rowContent}
+                  <ChevronRight size={18} color={colors.textSecondary} />
+                </Pressable>
+              );
+            }
+            return (
+              <View key={task.id} className="flex-row items-center gap-sm border-t border-border py-xs">
+                {rowContent}
               </View>
             );
           })}

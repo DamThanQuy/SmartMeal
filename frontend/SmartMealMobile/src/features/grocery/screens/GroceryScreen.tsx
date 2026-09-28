@@ -1,29 +1,34 @@
+import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { addDays, format } from 'date-fns';
 import { ShoppingBasket } from 'lucide-react-native';
 import React from 'react';
 import { ScrollView, View } from 'react-native';
 import { EmptyState, ErrorState, LoadingState, ScreenContainer } from '@/components/common';
 import { AppButton, AppCard, AppSegmentedControl, AppText } from '@/components/ui';
+import { currentWeekStartIso } from '@/features/meal-planner';
+import { MAIN_STACK_ROUTES, PLANNER_STACK_ROUTES } from '@/constants/routes';
+import type { MainStackParamList, PlannerStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { GroceryItemRow } from '../components/GroceryItemRow';
-import { useGroceryList, useMarkAllGroceryPurchased, useToggleGroceryItem } from '../hooks/useGrocery';
+import { useGroceryList, useToggleGroceryItem } from '../hooks/useGrocery';
 
-export interface GroceryScreenProps {
-  weekStartIso: string;
-  onOpenMealPlanner: () => void;
-}
+type Props = NativeStackScreenProps<PlannerStackParamList, 'Grocery'>;
 
 function formatVnd(value: number): string {
   return `${value.toLocaleString('vi-VN')}đ`;
 }
 
-// design/Grocery.dc.html (BR-170→BR-174). Là tab con của MAIN_TAB_ROUTES.PLANNER (toggle cục bộ
-// với MealPlannerScreen qua AppSegmentedControl — xem MainTabNavigator).
-export function GroceryScreen({ weekStartIso, onOpenMealPlanner }: GroceryScreenProps) {
+// design/Grocery.dc.html + GroceryEmpty.dc.html (BR-170→BR-174). Đợt 11 (sửa lệch) — nay là
+// Stack.Screen thật trong PlannerStackNavigator (trước là toggle cục bộ, xem MainTabNavigator.tsx).
+export function GroceryScreen({ navigation, route }: Props) {
+  const outerNavigation = navigation.getParent<NativeStackNavigationProp<MainStackParamList>>();
   const { colors } = useTheme();
+  const weekStartIso = route.params?.weekStartIso ?? currentWeekStartIso();
   const { data, isLoading, isError, error, refetch } = useGroceryList(weekStartIso);
   const toggleItem = useToggleGroceryItem(weekStartIso);
-  const markAllPurchased = useMarkAllGroceryPurchased(weekStartIso);
+
+  const openMealPlanner = () =>
+    navigation.navigate(PLANNER_STACK_ROUTES.MEAL_PLANNER, { weekStartIso });
 
   const header = (
     <View className="gap-md py-xs">
@@ -35,7 +40,7 @@ export function GroceryScreen({ weekStartIso, onOpenMealPlanner }: GroceryScreen
         ]}
         value="grocery"
         onChange={value => {
-          if (value === 'planner') onOpenMealPlanner();
+          if (value === 'planner') openMealPlanner();
         }}
       />
     </View>
@@ -94,9 +99,13 @@ export function GroceryScreen({ weekStartIso, onOpenMealPlanner }: GroceryScreen
           <EmptyState
             icon={<ShoppingBasket size={40} color={colors.textMuted} />}
             title="Chưa có danh sách đi chợ"
-            description="Lên thực đơn cho tuần này để tự động tạo danh sách nguyên liệu."
-            actionLabel="Lên thực đơn"
-            onAction={onOpenMealPlanner}
+            description="Lên thực đơn tuần trước, SmartMeal sẽ tự cộng dồn nguyên liệu, nhóm theo quầy và ước tính chi phí."
+            actionLabel="Đi tới Thực đơn"
+            onAction={openMealPlanner}
+            secondaryActionLabel="Thêm nguyên liệu thủ công"
+            onSecondaryAction={() =>
+              outerNavigation?.navigate(MAIN_STACK_ROUTES.GROCERY_ADD, { weekStartIso })
+            }
           />
         ) : (
           data.groups.map(group => (
@@ -124,8 +133,9 @@ export function GroceryScreen({ weekStartIso, onOpenMealPlanner }: GroceryScreen
           </View>
           <AppButton
             label="Hoàn tất mua sắm"
-            loading={markAllPurchased.isPending}
-            onPress={() => markAllPurchased.mutate()}
+            onPress={() =>
+              outerNavigation?.navigate(MAIN_STACK_ROUTES.GROCERY_DONE, { weekStartIso })
+            }
             className="flex-1"
           />
         </View>

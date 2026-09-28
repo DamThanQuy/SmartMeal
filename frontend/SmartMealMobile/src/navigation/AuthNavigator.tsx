@@ -6,7 +6,9 @@ import {
   LoginScreen,
   OtpScreen,
   RegisterScreen,
+  WelcomeScreen,
 } from '@/features/auth';
+import { useAuthStore } from '@/state/auth/authStore';
 import {
   HealthProfileActivityScreen,
   HealthProfileAllergyScreen,
@@ -23,9 +25,21 @@ const Stack = createNativeStackNavigator<AuthStackParamList>();
 
 // Toàn bộ header dùng ScreenHeader tự dựng trong từng Screen (đúng design), nên tắt header
 // mặc định của React Navigation ở mọi route.
+//
+// initialRouteName phụ thuộc authStore.lastExitReason (Đợt 9 sửa lệch — trước luôn là Welcome):
+// StateSession "Đăng nhập lại" (expired/locked) → Login thẳng, không qua Welcome (đúng artboard
+// StateSession.dc.html). Đăng xuất chủ động/thoát Guest (logout/guest) và mọi trường hợp khác vẫn
+// → Welcome — xem StateSessionScreen.tsx/GuestPromptScreen.tsx/DeleteDataScreen.tsx.
 export function AuthNavigator() {
+  const lastExitReason = useAuthStore(state => state.lastExitReason);
+  const initialRouteName =
+    lastExitReason === 'expired' || lastExitReason === 'locked'
+      ? AUTH_ROUTES.LOGIN
+      : AUTH_ROUTES.WELCOME;
+
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator initialRouteName={initialRouteName} screenOptions={{ headerShown: false }}>
+      <Stack.Screen name={AUTH_ROUTES.WELCOME} component={WelcomeScreen} />
       <Stack.Screen name={AUTH_ROUTES.LOGIN} component={LoginScreen} />
       <Stack.Screen name={AUTH_ROUTES.REGISTER} component={RegisterScreen} />
       <Stack.Screen name={AUTH_ROUTES.OTP} component={OtpScreen} />

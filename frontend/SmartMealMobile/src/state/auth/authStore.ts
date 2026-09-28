@@ -6,8 +6,18 @@ export interface AuthUser {
   email: string;
 }
 
+/**
+ * Lý do rời khỏi MainNavigator lần gần nhất — AuthNavigator dùng để chọn initialRouteName
+ * (Login khi expired/locked, Welcome với các trường hợp còn lại — xem AuthNavigator.tsx,
+ * StateSessionScreen.tsx).
+ */
+export type AuthExitReason = 'logout' | 'expired' | 'locked' | 'guest';
+
 export interface AuthState {
   isAuthenticated: boolean;
+  /** BR §2.1 — Guest chỉ xem nội dung công khai/khám phá công thức, không có user thật.
+   * AppNavigator render Main khi isAuthenticated HOẶC isGuest (xem AppNavigator.tsx). */
+  isGuest: boolean;
   user: AuthUser | null;
   /**
    * Họ tên/email từ RegisterScreen, giữ tạm trong lúc user đi qua OTP + 7 bước Health Profile
@@ -15,9 +25,17 @@ export interface AuthState {
    * "Bắt đầu với SmartMeal".
    */
   pendingUser: { fullName: string; email: string } | null;
+  /** null khi chưa từng rời Main (ví dụ mở app lần đầu) — xem AuthExitReason. */
+  lastExitReason: AuthExitReason | null;
   setPendingUser: (user: { fullName: string; email: string }) => void;
   login: (user: AuthUser) => void;
-  logout: () => void;
+  /** Guest bấm "Khám phá công thức không cần đăng nhập" (Welcome/Main.dc.html — design v2). */
+  continueAsGuest: () => void;
+  /** reason mặc định 'logout' (Đăng xuất chủ động) — StateSessionScreen truyền 'expired'/'locked',
+   * GuestPromptScreen truyền 'guest' khi thoát Guest mode. */
+  logout: (reason?: AuthExitReason) => void;
+  /** EditProfileScreen (Đợt 9) — chỉ sửa field cho phép đổi (họ tên); email chỉ đọc (BR-011). */
+  updateUser: (patch: Partial<Pick<AuthUser, 'fullName'>>) => void;
 }
 
 // Global client state — trạng thái đăng nhập cần cho AppNavigator (Auth/Main switch) và
@@ -26,11 +44,27 @@ export interface AuthState {
 // Nhánh feat/mock-ui: KHÔNG lưu access/refresh token thật (đăng nhập không kiểm tra thật —
 // CLAUDE.md mục 8) nên chưa cần secureStorage ở đây. Khi nối API thật, login() sẽ nhận thêm
 // token và lưu qua src/services/storage/secureStorage.ts (Keychain), không lưu ở store này.
-export const useAuthStore = create<AuthState>()(set => ({
+export const useAuthStore = create<AuthState>()((set, get) => ({
   isAuthenticated: false,
+  isGuest: false,
   user: null,
   pendingUser: null,
+  lastExitReason: null,
   setPendingUser: user => set({ pendingUser: user }),
-  login: user => set({ isAuthenticated: true, user, pendingUser: null }),
-  logout: () => set({ isAuthenticated: false, user: null, pendingUser: null }),
+  login: user =>
+    set({ isAuthenticated: true, isGuest: false, user, pendingUser: null, lastExitReason: null }),
+  continueAsGuest: () => set({ isAuthenticated: false, isGuest: true, user: null }),
+  logout: (reason = 'logout') =>
+    set({
+      isAuthenticated: false,
+      isGuest: false,
+      user: null,
+      pendingUser: null,
+      lastExitReason: reason,
+    }),
+  updateUser: patch => {
+    const currentUser = get().user;
+    if (!currentUser) return;
+    set({ user: { ...currentUser, ...patch } });
+  },
 }));

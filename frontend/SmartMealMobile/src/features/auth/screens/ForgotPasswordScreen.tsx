@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { NavigationProp, ParamListBase } from '@react-navigation/native';
 import { Check, Mail } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -7,8 +7,8 @@ import { Pressable, View } from 'react-native';
 import { z } from 'zod';
 import { InlineBanner, ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppButton, AppInput, AppText } from '@/components/ui';
-import { AUTH_ROUTES } from '@/constants/routes';
-import type { AuthStackParamList } from '@/navigation/types';
+import { AUTH_ROUTES, MAIN_STACK_ROUTES } from '@/constants/routes';
+import type { ForgotPasswordReturnTo } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useForgotPassword } from '../hooks/useForgotPassword';
 
@@ -18,13 +18,22 @@ const forgotPasswordSchema = z.object({
 
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
-type Props = NativeStackScreenProps<AuthStackParamList, 'ForgotPassword'>;
+// Màn này được đăng ký ở cả AuthNavigator (AuthStackParamList) và MainNavigator
+// (MainStackParamList, SettingsScreen "Đổi mật khẩu" — sửa lệch sau Đợt 9) nên không gắn cứng
+// navigation prop vào 1 trong 2 ParamList — dùng NavigationProp<ParamListBase> (đủ cho .navigate/
+// .goBack, không phải `any`), route.params đọc qua interface riêng bên dưới.
+interface ForgotPasswordScreenProps {
+  navigation: NavigationProp<ParamListBase>;
+  route: { params?: { returnTo?: ForgotPasswordReturnTo } };
+}
 
 // design/ForgotPassword.dc.html. Không thuộc BR đã đánh số — vì mock đăng nhập không kiểm
-// tra mật khẩu thật (CLAUDE.md mục 8), sau khi xác thực OTP chỉ cần quay lại Login, không cần
-// màn "đặt mật khẩu mới" riêng (không có artboard cho bước đó).
-export function ForgotPasswordScreen({ navigation }: Props) {
+// tra mật khẩu thật (CLAUDE.md mục 8), sau khi xác thực OTP chỉ cần quay lại Login (hoặc Settings
+// nếu mở từ đó — xem route.params.returnTo), không cần màn "đặt mật khẩu mới" riêng (không có
+// artboard cho bước đó).
+export function ForgotPasswordScreen({ navigation, route }: ForgotPasswordScreenProps) {
   const { colors } = useTheme();
+  const returnTo = route.params?.returnTo ?? 'Login';
   const [justSent, setJustSent] = useState(false);
   const forgotPassword = useForgotPassword();
   const {
@@ -41,9 +50,10 @@ export function ForgotPasswordScreen({ navigation }: Props) {
       onSuccess: () => {
         setJustSent(true);
         setTimeout(() => {
-          navigation.navigate(AUTH_ROUTES.OTP, {
+          navigation.navigate(returnTo === 'Settings' ? MAIN_STACK_ROUTES.OTP : AUTH_ROUTES.OTP, {
             email: values.email,
             purpose: 'reset-password',
+            returnTo,
           });
         }, 700);
       },
@@ -103,12 +113,14 @@ export function ForgotPasswordScreen({ navigation }: Props) {
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Quay lại đăng nhập"
+          accessibilityLabel={returnTo === 'Settings' ? 'Quay lại Cài đặt' : 'Quay lại đăng nhập'}
           className="min-h-[44px] items-center justify-center"
-          onPress={() => navigation.navigate(AUTH_ROUTES.LOGIN)}
+          onPress={() =>
+            returnTo === 'Settings' ? navigation.goBack() : navigation.navigate(AUTH_ROUTES.LOGIN)
+          }
         >
           <AppText variant="bodyMedium" color="onPrimarySoft">
-            Quay lại đăng nhập
+            {returnTo === 'Settings' ? 'Quay lại Cài đặt' : 'Quay lại đăng nhập'}
           </AppText>
         </Pressable>
       </View>

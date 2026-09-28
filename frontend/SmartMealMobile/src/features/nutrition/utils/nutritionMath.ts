@@ -36,6 +36,37 @@ export function scaleNutritionByGrams(perGram: NutritionInfo, grams: number): Nu
   };
 }
 
+export interface CalorieBudgetInput {
+  calorieTarget: number;
+  /** Calo vận động hôm nay từ nguồn duy nhất đang dùng (Health Connect) — đã dedup nếu nhiều
+   * thiết bị cùng báo cáo trùng khung giờ (BR-042), xem CalorieBudgetScreen "Nguồn vận động". */
+  activityCaloriesBurned: number;
+  /** Công tắc "Cộng calo vận động vào ngân sách" (CalorieBudgetScreen) — tắt thì chỉ dùng mục
+   * tiêu cơ bản. */
+  includeActivityCalories: boolean;
+}
+
+export interface CalorieBudgetResult {
+  calorieTarget: number;
+  /** Calo vận động ĐÃ áp dụng vào ngân sách (0 nếu tắt công tắc) — đây là giá trị
+   * `DiaryDaySummary.activityCalories` dùng chung cho Dashboard/Diary/ProgressChart. */
+  activityCalories: number;
+  budget: number;
+}
+
+// BR-040→042 — Ngân sách calo = Mục tiêu + Calo vận động hợp lệ. Đây là hàm DUY NHẤT cộng calo
+// vận động vào ngân sách, dùng chung giữa CalorieBudgetScreen (features/dashboard) và
+// nutritionService (buildSummary → DiaryDaySummary.activityCalories, đọc bởi Dashboard/Diary/
+// ProgressChart) để không lệch công thức giữa các màn hình (.claude/rules/no-hardcode.md mục 5).
+export function calculateCalorieBudget({
+  calorieTarget,
+  activityCaloriesBurned,
+  includeActivityCalories,
+}: CalorieBudgetInput): CalorieBudgetResult {
+  const activityCalories = includeActivityCalories ? activityCaloriesBurned : 0;
+  return { calorieTarget, activityCalories, budget: calorieTarget + activityCalories };
+}
+
 export function sumNutrition(items: NutritionInfo[]): NutritionInfo {
   return items.reduce<NutritionInfo>(
     (total, item) => ({
