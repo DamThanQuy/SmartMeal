@@ -1,6 +1,6 @@
 import { Flame, PawPrint } from 'lucide-react-native';
 import React from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { AppBadge, AppText } from '@/components/ui';
 import { shadows } from '@/theme/shadows';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -8,16 +8,23 @@ import type { PetSnippet } from '../types/dashboard.types';
 
 export interface PetSnippetCardProps {
   pet: PetSnippet;
+  onPress?: () => void;
 }
 
-// design/Dashboard.dc.html "Bé Mầm" — trỏ tới Pet.dc.html (gamification, Đợt 8 mới dựng).
+// design/Dashboard.dc.html "Bé Mầm" — trỏ tới Pet.dc.html (features/gamification, Đợt 8).
 // Minh hoạ pet dùng icon placeholder thay vì vẽ lại SVG trong design (CLAUDE.md mục 10: ảnh
-// trong design là placeholder). TODO: nối điều hướng + illustration thật khi Đợt 8 xong.
-export function PetSnippetCard({ pet }: PetSnippetCardProps) {
+// trong design là placeholder).
+export function PetSnippetCard({ pet, onPress }: PetSnippetCardProps) {
   const { colors } = useTheme();
 
   return (
-    <View style={shadows.card} className="flex-row items-center gap-md rounded-card bg-surface p-md">
+    <Pressable
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress ? `${pet.name} · Level ${pet.level}` : undefined}
+      onPress={onPress}
+      style={shadows.card}
+      className="flex-row items-center gap-md rounded-card bg-surface p-md"
+    >
       <View className="h-[96px] w-[96px] items-center justify-center rounded-lg bg-primary-soft">
         <PawPrint size={40} color={colors.primary} />
       </View>
@@ -40,6 +47,6 @@ export function PetSnippetCard({ pet }: PetSnippetCardProps) {
           {pet.message}
         </AppText>
       </View>
-    </View>
+    </Pressable>
   );
 }

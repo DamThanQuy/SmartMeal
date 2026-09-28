@@ -7,6 +7,7 @@ import { AppButton, AppCard, AppText } from '@/components/ui';
 import { AUTH_ROUTES } from '@/constants/routes';
 import type { AuthStackParamList } from '@/navigation/types';
 import { useAuthStore } from '@/state/auth/authStore';
+import { useUserProfileStore } from '@/state/user/userProfileStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useHealthProfileForm } from '../hooks/useHealthProfileForm';
 import { GOAL_OPTIONS } from '../types/health.types';
@@ -22,10 +23,12 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'HealthResult'>;
 // không bỏ dở Health Profile — xem src/state/auth/authStore.ts).
 export function HealthResultScreen({ navigation }: Props) {
   const { colors } = useTheme();
+  const formData = useHealthProfileForm(state => state.data);
   const result = useHealthProfileForm(state => state.result);
   const resetForm = useHealthProfileForm(state => state.reset);
   const pendingUser = useAuthStore(state => state.pendingUser);
   const login = useAuthStore(state => state.login);
+  const initFromHealthProfile = useUserProfileStore(state => state.initFromHealthProfile);
 
   const goBackToGoalStep = () => navigation.navigate(AUTH_ROUTES.HEALTH_PROFILE_GOAL);
 
@@ -52,6 +55,9 @@ export function HealthResultScreen({ navigation }: Props) {
       fullName: pendingUser?.fullName ?? 'Người dùng SmartMeal',
       email: pendingUser?.email ?? 'user@smartmeal.dev',
     });
+    // Đợt 7 — hồ sơ sức khỏe vừa hoàn tất được đưa vào store dùng chung toàn app (dị ứng/bệnh
+    // lý/chế độ ăn/BMI...) trước khi reset state cục bộ của wizard 7 bước.
+    initFromHealthProfile(formData, result);
     resetForm();
   };
 

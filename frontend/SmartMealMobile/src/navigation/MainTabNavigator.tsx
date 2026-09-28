@@ -1,12 +1,13 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { CalendarDays, Compass, Home, NotebookText, User } from 'lucide-react-native';
-import React from 'react';
+import React, { useState } from 'react';
 import { DashboardScreen } from '@/features/dashboard';
+import { GroceryScreen } from '@/features/grocery';
+import { currentWeekStartIso, MealPlannerScreen } from '@/features/meal-planner';
 import { DiaryScreen } from '@/features/nutrition';
+import { ProfileScreen } from '@/features/profile';
 import { DiscoveryScreen } from '@/features/recipes';
-import { EmptyState, ScreenContainer } from '@/components/common';
 import { MAIN_TAB_ROUTES } from '@/constants/routes';
-import { ThemePreviewScreen } from '@/features/dev';
 import { useTheme } from '@/theme/ThemeProvider';
 import type { MainTabParamList } from './types';
 
@@ -39,32 +40,28 @@ function ProfileTabIcon({ color, size }: TabIconProps) {
   return <User color={color} size={size} />;
 }
 
-interface ComingSoonTabProps {
-  title: string;
-}
-
-// Placeholder cho các tab chưa được dựng UI (Đợt 6) — thay bằng Screen thật đúng feature
-// khi tới đợt tương ứng trong CLAUDE.md mục 10. Không tạo file Screen riêng trong feature vì
-// đây chỉ là khung điều hướng tạm, không phải artboard thật.
-function ComingSoonTab({ title }: ComingSoonTabProps) {
-  return (
-    <ScreenContainer>
-      <EmptyState
-        title={title}
-        description="Màn hình này sẽ được dựng UI ở đợt tiếp theo."
-      />
-    </ScreenContainer>
-  );
-}
-
+// Đợt 6 — Thực đơn/Đi chợ là 1 tab với toggle cục bộ (AppSegmentedControl trong mỗi Screen),
+// không phải 2 bottom tab riêng hay 1 Stack lồng — cả 2 màn đều cần giữ bottom nav hiển thị
+// (đúng design/MealPlanner.dc.html, Grocery.dc.html) nên dùng state cục bộ thay vì Stack.Screen
+// con (Stack con sẽ che navigator Tab bên ngoài). weekStartIso lift lên đây để cả 2 màn dùng
+// chung 1 tuần đang xem (BR-170: Grocery phải tổng hợp đúng thực đơn tuần MealPlanner đang mở).
 function PlannerTab() {
-  return <ComingSoonTab title="Thực đơn" />;
-}
+  const [view, setView] = useState<'planner' | 'grocery'>('planner');
+  const [weekStartIso, setWeekStartIso] = useState(currentWeekStartIso());
 
-// TODO: thay bằng ProfileScreen thật ở Đợt 7 (docs/ui-mock-prompts.md Phase 7) — tạm dùng
-// ThemePreviewScreen làm entry point để xem token/toggle theme trong lúc chưa có màn Cá nhân.
-function ProfileTab() {
-  return <ThemePreviewScreen />;
+  if (view === 'grocery') {
+    return (
+      <GroceryScreen weekStartIso={weekStartIso} onOpenMealPlanner={() => setView('planner')} />
+    );
+  }
+
+  return (
+    <MealPlannerScreen
+      weekStartIso={weekStartIso}
+      onChangeWeek={setWeekStartIso}
+      onOpenGrocery={() => setView('grocery')}
+    />
+  );
 }
 
 export function MainTabNavigator() {
@@ -116,7 +113,7 @@ export function MainTabNavigator() {
       />
       <Tab.Screen
         name={MAIN_TAB_ROUTES.PROFILE}
-        component={ProfileTab}
+        component={ProfileScreen}
         options={{
           title: 'Cá nhân',
           tabBarIcon: ProfileTabIcon,

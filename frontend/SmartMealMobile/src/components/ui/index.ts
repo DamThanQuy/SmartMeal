@@ -7,3 +7,5 @@ export * from './AppChip';
 export * from './AppCheckbox';
 export * from './AppBadge';
 export * from './AppBottomSheet';
+export * from './AppSegmentedControl';
+export * from './AppSwitch';

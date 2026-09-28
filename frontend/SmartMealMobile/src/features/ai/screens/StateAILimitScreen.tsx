@@ -47,8 +47,10 @@ export function StateAILimitScreen({ navigation, route }: Props) {
         </View>
 
         <View className="gap-sm">
-          {/* TODO: điều hướng sang Premium khi Đợt 8 dựng xong (docs/ui-mock-prompts.md Phase 8). */}
-          <AppButton label="Nâng cấp Pro" onPress={() => navigation.goBack()} />
+          <AppButton
+            label="Nâng cấp Pro"
+            onPress={() => navigation.navigate(MAIN_STACK_ROUTES.PREMIUM)}
+          />
           <AppButton
             label="Ghi thủ công"
             variant="outline"

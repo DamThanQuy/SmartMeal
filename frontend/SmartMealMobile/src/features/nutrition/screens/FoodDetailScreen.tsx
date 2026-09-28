@@ -9,9 +9,9 @@ import { MAIN_STACK_ROUTES, MAIN_TAB_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { MEAL_TYPE_OPTIONS, MEAL_TYPE_TITLES, type MealType } from '@/types/meal.types';
 import { useTheme } from '@/theme/ThemeProvider';
+import { useUserProfileStore } from '@/state/user/userProfileStore';
 import { useAddMealLogEntries } from '../hooks/useDiary';
 import { useFoodDetail } from '../hooks/useFoodSearch';
-import { CURRENT_USER_ALLERGY_IDS } from '../mocks/currentUserAllergies.mock';
 import { todayIso } from '../services/nutritionService';
 import { MacroStatGrid } from '../components/MacroStatGrid';
 import { nutritionPerGram, scaleNutritionByGrams } from '../utils/nutritionMath';
@@ -56,8 +56,9 @@ export function FoodDetailScreen({ navigation, route }: Props) {
       ? scaleNutritionByGrams(perGramBase, totalGrams)
       : { calories: 0, proteinG: 0, carbsG: 0, fatG: 0, sugarG: 0, sodiumMg: 0, fiberG: 0 };
 
+  const currentUserAllergyIds = useUserProfileStore(state => state.allergyIds);
   const matchedAllergenIds = (food?.allergenIds ?? []).filter(id =>
-    CURRENT_USER_ALLERGY_IDS.includes(id),
+    currentUserAllergyIds.includes(id),
   );
   const matchedAllergenLabels = matchedAllergenIds
     .map(id => ALLERGY_OPTIONS.find(option => option.id === id)?.label ?? id)

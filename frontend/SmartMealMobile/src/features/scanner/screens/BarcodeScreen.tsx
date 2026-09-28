@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { AppButton, AppCard, AppChip, AppIconButton, AppText } from '@/components/ui';
 import { ALLERGY_OPTIONS } from '@/features/health';
-import { CURRENT_USER_ALLERGY_IDS, todayIso, useAddMealLogEntries } from '@/features/nutrition';
+import { todayIso, useAddMealLogEntries } from '@/features/nutrition';
+import { useUserProfileStore } from '@/state/user/userProfileStore';
 import { MAIN_STACK_ROUTES, MAIN_TAB_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { MEAL_TYPE_TITLES } from '@/types/meal.types';
@@ -51,8 +52,9 @@ export function BarcodeScreen({ navigation, route }: Props) {
     });
   };
 
+  const currentUserAllergyIds = useUserProfileStore(state => state.allergyIds);
   const matchedAllergenIds = product
-    ? product.allergenIds.filter(id => CURRENT_USER_ALLERGY_IDS.includes(id))
+    ? product.allergenIds.filter(id => currentUserAllergyIds.includes(id))
     : [];
   const matchedAllergenLabels = matchedAllergenIds
     .map(id => ALLERGY_OPTIONS.find(option => option.id === id)?.label ?? id)

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { isPremiumActive } from '@/state/premium/premiumStore';
 
 // BR-233 — Free user bị giới hạn số lượt dùng AI/ngày. Quota chỉ dùng trong feature ai
 // (QuickLog/Dashboard chỉ đọc `remaining` qua features/ai/index.ts) nên đặt local theo
@@ -26,6 +27,7 @@ export function getAiQuotaRemaining(): number {
   return Math.max(DAILY_AI_QUOTA_LIMIT - useAiQuotaStore.getState().usedToday, 0);
 }
 
+// BR-233 — chỉ Free user mới bị chặn khi hết quota; Premium còn hạn thì luôn còn lượt.
 export function hasAiQuotaRemaining(): boolean {
-  return getAiQuotaRemaining() > 0;
+  return isPremiumActive() || getAiQuotaRemaining() > 0;
 }

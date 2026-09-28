@@ -143,4 +143,28 @@ export const RECIPE_DATABASE_MOCK: Recipe[] = [
       { order: 2, instruction: 'Xay nhuyễn cùng kem tươi, đun nhỏ lửa đến sánh mịn.' },
     ],
   },
+  {
+    // Đợt 6 (Meal Planner) — khớp đúng số liệu bữa sáng CN trong design/MealPlanner.dc.html
+    // (350 kcal · 10 phút). Có sữa tươi → allergenIds ['dairy'] để bộ lọc dị ứng dùng chung
+    // (recipeService.filterOutUserAllergens) loại đúng món này khỏi gợi ý AI khi user dị ứng
+    // sữa, dù vẫn hiển thị bình thường ở slot đã lên kế hoạch sẵn (không lọc lại dữ liệu đã chọn).
+    id: 'yen-mach-chuoi',
+    name: 'Yến mạch chuối',
+    durationMinutes: 10,
+    rating: 4.5,
+    servings: 1,
+    nutritionPerServing: { calories: 350, proteinG: 10, carbsG: 58, fatG: 9 },
+    tags: ['vegetarian', 'quick'],
+    allergenIds: ['dairy'],
+    ingredients: [
+      { name: 'Yến mạch', amount: '50 g' },
+      { name: 'Chuối', amount: '1 quả' },
+      { name: 'Sữa tươi', amount: '200 ml' },
+      { name: 'Mật ong', amount: '1 thìa canh' },
+    ],
+    steps: [
+      { order: 1, instruction: 'Nấu yến mạch với sữa tươi trên lửa nhỏ khoảng 5 phút.' },
+      { order: 2, instruction: 'Cắt chuối lát, trộn cùng yến mạch, rưới mật ong.' },
+    ],
+  },
 ];

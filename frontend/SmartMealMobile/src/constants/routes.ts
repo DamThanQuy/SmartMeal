@@ -54,4 +54,20 @@ export const MAIN_STACK_ROUTES = {
   FILTER_SHEET: 'FilterSheet',
   RECIPE_DETAIL: 'RecipeDetail',
   FAVORITES: 'Favorites',
+  // Đợt 6 — meal-planner + grocery.
+  SLOT_PICKER: 'SlotPicker',
+  // Đợt 7 — profile.
+  HEALTH_SETTINGS: 'HealthSettings',
+  WEIGHT_HISTORY: 'WeightHistory',
+  HEALTH_CONNECT: 'HealthConnect',
+  REMINDERS: 'Reminders',
+  NOTIFICATIONS: 'Notifications',
+  /** Màn Dev/ThemePreview (CLAUDE.md mục 11 Đợt 0) — vào từ icon "Cài đặt" trên ProfileScreen,
+   * không còn chiếm chỗ tab Cá nhân từ khi có ProfileScreen thật (Đợt 7). */
+  DEV: 'Dev',
+  // Đợt 8 — gamification + premium.
+  PET: 'Pet',
+  PREMIUM: 'Premium',
+  PAYMENT_PENDING: 'PaymentPending',
+  PAYMENT_SUCCESS: 'PaymentSuccess',
 } as const;

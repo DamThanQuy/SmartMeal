@@ -87,8 +87,8 @@ export function DashboardScreen(_props: Props) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Thông báo"
-          disabled
-          className="h-[44px] w-[44px] items-center justify-center rounded-md bg-surface disabled:opacity-60"
+          onPress={() => navigation.navigate(MAIN_STACK_ROUTES.NOTIFICATIONS)}
+          className="h-[44px] w-[44px] items-center justify-center rounded-md bg-surface"
           style={{ elevation: 0 }}
         >
           <Bell size={22} color={colors.textPrimary} />
@@ -190,7 +190,10 @@ export function DashboardScreen(_props: Props) {
 
         <ActivityCard activity={activity} />
 
-        <PetSnippetCard pet={pet} />
+        <PetSnippetCard
+          pet={pet}
+          onPress={() => navigation.navigate(MAIN_STACK_ROUTES.PET)}
+        />
 
         <View className="gap-sm">
           <View className="flex-row items-center justify-between">

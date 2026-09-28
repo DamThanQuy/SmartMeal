@@ -4,7 +4,6 @@ export * from './hooks/useDiary';
 export * from './hooks/useFoodSearch';
 export * from './hooks/useProgress';
 export * from './mocks/diary.mock';
-export * from './mocks/currentUserAllergies.mock';
 export * from './utils/nutritionMath';
 export * from './components/MacroProgressList';
 export * from './components/MacroStatGrid';

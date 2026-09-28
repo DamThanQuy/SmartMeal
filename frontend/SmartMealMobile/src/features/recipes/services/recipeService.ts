@@ -1,6 +1,6 @@
-import { CURRENT_USER_ALLERGY_IDS } from '@/features/nutrition';
 import { getMockDelayMs, wait } from '@/config/mock';
 import { getCurrentMockScenario } from '@/state/app/appStore';
+import { getCurrentUserAllergyIds } from '@/state/user/userProfileStore';
 import { RECIPE_DATABASE_MOCK } from '../mocks/recipes.mock';
 import type { Recipe, RecipeFilters } from '../types/recipe.types';
 
@@ -11,9 +11,10 @@ export function filterOutUserAllergens(recipes: Recipe[]): {
   allowed: Recipe[];
   excludedAllergenIds: string[];
 } {
+  const currentUserAllergyIds = getCurrentUserAllergyIds();
   const excludedAllergenIds = new Set<string>();
   const allowed = recipes.filter(recipe => {
-    const matched = recipe.allergenIds.filter(id => CURRENT_USER_ALLERGY_IDS.includes(id));
+    const matched = recipe.allergenIds.filter(id => currentUserAllergyIds.includes(id));
     matched.forEach(id => excludedAllergenIds.add(id));
     return matched.length === 0;
   });

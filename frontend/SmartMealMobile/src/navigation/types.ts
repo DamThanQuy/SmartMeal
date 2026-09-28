@@ -1,6 +1,8 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { AIAnalysisResult } from '@/features/ai';
+import type { CheckoutResult, PaymentMethodId } from '@/features/premium';
 import type { RecipeFilters } from '@/features/recipes';
+import type { BillingPlanId } from '@/state/premium/premiumStore';
 import type { MealType } from '@/types/meal.types';
 
 export type OtpPurpose = 'register' | 'reset-password';
@@ -61,6 +63,24 @@ export type MainStackParamList = {
   FilterSheet: { filters: RecipeFilters } | undefined;
   RecipeDetail: { recipeId: string };
   Favorites: undefined;
+
+  // Đợt 6 — Meal Planner + Grocery (BR-160→BR-174). Không có bottom nav nên đặt sibling của
+  // MainTabs giống RecipeDetail/Favorites, không lồng trong tab Planner.
+  SlotPicker: { weekStartIso: string; dateIso: string; mealType: MealType };
+
+  // Đợt 7 — Profile (BR-001→BR-003). Không có bottom nav, sibling của MainTabs.
+  HealthSettings: undefined;
+  WeightHistory: undefined;
+  HealthConnect: undefined;
+  Reminders: undefined;
+  Notifications: undefined;
+  Dev: undefined;
+
+  // Đợt 8 — Gamification + Premium (BR-200→BR-242). Không có bottom nav, sibling của MainTabs.
+  Pet: undefined;
+  Premium: undefined;
+  PaymentPending: { planId: BillingPlanId; paymentMethodId: PaymentMethodId };
+  PaymentSuccess: { result: CheckoutResult };
 };
 
 export type RootStackParamList = {

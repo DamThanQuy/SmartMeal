@@ -9,6 +9,9 @@ import {
   VoiceLogScreen,
 } from '@/features/ai';
 import { QuickLogScreen } from '@/features/dashboard';
+import { ThemePreviewScreen } from '@/features/dev';
+import { PetScreen } from '@/features/gamification';
+import { SlotPickerScreen } from '@/features/meal-planner';
 import {
   DeleteConfirmScreen,
   EditMealLogScreen,
@@ -16,6 +19,14 @@ import {
   FoodSearchScreen,
   ProgressChartScreen,
 } from '@/features/nutrition';
+import {
+  HealthConnectScreen,
+  HealthSettingsScreen,
+  NotificationsScreen,
+  RemindersScreen,
+  WeightHistoryScreen,
+} from '@/features/profile';
+import { PaymentPendingScreen, PaymentSuccessScreen, PremiumScreen } from '@/features/premium';
 import {
   FavoritesScreen,
   FilterSheetScreen,
@@ -62,6 +73,23 @@ export function MainNavigator() {
       {/* Đợt 5 — recipes. */}
       <Stack.Screen name={MAIN_STACK_ROUTES.RECIPE_DETAIL} component={RecipeDetailScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.FAVORITES} component={FavoritesScreen} />
+
+      {/* Đợt 6 — meal-planner + grocery. */}
+      <Stack.Screen name={MAIN_STACK_ROUTES.SLOT_PICKER} component={SlotPickerScreen} />
+
+      {/* Đợt 7 — profile. */}
+      <Stack.Screen name={MAIN_STACK_ROUTES.HEALTH_SETTINGS} component={HealthSettingsScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.WEIGHT_HISTORY} component={WeightHistoryScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.HEALTH_CONNECT} component={HealthConnectScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.REMINDERS} component={RemindersScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.NOTIFICATIONS} component={NotificationsScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.DEV} component={ThemePreviewScreen} />
+
+      {/* Đợt 8 — gamification + premium. */}
+      <Stack.Screen name={MAIN_STACK_ROUTES.PET} component={PetScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.PREMIUM} component={PremiumScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.PAYMENT_PENDING} component={PaymentPendingScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.PAYMENT_SUCCESS} component={PaymentSuccessScreen} />
 
       {/* Bottom sheet / dialog — CLAUDE.md mục 10: QuickLog, StateAILimit, DeleteConfirm,
           FilterSheet. */}
