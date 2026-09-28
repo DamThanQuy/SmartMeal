@@ -2,6 +2,7 @@ export * from './types/gamification.types';
 export * from './types/water.types';
 export * from './types/challenge.types';
 export * from './types/badge.types';
+export * from './components/PetAnimation';
 export * from './services/gamificationService';
 export * from './services/waterService';
 export * from './services/challengeService';
