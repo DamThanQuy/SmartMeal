@@ -18,6 +18,7 @@ export interface AppTextProps extends TextProps {
   variant?: AppTextVariant;
   color?: AppTextColor;
   className?: string;
+  style?: import('react-native').TextStyle;
   children?: React.ReactNode;
 }
 
@@ -53,12 +54,14 @@ export function AppText({
   variant = 'body',
   color = 'primary',
   className = '',
+  style,
   children,
   ...rest
 }: AppTextProps) {
   return (
     <Text
       className={`${VARIANT_CLASSNAME[variant]} ${COLOR_CLASSNAME[color]} ${className}`}
+      style={[{ includeFontPadding: false, textAlignVertical: 'center' }, style]}
       {...rest}
     >
       {children}

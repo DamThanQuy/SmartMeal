@@ -50,7 +50,7 @@ export function ChallengesScreen({ navigation }: Props) {
         onBack={() => navigation.goBack()}
         rightContent={
           <AppIconButton
-            accessibilityLabel="Huy hiệu và trang phục"
+            accessibilityLabel="Huy hiệu"
             variant="elevated"
             shape="square"
             icon={<Award size={22} color={colors.textPrimary} />}

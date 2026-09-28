@@ -21,7 +21,7 @@ export function BadgesScreen({ navigation }: Props) {
   if (isLoading || !data) {
     return (
       <ScreenContainer>
-        <ScreenHeader title="Huy hiệu và trang phục" onBack={() => navigation.goBack()} />
+        <ScreenHeader title="Huy hiệu" onBack={() => navigation.goBack()} />
         <LoadingState lines={10} />
       </ScreenContainer>
     );
@@ -30,7 +30,7 @@ export function BadgesScreen({ navigation }: Props) {
   if (isError) {
     return (
       <ScreenContainer>
-        <ScreenHeader title="Huy hiệu và trang phục" onBack={() => navigation.goBack()} />
+        <ScreenHeader title="Huy hiệu" onBack={() => navigation.goBack()} />
         <ErrorState description={error?.message} onRetry={refetch} />
       </ScreenContainer>
     );
@@ -39,7 +39,7 @@ export function BadgesScreen({ navigation }: Props) {
   return (
     <ScreenContainer>
       <ScreenHeader
-        title="Huy hiệu và trang phục"
+        title="Huy hiệu"
         onBack={() => navigation.goBack()}
         rightContent={
           <AppIconButton
@@ -76,14 +76,12 @@ export function BadgesScreen({ navigation }: Props) {
               <View
                 key={badge.id}
                 style={{ width: '31.5%' }}
-                className={`items-center gap-xxs rounded-card p-sm ${
-                  badge.unlocked ? 'bg-primary-soft' : 'bg-surface-subtle'
-                }`}
+                className={`items-center gap-xxs rounded-card p-sm ${badge.unlocked ? 'bg-primary-soft' : 'bg-surface-subtle'
+                  }`}
               >
                 <View
-                  className={`h-[52px] w-[52px] items-center justify-center rounded-pill ${
-                    badge.unlocked ? 'bg-primary' : 'bg-border'
-                  }`}
+                  className={`h-[52px] w-[52px] items-center justify-center rounded-pill ${badge.unlocked ? 'bg-primary' : 'bg-border'
+                    }`}
                 >
                   {badge.unlocked ? (
                     <Award size={24} color={colors.onPrimary} />

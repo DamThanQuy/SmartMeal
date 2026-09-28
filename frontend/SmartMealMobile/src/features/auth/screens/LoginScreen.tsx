@@ -3,7 +3,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ArrowRight, Leaf, Lock, Mail } from 'lucide-react-native';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Pressable, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 import { z } from 'zod';
 import { ScreenContainer } from '@/components/common';
 import { AppButton, AppInput, AppText } from '@/components/ui';
@@ -49,9 +49,10 @@ export function LoginScreen({ navigation }: Props) {
   return (
     <ScreenContainer scroll contentContainerClassName="gap-xxl py-xxxl">
       <View className="flex-row items-center gap-sm">
-        <View className="h-[48px] w-[48px] items-center justify-center rounded-lg bg-primary">
-          <Leaf size={24} color={colors.onPrimary} />
-        </View>
+        <Image
+          source={require('../../../../assets/images/SmartMeal_App_Icon.png')}
+          style={{ width: 48, height: 48, borderRadius: 12 }}
+        />
         <AppText variant="h2">SmartMeal</AppText>
       </View>
 
