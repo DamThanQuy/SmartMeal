@@ -37,7 +37,7 @@ export function LoginScreen({ navigation }: Props) {
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { email: 'smartmealuser@gmail.com', password: 'Smartmeal@123' },
   });
 
   const onSubmit = handleSubmit(values => {

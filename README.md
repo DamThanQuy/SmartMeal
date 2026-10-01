@@ -159,15 +159,15 @@ dotnet run --launch-profile http
 ---
 
 #### 🐳 Cách 2: Chạy toàn bộ hệ thống bằng Docker Compose
-Dành cho việc kiểm thử tích hợp toàn bộ hệ thống trên môi trường độc lập:
+Dùng PowerShell hoặc terminal tại thư mục gốc `SmartMeal`. Lệnh sẽ dựng PostgreSQL, pgAdmin và Backend API; các cổng mặc định có thể đổi trong file `.env`:
 ```bash
-# Từ thư mục gốc SmartMeal:
 docker compose up --build -d
+docker compose ps
 ```
-Lệnh trên sẽ tự động dựng và chạy:
-1. Container `smartmeal_postgres` (Port 5432)
-2. Container `smartmeal_pgadmin` (Port 5050)
-3. Container `smartmeal_api` (Port 5000)
+
+Sau khi các container khởi động, mở Swagger tại [http://localhost:5000/swagger](http://localhost:5000/swagger) hoặc pgAdmin tại [http://localhost:5050](http://localhost:5050). API chỉ khởi động sau khi PostgreSQL sẵn sàng và tự chạy migrations khi kết nối được database.
+
+Docker Compose không chạy ứng dụng React Native; hãy khởi động app riêng bằng Android Studio hoặc lệnh `npm start` trong `frontend/SmartMeal`.
 
 Dừng hệ thống khi không sử dụng:
 ```bash

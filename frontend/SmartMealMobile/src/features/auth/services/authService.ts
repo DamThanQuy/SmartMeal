@@ -12,6 +12,16 @@ import type {
 // TODO: replace mock with real API (src/services/api/client.ts + endpoints.ts khi nối backend thật)
 
 function mockUserFromEmail(email: string) {
+  if (email.toLowerCase() === 'smartmealuser@gmail.com') {
+    return {
+      id: 'usr_smartmeal_default_01',
+      fullName: 'SmartMeal User',
+      email: 'smartmealuser@gmail.com',
+      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde',
+      isPro: true,
+      hasCompletedSurvey: true,
+    };
+  }
   return {
     id: 'mock-user-1',
     fullName: email.split('@')[0] || 'Người dùng SmartMeal',
