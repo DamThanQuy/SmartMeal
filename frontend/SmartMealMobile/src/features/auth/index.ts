@@ -6,3 +6,5 @@ export * from './screens/ForgotPasswordScreen';
 export * from './screens/GuestPromptScreen';
 export * from './screens/StateSessionScreen';
 export * from './types/auth.types';
+export * from './screens/SessionRestoreErrorScreen';
+export * from './services/sessionService';

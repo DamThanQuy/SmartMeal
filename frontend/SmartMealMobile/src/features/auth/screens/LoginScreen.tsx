@@ -24,11 +24,13 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
-// design/Main.dc.html (BR-013, BR-014). Mock: đăng nhập không kiểm tra thật — mọi email/mật
-// khẩu hợp lệ định dạng đều thành công, trừ khi Dev bật MOCK_SCENARIO='error'.
+// design/Main.dc.html (BR-013, BR-014). Mock (EXPO_PUBLIC_USE_MOCK_API=true): đăng nhập không
+// kiểm tra thật — mọi email/mật khẩu hợp lệ định dạng đều thành công, trừ khi Dev bật
+// MOCK_SCENARIO='error'. API thật: POST /auth/login rồi nạp hồ sơ sức khỏe (useLogin).
 export function LoginScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const login = useAuthStore(state => state.login);
+  const setPendingUser = useAuthStore(state => state.setPendingUser);
   const continueAsGuest = useAuthStore(state => state.continueAsGuest);
   const loginMutation = useLogin();
   const {
@@ -42,7 +44,19 @@ export function LoginScreen({ navigation }: Props) {
 
   const onSubmit = handleSubmit(values => {
     loginMutation.mutate(values, {
-      onSuccess: result => login(result.user),
+      onSuccess: ({ user, needsSurvey }) => {
+        if (!needsSurvey) {
+          login(user);
+          return;
+        }
+        // Tài khoản chưa làm Health Profile (vd. thoát app giữa chừng khi đăng ký): chưa vào Main,
+        // đi thẳng wizard và bỏ Login khỏi stack vì đã có phiên.
+        setPendingUser(user);
+        navigation.reset({
+          index: 0,
+          routes: [{ name: AUTH_ROUTES.HEALTH_PROFILE_BASIC_INFO }],
+        });
+      },
     });
   });
 

@@ -1,9 +1,8 @@
-/** Khớp shape user tối thiểu cần cho phiên đăng nhập (BR-014). */
-export interface AuthUser {
-  id: string;
-  fullName: string;
-  email: string;
-}
+import type { AuthUser } from '@/state/auth/authStore';
+
+// Định nghĩa AuthUser nằm ở authStore (state dùng chung) — re-export để feature/screen vẫn import
+// từ '@/features/auth' như cũ.
+export type { AuthUser };
 
 export interface LoginPayload {
   email: string;
@@ -22,6 +21,11 @@ export interface RegisterPayload {
 
 export interface RegisterResult {
   email: string;
+  /** Tài khoản vừa tạo; hasCompletedSurvey = false → đi tiếp Health Profile. */
+  user: AuthUser;
+  /** true (mock) → màn Register chuyển sang OTP; false → vào thẳng wizard khảo sát: backend không
+   * có xác thực OTP (docs/fetch-api/part1 D2). */
+  requiresOtp: boolean;
 }
 
 export interface VerifyOtpPayload {
@@ -31,4 +35,10 @@ export interface VerifyOtpPayload {
 
 export interface ForgotPasswordPayload {
   email: string;
+}
+
+/** Kết quả mở phiên sau khi đăng nhập: có phải làm Health Profile trước khi vào Main không. */
+export interface SessionOpenResult {
+  user: AuthUser;
+  needsSurvey: boolean;
 }

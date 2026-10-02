@@ -8,6 +8,7 @@ import { ScreenContainer } from '@/components/common';
 import { AppInput, AppText } from '@/components/ui';
 import { AUTH_ROUTES } from '@/constants/routes';
 import type { AuthStackParamList } from '@/navigation/types';
+import { useAuthStore } from '@/state/auth/authStore';
 import { HealthOptionCard } from '../components/HealthOptionCard';
 import { HealthProfileProgressHeader } from '../components/HealthProfileProgressHeader';
 import { HealthProfileStepFooter } from '../components/HealthProfileStepFooter';
@@ -61,6 +62,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'HealthProfileBasicInfo'
 export function HealthProfileBasicInfoScreen({ navigation }: Props) {
   // Wizard sắp gửi id dị ứng/bệnh lý lên BE — đối chiếu sớm với /meta/* (chỉ cảnh báo ở dev).
   useMetaMappingCheck();
+  const logout = useAuthStore(state => state.logout);
   const data = useHealthProfileForm(state => state.data);
   const updateData = useHealthProfileForm(state => state.updateData);
   const {
@@ -81,6 +83,18 @@ export function HealthProfileBasicInfoScreen({ navigation }: Props) {
 
   const gender = watch('gender');
 
+  // Bước đầu của wizard: không còn màn nào phía sau để quay lại khi tài khoản đã tạo (đăng ký bằng
+  // API thật hoặc mở lại app giữa chừng) → "Quay lại" nghĩa là thoát onboarding: đăng xuất rồi về
+  // Welcome (AuthNavigator vẫn đang mount nên phải reset stack thủ công).
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    logout();
+    navigation.reset({ index: 0, routes: [{ name: AUTH_ROUTES.WELCOME }] });
+  };
+
   const onSubmit = handleSubmit(values => {
     updateData({
       dateOfBirth: { day: values.day, month: values.month, year: values.year },
@@ -91,7 +105,7 @@ export function HealthProfileBasicInfoScreen({ navigation }: Props) {
 
   return (
     <ScreenContainer>
-      <HealthProfileProgressHeader step={1} onBack={() => navigation.goBack()} />
+      <HealthProfileProgressHeader step={1} onBack={handleBack} />
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
@@ -182,7 +196,7 @@ export function HealthProfileBasicInfoScreen({ navigation }: Props) {
       </ScrollView>
 
       <View className="py-md">
-        <HealthProfileStepFooter onBack={() => navigation.goBack()} onContinue={onSubmit} />
+        <HealthProfileStepFooter onBack={handleBack} onContinue={onSubmit} />
       </View>
     </ScreenContainer>
   );

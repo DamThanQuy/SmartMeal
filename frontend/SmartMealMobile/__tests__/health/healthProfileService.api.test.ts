@@ -3,6 +3,7 @@
  * response và giữ phần hồ sơ BE không lưu. `api` được mock — không gọi mạng thật.
  */
 import type { HealthProfileDto } from '@/features/health/types/health.api.types';
+import type { AuthUser } from '@/state/auth/authStore';
 import {
   createEmptyHealthProfileFormData,
   type HealthProfileFormData,
@@ -27,6 +28,16 @@ const PROFILE_DTO: HealthProfileDto = {
   dailyProteinTargetGrams: 93,
   allergies: ['Đậu phộng (Peanuts)'],
   medicalConditions: [],
+};
+
+const PENDING_USER: AuthUser = {
+  id: 'user-9',
+  fullName: 'A',
+  email: 'a@x.vn',
+  avatarUrl: null,
+  isPro: false,
+  role: 'User',
+  hasCompletedSurvey: false,
 };
 
 function createForm(): HealthProfileFormData {
@@ -103,7 +114,7 @@ describe('submitHealthProfile', () => {
   test('lưu phần hồ sơ BE không lưu cho user hiện tại (cả user đang onboarding)', async () => {
     const { service, apiMock, extrasStorage, useAuthStore } = loadService();
     apiMock.post.mockResolvedValue(PROFILE_DTO);
-    useAuthStore.setState({ pendingUser: { id: 'user-9', fullName: 'A', email: 'a@x.vn' } });
+    useAuthStore.setState({ pendingUser: PENDING_USER });
 
     await service.submitHealthProfile?.(createForm());
 
@@ -125,7 +136,7 @@ describe('submitHealthProfile', () => {
   test('BE báo lỗi → ném ApiError và KHÔNG lưu phần cục bộ', async () => {
     const { service, apiMock, extrasStorage, useAuthStore, ApiError } = loadService();
     apiMock.post.mockRejectedValue(new ApiError('Dữ liệu gửi lên không hợp lệ.', 'VALIDATION', 400));
-    useAuthStore.setState({ pendingUser: { id: 'user-9', fullName: 'A', email: 'a@x.vn' } });
+    useAuthStore.setState({ pendingUser: PENDING_USER });
 
     await expect(service.submitHealthProfile?.(createForm())).rejects.toMatchObject({
       code: 'VALIDATION',
