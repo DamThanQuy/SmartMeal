@@ -941,9 +941,9 @@ Cập nhật 2026-10-03. Mỗi nhóm dưới đây là 1 commit riêng (không g
 | `nutritionService.createFood` | Mock, món chỉ ở máy (xóa khi đăng xuất) |
 | Tìm món `recent`/`favorite` | Rỗng; `mine` chỉ ở máy |
 | `averageMacros` của tuần | Rỗng → ẩn khối "Macro trung bình" (P1-BE-07) |
-| `waterService` (toàn bộ, thuộc `gamification`) | Mock (P1-BE-06) — chưa đụng tới |
+| `waterService` (toàn bộ, thuộc `gamification`) | Mock cục bộ (P1-BE-06). Dữ liệu mẫu của design (5 ly, lịch sử 7 ngày) chỉ khi chạy mock; gọi API thật thì bắt đầu từ 0 |
 | `healthConnectService.syncNow` | Chỉ DEV (xem trên); connect/disconnect/toggle là tùy chọn cục bộ |
-| `remindersService`, `notificationsService` | Mock (BE không có) |
+| `remindersService`, `notificationsService` | Mock (BE không có). Thông báo mẫu chỉ khi chạy mock; gọi API thật thì danh sách rỗng |
 | `DeleteDataScreen` | Chỉ xóa phía máy (`resetUserData()`) rồi đăng xuất — dữ liệu trên server **vẫn còn** (P1-BE-10) |
 | `dashboardService.recommendedMeal`, `CalorieBudgetScreen` khối hoạt động chi tiết | Tĩnh (mock) / ẩn ở API thật (BE chỉ có tên nguồn + tổng calo) |
 | Ngày sinh chính xác, `dietaryPreferenceIds`, dị ứng/bệnh lý không có id | Chỉ lưu cục bộ (P1-BE-04); ngày sinh là ước lượng 01/01 của (năm nay − tuổi) |
