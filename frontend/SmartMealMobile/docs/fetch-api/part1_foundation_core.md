@@ -901,6 +901,7 @@ Cập nhật 2026-10-03. Mỗi nhóm dưới đây là 1 commit riêng (không g
 | 7 | `feat(dashboard)` | `dashboardService` gom bằng `Promise.allSettled`, `ActivityCard`/`CalorieBudgetScreen` đọc health-sync |
 | 8 | `feat(profile)` (weight/settings/edit) | `getWeightHistory`/`recordWeight`/`updateBasicInfo`/`updateHealthSettings`, `useProfileData`, `authService.updateProfile`, `useEditProfile`, màn WeightHistory/EditProfile/HealthSettings |
 | 9 | `feat(profile)` (Health Connect) | `healthConnectService` mock/api/selector, tùy chọn cục bộ, `syncMetrics` |
+| 10 | `docs`, `chore(lint)`, `fix(mock)` | Ghi trạng thái (§16); cho phép `require()` trong test cần `jest.resetModules()`; nước uống/thông báo không seed dữ liệu giả khi gọi API thật |
 
 ### 16.2 Khác với đặc tả ở trên
 
@@ -917,7 +918,7 @@ Cập nhật 2026-10-03. Mỗi nhóm dưới đây là 1 commit riêng (không g
 | `HealthSettings` (§6, §9) | Luôn `POST /survey` | Chỉ gọi khi dị ứng/bệnh lý **có id trên BE** đổi; chỉ đổi chế độ ăn hoặc mục không có id (treeNut, sesame, other…) thì chỉ lưu ở máy → không ghi đè hồ sơ, không thêm dòng cân nặng thừa |
 | `userProfileStore` (§6.5) | Có `weightHistory`, `recordWeight`, `updateBasicInfo` | Chỉ còn là bản sao hồ sơ (`hydrateFromServer`); lịch sử cân nặng là server state (`useWeightHistory`, mock giữ "DB" riêng); ghi cân nặng/sửa hồ sơ đi qua service rồi nạp kết quả vào store (`useProfileData`) |
 | Health Connect `syncNow` (§9) | `POST /health-sync/steps-and-calories` (chỉ DEV) | Ngoài DEV: báo "cần Dev Client" (không im lặng). DEV: gửi số liệu mẫu **một lần/ngày** (BE cộng dồn mọi lần gửi). "Đã kết nối"/nguồn nào bật lưu cục bộ theo user (AsyncStorage) |
-| Test | Jest cho unwrap/toApiError/tokenStorage | Thêm test cho mapper, service API (mock `api`), session, hook (`test-utils/renderHookWithQuery`), `dashboardService` — 283 test |
+| Test | Jest cho unwrap/toApiError/tokenStorage | Thêm test cho mapper, service API (mock `api`), session, hook (`test-utils/renderHookWithQuery`), `dashboardService`, seed nước/thông báo — 288 test (`npm test`) |
 | Việc Phần 2 cần làm tiếp | — | `BarcodeScreen`/`OCRReviewScreen`/AI Snap/Voice truyền `logMethod` (`'Barcode' \| 'AiImage' \| 'Voice'`) khi gọi `useAddMealLogEntries` — hiện mapper dùng mặc định `ai → AiImage`, còn lại `Manual`. `PlannerRegenerateScreen`/`mealPlannerService` còn đọc `CURRENT_USER_DAILY_TARGET` và `TODAY_ACTIVITY_CALORIES_BURNED_MOCK` (hằng số mock) → đổi sang `useUserProfileStore.result.calorieTarget` / `useHealthSyncDaily`. Nơi bắt `useAddMealLogEntries` lỗi cần xử lý `PartialLogError` (chỉ gửi lại `error.failed`) |
 
 ### 16.3 Phát hiện khi làm (cần BE biết)
