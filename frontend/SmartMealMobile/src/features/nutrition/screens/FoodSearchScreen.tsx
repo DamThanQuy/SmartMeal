@@ -10,7 +10,7 @@ import { MEAL_TYPE_TITLES } from '@/types/meal.types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { FoodSearchRow } from '../components/FoodSearchRow';
 import { useFoodSearch } from '../hooks/useFoodSearch';
-import type { FoodSearchFilter } from '../services/nutritionService';
+import type { FoodSearchFilter } from '../types/nutrition.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'FoodSearch'>;
 

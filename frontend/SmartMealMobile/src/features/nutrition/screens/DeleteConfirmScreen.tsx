@@ -16,9 +16,9 @@ type Props = NativeStackScreenProps<MainStackParamList, 'DeleteConfirm'>;
 // design/DeleteConfirm.dc.html (BR-053). presentation:'transparentModal' — dialog giữa màn,
 // không phải bottom sheet.
 export function DeleteConfirmScreen({ navigation, route }: Props) {
-  const { logId } = route.params;
+  const { logId, dateIso: routeDateIso } = route.params;
   const { colors } = useTheme();
-  const dateIso = todayIso();
+  const dateIso = routeDateIso ?? todayIso();
   const { data: entry } = useMealLogEntry(dateIso, logId);
   const deleteMealLogEntry = useDeleteMealLogEntry(dateIso);
 
