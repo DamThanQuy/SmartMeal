@@ -1,3 +1,14 @@
+/** Số liệu vận động đẩy lên backend (health-sync). BE CỘNG DỒN mọi lần gửi trong ngày. */
+export interface SyncMetricsInput {
+  /** ISO date yyyy-MM-dd (giờ máy). */
+  dateIso: string;
+  steps: number;
+  burnedCalories: number;
+  distanceMeters: number;
+  /** Tên nguồn, vd. "GoogleFit". */
+  source: string;
+}
+
 /** 1 nguồn vận động và việc nó có được cộng vào ngân sách hay không (BR-042 — không cộng 2 lần). */
 export interface ActivitySourceDetail {
   id: string;

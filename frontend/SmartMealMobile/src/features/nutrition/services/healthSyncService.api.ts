@@ -1,5 +1,8 @@
 import { ENDPOINTS, api } from '@/services/api';
-import type { DailyHealthSyncSummaryDto } from '../types/healthSync.api.types';
+import type {
+  DailyHealthSyncSummaryDto,
+  SyncHealthMetricsRequestDto,
+} from '../types/healthSync.api.types';
 import { fromDailySummaryDto } from './healthSync.mapper';
 import type { healthSyncMockService } from './healthSyncService.mock';
 
@@ -12,5 +15,17 @@ export const healthSyncApiService: Partial<typeof healthSyncMockService> = {
       params: { date: dateIso },
     });
     return fromDailySummaryDto(dto);
+  },
+
+  // POST /health-sync/steps-and-calories — BE cộng dồn MỌI lần gọi (P1-BE-09) nên chỉ gửi phần
+  // tăng thêm, không gửi lại tổng của ngày.
+  async syncMetrics(input) {
+    await api.post<unknown, SyncHealthMetricsRequestDto>(ENDPOINTS.healthSync.stepsAndCalories, {
+      date: input.dateIso,
+      steps: input.steps,
+      burnedCalories: input.burnedCalories,
+      distanceMeters: input.distanceMeters,
+      source: input.source,
+    });
   },
 };

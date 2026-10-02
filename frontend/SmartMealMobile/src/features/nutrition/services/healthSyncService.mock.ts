@@ -1,6 +1,11 @@
 import { parseDateIso } from '@/utils/date';
 import { TODAY_ACTIVITY_CALORIES_BURNED_MOCK } from '../mocks/diary.mock';
-import type { ActivityLogItem, ActivitySourceDetail, DailyActivity } from '../types/healthSync.types';
+import type {
+  ActivityLogItem,
+  ActivitySourceDetail,
+  DailyActivity,
+  SyncMetricsInput,
+} from '../types/healthSync.types';
 
 // Bản giả lập (EXPO_PUBLIC_USE_MOCK_API=true) — design/Dashboard.dc.html mục "Vận động" và
 // design/CalorieBudget.dc.html: 6.240 bước, 180 kcal (đọc từ đúng 1 nguồn RAW của nutrition,
@@ -55,4 +60,7 @@ export const healthSyncMockService = {
       activities: MOCK_ACTIVITIES,
     };
   },
+
+  // Mock đã có sẵn số liệu mẫu nên không có gì để đẩy lên.
+  async syncMetrics(_input: SyncMetricsInput): Promise<void> {},
 };

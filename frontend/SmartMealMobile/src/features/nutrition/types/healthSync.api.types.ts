@@ -1,6 +1,15 @@
 // DTO của backend cho /health-sync/* (docs/fetch-api/part1 Phụ lục A) — chỉ service và mapper
 // import file này.
 
+export interface SyncHealthMetricsRequestDto {
+  /** "yyyy-MM-dd"; thiếu → BE lấy ngày UTC (lệch ngày với giờ Việt Nam). */
+  date?: string;
+  steps: number;
+  burnedCalories: number;
+  distanceMeters: number;
+  source: string;
+}
+
 export interface DailyHealthSyncSummaryDto {
   /** "yyyy-MM-dd". */
   date: string;

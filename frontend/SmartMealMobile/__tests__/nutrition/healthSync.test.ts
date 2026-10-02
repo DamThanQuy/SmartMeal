@@ -105,6 +105,35 @@ describe('healthSyncApiService', () => {
   });
 });
 
+describe('healthSyncApiService.syncMetrics', () => {
+  test('POST /health-sync/steps-and-calories với ngày giờ máy, đúng tên field của BE', async () => {
+    const apiMock = { get: jest.fn(), post: jest.fn().mockResolvedValue({}) };
+    jest.resetModules();
+    jest.doMock('@/services/api', () => ({
+      api: apiMock,
+      ENDPOINTS: jest.requireActual('@/services/api/endpoints').ENDPOINTS,
+    }));
+    const { healthSyncApiService } =
+      require('@/features/nutrition/services/healthSyncService.api') as typeof import('@/features/nutrition/services/healthSyncService.api');
+
+    await healthSyncApiService.syncMetrics?.({
+      dateIso: '2026-10-02',
+      steps: 1200,
+      burnedCalories: 55,
+      distanceMeters: 900,
+      source: 'GoogleFit',
+    });
+
+    expect(apiMock.post).toHaveBeenCalledWith('/health-sync/steps-and-calories', {
+      date: '2026-10-02',
+      steps: 1200,
+      burnedCalories: 55,
+      distanceMeters: 900,
+      source: 'GoogleFit',
+    });
+  });
+});
+
 describe('healthSyncMockService', () => {
   test('số liệu mẫu của design: 6.240 bước, 180 kcal, đồng bộ lúc 08:30 giờ máy', async () => {
     const { healthSyncMockService } =
