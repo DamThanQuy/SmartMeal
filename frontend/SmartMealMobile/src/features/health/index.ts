@@ -8,3 +8,7 @@ export * from './screens/HealthProfileDietScreen';
 export * from './screens/HealthResultScreen';
 export * from './types/health.types';
 export * from './services/healthCalculator';
+export * from './services/healthProfileService';
+export * from './hooks/useMeta';
+export * from './utils/metaMapping';
+export type { MetaItem } from './types/health.api.types';

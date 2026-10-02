@@ -1,12 +1,18 @@
 import { create } from 'zustand';
-import {
-  calculateHealthProfileResult,
-  type ActivityLevel,
-  type Gender,
-  type HealthGoal,
-  type HealthProfileFormData,
-  type HealthProfileResult,
-} from '@/features/health';
+import { ENV } from '@/config/env';
+// Import thẳng module thuần (không qua barrel '@/features/health') để store không kéo theo các
+// screen của feature health — screen lại import store này (vòng phụ thuộc).
+import { calculateHealthProfileResult } from '@/features/health/services/healthCalculator';
+import { resolveDateOfBirth, selectionFromServer } from '@/features/health/services/health.mapper';
+import type {
+  ActivityLevel,
+  Gender,
+  HealthGoal,
+  HealthProfileExtras,
+  HealthProfileFormData,
+  HealthProfileResult,
+  HealthProfileSnapshot,
+} from '@/features/health/types/health.types';
 import { registerUserDataReset } from '@/state/resetUserData';
 
 // Global client state — hồ sơ sức khỏe của user đã đăng nhập (dị ứng/bệnh lý/chế độ ăn/cân
@@ -14,6 +20,10 @@ import { registerUserDataReset } from '@/state/resetUserData';
 // đặt ở src/state theo .claude/rules/architecture.md ("chỉ đưa vào global store khi nhiều
 // feature thực sự cần"). Thay cho hằng số tạm CURRENT_USER_ALLERGY_IDS (nutrition/mocks) —
 // TODO đã ghi từ Đợt 3/5: "Đợt 7 sẽ có store hồ sơ user đã đăng nhập dùng chung toàn app".
+//
+// Khi gọi API thật, store là bản sao ĐỒNG BỘ của hồ sơ trên server (docs/fetch-api/part1 §6.5):
+// nhiều service đọc dị ứng/chế độ ăn đồng bộ nên không thể chờ query. Bắt đầu rỗng, được nạp bằng
+// hydrateFromServer() lúc đăng nhập/khởi động app — tuyệt đối không hiện hồ sơ mẫu của mock.
 
 export interface WeightHistoryEntry {
   id: string;
@@ -42,6 +52,8 @@ interface UserProfileState {
   waterGoalMl: number;
   setWaterGoalMl: (value: number) => void;
   initFromHealthProfile: (data: HealthProfileFormData, result: HealthProfileResult) => void;
+  /** Nạp hồ sơ từ backend (đăng nhập, khởi động app) — `extras` là phần BE không lưu. */
+  hydrateFromServer: (snapshot: HealthProfileSnapshot, extras: HealthProfileExtras) => void;
   setAllergyIds: (ids: string[]) => void;
   setHealthConditionIds: (ids: string[]) => void;
   setDietaryPreferenceIds: (ids: string[]) => void;
@@ -67,14 +79,7 @@ function nextWeightHistoryId(): string {
   return `weight-${Date.now()}-${weightHistoryIdCounter}`;
 }
 
-// Seed khớp design/Profile.dc.html (BMI 23,0 · BMR 1.655 · TDEE 2.276 · 68kg → mục tiêu 62kg)
-// và CURRENT_USER_DAILY_TARGET (features/nutrition — 2.000 kcal, macro 120/250/65g) để Dashboard/
-// Diary/ProgressChart/MealPlanner không lệch số khi nối vào store này. Input cơ thể (nam, 172cm,
-// 24 tuổi, sedentary) là giá trị suy ra hợp lý để result ở trên khớp — CẦN xác nhận với backend
-// khi có hồ sơ thật. allergyIds giữ ['dairy','peanut'] để nhất quán với toàn app (Đợt 3/4/5 đã
-// dùng), khác với text tĩnh "Hải sản, Đậu phộng" trong design/Profile.dc.html (lệch design, xem
-// báo cáo Đợt 7).
-const INITIAL_PROFILE_STATE: Pick<
+type ProfileInitialState = Pick<
   UserProfileState,
   | 'gender'
   | 'dateOfBirth'
@@ -90,7 +95,16 @@ const INITIAL_PROFILE_STATE: Pick<
   | 'weightHistory'
   | 'includeActivityCalories'
   | 'waterGoalMl'
-> = {
+>;
+
+// Seed khớp design/Profile.dc.html (BMI 23,0 · BMR 1.655 · TDEE 2.276 · 68kg → mục tiêu 62kg)
+// và CURRENT_USER_DAILY_TARGET (features/nutrition — 2.000 kcal, macro 120/250/65g) để Dashboard/
+// Diary/ProgressChart/MealPlanner không lệch số khi nối vào store này. Input cơ thể (nam, 172cm,
+// 24 tuổi, sedentary) là giá trị suy ra hợp lý để result ở trên khớp — CẦN xác nhận với backend
+// khi có hồ sơ thật. allergyIds giữ ['dairy','peanut'] để nhất quán với toàn app (Đợt 3/4/5 đã
+// dùng), khác với text tĩnh "Hải sản, Đậu phộng" trong design/Profile.dc.html (lệch design, xem
+// báo cáo Đợt 7).
+const SEED_PROFILE_STATE: ProfileInitialState = {
   gender: 'male',
   dateOfBirth: new Date(2002, 0, 15),
   heightCm: 172,
@@ -119,6 +133,34 @@ const INITIAL_PROFILE_STATE: Pick<
   waterGoalMl: 2000,
 };
 
+// Trạng thái "chưa có hồ sơ" khi gọi API thật: giá trị trung tính, không phải số liệu giả. Ngày
+// sinh vẫn là Date hợp lệ để mọi nơi format() không ném lỗi trước khi hydrate.
+const EMPTY_PROFILE_STATE: ProfileInitialState = {
+  gender: 'other',
+  dateOfBirth: new Date(2000, 0, 1),
+  heightCm: 0,
+  weightKg: 0,
+  goalWeightKg: 0,
+  activityLevel: 'sedentary',
+  goal: 'maintain',
+  allergyIds: [],
+  healthConditionIds: [],
+  dietaryPreferenceIds: [],
+  result: {
+    bmi: 0,
+    bmr: 0,
+    tdee: 0,
+    calorieTarget: 0,
+    macros: { proteinG: 0, carbsG: 0, fatG: 0 },
+    goal: 'maintain',
+  },
+  weightHistory: [],
+  includeActivityCalories: true,
+  waterGoalMl: 2000,
+};
+
+const INITIAL_PROFILE_STATE = ENV.useMockApi ? SEED_PROFILE_STATE : EMPTY_PROFILE_STATE;
+
 export const useUserProfileStore = create<UserProfileState>()((set, get) => ({
   ...INITIAL_PROFILE_STATE,
 
@@ -141,6 +183,24 @@ export const useUserProfileStore = create<UserProfileState>()((set, get) => ({
         { id: nextWeightHistoryId(), dateIso: new Date().toISOString().slice(0, 10), weightKg },
         ...get().weightHistory,
       ],
+    });
+  },
+
+  hydrateFromServer: (snapshot, extras) => {
+    const selection = selectionFromServer(snapshot, extras);
+    set({
+      gender: snapshot.gender,
+      // BE chỉ có tuổi → giữ ngày sinh đang có nếu còn khớp, không thì ước lượng.
+      dateOfBirth: resolveDateOfBirth(get().dateOfBirth, snapshot.age),
+      heightCm: snapshot.heightCm,
+      weightKg: snapshot.weightKg,
+      goalWeightKg: snapshot.goalWeightKg,
+      activityLevel: snapshot.activityLevel,
+      goal: snapshot.goal,
+      allergyIds: selection.allergyIds,
+      healthConditionIds: selection.healthConditionIds,
+      dietaryPreferenceIds: selection.dietaryPreferenceIds,
+      result: snapshot.result,
     });
   },
 

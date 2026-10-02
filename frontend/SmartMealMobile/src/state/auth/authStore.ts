@@ -22,12 +22,12 @@ export interface AuthState {
   /**
    * Họ tên/email từ RegisterScreen, giữ tạm trong lúc user đi qua OTP + 7 bước Health Profile
    * (chưa login() nên chưa vào MainNavigator) — HealthResultScreen dùng để login() khi bấm
-   * "Bắt đầu với SmartMeal".
+   * "Bắt đầu với SmartMeal". `id` chỉ có khi backend đã tạo tài khoản (chế độ API).
    */
-  pendingUser: { fullName: string; email: string } | null;
+  pendingUser: { id?: string; fullName: string; email: string } | null;
   /** null khi chưa từng rời Main (ví dụ mở app lần đầu) — xem AuthExitReason. */
   lastExitReason: AuthExitReason | null;
-  setPendingUser: (user: { fullName: string; email: string }) => void;
+  setPendingUser: (user: { id?: string; fullName: string; email: string }) => void;
   login: (user: AuthUser) => void;
   /** Guest bấm "Khám phá công thức không cần đăng nhập" (Welcome/Main.dc.html — design v2). */
   continueAsGuest: () => void;
@@ -68,3 +68,12 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     set({ user: { ...currentUser, ...patch } });
   },
 }));
+
+/**
+ * Id user hiện tại ngoài React tree (service không dùng hook được) — gồm cả user đang trong
+ * onboarding (đã có tài khoản, chưa vào Main). null khi chưa đăng nhập/Guest/mock chưa có id thật.
+ */
+export function getCurrentUserId(): string | null {
+  const { user, pendingUser } = useAuthStore.getState();
+  return user?.id ?? pendingUser?.id ?? null;
+}
