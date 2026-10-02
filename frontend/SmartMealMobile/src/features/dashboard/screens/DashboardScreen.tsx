@@ -198,12 +198,14 @@ export function DashboardScreen(_props: Props) {
           ) : null}
         </View>
 
-        <ActivityCard activity={activity} />
+        {activity ? <ActivityCard activity={activity} /> : null}
 
-        <PetSnippetCard
-          pet={pet}
-          onPress={() => navigation.navigate(MAIN_STACK_ROUTES.PET)}
-        />
+        {pet ? (
+          <PetSnippetCard
+            pet={pet}
+            onPress={() => navigation.navigate(MAIN_STACK_ROUTES.PET)}
+          />
+        ) : null}
 
         <View className="gap-sm">
           <View className="flex-row items-center justify-between">

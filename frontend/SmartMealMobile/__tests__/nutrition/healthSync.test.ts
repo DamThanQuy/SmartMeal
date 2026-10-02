@@ -33,6 +33,16 @@ describe('fromDailySummaryDto', () => {
       sources: ['GoogleFit'],
       lastSyncedAt: '2026-10-02T01:30:00Z',
       hasSyncedData: true,
+      sourceDetails: [
+        {
+          id: 'GoogleFit',
+          label: 'GoogleFit',
+          countsTowardBudget: true,
+          note: 'Nguồn đang dùng cho hôm nay',
+        },
+      ],
+      // BE không có danh sách hoạt động → UI ẩn khối "Hoạt động được tính".
+      activities: [],
     });
   });
 
@@ -53,6 +63,8 @@ describe('fromDailySummaryDto', () => {
       sources: [],
       lastSyncedAt: null,
       hasSyncedData: false,
+      sourceDetails: [],
+      activities: [],
     });
   });
 
@@ -106,6 +118,12 @@ describe('healthSyncMockService', () => {
       caloriesBurned: 180,
       hasSyncedData: true,
     });
+    // BR-042: nguồn thứ hai trùng khung giờ nên không được cộng lần hai.
+    expect(activity.sourceDetails.map(source => [source.id, source.countsTowardBudget])).toEqual([
+      ['health-connect', true],
+      ['smart-watch', false],
+    ]);
+    expect(activity.activities).toHaveLength(2);
     const syncedAt = new Date(activity.lastSyncedAt ?? '');
     expect(syncedAt.getHours()).toBe(8);
     expect(syncedAt.getMinutes()).toBe(30);

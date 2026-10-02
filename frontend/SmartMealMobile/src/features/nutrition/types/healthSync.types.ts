@@ -1,3 +1,21 @@
+/** 1 nguồn vận động và việc nó có được cộng vào ngân sách hay không (BR-042 — không cộng 2 lần). */
+export interface ActivitySourceDetail {
+  id: string;
+  label: string;
+  /** Backend chỉ trả tên nguồn, không trả calo theo từng nguồn → chỉ có ở bản mock. */
+  calories?: number;
+  /** false = bị bỏ qua vì trùng khung giờ với nguồn khác. */
+  countsTowardBudget: boolean;
+  note: string;
+}
+
+/** 1 hoạt động được tính (đi bộ, đạp xe...). */
+export interface ActivityLogItem {
+  label: string;
+  windowLabel: string;
+  calories: number;
+}
+
 /** Số liệu vận động 1 ngày (health-sync) — nguồn của calo vận động cộng vào ngân sách (BR-040→042). */
 export interface DailyActivity {
   /** ISO date yyyy-MM-dd (giờ máy). */
@@ -13,4 +31,8 @@ export interface DailyActivity {
   lastSyncedAt: string | null;
   /** false khi chưa có lần đồng bộ nào — UI không được hiện "vừa đồng bộ". */
   hasSyncedData: boolean;
+  /** Chi tiết theo nguồn (CalorieBudget). Rỗng khi chưa đồng bộ. */
+  sourceDetails: ActivitySourceDetail[];
+  /** Danh sách hoạt động được tính — backend không có (chỉ mock); rỗng → UI ẩn khối này. */
+  activities: ActivityLogItem[];
 }
