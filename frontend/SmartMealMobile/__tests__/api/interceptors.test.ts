@@ -2,8 +2,9 @@
  * Interceptor (docs/fetch-api/part1 §4.3): gắn Bearer token; chỉ coi là hết phiên khi request CÓ
  * token nhận 401 và không phải endpoint đăng nhập/đăng ký (sai mật khẩu cũng là 401).
  */
-import axios, {
+import {
   AxiosError,
+  create as createAxiosInstance,
   type AxiosAdapter,
   type AxiosResponse,
   type InternalAxiosRequestConfig,
@@ -22,7 +23,7 @@ function createClient(respond: (config: InternalAxiosRequestConfig) => AxiosResp
     const result = respond(config);
     return result instanceof AxiosError ? Promise.reject(result) : Promise.resolve(result);
   };
-  const client = axios.create({ baseURL: 'http://test/api', adapter });
+  const client = createAxiosInstance({ baseURL: 'http://test/api', adapter });
   installInterceptors(client);
   return client;
 }
