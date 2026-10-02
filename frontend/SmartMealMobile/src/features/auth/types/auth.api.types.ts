@@ -12,6 +12,13 @@ export interface LoginRequestDto {
   password: string;
 }
 
+export interface UpdateProfileRequestDto {
+  /** Chuỗi rỗng/khoảng trắng bị BE bỏ qua. */
+  fullName?: string;
+  /** BE chỉ lưu chuỗi URL — không có endpoint upload ảnh. */
+  avatarUrl?: string | null;
+}
+
 export interface UserDto {
   id: string;
   email: string;

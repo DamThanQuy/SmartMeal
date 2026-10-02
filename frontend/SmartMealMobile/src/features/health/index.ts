@@ -10,5 +10,6 @@ export * from './types/health.types';
 export * from './services/healthCalculator';
 export * from './services/healthProfileService';
 export * from './hooks/useMeta';
+export * from './hooks/useProfileData';
 export * from './utils/metaMapping';
 export type { MetaItem } from './types/health.api.types';

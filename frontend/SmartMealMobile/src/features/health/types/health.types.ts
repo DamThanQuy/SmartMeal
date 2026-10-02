@@ -148,11 +148,35 @@ export interface HealthProfileInput {
   healthConditionIds: string[];
 }
 
+export interface WeightHistoryEntry {
+  id: string;
+  /** ISO date yyyy-MM-dd (giờ máy). */
+  dateIso: string;
+  weightKg: number;
+}
+
+/** Ghi cân nặng mới (BR-003 — tính lại BMI→BMR→TDEE→Calorie→Macro). */
+export interface WeightRecordInput {
+  weightKg: number;
+  /** ISO date yyyy-MM-dd (giờ máy) của lần cân. */
+  dateIso: string;
+}
+
+/** EditProfileScreen — đổi giới tính/ngày sinh/chiều cao (BR-003: tính lại BMI→BMR→TDEE→Macro). */
+export interface BasicInfoUpdate {
+  gender: Gender;
+  dateOfBirth: Date;
+  heightCm: number;
+}
+
 /** Hồ sơ sức khỏe do backend trả về, đã quy đổi sang type FE (health.mapper.ts). */
 export interface HealthProfileSnapshot {
   gender: Gender;
   /** BE chỉ lưu tuổi, không lưu ngày sinh (BR-001 cần ngày sinh — P1-BE-04). */
   age: number;
+  /** Chỉ có khi nguồn dữ liệu biết ngày sinh thật (người dùng vừa nhập trên máy này, hoặc bản mock);
+   * hồ sơ tải từ BE không có — store sẽ ước lượng từ `age`. */
+  dateOfBirth?: Date;
   heightCm: number;
   weightKg: number;
   goalWeightKg: number;

@@ -7,6 +7,7 @@ import type {
   LoginResult,
   RegisterPayload,
   RegisterResult,
+  UpdateProfilePayload,
   VerifyOtpPayload,
 } from '../types/auth.types';
 
@@ -58,6 +59,17 @@ export const authMockService = {
   // (sessionService.bootstrapSession bỏ qua bước này).
   async getMe(): Promise<AuthUser> {
     throw new Error('Chế độ mock không có phiên đăng nhập để khôi phục.');
+  },
+
+  // EditProfileScreen — đổi họ tên. Mock chỉ mô phỏng Loading/Error; họ tên mới do hook ghi vào
+  // authStore.
+  async updateProfile(payload: UpdateProfilePayload): Promise<{ fullName: string }> {
+    const scenario = getCurrentMockScenario();
+    await wait(getMockDelayMs(scenario));
+    if (scenario === 'error') {
+      throw new Error('Không thể cập nhật hồ sơ, vui lòng thử lại.');
+    }
+    return { fullName: payload.fullName };
   },
 
   async verifyOtp(_payload: VerifyOtpPayload): Promise<void> {

@@ -4,6 +4,7 @@ import type {
   AuthResponseDto,
   LoginRequestDto,
   RegisterRequestDto,
+  UpdateProfileRequestDto,
   UserDto,
 } from '../types/auth.api.types';
 import { fromUserDto } from './auth.mapper';
@@ -37,5 +38,13 @@ export const authApiService: Partial<typeof authMockService> = {
   // GET /auth/me — làm mới isPro/hasCompletedSurvey khi khôi phục phiên.
   async getMe() {
     return fromUserDto(await api.get<UserDto>(ENDPOINTS.auth.me));
+  },
+
+  // PUT /auth/profile { fullName } — trả user đã lưu (BE cắt khoảng trắng đầu/cuối).
+  async updateProfile(payload) {
+    const dto = await api.put<UserDto, UpdateProfileRequestDto>(ENDPOINTS.auth.profile, {
+      fullName: payload.fullName.trim(),
+    });
+    return { fullName: dto.fullName };
   },
 };

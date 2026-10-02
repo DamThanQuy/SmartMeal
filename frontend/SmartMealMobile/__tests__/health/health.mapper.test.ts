@@ -7,16 +7,23 @@ import {
   approximateDateOfBirth,
   extrasFromSelection,
   fromHealthProfileDto,
+  fromWeightHistoryDto,
   genderFromApi,
   goalFromApi,
+  hasSameServerSelection,
   profileInputFromForm,
   resolveDateOfBirth,
   selectionFromForm,
   selectionFromServer,
+  snapshotFromInput,
   toHealthProfileResult,
+  toRecordedAtIso,
   toSurveyRequest,
 } from '@/features/health/services/health.mapper';
-import type { HealthProfileDto } from '@/features/health/types/health.api.types';
+import type {
+  HealthProfileDto,
+  WeightHistoryResponse,
+} from '@/features/health/types/health.api.types';
 import {
   createEmptyHealthProfileFormData,
   type HealthProfileFormData,
@@ -300,5 +307,143 @@ describe('ngày sinh ước lượng (BE chỉ lưu tuổi)', () => {
   test('resolveDateOfBirth ước lượng lại khi ngày sinh đang có lệch tuổi BE hoặc không hợp lệ', () => {
     expect(resolveDateOfBirth(new Date(1990, 5, 1), 24, TODAY)).toEqual(new Date(2002, 0, 1));
     expect(resolveDateOfBirth(new Date(Number.NaN), 30, TODAY)).toEqual(new Date(1996, 0, 1));
+  });
+});
+
+describe('fromWeightHistoryDto', () => {
+  const dto: WeightHistoryResponse = {
+    currentWeightKg: 68,
+    targetWeightKg: 62,
+    initialWeightKg: 69.5,
+    totalWeightChangedKg: -1.5,
+    bmi: 23,
+    bmiCategory: 'Bình thường',
+    // BE trả cũ → mới.
+    history: [
+      { id: 'w1', weightKg: 69.5, recordedAt: '2026-09-06T03:00:00Z', diffFromTargetKg: 7.5 },
+      { id: 'w2', weightKg: 68.6, recordedAt: '2026-09-20T03:00:00.1234567Z', diffFromTargetKg: 6.6 },
+      { id: 'w3', weightKg: 68, recordedAt: '2026-09-27T03:00:00', diffFromTargetKg: 6 },
+    ],
+  };
+
+  test('đảo thành mới → cũ, giữ id và cân nặng', () => {
+    const entries = fromWeightHistoryDto(dto);
+
+    expect(entries.map(entry => entry.id)).toEqual(['w3', 'w2', 'w1']);
+    expect(entries.map(entry => entry.weightKg)).toEqual([68, 68.6, 69.5]);
+  });
+
+  test('ngày theo giờ máy của thời điểm UTC (kể cả chuỗi thiếu múi giờ)', () => {
+    const entries = fromWeightHistoryDto(dto);
+    const expectedLocalDate = (iso: string) => {
+      const date = new Date(iso);
+      const pad = (value: number) => String(value).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    };
+
+    expect(entries[0].dateIso).toBe(expectedLocalDate('2026-09-27T03:00:00Z'));
+    expect(entries[2].dateIso).toBe(expectedLocalDate('2026-09-06T03:00:00Z'));
+  });
+
+  test('chưa có điểm nào → rỗng', () => {
+    expect(fromWeightHistoryDto({ ...dto, history: [] })).toEqual([]);
+  });
+
+  test('không làm thay đổi mảng gốc của BE', () => {
+    const original = dto.history.map(point => point.id);
+
+    fromWeightHistoryDto(dto);
+
+    expect(dto.history.map(point => point.id)).toEqual(original);
+  });
+});
+
+describe('toRecordedAtIso', () => {
+  test('hôm nay → thời điểm hiện tại dạng ISO UTC có Z', () => {
+    const now = new Date(2026, 9, 2, 8, 15, 30);
+
+    expect(toRecordedAtIso('2026-10-02', now)).toBe(now.toISOString());
+    expect(toRecordedAtIso('2026-10-02', now).endsWith('Z')).toBe(true);
+  });
+
+  test('ngày khác → 12:00 giờ máy của ngày đó (không bị lệch sang ngày kề do UTC)', () => {
+    const iso = toRecordedAtIso('2026-09-20', new Date(2026, 9, 2));
+    const recorded = new Date(iso);
+
+    expect(iso.endsWith('Z')).toBe(true);
+    expect([recorded.getFullYear(), recorded.getMonth(), recorded.getDate()]).toEqual([2026, 8, 20]);
+    expect(recorded.getHours()).toBe(12);
+  });
+});
+
+describe('snapshotFromInput', () => {
+  const input: HealthProfileInput = {
+    gender: 'female',
+    dateOfBirth: new Date(1996, 5, 15),
+    heightCm: 160,
+    weightKg: 55,
+    goalWeightKg: 52,
+    activityLevel: 'moderate',
+    goal: 'lose',
+    allergyIds: ['peanut'],
+    healthConditionIds: [],
+  };
+  const result = {
+    bmi: 21.5,
+    bmr: 1283,
+    tdee: 1988,
+    calorieTarget: 1488,
+    macros: { proteinG: 93, carbsG: 186, fatG: 41 },
+    goal: 'lose' as const,
+  };
+
+  test('tuổi tính từ ngày sinh và giữ ngày sinh thật', () => {
+    const snapshot = snapshotFromInput(input, result, TODAY);
+
+    expect(snapshot.age).toBe(30);
+    expect(snapshot.dateOfBirth).toBe(input.dateOfBirth);
+    expect(snapshot).toMatchObject({
+      gender: 'female',
+      heightCm: 160,
+      weightKg: 55,
+      goalWeightKg: 52,
+      activityLevel: 'moderate',
+      goal: 'lose',
+      allergyIds: ['peanut'],
+      result,
+    });
+  });
+});
+
+describe('hasSameServerSelection', () => {
+  const base: HealthProfileInput = {
+    gender: 'male',
+    dateOfBirth: new Date(2002, 0, 15),
+    heightCm: 172,
+    weightKg: 68,
+    goalWeightKg: 62,
+    activityLevel: 'light',
+    goal: 'maintain',
+    allergyIds: ['seafood', 'treeNut'],
+    healthConditionIds: ['diabetes', 'other'],
+  };
+
+  test('chỉ khác mục không có id trên BE (treeNut, sesame, other) hoặc thứ tự → coi là không đổi', () => {
+    expect(
+      hasSameServerSelection(base, {
+        ...base,
+        allergyIds: ['sesame', 'seafood'],
+        healthConditionIds: ['diabetes'],
+      }),
+    ).toBe(true);
+    expect(hasSameServerSelection(base, { ...base, allergyIds: ['treeNut', 'seafood'] })).toBe(true);
+  });
+
+  test('thêm/bớt một dị ứng hoặc bệnh lý có id → có đổi', () => {
+    expect(hasSameServerSelection(base, { ...base, allergyIds: ['seafood', 'peanut'] })).toBe(false);
+    expect(hasSameServerSelection(base, { ...base, allergyIds: [] })).toBe(false);
+    expect(hasSameServerSelection(base, { ...base, healthConditionIds: ['diabetes', 'gout'] })).toBe(
+      false,
+    );
   });
 });

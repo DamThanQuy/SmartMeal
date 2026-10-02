@@ -52,7 +52,6 @@ describe('trạng thái ban đầu', () => {
 
     expect(state.weightKg).toBe(68);
     expect(state.allergyIds).toEqual(['dairy', 'peanut']);
-    expect(state.weightHistory).toHaveLength(4);
   });
 
   test('gọi API thật → rỗng, không hiện số liệu giả', () => {
@@ -65,7 +64,6 @@ describe('trạng thái ban đầu', () => {
     expect(state.allergyIds).toEqual([]);
     expect(state.healthConditionIds).toEqual([]);
     expect(state.dietaryPreferenceIds).toEqual([]);
-    expect(state.weightHistory).toEqual([]);
     expect(state.result.calorieTarget).toBe(0);
     expect(Number.isNaN(state.dateOfBirth.getTime())).toBe(false);
   });
@@ -113,6 +111,17 @@ describe('hydrateFromServer', () => {
     useUserProfileStore.setState({ dateOfBirth: typedDob });
 
     useUserProfileStore.getState().hydrateFromServer(SNAPSHOT, EXTRAS);
+
+    expect(useUserProfileStore.getState().dateOfBirth).toBe(typedDob);
+  });
+
+  test('snapshot đã biết ngày sinh thật (vừa nhập ở EditProfile) → dùng đúng ngày đó', () => {
+    const { useUserProfileStore } = loadStore(false);
+    const typedDob = new Date(1995, 2, 8);
+
+    useUserProfileStore
+      .getState()
+      .hydrateFromServer({ ...SNAPSHOT, age: 31, dateOfBirth: typedDob }, EXTRAS);
 
     expect(useUserProfileStore.getState().dateOfBirth).toBe(typedDob);
   });

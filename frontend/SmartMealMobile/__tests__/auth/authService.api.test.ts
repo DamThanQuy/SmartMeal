@@ -21,7 +21,7 @@ const AUTH_RESPONSE: AuthResponseDto = {
 };
 
 function loadService() {
-  const apiMock = { get: jest.fn(), post: jest.fn() };
+  const apiMock = { get: jest.fn(), post: jest.fn(), put: jest.fn() };
   const tokenStorageMock = {
     get: jest.fn(),
     set: jest.fn().mockResolvedValue(undefined),
@@ -131,6 +131,26 @@ describe('getMe', () => {
       isPro: true,
       hasCompletedSurvey: true,
     });
+  });
+});
+
+describe('updateProfile', () => {
+  test('PUT /auth/profile { fullName } (đã cắt khoảng trắng) và trả họ tên BE đã lưu', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.put.mockResolvedValue({ ...USER_DTO, fullName: 'Nguyễn Văn An' });
+
+    const result = await service.updateProfile?.({ fullName: '  Nguyễn Văn An  ' });
+
+    expect(apiMock.put).toHaveBeenCalledWith('/auth/profile', { fullName: 'Nguyễn Văn An' });
+    expect(result).toEqual({ fullName: 'Nguyễn Văn An' });
+  });
+
+  test('BE báo lỗi → ném lỗi', async () => {
+    const { service, apiMock } = loadService();
+    const error = new Error('Người dùng không tồn tại.');
+    apiMock.put.mockRejectedValue(error);
+
+    await expect(service.updateProfile?.({ fullName: 'An' })).rejects.toBe(error);
   });
 });
 

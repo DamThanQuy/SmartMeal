@@ -2,11 +2,14 @@
  * healthProfileService.api (docs/fetch-api/part1 §6): gọi đúng endpoint BE, quy đổi request/
  * response và giữ phần hồ sơ BE không lưu. `api` được mock — không gọi mạng thật.
  */
+import { format } from 'date-fns';
+import { calculateAge } from '@/features/health/services/healthCalculator';
 import type { HealthProfileDto } from '@/features/health/types/health.api.types';
 import type { AuthUser } from '@/state/auth/authStore';
 import {
   createEmptyHealthProfileFormData,
   type HealthProfileFormData,
+  type HealthProfileInput,
 } from '@/features/health/types/health.types';
 
 const PROFILE_DTO: HealthProfileDto = {
@@ -189,5 +192,176 @@ describe('getHealthProfile', () => {
     apiMock.get.mockRejectedValue(error);
 
     await expect(service.getHealthProfile?.('user-9')).rejects.toBe(error);
+  });
+});
+
+const CURRENT_PROFILE: HealthProfileInput = {
+  gender: 'female',
+  dateOfBirth: new Date(1996, 0, 1),
+  heightCm: 160,
+  weightKg: 55,
+  goalWeightKg: 52,
+  activityLevel: 'moderate',
+  goal: 'lose',
+  allergyIds: ['peanut', 'sesame'],
+  healthConditionIds: [],
+};
+
+describe('getWeightHistory', () => {
+  test('GET /healthprofile/weight-history → mới → cũ', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.get.mockResolvedValue({
+      currentWeightKg: 55,
+      targetWeightKg: 52,
+      initialWeightKg: 57,
+      totalWeightChangedKg: -2,
+      bmi: 21.5,
+      bmiCategory: 'Bình thường',
+      history: [
+        { id: 'w1', weightKg: 57, recordedAt: '2026-09-06T03:00:00Z', diffFromTargetKg: 5 },
+        { id: 'w2', weightKg: 55, recordedAt: '2026-09-27T03:00:00Z', diffFromTargetKg: 3 },
+      ],
+    });
+
+    const history = await service.getWeightHistory?.();
+
+    expect(apiMock.get).toHaveBeenCalledWith('/healthprofile/weight-history');
+    expect(history?.map(entry => entry.id)).toEqual(['w2', 'w1']);
+  });
+});
+
+describe('recordWeight', () => {
+  test('POST /healthprofile/weight-log (recordedAt ISO có Z) RỒI GET /healthprofile lấy chỉ số mới', async () => {
+    const { service, apiMock } = loadService();
+    const order: string[] = [];
+    apiMock.post.mockImplementation(async () => {
+      order.push('post');
+      return { id: 'w9', weightKg: 54, recordedAt: '2026-10-02T03:00:00Z', diffFromTargetKg: 2 };
+    });
+    apiMock.get.mockImplementation(async () => {
+      order.push('get');
+      return { ...PROFILE_DTO, currentWeightKg: 54, bmi: 21.1, dailyCaloriesTarget: 1470 };
+    });
+    const dateIso = format(new Date(), 'yyyy-MM-dd');
+
+    const snapshot = await service.recordWeight?.({ weightKg: 54, dateIso }, CURRENT_PROFILE);
+
+    expect(order).toEqual(['post', 'get']);
+    const [url, body] = apiMock.post.mock.calls[0] as [string, { weightKg: number; recordedAt: string }];
+    expect(url).toBe('/healthprofile/weight-log');
+    expect(body.weightKg).toBe(54);
+    expect(body.recordedAt.endsWith('Z')).toBe(true);
+    expect(apiMock.get).toHaveBeenCalledWith('/healthprofile');
+    expect(snapshot).toMatchObject({ weightKg: 54 });
+    expect(snapshot?.result.calorieTarget).toBe(1470);
+  });
+
+  test('ghi cân nặng lỗi → ném lỗi và không đọc lại hồ sơ', async () => {
+    const { service, apiMock, ApiError } = loadService();
+    const error = new ApiError('Vui lòng hoàn thành khảo sát trước.', 'BUSINESS', 400);
+    apiMock.post.mockRejectedValue(error);
+
+    await expect(
+      service.recordWeight?.({ weightKg: 54, dateIso: '2026-09-20' }, CURRENT_PROFILE),
+    ).rejects.toBe(error);
+    expect(apiMock.get).not.toHaveBeenCalled();
+  });
+});
+
+describe('updateBasicInfo', () => {
+  test('POST /healthprofile/survey với hồ sơ hiện tại + phần đổi, giữ ngày sinh vừa nhập', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue({ ...PROFILE_DTO, gender: 'Male', heightCm: 175, age: 31 });
+    const dateOfBirth = new Date(1995, 2, 8);
+
+    const snapshot = await service.updateBasicInfo?.(
+      { gender: 'male', dateOfBirth, heightCm: 175 },
+      CURRENT_PROFILE,
+    );
+
+    const [url, body] = apiMock.post.mock.calls[0] as [string, Record<string, unknown>];
+    expect(url).toBe('/healthprofile/survey');
+    expect(body).toMatchObject({
+      gender: 'Male',
+      heightCm: 175,
+      currentWeightKg: 55,
+      targetWeightKg: 52,
+      activityLevel: 'Moderate',
+      goal: 'LoseWeight',
+      allergyIds: [2],
+    });
+    expect(body.age).toBe(calculateAge(dateOfBirth));
+    expect(snapshot).toMatchObject({ gender: 'male', heightCm: 175 });
+    expect(snapshot?.dateOfBirth).toBe(dateOfBirth);
+  });
+});
+
+describe('updateHealthSettings', () => {
+  test('chỉ đổi chế độ ăn hoặc mục không có id → KHÔNG ghi đè hồ sơ trên BE, chỉ lưu phần ở máy', async () => {
+    const { service, apiMock, extrasStorage, useAuthStore } = loadService();
+    useAuthStore.setState({ pendingUser: PENDING_USER });
+
+    const snapshot = await service.updateHealthSettings?.(
+      {
+        allergyIds: ['peanut', 'treeNut'],
+        healthConditionIds: ['other'],
+        dietaryPreferenceIds: ['keto'],
+      },
+      CURRENT_PROFILE,
+    );
+
+    expect(snapshot).toBeNull();
+    expect(apiMock.post).not.toHaveBeenCalled();
+    expect(extrasStorage.save).toHaveBeenCalledWith('user-9', {
+      dietaryPreferenceIds: ['keto'],
+      localAllergyIds: ['treeNut'],
+      localHealthConditionIds: ['other'],
+    });
+  });
+
+  test('đổi dị ứng/bệnh lý có id → POST /healthprofile/survey rồi lưu phần ở máy', async () => {
+    const { service, apiMock, extrasStorage, useAuthStore } = loadService();
+    useAuthStore.setState({ pendingUser: PENDING_USER });
+    apiMock.post.mockResolvedValue({
+      ...PROFILE_DTO,
+      allergies: ['Hải sản (Seafood)'],
+      medicalConditions: ['Tiểu đường (Diabetes)'],
+    });
+
+    const snapshot = await service.updateHealthSettings?.(
+      {
+        allergyIds: ['seafood', 'sesame'],
+        healthConditionIds: ['diabetes'],
+        dietaryPreferenceIds: [],
+      },
+      CURRENT_PROFILE,
+    );
+
+    expect(apiMock.post).toHaveBeenCalledTimes(1);
+    expect(apiMock.post.mock.calls[0][1]).toMatchObject({
+      allergyIds: [1],
+      medicalConditionIds: [1],
+    });
+    expect(extrasStorage.save).toHaveBeenCalledWith('user-9', {
+      dietaryPreferenceIds: [],
+      localAllergyIds: ['sesame'],
+      localHealthConditionIds: [],
+    });
+    expect(snapshot).toMatchObject({ allergyIds: ['seafood'], healthConditionIds: ['diabetes'] });
+  });
+
+  test('BE báo lỗi → ném lỗi và KHÔNG lưu phần ở máy', async () => {
+    const { service, apiMock, extrasStorage, useAuthStore, ApiError } = loadService();
+    useAuthStore.setState({ pendingUser: PENDING_USER });
+    const error = new ApiError('Máy chủ gặp sự cố.', 'SERVER', 500);
+    apiMock.post.mockRejectedValue(error);
+
+    await expect(
+      service.updateHealthSettings?.(
+        { allergyIds: ['seafood'], healthConditionIds: [], dietaryPreferenceIds: [] },
+        CURRENT_PROFILE,
+      ),
+    ).rejects.toBe(error);
+    expect(extrasStorage.save).not.toHaveBeenCalled();
   });
 });

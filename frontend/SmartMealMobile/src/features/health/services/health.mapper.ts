@@ -1,4 +1,9 @@
-import type { HealthProfileDto, HealthSurveyRequest } from '../types/health.api.types';
+import { formatDateIso, parseApiDateTime, parseDateIso } from '@/utils/date';
+import type {
+  HealthProfileDto,
+  HealthSurveyRequest,
+  WeightHistoryResponse,
+} from '../types/health.api.types';
 import type {
   ActivityLevel,
   Gender,
@@ -9,6 +14,7 @@ import type {
   HealthProfileResult,
   HealthProfileSnapshot,
   HealthSelection,
+  WeightHistoryEntry,
 } from '../types/health.types';
 import {
   ALLERGY_META_ID_BY_SLUG,
@@ -189,4 +195,68 @@ export function approximateDateOfBirth(age: number, today: Date = new Date()): D
 /** Giữ ngày sinh đang có nếu vẫn khớp tuổi BE (vừa nhập trên máy này), không thì ước lượng. */
 export function resolveDateOfBirth(current: Date, age: number, today: Date = new Date()): Date {
   return calculateAge(current, today) === age ? current : approximateDateOfBirth(age, today);
+}
+
+/**
+ * Snapshot dựng từ hồ sơ phía FE + kết quả tính sẵn — dùng cho bản mock (không có server trả về).
+ * Biết ngày sinh thật nên gắn luôn `dateOfBirth`.
+ */
+export function snapshotFromInput(
+  input: HealthProfileInput,
+  result: HealthProfileResult,
+  today: Date = new Date(),
+): HealthProfileSnapshot {
+  return {
+    gender: input.gender,
+    age: calculateAge(input.dateOfBirth, today),
+    dateOfBirth: input.dateOfBirth,
+    heightCm: input.heightCm,
+    weightKg: input.weightKg,
+    goalWeightKg: input.goalWeightKg,
+    activityLevel: input.activityLevel,
+    goal: input.goal,
+    allergyIds: input.allergyIds,
+    healthConditionIds: input.healthConditionIds,
+    result,
+  };
+}
+
+/** Hai hồ sơ có gửi lên BE cùng dị ứng/bệnh lý không (chỉ tính mục có id trên BE, không phân biệt thứ tự). */
+export function hasSameServerSelection(a: HealthProfileInput, b: HealthProfileInput): boolean {
+  const sameIds = (x: readonly number[], y: readonly number[]) =>
+    x.length === y.length && x.every(id => y.includes(id));
+  return (
+    sameIds(
+      toMetaIds(a.allergyIds, ALLERGY_META_ID_BY_SLUG),
+      toMetaIds(b.allergyIds, ALLERGY_META_ID_BY_SLUG),
+    ) &&
+    sameIds(
+      toMetaIds(a.healthConditionIds, CONDITION_META_ID_BY_SLUG),
+      toMetaIds(b.healthConditionIds, CONDITION_META_ID_BY_SLUG),
+    )
+  );
+}
+
+/** Lịch sử cân nặng: mới → cũ (BE trả cũ → mới); ngày theo giờ máy chứ không theo UTC. */
+export function fromWeightHistoryDto(dto: WeightHistoryResponse): WeightHistoryEntry[] {
+  return dto.history
+    .map(point => ({ point, recordedAt: parseApiDateTime(point.recordedAt) }))
+    .sort((a, b) => b.recordedAt.getTime() - a.recordedAt.getTime())
+    .map(({ point, recordedAt }) => ({
+      id: point.id,
+      dateIso: formatDateIso(recordedAt),
+      weightKg: point.weightKg,
+    }));
+}
+
+/**
+ * `recordedAt` gửi lên BE phải là ISO UTC có hậu tố Z (không gửi chuỗi chỉ có ngày — chưa kiểm
+ * chứng nhưng Npgsql có thể từ chối). Hôm nay → thời điểm hiện tại; ngày khác → 12:00 giờ máy của
+ * ngày đó.
+ */
+export function toRecordedAtIso(dateIso: string, now: Date = new Date()): string {
+  if (dateIso === formatDateIso(now)) return now.toISOString();
+  const noon = parseDateIso(dateIso);
+  noon.setHours(12, 0, 0, 0);
+  return noon.toISOString();
 }

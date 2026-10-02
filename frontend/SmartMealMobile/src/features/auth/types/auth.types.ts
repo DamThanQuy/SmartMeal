@@ -33,6 +33,11 @@ export interface VerifyOtpPayload {
   code: string;
 }
 
+/** EditProfileScreen — chỉ họ tên đổi được (email gắn 1 tài khoản, BR-011). */
+export interface UpdateProfilePayload {
+  fullName: string;
+}
+
 export interface ForgotPasswordPayload {
   email: string;
 }

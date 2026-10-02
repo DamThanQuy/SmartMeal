@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { ENV } from '@/config/env';
 // Import thẳng module thuần (không qua barrel '@/features/health') để store không kéo theo các
 // screen của feature health — screen lại import store này (vòng phụ thuộc).
-import { calculateHealthProfileResult } from '@/features/health/services/healthCalculator';
 import { resolveDateOfBirth, selectionFromServer } from '@/features/health/services/health.mapper';
 import type {
   ActivityLevel,
@@ -23,14 +22,10 @@ import { registerUserDataReset } from '@/state/resetUserData';
 //
 // Khi gọi API thật, store là bản sao ĐỒNG BỘ của hồ sơ trên server (docs/fetch-api/part1 §6.5):
 // nhiều service đọc dị ứng/chế độ ăn đồng bộ nên không thể chờ query. Bắt đầu rỗng, được nạp bằng
-// hydrateFromServer() lúc đăng nhập/khởi động app — tuyệt đối không hiện hồ sơ mẫu của mock.
-
-export interface WeightHistoryEntry {
-  id: string;
-  /** ISO date yyyy-MM-dd. */
-  dateIso: string;
-  weightKg: number;
-}
+// hydrateFromServer() lúc đăng nhập/khởi động app và sau mỗi lần sửa hồ sơ — tuyệt đối không hiện
+// hồ sơ mẫu của mock. Store KHÔNG tự tính lại chỉ số hay gọi API: việc đó của healthProfileService
+// (hook useProfileData gọi service rồi nạp kết quả vào đây). Lịch sử cân nặng là server state nên ở
+// TanStack Query, không ở store này.
 
 interface UserProfileState {
   gender: Gender;
@@ -44,7 +39,6 @@ interface UserProfileState {
   healthConditionIds: string[];
   dietaryPreferenceIds: string[];
   result: HealthProfileResult;
-  weightHistory: WeightHistoryEntry[];
   /** CalorieBudgetScreen (Đợt 11, BR-040→042) — "Cộng calo vận động vào ngân sách", mặc định bật. */
   includeActivityCalories: boolean;
   setIncludeActivityCalories: (value: boolean) => void;
@@ -52,17 +46,11 @@ interface UserProfileState {
   waterGoalMl: number;
   setWaterGoalMl: (value: number) => void;
   initFromHealthProfile: (data: HealthProfileFormData, result: HealthProfileResult) => void;
-  /** Nạp hồ sơ từ backend (đăng nhập, khởi động app) — `extras` là phần BE không lưu. */
+  /** Nạp hồ sơ từ backend (đăng nhập, khởi động app, sau khi sửa hồ sơ) — `extras` là phần BE không lưu. */
   hydrateFromServer: (snapshot: HealthProfileSnapshot, extras: HealthProfileExtras) => void;
   setAllergyIds: (ids: string[]) => void;
   setHealthConditionIds: (ids: string[]) => void;
   setDietaryPreferenceIds: (ids: string[]) => void;
-  /** BR-003 — ghi cân nặng mới → tính lại BMI→BMR→TDEE→Calorie→Macro qua đúng 1 công thức
-   * (calculateHealthProfileResult, features/health) và thêm vào lịch sử cân nặng. */
-  recordWeight: (weightKg: number, dateIso: string) => void;
-  /** EditProfileScreen (Đợt 9, BR-003) — đổi giới tính/năm sinh/chiều cao cũng phải tính lại
-   * BMI→BMR→TDEE→Calorie→Macro qua đúng calculateHealthProfileResult, giống recordWeight. */
-  updateBasicInfo: (patch: { gender: Gender; dateOfBirth: Date; heightCm: number }) => void;
 }
 
 function toDateOfBirth(data: HealthProfileFormData['dateOfBirth']): Date | null {
@@ -71,12 +59,6 @@ function toDateOfBirth(data: HealthProfileFormData['dateOfBirth']): Date | null 
   const year = Number(data.year);
   if (!day || !month || !year) return null;
   return new Date(year, month - 1, day);
-}
-
-let weightHistoryIdCounter = 0;
-function nextWeightHistoryId(): string {
-  weightHistoryIdCounter += 1;
-  return `weight-${Date.now()}-${weightHistoryIdCounter}`;
 }
 
 type ProfileInitialState = Pick<
@@ -92,7 +74,6 @@ type ProfileInitialState = Pick<
   | 'healthConditionIds'
   | 'dietaryPreferenceIds'
   | 'result'
-  | 'weightHistory'
   | 'includeActivityCalories'
   | 'waterGoalMl'
 >;
@@ -123,12 +104,6 @@ const SEED_PROFILE_STATE: ProfileInitialState = {
     macros: { proteinG: 120, carbsG: 250, fatG: 65 },
     goal: 'maintain',
   },
-  weightHistory: [
-    { id: 'weight-seed-4', dateIso: '2026-09-27', weightKg: 68.0 },
-    { id: 'weight-seed-3', dateIso: '2026-09-20', weightKg: 68.6 },
-    { id: 'weight-seed-2', dateIso: '2026-09-13', weightKg: 69.2 },
-    { id: 'weight-seed-1', dateIso: '2026-09-06', weightKg: 69.5 },
-  ],
   includeActivityCalories: true,
   waterGoalMl: 2000,
 };
@@ -154,7 +129,6 @@ const EMPTY_PROFILE_STATE: ProfileInitialState = {
     macros: { proteinG: 0, carbsG: 0, fatG: 0 },
     goal: 'maintain',
   },
-  weightHistory: [],
   includeActivityCalories: true,
   waterGoalMl: 2000,
 };
@@ -164,14 +138,15 @@ const INITIAL_PROFILE_STATE = ENV.useMockApi ? SEED_PROFILE_STATE : EMPTY_PROFIL
 export const useUserProfileStore = create<UserProfileState>()((set, get) => ({
   ...INITIAL_PROFILE_STATE,
 
+  // Hoàn tất wizard 7 bước (HealthResultScreen "Bắt đầu với SmartMeal"): đưa hồ sơ vừa nhập vào
+  // store dùng chung. Lịch sử cân nặng do service lo (mock tự ghi lúc submit; BE tự thêm 1 dòng).
   initFromHealthProfile: (data, result) => {
     const dateOfBirth = toDateOfBirth(data.dateOfBirth) ?? get().dateOfBirth;
-    const weightKg = Number(data.weightKg) || get().weightKg;
     set({
       gender: data.gender ?? get().gender,
       dateOfBirth,
       heightCm: Number(data.heightCm) || get().heightCm,
-      weightKg,
+      weightKg: Number(data.weightKg) || get().weightKg,
       goalWeightKg: Number(data.goalWeightKg) || get().goalWeightKg,
       activityLevel: data.activityLevel ?? get().activityLevel,
       goal: data.goal ?? get().goal,
@@ -179,10 +154,6 @@ export const useUserProfileStore = create<UserProfileState>()((set, get) => ({
       healthConditionIds: data.noHealthConditions ? [] : data.healthConditionIds,
       dietaryPreferenceIds: data.noDietaryPreference ? [] : data.dietaryPreferenceIds,
       result,
-      weightHistory: [
-        { id: nextWeightHistoryId(), dateIso: new Date().toISOString().slice(0, 10), weightKg },
-        ...get().weightHistory,
-      ],
     });
   },
 
@@ -190,8 +161,9 @@ export const useUserProfileStore = create<UserProfileState>()((set, get) => ({
     const selection = selectionFromServer(snapshot, extras);
     set({
       gender: snapshot.gender,
-      // BE chỉ có tuổi → giữ ngày sinh đang có nếu còn khớp, không thì ước lượng.
-      dateOfBirth: resolveDateOfBirth(get().dateOfBirth, snapshot.age),
+      // BE chỉ có tuổi: dùng ngày sinh nguồn dữ liệu biết, hoặc giữ ngày sinh đang có nếu còn khớp
+      // tuổi, không thì ước lượng.
+      dateOfBirth: snapshot.dateOfBirth ?? resolveDateOfBirth(get().dateOfBirth, snapshot.age),
       heightCm: snapshot.heightCm,
       weightKg: snapshot.weightKg,
       goalWeightKg: snapshot.goalWeightKg,
@@ -209,36 +181,6 @@ export const useUserProfileStore = create<UserProfileState>()((set, get) => ({
   setDietaryPreferenceIds: ids => set({ dietaryPreferenceIds: ids }),
   setIncludeActivityCalories: value => set({ includeActivityCalories: value }),
   setWaterGoalMl: value => set({ waterGoalMl: value }),
-
-  recordWeight: (weightKg, dateIso) => {
-    const state = get();
-    const result = calculateHealthProfileResult({
-      gender: state.gender,
-      dateOfBirth: state.dateOfBirth,
-      heightCm: state.heightCm,
-      weightKg,
-      activityLevel: state.activityLevel,
-      goal: state.goal,
-    });
-    set({
-      weightKg,
-      result,
-      weightHistory: [{ id: nextWeightHistoryId(), dateIso, weightKg }, ...state.weightHistory],
-    });
-  },
-
-  updateBasicInfo: patch => {
-    const state = get();
-    const result = calculateHealthProfileResult({
-      gender: patch.gender,
-      dateOfBirth: patch.dateOfBirth,
-      heightCm: patch.heightCm,
-      weightKg: state.weightKg,
-      activityLevel: state.activityLevel,
-      goal: state.goal,
-    });
-    set({ ...patch, result });
-  },
 }));
 
 /** Đọc dị ứng hiện tại ngoài React tree (trong service, không dùng hook được) — dùng chung cho
