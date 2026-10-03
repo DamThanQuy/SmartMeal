@@ -3,8 +3,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { isOfflineDevOverrideActive } from '@/state/app/appStore';
 import { useUserProfileStore } from '@/state/user/userProfileStore';
 import { MEAL_TYPE_TITLES, type MealType } from '@/types/meal.types';
-import { nutritionService, type NewMealLogInput } from '../services/nutritionService';
+import { nutritionService } from '../services/nutritionService';
 import { useOfflineSyncStore } from '../state/offlineSyncStore';
+import type { NewMealLogInput } from '../types/nutrition.types';
+import { findEntryById } from '../utils/diary';
 
 export const diaryQueryKey = (dateIso: string) => ['diary', dateIso] as const;
 
@@ -19,10 +21,11 @@ function useInvalidateDiary(dateIso: string) {
   const queryClient = useQueryClient();
   return () => {
     void queryClient.invalidateQueries({ queryKey: diaryQueryKey(dateIso) });
-    void queryClient.invalidateQueries({ queryKey: ['progress', dateIso] });
-    // Dashboard tổng hợp lại từ nutritionService.getDiaryDay() nên phải invalidate theo —
-    // tránh Dashboard hiện số liệu cũ sau khi ghi/sửa/xóa từ Diary hoặc luồng AI/FoodSearch.
-    void queryClient.invalidateQueries({ queryKey: ['dashboard', dateIso] });
+    // Tiến độ tuần và Dashboard tổng hợp lại từ nutritionService.getDiaryDay()/nhật ký nên phải
+    // invalidate theo — tránh hiện số liệu cũ sau khi ghi/sửa/xóa từ Diary hoặc luồng AI/
+    // FoodSearch (kể cả khi ghi cho ngày khác hôm nay — nên theo tiền tố, không theo từng ngày).
+    void queryClient.invalidateQueries({ queryKey: ['progress'] });
+    void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
   };
 }
 
@@ -40,12 +43,13 @@ export function useAddMealLogEntries(dateIso: string) {
           useOfflineSyncStore.getState().enqueue({
             id: entry.id,
             label: `Thêm ${entry.foodName} · ${mealTitle}`,
-            timeLabel: format(new Date(entry.loggedAt), 'HH:mm'),
+            timeLabel: format(new Date(entry.loggedAt ?? Date.now()), 'HH:mm'),
           });
         });
       }
-      invalidate();
     },
+    // Cả khi chỉ lưu được một phần (PartialLogError): món đã lưu vẫn phải hiện ra trong nhật ký.
+    onSettled: invalidate,
   });
 }
 
@@ -59,7 +63,8 @@ export function useUpdateMealLogEntry(dateIso: string) {
       entryId: string;
       patch: { grams?: number; mealType?: MealType };
     }) => nutritionService.updateLogEntry(dateIso, entryId, patch),
-    onSuccess: invalidate,
+    // Cả khi UpdateIncompleteError (đã ghi bản mới nhưng chưa xóa được bản cũ): nhật ký đã đổi.
+    onSettled: invalidate,
   });
 }
 
@@ -85,10 +90,12 @@ export function useSetIncludeActivityCalories() {
   };
 }
 
+// Backend không có endpoint lấy 1 bản ghi → dùng chung query của cả ngày rồi chọn đúng bản ghi.
 export function useMealLogEntry(dateIso: string, entryId: string | undefined) {
   return useQuery({
-    queryKey: ['diary', dateIso, 'entry', entryId],
-    queryFn: () => nutritionService.getLogEntry(dateIso, entryId as string),
+    queryKey: diaryQueryKey(dateIso),
+    queryFn: () => nutritionService.getDiaryDay(dateIso),
+    select: diary => (entryId ? findEntryById(diary, entryId) : undefined),
     enabled: Boolean(entryId),
   });
 }

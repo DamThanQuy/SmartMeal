@@ -134,3 +134,82 @@ export const DIETARY_PREFERENCE_OPTIONS: ChipOption[] = [
   { id: 'vegan', label: 'Vegan' },
   { id: 'vegetarian', label: 'Vegetarian' },
 ];
+
+/** Hồ sơ phía FE ở dạng đủ để gửi lên backend (khớp state của userProfileStore). */
+export interface HealthProfileInput {
+  gender: Gender;
+  dateOfBirth: Date;
+  heightCm: number;
+  weightKg: number;
+  goalWeightKg: number;
+  activityLevel: ActivityLevel;
+  goal: HealthGoal;
+  allergyIds: string[];
+  healthConditionIds: string[];
+}
+
+export interface WeightHistoryEntry {
+  id: string;
+  /** ISO date yyyy-MM-dd (giờ máy). */
+  dateIso: string;
+  weightKg: number;
+}
+
+/** Ghi cân nặng mới (BR-003 — tính lại BMI→BMR→TDEE→Calorie→Macro). */
+export interface WeightRecordInput {
+  weightKg: number;
+  /** ISO date yyyy-MM-dd (giờ máy) của lần cân. */
+  dateIso: string;
+}
+
+/** EditProfileScreen — đổi giới tính/ngày sinh/chiều cao (BR-003: tính lại BMI→BMR→TDEE→Macro). */
+export interface BasicInfoUpdate {
+  gender: Gender;
+  dateOfBirth: Date;
+  heightCm: number;
+}
+
+/** Hồ sơ sức khỏe do backend trả về, đã quy đổi sang type FE (health.mapper.ts). */
+export interface HealthProfileSnapshot {
+  gender: Gender;
+  /** BE chỉ lưu tuổi, không lưu ngày sinh (BR-001 cần ngày sinh — P1-BE-04). */
+  age: number;
+  /** Chỉ có khi nguồn dữ liệu biết ngày sinh thật (người dùng vừa nhập trên máy này, hoặc bản mock);
+   * hồ sơ tải từ BE không có — store sẽ ước lượng từ `age`. */
+  dateOfBirth?: Date;
+  heightCm: number;
+  weightKg: number;
+  goalWeightKg: number;
+  activityLevel: ActivityLevel;
+  goal: HealthGoal;
+  /** Slug dị ứng CÓ id trên BE (không gồm treeNut/sesame/other). */
+  allergyIds: string[];
+  /** Slug bệnh lý CÓ id trên BE (không gồm 'other'). */
+  healthConditionIds: string[];
+  result: HealthProfileResult;
+}
+
+/** Dị ứng/bệnh lý/chế độ ăn người dùng chọn (slug) — HealthSettingsScreen, bước 5–7 của wizard. */
+export interface HealthSelection {
+  allergyIds: string[];
+  healthConditionIds: string[];
+  dietaryPreferenceIds: string[];
+}
+
+/**
+ * Phần hồ sơ backend KHÔNG lưu — giữ cục bộ theo từng user (AsyncStorage) để không mất sau khi tắt
+ * app (docs/fetch-api/part1 §6.5, §13).
+ */
+export interface HealthProfileExtras {
+  dietaryPreferenceIds: string[];
+  /** Dị ứng không có id trên BE (treeNut, sesame, other...). */
+  localAllergyIds: string[];
+  /** Bệnh lý không có id trên BE ('other'...). */
+  localHealthConditionIds: string[];
+}
+
+/** Hồ sơ nạp lúc đăng nhập/khởi động app để đổ vào userProfileStore. */
+export interface HydratedHealthProfile {
+  snapshot: HealthProfileSnapshot;
+  extras: HealthProfileExtras;
+}

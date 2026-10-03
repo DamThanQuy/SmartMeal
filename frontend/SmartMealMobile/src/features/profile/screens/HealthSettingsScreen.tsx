@@ -8,6 +8,8 @@ import {
   ALLERGY_OPTIONS,
   DIETARY_PREFERENCE_OPTIONS,
   HEALTH_CONDITION_OPTIONS,
+  useMetaMappingCheck,
+  useUpdateHealthSettings,
 } from '@/features/health';
 import type { MainStackParamList } from '@/navigation/types';
 import { useUserProfileStore } from '@/state/user/userProfileStore';
@@ -19,8 +21,11 @@ type Props = NativeStackScreenProps<MainStackParamList, 'HealthSettings'>;
 // chip chọn nhiều với HPAllergy/HealthProfileConditions/HealthProfileDietScreen (Đợt 1) để tái
 // dùng đúng ngôn ngữ UI, thay vì checkbox riêng như artboard gốc vẽ cho phần "Tình trạng sức khỏe".
 export function HealthSettingsScreen({ navigation }: Props) {
+  // Sắp gửi id dị ứng/bệnh lý lên BE — đối chiếu với /meta/* (chỉ cảnh báo ở dev).
+  useMetaMappingCheck();
   const { colors } = useTheme();
   const profile = useUserProfileStore();
+  const updateSettings = useUpdateHealthSettings();
   const [allergyIds, setAllergyIds] = useState<string[]>(profile.allergyIds);
   const [healthConditionIds, setHealthConditionIds] = useState<string[]>(
     profile.healthConditionIds,
@@ -35,11 +40,13 @@ export function HealthSettingsScreen({ navigation }: Props) {
     id: string,
   ) => setIds(ids.includes(id) ? ids.filter(item => item !== id) : [...ids, id]);
 
+  // Dị ứng/bệnh lý có id trên BE được lưu lên server; chế độ ăn và các mục không có id (vd. "Các
+  // loại hạt", "Khác") chỉ lưu ở máy — xem healthProfileService.updateHealthSettings.
   const handleSave = () => {
-    profile.setAllergyIds(allergyIds);
-    profile.setHealthConditionIds(healthConditionIds);
-    profile.setDietaryPreferenceIds(dietaryPreferenceIds);
-    navigation.goBack();
+    updateSettings.mutate(
+      { allergyIds, healthConditionIds, dietaryPreferenceIds },
+      { onSuccess: () => navigation.goBack() },
+    );
   };
 
   return (
@@ -99,8 +106,13 @@ export function HealthSettingsScreen({ navigation }: Props) {
         />
       </ScrollView>
 
-      <View className="py-md">
-        <AppButton label="Lưu thay đổi" onPress={handleSave} />
+      <View className="gap-xs py-md">
+        {updateSettings.isError ? (
+          <AppText variant="caption" color="error" className="text-center">
+            {updateSettings.error.message}
+          </AppText>
+        ) : null}
+        <AppButton label="Lưu thay đổi" onPress={handleSave} loading={updateSettings.isPending} />
       </View>
     </ScreenContainer>
   );

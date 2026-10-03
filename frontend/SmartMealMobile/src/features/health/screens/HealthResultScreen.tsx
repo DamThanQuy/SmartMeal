@@ -50,11 +50,12 @@ export function HealthResultScreen({ navigation }: Props) {
     GOAL_OPTIONS.find(option => option.id === result.goal)?.title ?? '';
 
   const handleStart = () => {
-    login({
-      id: 'mock-user-1',
-      fullName: pendingUser?.fullName ?? 'Người dùng SmartMeal',
-      email: pendingUser?.email ?? 'user@smartmeal.dev',
-    });
+    // pendingUser luôn có khi đi tới đây (Register/Login đã đặt trước khi vào wizard).
+    if (!pendingUser) {
+      navigation.navigate(AUTH_ROUTES.WELCOME);
+      return;
+    }
+    login({ ...pendingUser, hasCompletedSurvey: true });
     // Đợt 7 — hồ sơ sức khỏe vừa hoàn tất được đưa vào store dùng chung toàn app (dị ứng/bệnh
     // lý/chế độ ăn/BMI...) trước khi reset state cục bộ của wizard 7 bước.
     initFromHealthProfile(formData, result);

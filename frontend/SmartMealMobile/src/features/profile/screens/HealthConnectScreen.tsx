@@ -17,7 +17,8 @@ import {
 type Props = NativeStackScreenProps<MainStackParamList, 'HealthConnect'>;
 
 // design/HealthConnect.dc.html. Health Connect thật cần Expo Dev Client (docs/structure_system.md
-// §2/§11) — chỉ mô phỏng qua nút "Đồng bộ ngay"/"Kết nối"/"Ngắt kết nối", chưa gọi API thật.
+// §2/§11) — "Kết nối"/"Ngắt kết nối"/bật tắt nguồn là tùy chọn cục bộ; số liệu hôm nay lấy từ
+// backend (health-sync). Nút "Đồng bộ ngay" chỉ tạo số liệu mẫu ở DEV (xem healthConnectService).
 export function HealthConnectScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const { data, isLoading, isError, error, refetch } = useHealthConnectStatus();
@@ -111,6 +112,11 @@ export function HealthConnectScreen({ navigation }: Props) {
                   className="h-[44px] flex-shrink px-md"
                 />
               </View>
+              {syncNow.isError ? (
+                <AppText variant="caption" color="error">
+                  {syncNow.error.message}
+                </AppText>
+              ) : null}
               <View className="flex-row items-center justify-between border-t border-border pt-md">
                 <View className="gap-xxs">
                   <AppText variant="bodyMedium">Nguồn ưu tiên</AppText>

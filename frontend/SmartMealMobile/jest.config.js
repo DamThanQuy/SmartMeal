@@ -18,7 +18,7 @@ module.exports = {
   // "@react-navigation"... (xem node_modules/jest-expo/jest-preset.js) — nativewind và
   // lucide-react-native ship ESM chưa transpile nên phải thêm vào đây.
   transformIgnorePatterns: [
-    '/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|standard-navigation|nativewind|react-native-css-interop|lucide-react-native))',
+    '/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|standard-navigation|nativewind|react-native-css-interop|lucide-react-native|react-native-gifted-charts|gifted-charts-core))',
     '/node_modules/react-native-reanimated/plugin/',
     '/node_modules/@react-native/babel-preset/',
   ],

@@ -12,6 +12,7 @@ import type { MainStackParamList } from '@/navigation/types';
 import { useAuthStore } from '@/state/auth/authStore';
 import { useUserProfileStore } from '@/state/user/userProfileStore';
 import { useTheme } from '@/theme/ThemeProvider';
+import { useEditProfile } from '../hooks/useEditProfile';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'EditProfile'>;
 
@@ -22,7 +23,7 @@ const MIN_HEIGHT_CM = 100;
 const MAX_HEIGHT_CM = 250;
 
 const editProfileSchema = z.object({
-  fullName: z.string().min(1, { message: 'Bắt buộc' }),
+  fullName: z.string().trim().min(1, { message: 'Bắt buộc' }),
   birthYear: z
     .string()
     .min(4, { message: 'Bắt buộc' })
@@ -49,12 +50,14 @@ const editProfileSchema = z.object({
 type EditProfileFormValues = z.infer<typeof editProfileSchema>;
 
 // design/EditProfile.dc.html (design v2, Đợt 9, BR-003). Đổi avatar chỉ UI + nút giả lập, chưa
-// gọi expo-image-picker thật (CLAUDE.md mục 9). Email chỉ đọc (BR-011 — email gắn 1 tài khoản).
+// gọi expo-image-picker thật (CLAUDE.md mục 9; backend cũng chưa có upload ảnh). Email chỉ đọc
+// (BR-011 — email gắn 1 tài khoản). Họ tên lưu ở tài khoản, giới tính/năm sinh/chiều cao lưu ở hồ
+// sơ sức khỏe (backend chỉ lưu tuổi nên năm sinh là ước lượng) — xem useEditProfile.
 export function EditProfileScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const user = useAuthStore(state => state.user);
-  const updateUser = useAuthStore(state => state.updateUser);
   const profile = useUserProfileStore();
+  const editProfile = useEditProfile();
 
   const {
     control,
@@ -75,18 +78,33 @@ export function EditProfileScreen({ navigation }: Props) {
   const gender = watch('gender');
 
   const onSubmit = handleSubmit(values => {
-    updateUser({ fullName: values.fullName });
-    const nextDateOfBirth = new Date(
+    const fullName = values.fullName.trim();
+    const dateOfBirth = new Date(
       Number(values.birthYear),
       profile.dateOfBirth.getMonth(),
       profile.dateOfBirth.getDate(),
     );
-    profile.updateBasicInfo({
-      gender: values.gender,
-      dateOfBirth: nextDateOfBirth,
-      heightCm: Number(values.heightCm),
-    });
-    navigation.goBack();
+    const heightCm = Number(values.heightCm);
+
+    // Chỉ gửi phần đã đổi: mỗi lần sửa hồ sơ sức khỏe backend thêm 1 dòng cân nặng, và nếu lần
+    // trước đã lưu xong họ tên thì không lưu lại.
+    const nameChanged = fullName !== (user?.fullName ?? '');
+    const basicInfoChanged =
+      values.gender !== profile.gender ||
+      dateOfBirth.getTime() !== profile.dateOfBirth.getTime() ||
+      heightCm !== profile.heightCm;
+    if (!nameChanged && !basicInfoChanged) {
+      navigation.goBack();
+      return;
+    }
+
+    editProfile.mutate(
+      {
+        fullName: nameChanged ? fullName : undefined,
+        basicInfo: basicInfoChanged ? { gender: values.gender, dateOfBirth, heightCm } : undefined,
+      },
+      { onSuccess: () => navigation.goBack() },
+    );
   });
 
   return (
@@ -206,6 +224,12 @@ export function EditProfileScreen({ navigation }: Props) {
           description="Đổi chiều cao hoặc năm sinh sẽ tự tính lại BMI, TDEE và mục tiêu calo mỗi ngày. Cân nặng cập nhật trong mục Cân nặng."
         />
 
+        {editProfile.isError ? (
+          <AppText variant="caption" color="error" className="text-center">
+            {editProfile.error.message}
+          </AppText>
+        ) : null}
+
         <View className="flex-row gap-sm">
           <AppButton
             label="Hủy"
@@ -213,7 +237,12 @@ export function EditProfileScreen({ navigation }: Props) {
             className="flex-1"
             onPress={() => navigation.goBack()}
           />
-          <AppButton label="Lưu thay đổi" className="flex-1" onPress={() => onSubmit()} />
+          <AppButton
+            label="Lưu thay đổi"
+            className="flex-1"
+            loading={editProfile.isPending}
+            onPress={() => onSubmit()}
+          />
         </View>
       </View>
     </ScreenContainer>
