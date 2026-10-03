@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using SmartMeal.API.Infrastructure;
 using SmartMeal.Application.Services;
 using SmartMeal.Infrastructure.Data;
 using SmartMeal.Infrastructure.Options;
@@ -77,6 +78,26 @@ builder.Services
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
             ClockSkew = TimeSpan.FromSeconds(30)
         };
+
+        // 401/403 trả envelope ApiResponse thay vì body rỗng.
+        bearer.Events = new JwtBearerEvents
+        {
+            OnChallenge = async context =>
+            {
+                context.HandleResponse();
+                context.Response.Headers.Append("WWW-Authenticate", "Bearer");
+                var expired = context.AuthenticateFailure is SecurityTokenExpiredException;
+                await ApiErrorWriter.WriteAsync(
+                    context.HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    expired ? "Phiên đăng nhập đã hết hạn." : ApiErrorWriter.DefaultMessage(StatusCodes.Status401Unauthorized),
+                    expired ? new List<string> { "token_expired" } : null);
+            },
+            OnForbidden = context => ApiErrorWriter.WriteAsync(
+                context.HttpContext,
+                StatusCodes.Status403Forbidden,
+                ApiErrorWriter.DefaultMessage(StatusCodes.Status403Forbidden))
+        };
     });
 
 // 5. CORS — app di động native không cần CORS. Development mở tự do; môi trường khác chỉ cho các origin
@@ -99,8 +120,16 @@ builder.Services.AddCors(options =>
     });
 });
 
-// 6. Controllers
-builder.Services.AddControllers();
+// 6. Controllers — lỗi validate/binding và lỗi chưa xử lý đều trả envelope ApiResponse thống nhất
+builder.Services
+    .AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = ModelStateErrorResponse.Create;
+    });
+
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 // 7. Swagger với JWT
 builder.Services.AddEndpointsApiExplorer();
@@ -145,6 +174,20 @@ if (string.IsNullOrWhiteSpace(app.Configuration.GetConnectionString("DefaultConn
     throw new InvalidOperationException(
         "Thiếu ConnectionStrings:DefaultConnection — đặt biến môi trường ConnectionStrings__DefaultConnection (hoặc file .env, xem .env.example).");
 }
+
+app.UseExceptionHandler();
+
+// Phản hồi không có body (404 sai đường dẫn, 405, 415...) cũng trả envelope thay vì rỗng.
+app.UseStatusCodePages(async context =>
+{
+    var response = context.HttpContext.Response;
+    if (response.ContentLength is > 0 || !string.IsNullOrEmpty(response.ContentType))
+    {
+        return;
+    }
+
+    await ApiErrorWriter.WriteAsync(context.HttpContext, response.StatusCode, ApiErrorWriter.DefaultMessage(response.StatusCode));
+});
 
 // Swagger chỉ bật ở Development, hoặc khi chủ động đặt Swagger:Enabled=true (vd. môi trường demo).
 if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled"))

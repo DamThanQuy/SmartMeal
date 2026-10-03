@@ -1,15 +1,31 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace SmartMeal.Application.DTOs.Auth;
 
 public class RegisterRequestDto
 {
+    [Required(ErrorMessage = "Email là bắt buộc.")]
+    [EmailAddress(ErrorMessage = "Email không đúng định dạng.")]
+    [StringLength(254, ErrorMessage = "Email tối đa 254 ký tự.")]
     public string Email { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Mật khẩu là bắt buộc.")]
+    [StringLength(128, MinimumLength = 8, ErrorMessage = "Mật khẩu phải từ 8 đến 128 ký tự.")]
     public string Password { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Họ tên là bắt buộc.")]
+    [StringLength(100, MinimumLength = 2, ErrorMessage = "Họ tên phải từ 2 đến 100 ký tự.")]
     public string FullName { get; set; } = string.Empty;
 }
 
 public class LoginRequestDto
 {
+    [Required(ErrorMessage = "Email là bắt buộc.")]
+    [EmailAddress(ErrorMessage = "Email không đúng định dạng.")]
     public string Email { get; set; } = string.Empty;
+
+    // Không kiểm độ dài: mật khẩu sai/ngắn vẫn phải trả 401 "sai thông tin" thay vì 400.
+    [Required(ErrorMessage = "Mật khẩu là bắt buộc.")]
     public string Password { get; set; } = string.Empty;
 }
 
