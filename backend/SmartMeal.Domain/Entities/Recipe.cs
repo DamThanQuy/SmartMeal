@@ -19,11 +19,22 @@ public class Ingredient
     public double SugarPer100g { get; set; }
     public double SodiumMgPer100g { get; set; }
 
-    // Allergen flag
+    /// <summary>Chất gây dị ứng chính (giữ để tương thích). Nguồn đầy đủ là <see cref="IngredientAllergies"/> vì một nguyên liệu có thể chứa nhiều chất gây dị ứng.</summary>
     public int? AllergyId { get; set; }
     public Allergy? Allergy { get; set; }
 
+    /// <summary>Mọi chất gây dị ứng của nguyên liệu (BR-101/102).</summary>
+    public ICollection<IngredientAllergy> IngredientAllergies { get; set; } = new List<IngredientAllergy>();
+
     public ICollection<RecipeIngredient> RecipeIngredients { get; set; } = new List<RecipeIngredient>();
+}
+
+public class IngredientAllergy
+{
+    public Guid IngredientId { get; set; }
+    public Ingredient Ingredient { get; set; } = null!;
+    public int AllergyId { get; set; }
+    public Allergy Allergy { get; set; } = null!;
 }
 
 public class Recipe
@@ -38,6 +49,9 @@ public class Recipe
     public int Servings { get; set; } = 1;
     public string Difficulty { get; set; } = "Easy"; // Easy, Medium, Hard
     public bool IsPremium { get; set; } = false;
+
+    /// <summary>Các bữa phù hợp, phân tách bằng dấu phẩy (Breakfast,Lunch,Dinner,Snack). Rỗng = phù hợp mọi bữa.</summary>
+    public string MealTypes { get; set; } = string.Empty;
 
     // Total Nutrition per Serving
     public double CaloriesPerServing { get; set; }

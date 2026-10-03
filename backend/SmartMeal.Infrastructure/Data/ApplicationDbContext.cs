@@ -31,6 +31,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
     public DbSet<AiUsageLog> AiUsageLogs => Set<AiUsageLog>();
+    public DbSet<IngredientAllergy> IngredientAllergies => Set<IngredientAllergy>();
     public DbSet<WaterLog> WaterLogs => Set<WaterLog>();
     public DbSet<HealthSyncLog> HealthSyncLogs => Set<HealthSyncLog>();
     public DbSet<HealthPet> HealthPets => Set<HealthPet>();
@@ -169,6 +170,22 @@ public class ApplicationDbContext : DbContext
             .HasOne(ri => ri.Ingredient)
             .WithMany(i => i.RecipeIngredients)
             .HasForeignKey(ri => ri.IngredientId);
+
+        // IngredientAllergy (N-N): một nguyên liệu có thể chứa nhiều chất gây dị ứng.
+        modelBuilder.Entity<IngredientAllergy>()
+            .HasKey(ia => new { ia.IngredientId, ia.AllergyId });
+
+        modelBuilder.Entity<IngredientAllergy>()
+            .HasOne(ia => ia.Ingredient)
+            .WithMany(i => i.IngredientAllergies)
+            .HasForeignKey(ia => ia.IngredientId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<IngredientAllergy>()
+            .HasOne(ia => ia.Allergy)
+            .WithMany()
+            .HasForeignKey(ia => ia.AllergyId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // RecipeTag (N-N)
         modelBuilder.Entity<RecipeTag>()

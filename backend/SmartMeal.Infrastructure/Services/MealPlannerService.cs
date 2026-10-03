@@ -154,8 +154,9 @@ public class MealPlannerService : IMealPlannerService
 
         // 2. Query all recipes
         var allRecipes = await _db.Recipes
-            .Include(r => r.RecipeIngredients).ThenInclude(ri => ri.Ingredient)
+            .Include(r => r.RecipeIngredients).ThenInclude(ri => ri.Ingredient).ThenInclude(i => i.IngredientAllergies)
             .Include(r => r.RecipeTags).ThenInclude(rt => rt.Tag)
+            .AsSplitQuery()
             .ToListAsync();
 
         if (!allRecipes.Any())
@@ -163,14 +164,17 @@ public class MealPlannerService : IMealPlannerService
             return ApiResponse<WeeklyMealPlanDto>.Fail("Hệ thống chưa có đủ công thức để tự động tạo thực đơn tuần.");
         }
 
-        // Filter out allergens
+        // BR-102: loại hẳn công thức chứa chất gây dị ứng của người dùng, không bao giờ "tạm chấp nhận".
         var safeRecipes = allRecipes.Where(r =>
-            !r.RecipeIngredients.Any(ri => ri.Ingredient.AllergyId.HasValue && userAllergyIds.Contains(ri.Ingredient.AllergyId.Value))
+            !r.RecipeIngredients.Any(ri => ri.Ingredient.IngredientAllergies.Any(a => userAllergyIds.Contains(a.AllergyId)))
         ).ToList();
 
         if (!safeRecipes.Any())
         {
-            safeRecipes = allRecipes; // Fallback
+            // Không tạo gì cả (và không đụng vào thực đơn đang có) thay vì xếp món chứa chất gây dị ứng.
+            var current = await GetWeeklyPlanAsync(userId, startDate);
+            current.Message = "Không có công thức nào phù hợp với danh sách dị ứng của bạn nên chưa tạo được thực đơn.";
+            return current;
         }
 
         // Filter by diet tag if requested

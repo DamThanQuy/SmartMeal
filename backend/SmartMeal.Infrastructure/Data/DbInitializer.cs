@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using SmartMeal.Application.Common;
 using SmartMeal.Domain.Entities;
 
 namespace SmartMeal.Infrastructure.Data;
@@ -214,6 +216,73 @@ public static class DbInitializer
                 }
             };
             await db.Challenges.AddRangeAsync(challenges);
+        }
+
+        await db.SaveChangesAsync();
+
+        await EnsureRecipeMealTypesAsync(db);
+        await EnsureIngredientAllergensAsync(db);
+    }
+
+    // Bữa phù hợp của các công thức mẫu (dữ liệu cũ chưa có cột này nên được bù ở đây, idempotent).
+    private static readonly Dictionary<string, string> SeedMealTypes = new()
+    {
+        ["Salad ức gà sốt mè rang"] = "Lunch,Dinner",
+        ["Cơm gạo lứt bò xào ớt chuông"] = "Lunch,Dinner",
+        ["Cháo yến mạch ức gà rau củ"] = "Breakfast",
+        ["Cá hồi áp chảo măng tây và cà chua bi"] = "Lunch,Dinner",
+        ["Trứng cuộn rau củ thanh đạm"] = "Breakfast,Snack",
+        ["Canh đậu hũ non nấu cà chua thịt bằm"] = "Lunch,Dinner"
+    };
+
+    private static async Task EnsureRecipeMealTypesAsync(ApplicationDbContext db)
+    {
+        var untyped = await db.Recipes.Where(r => r.MealTypes == "").ToListAsync();
+        foreach (var recipe in untyped)
+        {
+            if (SeedMealTypes.TryGetValue(recipe.Title, out var mealTypes))
+            {
+                recipe.MealTypes = mealTypes;
+            }
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Mỗi nguyên liệu có thể chứa nhiều chất gây dị ứng. Bù các liên kết còn thiếu từ cột <c>AllergyId</c> cũ
+    /// và từ tên nguyên liệu (vd. "Sốt mè rang" → mè). Chỉ thêm, không xóa liên kết nào, nên chạy lại an toàn.
+    /// </summary>
+    private static async Task EnsureIngredientAllergensAsync(ApplicationDbContext db)
+    {
+        var allergies = await db.Allergies.AsNoTracking().ToListAsync();
+        var idByCode = allergies.ToDictionary(a => a.Code, a => a.Id, StringComparer.OrdinalIgnoreCase);
+        var codes = idByCode.Keys.ToList();
+
+        var existing = (await db.IngredientAllergies
+            .Select(ia => new { ia.IngredientId, ia.AllergyId })
+            .ToListAsync())
+            .Select(x => (x.IngredientId, x.AllergyId))
+            .ToHashSet();
+
+        var ingredients = await db.Ingredients.AsNoTracking()
+            .Select(i => new { i.Id, i.Name, i.AllergyId })
+            .ToListAsync();
+
+        foreach (var ingredient in ingredients)
+        {
+            var wanted = AllergenKeywords.FindMatches(ingredient.Name, codes)
+                .Select(code => idByCode[code])
+                .ToHashSet();
+            if (ingredient.AllergyId is { } legacyId)
+            {
+                wanted.Add(legacyId);
+            }
+
+            foreach (var allergyId in wanted.Where(id => !existing.Contains((ingredient.Id, id))))
+            {
+                db.IngredientAllergies.Add(new IngredientAllergy { IngredientId = ingredient.Id, AllergyId = allergyId });
+            }
         }
 
         await db.SaveChangesAsync();

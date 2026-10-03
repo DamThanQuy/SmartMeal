@@ -58,3 +58,28 @@ public sealed record SafetyPayload(bool IsSafe, List<SafetyAlertPayload> Alerts,
 public sealed record VoicePayload(string MealType, double TotalCalories, bool IsDemo);
 
 public sealed record SyncResultPayload(DateOnly Date, int Steps, double BurnedCalories, double DistanceMeters, string Source, DateTime SyncedAt);
+
+public sealed record RecipeIngredientPayload(
+    Guid IngredientId, string Name, double Amount, string Unit, decimal EstimatedPriceVnd, List<int> AllergyIds);
+
+public sealed record RecipePayload(
+    Guid Id, string Title, string? Description, string? ImageUrl, string Instructions, int PrepTimeMinutes, int CookTimeMinutes,
+    int TotalTimeMinutes, int Servings, string Difficulty, bool IsPremium, double CaloriesPerServing, double CarbsPerServing,
+    double FatPerServing, double ProteinPerServing, List<string> Tags, List<string> MealTypes, List<int> AllergyIds,
+    bool IsFavorite, List<RecipeIngredientPayload> Ingredients);
+
+public sealed record CollectionPayload(
+    Guid Id, string Name, string? Description, string? CoverImageUrl, int RecipeCount, bool IsPublic, Guid OwnerId,
+    bool IsOwner, List<RecipePayload> Recipes);
+
+public sealed record FavoritePayload(bool IsFavorite, int TotalFavorites);
+
+public sealed record PlannedMealPayload(
+    Guid MealPlanId, string MealType, Guid RecipeId, string RecipeTitle, string? RecipeImageUrl, double Calories, double Carbs,
+    double Protein, double Fat, int CookingTimeMinutes, bool IsCompleted);
+
+public sealed record PlanDayPayload(
+    DateOnly Date, string DayOfWeek, double TotalCalories, double TotalCarbs, double TotalProtein, double TotalFat,
+    List<PlannedMealPayload> Meals);
+
+public sealed record WeeklyPlanPayload(DateOnly StartDate, DateOnly EndDate, double TargetDailyCalories, List<PlanDayPayload> Days);
