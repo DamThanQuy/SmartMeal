@@ -12,7 +12,7 @@ import {
 } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { ScreenContainer, ScreenHeader } from '@/components/common';
+import { ScreenContainer, ScreenHeader, UserAvatar } from '@/components/common';
 import { AppButton, AppCard, AppSegmentedControl, AppText } from '@/components/ui';
 import { MEMBERSHIP_STATUS_LABEL } from '@/features/premium';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
@@ -64,11 +64,7 @@ export function SettingsScreen({ navigation }: Props) {
           onPress={() => navigation.navigate(MAIN_STACK_ROUTES.EDIT_PROFILE)}
           className="flex-row items-center gap-sm rounded-card bg-surface p-md"
         >
-          <View className="h-[56px] w-[56px] items-center justify-center rounded-full bg-primary-soft">
-            <AppText variant="h2" color="onPrimarySoft">
-              {(user?.fullName ?? 'U').charAt(0).toUpperCase()}
-            </AppText>
-          </View>
+          <UserAvatar name={user?.fullName} uri={user?.avatarUrl} size={56} />
           <View className="flex-1 gap-xxs">
             <AppText variant="bodyMedium">{user?.fullName ?? 'Người dùng SmartMeal'}</AppText>
             <AppText variant="caption" color="secondary">

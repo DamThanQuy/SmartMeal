@@ -13,7 +13,7 @@ import {
 } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { ScreenContainer } from '@/components/common';
+import { ScreenContainer, UserAvatar } from '@/components/common';
 import { AppBadge, AppCard, AppText } from '@/components/ui';
 import { ALLERGY_OPTIONS, DIETARY_PREFERENCE_OPTIONS } from '@/features/health';
 import { MEMBERSHIP_BADGE_LABEL } from '@/features/premium';
@@ -51,11 +51,7 @@ export function ProfileScreen() {
   return (
     <ScreenContainer scroll contentContainerClassName="gap-lg">
       <View className="flex-row items-center gap-sm py-xs">
-        <View className="h-[64px] w-[64px] items-center justify-center rounded-full bg-primary-soft">
-          <AppText variant="h1" color="onPrimarySoft">
-            {(user?.fullName ?? 'U').charAt(0).toUpperCase()}
-          </AppText>
-        </View>
+        <UserAvatar name={user?.fullName} uri={user?.avatarUrl} size={64} textVariant="h1" />
         <View className="flex-1 gap-xxs">
           <AppText variant="h2">{user?.fullName ?? 'Người dùng SmartMeal'}</AppText>
           <AppBadge label={MEMBERSHIP_BADGE_LABEL[membershipStatus]} tone={isPremium ? 'primary' : 'neutral'} />

@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import { ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppBadge, AppButton, AppCard, AppCheckbox, AppText } from '@/components/ui';
 import type { MainStackParamList } from '@/navigation/types';
+import { useDeleteMyData } from '@/features/auth';
 import { useAuthStore } from '@/state/auth/authStore';
 import { resetUserData } from '@/state/resetUserData';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -23,19 +24,26 @@ const ITEMS_TO_KEEP = ['Lịch sử giao dịch thanh toán'];
 
 const ITEMS_TO_ANONYMIZE = ['Số liệu thống kê tổng hợp, không gắn với tên bạn'];
 
-// design/DeleteData.dc.html (design v2, Đợt 9, BR-271). "Xóa dữ liệu" gọi resetUserData() (xóa
-// nhật ký, hồ sơ sức khỏe, yêu thích/bộ sưu tập, meal plan, grocery, gamification, AI usage — mỗi
-// store tự đăng ký hàm reset, xem src/state/resetUserData.ts) rồi logout() để quay về Welcome.
+// design/DeleteData.dc.html (design v2, Đợt 9, BR-271). "Xóa dữ liệu" gọi DELETE /me/data để xóa dữ
+// liệu trên máy chủ, rồi resetUserData() (xóa nhật ký, hồ sơ sức khỏe, yêu thích/bộ sưu tập, meal
+// plan, grocery, gamification, AI usage cục bộ — mỗi store tự đăng ký hàm reset, xem
+// src/state/resetUserData.ts) và logout() để quay về Welcome. Máy chủ lỗi thì KHÔNG xóa cục bộ và
+// KHÔNG đăng xuất, để người dùng thử lại (không để lại dữ liệu trên máy chủ mà tưởng đã xóa).
 // KHÔNG reset authStore/appStore (theme, ngôn ngữ) và premiumStore/lịch sử giao dịch — dữ liệu
 // thanh toán được giữ lại đúng BR-271 (xem ITEMS_TO_KEEP ở trên).
 export function DeleteDataScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const logout = useAuthStore(state => state.logout);
   const [confirmed, setConfirmed] = useState(true);
+  const deleteMyData = useDeleteMyData();
 
   const handleDelete = () => {
-    resetUserData();
-    logout();
+    deleteMyData.mutate(undefined, {
+      onSuccess: () => {
+        resetUserData();
+        logout();
+      },
+    });
   };
 
   return (
@@ -114,10 +122,16 @@ export function DeleteDataScreen({ navigation }: Props) {
           <AppButton
             label="Xóa dữ liệu"
             disabled={!confirmed}
+            loading={deleteMyData.isPending}
             className="flex-1 bg-error active:bg-error-text"
             onPress={handleDelete}
           />
         </View>
+        {deleteMyData.isError ? (
+          <AppText variant="caption" color="error" className="text-center">
+            {deleteMyData.error.message}
+          </AppText>
+        ) : null}
       </View>
     </ScreenContainer>
   );
