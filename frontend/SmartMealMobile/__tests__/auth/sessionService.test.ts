@@ -30,6 +30,7 @@ const SNAPSHOT: HealthProfileSnapshot = {
   goal: 'lose',
   allergyIds: ['peanut'],
   healthConditionIds: [],
+  dietaryPreferenceIds: ['vegan'],
   result: {
     bmi: 21.5,
     bmr: 1283,
@@ -41,7 +42,6 @@ const SNAPSHOT: HealthProfileSnapshot = {
 };
 
 const EXTRAS: HealthProfileExtras = {
-  dietaryPreferenceIds: ['vegan'],
   localAllergyIds: [],
   localHealthConditionIds: [],
 };

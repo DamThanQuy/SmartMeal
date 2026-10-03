@@ -1,7 +1,7 @@
 /**
  * useProfileData (docs/fetch-api/part1 §6.5, §9, §7.7): hook sửa hồ sơ sức khỏe đọc hồ sơ hiện tại từ
- * userProfileStore, gọi healthProfileService rồi nạp kết quả (số liệu do BE tính) lại vào store và
- * làm mới các query phụ thuộc mục tiêu calo. Service được mock.
+ * userProfileStore, gọi healthProfileService rồi nạp kết quả (số liệu do BE tính + phần "Khác" giữ
+ * cục bộ) lại vào store và làm mới các query phụ thuộc mục tiêu calo. Service được mock.
  */
 import {
   WEIGHT_HISTORY_QUERY_KEY,
@@ -11,7 +11,11 @@ import {
   useWeightHistory,
 } from '@/features/health/hooks/useProfileData';
 import { healthProfileService } from '@/features/health/services/healthProfileService';
-import type { HealthProfileSnapshot } from '@/features/health/types/health.types';
+import type {
+  HealthProfileExtras,
+  HealthProfileSnapshot,
+  HydratedHealthProfile,
+} from '@/features/health/types/health.types';
 import { useUserProfileStore } from '@/state/user/userProfileStore';
 import { renderHookWithQuery } from '../../test-utils/renderHookWithQuery';
 
@@ -35,19 +39,31 @@ const RESULT = {
   goal: 'lose' as const,
 };
 
-function snapshot(overrides: Partial<HealthProfileSnapshot> = {}): HealthProfileSnapshot {
+const LOCAL_EXTRAS: HealthProfileExtras = {
+  localAllergyIds: ['other'],
+  localHealthConditionIds: ['other'],
+};
+
+function profile(
+  overrides: Partial<HealthProfileSnapshot> = {},
+  extras: HealthProfileExtras = LOCAL_EXTRAS,
+): HydratedHealthProfile {
   return {
-    gender: 'female',
-    age: 30,
-    heightCm: 160,
-    weightKg: 54,
-    goalWeightKg: 52,
-    activityLevel: 'moderate',
-    goal: 'lose',
-    allergyIds: ['peanut'],
-    healthConditionIds: [],
-    result: RESULT,
-    ...overrides,
+    snapshot: {
+      gender: 'female',
+      age: 30,
+      heightCm: 160,
+      weightKg: 54,
+      goalWeightKg: 52,
+      activityLevel: 'moderate',
+      goal: 'lose',
+      allergyIds: ['peanut', 'treeNut'],
+      healthConditionIds: [],
+      dietaryPreferenceIds: ['keto'],
+      result: RESULT,
+      ...overrides,
+    },
+    extras,
   };
 }
 
@@ -68,8 +84,8 @@ beforeEach(() => {
 });
 
 describe('useRecordWeight', () => {
-  test('gửi hồ sơ hiện tại cho service, nạp chỉ số mới vào store và giữ phần chỉ có ở máy', async () => {
-    service.recordWeight.mockResolvedValue(snapshot());
+  test('gửi hồ sơ hiện tại cho service, nạp chỉ số mới vào store và giữ mục "Khác" ở máy', async () => {
+    service.recordWeight.mockResolvedValue(profile());
     const hook = await renderHookWithQuery(() => useRecordWeight());
     const invalidate = jest.spyOn(hook.queryClient, 'invalidateQueries');
 
@@ -84,13 +100,13 @@ describe('useRecordWeight', () => {
         goalWeightKg: 52,
         allergyIds: ['peanut', 'treeNut'],
         healthConditionIds: ['other'],
+        dietaryPreferenceIds: ['keto'],
       }),
     );
     expect(useUserProfileStore.getState()).toMatchObject({
       weightKg: 54,
       result: RESULT,
-      // Mục "treeNut"/"other" không có trên BE nên không bị mất sau khi nạp lại.
-      allergyIds: ['peanut', 'treeNut'],
+      allergyIds: ['peanut', 'treeNut', 'other'],
       healthConditionIds: ['other'],
       dietaryPreferenceIds: ['keto'],
     });
@@ -119,34 +135,36 @@ describe('useRecordWeight', () => {
 });
 
 describe('useUpdateBasicInfo', () => {
-  test('nạp hồ sơ mới và dùng đúng ngày sinh người dùng vừa nhập (BE chỉ lưu tuổi)', async () => {
-    const typedDob = new Date(1995, 2, 8);
+  test('nạp hồ sơ mới và dùng đúng ngày sinh BE đã lưu', async () => {
+    const savedDob = new Date(1995, 2, 8);
     service.updateBasicInfo.mockResolvedValue(
-      snapshot({ gender: 'male', heightCm: 175, age: 31, dateOfBirth: typedDob }),
+      profile({ gender: 'male', heightCm: 175, age: 31, dateOfBirth: savedDob }),
     );
     const hook = await renderHookWithQuery(() => useUpdateBasicInfo());
 
-    await hook.run(() => hook.current.mutateAsync({ gender: 'male', dateOfBirth: typedDob, heightCm: 175 }));
+    await hook.run(() =>
+      hook.current.mutateAsync({ gender: 'male', dateOfBirth: savedDob, heightCm: 175 }),
+    );
 
     expect(service.updateBasicInfo).toHaveBeenCalledWith(
-      { gender: 'male', dateOfBirth: typedDob, heightCm: 175 },
+      { gender: 'male', dateOfBirth: savedDob, heightCm: 175 },
       expect.objectContaining({ gender: 'female', heightCm: 160 }),
     );
     const state = useUserProfileStore.getState();
     expect(state).toMatchObject({ gender: 'male', heightCm: 175, result: RESULT });
-    expect(state.dateOfBirth).toBe(typedDob);
+    expect(state.dateOfBirth).toBe(savedDob);
     await hook.unmount();
   });
 });
 
 describe('useUpdateHealthSettings', () => {
   const selection = {
-    allergyIds: ['seafood', 'sesame'],
+    allergyIds: ['seafood', 'sesame', 'other'],
     healthConditionIds: ['diabetes'],
     dietaryPreferenceIds: ['vegan'],
   };
 
-  test('BE không đổi gì (service trả null) → chỉ áp lựa chọn vào store', async () => {
+  test('bản mock (service trả null) → chỉ áp lựa chọn vào store', async () => {
     service.updateHealthSettings.mockResolvedValue(null);
     const hook = await renderHookWithQuery(() => useUpdateHealthSettings());
     const invalidate = jest.spyOn(hook.queryClient, 'invalidateQueries');
@@ -158,7 +176,7 @@ describe('useUpdateHealthSettings', () => {
       expect.objectContaining({ allergyIds: ['peanut', 'treeNut'] }),
     );
     expect(useUserProfileStore.getState()).toMatchObject({
-      allergyIds: ['seafood', 'sesame'],
+      allergyIds: ['seafood', 'sesame', 'other'],
       healthConditionIds: ['diabetes'],
       dietaryPreferenceIds: ['vegan'],
       // Chỉ số không đổi.
@@ -169,17 +187,21 @@ describe('useUpdateHealthSettings', () => {
     await hook.unmount();
   });
 
-  test('BE đã ghi đè hồ sơ (service trả snapshot) → nạp lại, ghép với phần chỉ có ở máy', async () => {
+  test('BE trả hồ sơ mới → nạp lại, ghép với mục "Khác" giữ ở máy', async () => {
     service.updateHealthSettings.mockResolvedValue(
-      snapshot({ allergyIds: ['seafood'], healthConditionIds: ['diabetes'] }),
+      profile({
+        allergyIds: ['seafood', 'sesame'],
+        healthConditionIds: ['diabetes'],
+        dietaryPreferenceIds: ['vegan'],
+      }),
     );
     const hook = await renderHookWithQuery(() => useUpdateHealthSettings());
 
     await hook.run(() => hook.current.mutateAsync(selection));
 
     expect(useUserProfileStore.getState()).toMatchObject({
-      allergyIds: ['seafood', 'sesame'],
-      healthConditionIds: ['diabetes'],
+      allergyIds: ['seafood', 'sesame', 'other'],
+      healthConditionIds: ['diabetes', 'other'],
       dietaryPreferenceIds: ['vegan'],
       result: RESULT,
     });

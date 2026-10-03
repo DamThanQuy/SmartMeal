@@ -38,6 +38,7 @@ const CURRENT: HealthProfileInput = {
   goal: 'maintain',
   allergyIds: ['dairy', 'peanut'],
   healthConditionIds: [],
+  dietaryPreferenceIds: ['eatClean'],
 };
 
 describe('getWeightHistory', () => {
@@ -63,7 +64,7 @@ describe('recordWeight', () => {
   test('tính lại BMI→BMR→TDEE→Calorie→Macro bằng đúng 1 công thức và thêm vào đầu lịch sử', async () => {
     const { service } = load();
 
-    const snapshot = await service.recordWeight({ weightKg: 65, dateIso: '2026-10-02' }, CURRENT);
+    const { snapshot } = await service.recordWeight({ weightKg: 65, dateIso: '2026-10-02' }, CURRENT);
 
     expect(snapshot.weightKg).toBe(65);
     expect(snapshot.result).toEqual(calculateHealthProfileResult({ ...CURRENT, weightKg: 65 }));
@@ -79,7 +80,7 @@ describe('updateBasicInfo', () => {
     const { service } = load();
     const dateOfBirth = new Date(1990, 5, 1);
 
-    const snapshot = await service.updateBasicInfo(
+    const { snapshot } = await service.updateBasicInfo(
       { gender: 'female', dateOfBirth, heightCm: 160 },
       CURRENT,
     );

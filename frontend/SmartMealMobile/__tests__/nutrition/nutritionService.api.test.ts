@@ -70,9 +70,21 @@ function loadService() {
   jest.doMock('@/state/user/userProfileStore', () => ({
     getIncludeActivityCalories: () => includeActivity.value,
   }));
+  // Danh mục dị ứng theo code như dữ liệu seed của BE.
+  const allergyCodes: Record<number, string> = {
+    1: 'seafood',
+    2: 'peanut',
+    3: 'dairy',
+    4: 'egg',
+    5: 'gluten',
+    6: 'soy',
+    7: 'treeNut',
+    8: 'sesame',
+  };
   jest.doMock('@/features/health', () => ({
-    allergySlugFromMetaId:
-      jest.requireActual('@/features/health/utils/metaMapping').allergySlugFromMetaId,
+    getMetaCatalog: jest.fn(async () => ({
+      allergies: { codeById: (id: number) => allergyCodes[id] },
+    })),
   }));
 
   const { nutritionApiService } =

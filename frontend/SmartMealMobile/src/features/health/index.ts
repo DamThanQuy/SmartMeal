@@ -11,5 +11,6 @@ export * from './services/healthCalculator';
 export * from './services/healthProfileService';
 export * from './hooks/useMeta';
 export * from './hooks/useProfileData';
-export * from './utils/metaMapping';
+export { getMetaCatalog } from './services/metaCatalog';
+export type { MetaCatalog, MetaLookup } from './services/metaLookup';
 export type { MetaItem } from './types/health.api.types';

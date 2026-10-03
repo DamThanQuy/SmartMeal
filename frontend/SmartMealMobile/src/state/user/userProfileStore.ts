@@ -46,7 +46,7 @@ interface UserProfileState {
   waterGoalMl: number;
   setWaterGoalMl: (value: number) => void;
   initFromHealthProfile: (data: HealthProfileFormData, result: HealthProfileResult) => void;
-  /** Nạp hồ sơ từ backend (đăng nhập, khởi động app, sau khi sửa hồ sơ) — `extras` là phần BE không lưu. */
+  /** Nạp hồ sơ từ backend (đăng nhập, khởi động app, sau khi sửa hồ sơ) — `extras` là phần "Khác" BE không lưu. */
   hydrateFromServer: (snapshot: HealthProfileSnapshot, extras: HealthProfileExtras) => void;
   setAllergyIds: (ids: string[]) => void;
   setHealthConditionIds: (ids: string[]) => void;
@@ -161,8 +161,7 @@ export const useUserProfileStore = create<UserProfileState>()((set, get) => ({
     const selection = selectionFromServer(snapshot, extras);
     set({
       gender: snapshot.gender,
-      // BE chỉ có tuổi: dùng ngày sinh nguồn dữ liệu biết, hoặc giữ ngày sinh đang có nếu còn khớp
-      // tuổi, không thì ước lượng.
+      // Ngày sinh BE lưu; hồ sơ cũ chưa có thì giữ ngày sinh đang có nếu còn khớp tuổi, không thì ước lượng.
       dateOfBirth: snapshot.dateOfBirth ?? resolveDateOfBirth(get().dateOfBirth, snapshot.age),
       heightCm: snapshot.heightCm,
       weightKg: snapshot.weightKg,
@@ -172,6 +171,7 @@ export const useUserProfileStore = create<UserProfileState>()((set, get) => ({
       allergyIds: selection.allergyIds,
       healthConditionIds: selection.healthConditionIds,
       dietaryPreferenceIds: selection.dietaryPreferenceIds,
+      waterGoalMl: snapshot.waterGoalMl ?? get().waterGoalMl,
       result: snapshot.result,
     });
   },

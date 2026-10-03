@@ -2,10 +2,12 @@ import { formatDateIso, parseApiDateTime, parseDateIso } from '@/utils/date';
 import type {
   HealthProfileDto,
   HealthSurveyRequest,
+  UpdateHealthProfileRequest,
   WeightHistoryResponse,
 } from '../types/health.api.types';
 import type {
   ActivityLevel,
+  BasicInfoUpdate,
   Gender,
   HealthGoal,
   HealthProfileExtras,
@@ -16,19 +18,12 @@ import type {
   HealthSelection,
   WeightHistoryEntry,
 } from '../types/health.types';
-import {
-  ALLERGY_META_ID_BY_SLUG,
-  CONDITION_META_ID_BY_SLUG,
-  allergySlugFromName,
-  conditionSlugFromName,
-  hasAllergyMetaId,
-  hasConditionMetaId,
-  toMetaIds,
-} from '../utils/metaMapping';
 import { calculateAge } from './healthCalculator';
+import { toMetaCodes, toMetaIds, type MetaCatalog } from './metaLookup';
 
 // Hàm thuần quy đổi DTO backend ↔ type FE cho health profile (docs/fetch-api/part1 §6.2–§6.3).
-// Không gọi API, không đọc store — để test bằng fixture JSON.
+// Không gọi API, không đọc store — để test bằng fixture JSON. Ánh xạ dị ứng/bệnh lý/chế độ ăn dùng
+// MetaCatalog (slug FE ↔ id BE theo `code` của /meta/*), không có bảng id cứng.
 
 const GENDER_TO_API: Record<Gender, string> = {
   male: 'Male',
@@ -100,15 +95,20 @@ export function profileInputFromForm(formData: HealthProfileFormData): HealthPro
     goal: formData.goal ?? 'maintain',
     allergyIds: selection.allergyIds,
     healthConditionIds: selection.healthConditionIds,
+    dietaryPreferenceIds: selection.dietaryPreferenceIds,
   };
 }
 
-/** Phần lựa chọn mà BE không lưu: chế độ ăn + dị ứng/bệnh lý không có id trên BE. */
-export function extrasFromSelection(selection: HealthSelection): HealthProfileExtras {
+/** Phần lựa chọn mà BE không có mục tương ứng (vd. "Khác") — giữ cục bộ. */
+export function extrasFromSelection(
+  selection: HealthSelection,
+  catalog: MetaCatalog,
+): HealthProfileExtras {
   return {
-    dietaryPreferenceIds: selection.dietaryPreferenceIds,
-    localAllergyIds: selection.allergyIds.filter(slug => !hasAllergyMetaId(slug)),
-    localHealthConditionIds: selection.healthConditionIds.filter(slug => !hasConditionMetaId(slug)),
+    localAllergyIds: selection.allergyIds.filter(slug => !catalog.allergies.hasCode(slug)),
+    localHealthConditionIds: selection.healthConditionIds.filter(
+      slug => !catalog.conditions.hasCode(slug),
+    ),
   };
 }
 
@@ -116,33 +116,58 @@ function unique(values: readonly string[]): string[] {
   return Array.from(new Set(values));
 }
 
-/** Ghép lại lựa chọn đầy đủ từ hồ sơ BE (chỉ có mục có id) + phần giữ cục bộ. */
+/** Ghép lại lựa chọn đầy đủ từ hồ sơ BE + phần "Khác" giữ cục bộ. */
 export function selectionFromServer(
-  snapshot: Pick<HealthProfileSnapshot, 'allergyIds' | 'healthConditionIds'>,
+  snapshot: Pick<
+    HealthProfileSnapshot,
+    'allergyIds' | 'healthConditionIds' | 'dietaryPreferenceIds'
+  >,
   extras: HealthProfileExtras,
 ): HealthSelection {
   return {
     allergyIds: unique([...snapshot.allergyIds, ...extras.localAllergyIds]),
     healthConditionIds: unique([...snapshot.healthConditionIds, ...extras.localHealthConditionIds]),
-    dietaryPreferenceIds: extras.dietaryPreferenceIds,
+    dietaryPreferenceIds: snapshot.dietaryPreferenceIds,
   };
 }
 
-export function toSurveyRequest(
-  input: HealthProfileInput,
-  today: Date = new Date(),
-): HealthSurveyRequest {
+/** Hồ sơ đầy đủ → khảo sát (POST /healthprofile/survey). Gửi NGÀY SINH thật, BE tự tính tuổi. */
+export function toSurveyRequest(input: HealthProfileInput, catalog: MetaCatalog): HealthSurveyRequest {
   return {
     gender: GENDER_TO_API[input.gender],
-    // BE chỉ lưu tuổi (không lưu ngày sinh).
-    age: calculateAge(input.dateOfBirth, today),
+    dateOfBirth: formatDateIso(input.dateOfBirth),
     heightCm: input.heightCm,
     currentWeightKg: input.weightKg,
     targetWeightKg: input.goalWeightKg,
     activityLevel: ACTIVITY_LEVEL_TO_API[input.activityLevel],
     goal: GOAL_TO_API[input.goal],
-    allergyIds: toMetaIds(input.allergyIds, ALLERGY_META_ID_BY_SLUG),
-    medicalConditionIds: toMetaIds(input.healthConditionIds, CONDITION_META_ID_BY_SLUG),
+    allergyIds: toMetaIds(input.allergyIds, catalog.allergies),
+    medicalConditionIds: toMetaIds(input.healthConditionIds, catalog.conditions),
+    dietaryPreferenceIds: toMetaIds(input.dietaryPreferenceIds, catalog.tags),
+  };
+}
+
+/** Đổi giới tính/ngày sinh/chiều cao → PUT /healthprofile (chỉ trường đổi). */
+export function toBasicInfoUpdateRequest(update: BasicInfoUpdate): UpdateHealthProfileRequest {
+  return {
+    gender: GENDER_TO_API[update.gender],
+    dateOfBirth: formatDateIso(update.dateOfBirth),
+    heightCm: update.heightCm,
+  };
+}
+
+/**
+ * Đổi dị ứng/bệnh lý/chế độ ăn → PUT /healthprofile. Danh sách rỗng là "xóa hết" nên luôn gửi cả
+ * ba (mục "Không có" phải xóa được dữ liệu cũ).
+ */
+export function toSelectionUpdateRequest(
+  selection: HealthSelection,
+  catalog: MetaCatalog,
+): UpdateHealthProfileRequest {
+  return {
+    allergyIds: toMetaIds(selection.allergyIds, catalog.allergies),
+    medicalConditionIds: toMetaIds(selection.healthConditionIds, catalog.conditions),
+    dietaryPreferenceIds: toMetaIds(selection.dietaryPreferenceIds, catalog.tags),
   };
 }
 
@@ -162,37 +187,31 @@ export function toHealthProfileResult(dto: HealthProfileDto): HealthProfileResul
   };
 }
 
-function slugsFromNames(
-  names: readonly string[],
-  resolve: (name: string) => string | undefined,
-): string[] {
-  const slugs = names.map(resolve).filter((slug): slug is string => slug !== undefined);
-  return unique(slugs);
-}
-
-export function fromHealthProfileDto(dto: HealthProfileDto): HealthProfileSnapshot {
+export function fromHealthProfileDto(dto: HealthProfileDto, catalog: MetaCatalog): HealthProfileSnapshot {
   return {
     gender: genderFromApi(dto.gender),
     age: dto.age,
+    dateOfBirth: dto.dateOfBirth ? parseDateIso(dto.dateOfBirth) : undefined,
     heightCm: dto.heightCm,
     weightKg: dto.currentWeightKg,
     goalWeightKg: dto.targetWeightKg,
     activityLevel: activityLevelFromApi(dto.activityLevel),
     goal: goalFromApi(dto.goal),
-    // `allergies`/`medicalConditions` là TÊN (không phải id); tên không nhận ra (vd. "Mỡ máu cao",
-    // chưa có ở FE) bị bỏ — không ảnh hưởng dữ liệu đã lưu trên BE.
-    allergyIds: slugsFromNames(dto.allergies, allergySlugFromName),
-    healthConditionIds: slugsFromNames(dto.medicalConditions, conditionSlugFromName),
+    // Id lạ (mục BE thêm sau mà FE chưa biết) bị bỏ — không ảnh hưởng dữ liệu đã lưu trên BE.
+    allergyIds: toMetaCodes(dto.allergyIds, catalog.allergies),
+    healthConditionIds: toMetaCodes(dto.medicalConditionIds, catalog.conditions),
+    dietaryPreferenceIds: toMetaCodes(dto.dietaryPreferenceIds, catalog.tags),
+    waterGoalMl: dto.waterGoalMl,
     result: toHealthProfileResult(dto),
   };
 }
 
-/** BE chỉ có tuổi → ước lượng ngày sinh = 01/01 của (năm nay − tuổi). EditProfile hiển thị "≈". */
+/** Hồ sơ cũ chưa có ngày sinh → ước lượng = 01/01 của (năm nay − tuổi). */
 export function approximateDateOfBirth(age: number, today: Date = new Date()): Date {
   return new Date(today.getFullYear() - age, 0, 1);
 }
 
-/** Giữ ngày sinh đang có nếu vẫn khớp tuổi BE (vừa nhập trên máy này), không thì ước lượng. */
+/** Giữ ngày sinh đang có nếu vẫn khớp tuổi BE, không thì ước lượng (chỉ khi BE chưa có ngày sinh). */
 export function resolveDateOfBirth(current: Date, age: number, today: Date = new Date()): Date {
   return calculateAge(current, today) === age ? current : approximateDateOfBirth(age, today);
 }
@@ -217,24 +236,9 @@ export function snapshotFromInput(
     goal: input.goal,
     allergyIds: input.allergyIds,
     healthConditionIds: input.healthConditionIds,
+    dietaryPreferenceIds: input.dietaryPreferenceIds,
     result,
   };
-}
-
-/** Hai hồ sơ có gửi lên BE cùng dị ứng/bệnh lý không (chỉ tính mục có id trên BE, không phân biệt thứ tự). */
-export function hasSameServerSelection(a: HealthProfileInput, b: HealthProfileInput): boolean {
-  const sameIds = (x: readonly number[], y: readonly number[]) =>
-    x.length === y.length && x.every(id => y.includes(id));
-  return (
-    sameIds(
-      toMetaIds(a.allergyIds, ALLERGY_META_ID_BY_SLUG),
-      toMetaIds(b.allergyIds, ALLERGY_META_ID_BY_SLUG),
-    ) &&
-    sameIds(
-      toMetaIds(a.healthConditionIds, CONDITION_META_ID_BY_SLUG),
-      toMetaIds(b.healthConditionIds, CONDITION_META_ID_BY_SLUG),
-    )
-  );
 }
 
 /** Lịch sử cân nặng: mới → cũ (BE trả cũ → mới); ngày theo giờ máy chứ không theo UTC. */
@@ -250,9 +254,8 @@ export function fromWeightHistoryDto(dto: WeightHistoryResponse): WeightHistoryE
 }
 
 /**
- * `recordedAt` gửi lên BE phải là ISO UTC có hậu tố Z (không gửi chuỗi chỉ có ngày — chưa kiểm
- * chứng nhưng Npgsql có thể từ chối). Hôm nay → thời điểm hiện tại; ngày khác → 12:00 giờ máy của
- * ngày đó.
+ * `recordedAt` gửi lên BE phải là ISO UTC có hậu tố Z (không gửi chuỗi chỉ có ngày). Hôm nay → thời
+ * điểm hiện tại; ngày khác → 12:00 giờ máy của ngày đó.
  */
 export function toRecordedAtIso(dateIso: string, now: Date = new Date()): string {
   if (dateIso === formatDateIso(now)) return now.toISOString();

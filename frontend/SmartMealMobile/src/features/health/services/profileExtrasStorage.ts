@@ -1,16 +1,12 @@
 import { STORAGE_KEYS } from '@/constants/storage';
 import { storageService } from '@/services/storage/storage';
-import type { HealthProfileExtras } from '../types/health.types';
+import { EMPTY_PROFILE_EXTRAS, type HealthProfileExtras } from '../types/health.types';
 
-// Phần hồ sơ backend không lưu (chế độ ăn, dị ứng/bệnh lý không có id…) giữ ở AsyncStorage theo
-// từng user — không nhạy cảm nên không cần SecureStore (docs/fetch-api/part1 §6.5, §13). Mất dữ
-// liệu này (xóa app, đổi máy) chỉ làm người dùng chọn lại, không ảnh hưởng chỉ số do BE tính.
+export { EMPTY_PROFILE_EXTRAS };
 
-export const EMPTY_PROFILE_EXTRAS: HealthProfileExtras = {
-  dietaryPreferenceIds: [],
-  localAllergyIds: [],
-  localHealthConditionIds: [],
-};
+// Phần hồ sơ backend không lưu — chỉ còn các lựa chọn "Khác" (dị ứng/bệnh lý không có mục tương
+// ứng trên BE) — giữ ở AsyncStorage theo từng user; không nhạy cảm nên không cần SecureStore. Mất
+// dữ liệu này (xóa app, đổi máy) chỉ làm người dùng chọn lại, không ảnh hưởng chỉ số do BE tính.
 
 function keyFor(userId: string): string {
   return `${STORAGE_KEYS.PROFILE_EXTRAS_PREFIX}${userId}`;
@@ -30,7 +26,6 @@ export function parseProfileExtras(raw: string | undefined): HealthProfileExtras
     if (typeof parsed !== 'object' || parsed === null) return EMPTY_PROFILE_EXTRAS;
     const record = parsed as Record<string, unknown>;
     return {
-      dietaryPreferenceIds: toStringArray(record.dietaryPreferenceIds),
       localAllergyIds: toStringArray(record.localAllergyIds),
       localHealthConditionIds: toStringArray(record.localHealthConditionIds),
     };

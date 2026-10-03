@@ -3,56 +3,73 @@ import { getCurrentUserId } from '@/state/auth/authStore';
 import type {
   HealthProfileDto,
   HealthSurveyRequest,
+  UpdateHealthProfileRequest,
   WeightHistoryResponse,
   WeightLogRequest,
   WeightPointDto,
 } from '../types/health.api.types';
-import type { HealthProfileInput } from '../types/health.types';
+import {
+  EMPTY_PROFILE_EXTRAS,
+  type HealthProfileExtras,
+  type HydratedHealthProfile,
+} from '../types/health.types';
 import {
   extrasFromSelection,
   fromHealthProfileDto,
   fromWeightHistoryDto,
-  hasSameServerSelection,
   profileInputFromForm,
   selectionFromForm,
+  toBasicInfoUpdateRequest,
   toHealthProfileResult,
   toRecordedAtIso,
+  toSelectionUpdateRequest,
   toSurveyRequest,
 } from './health.mapper';
 import type { healthProfileMockService } from './healthProfileService.mock';
+import { getMetaCatalog } from './metaCatalog';
+import type { MetaCatalog } from './metaLookup';
 import { profileExtrasStorage } from './profileExtrasStorage';
 
-async function postSurvey(input: HealthProfileInput): Promise<HealthProfileDto> {
-  return api.post<HealthProfileDto, HealthSurveyRequest>(
-    ENDPOINTS.healthProfile.survey,
-    toSurveyRequest(input),
-  );
+async function loadLocalExtras(userId: string | null): Promise<HealthProfileExtras> {
+  return userId ? profileExtrasStorage.load(userId) : EMPTY_PROFILE_EXTRAS;
+}
+
+async function saveLocalExtras(extras: HealthProfileExtras): Promise<void> {
+  const userId = getCurrentUserId();
+  if (userId) await profileExtrasStorage.save(userId, extras);
+}
+
+async function hydrated(
+  dto: HealthProfileDto,
+  catalog: MetaCatalog,
+  userId: string | null = getCurrentUserId(),
+): Promise<HydratedHealthProfile> {
+  return { snapshot: fromHealthProfileDto(dto, catalog), extras: await loadLocalExtras(userId) };
 }
 
 // Bản gọi backend thật (docs/fetch-api/part1 §6, §9). Chỉ khai báo hàm đã nối API; hàm còn lại tự
 // rơi về bản mock trong healthProfileService.ts.
 export const healthProfileApiService: Partial<typeof healthProfileMockService> = {
-  // POST /healthprofile/survey — BE tính BMI/BMR/TDEE/macro (BR-022) và ghi đè toàn bộ hồ sơ.
+  // POST /healthprofile/survey — BE lưu NGÀY SINH, dị ứng, bệnh lý, chế độ ăn và tính BMI/BMR/TDEE/macro
+  // (BR-022). Chỉ lựa chọn "Khác" (BE không có mục tương ứng) giữ cục bộ theo user.
   async submitHealthProfile(formData) {
-    const dto = await postSurvey(profileInputFromForm(formData));
-
-    // Phần BE không lưu (chế độ ăn, dị ứng/bệnh lý không có id) giữ cục bộ theo user.
-    const userId = getCurrentUserId();
-    if (userId) {
-      await profileExtrasStorage.save(userId, extrasFromSelection(selectionFromForm(formData)));
-    }
-
+    const catalog = await getMetaCatalog();
+    const dto = await api.post<HealthProfileDto, HealthSurveyRequest>(
+      ENDPOINTS.healthProfile.survey,
+      toSurveyRequest(profileInputFromForm(formData), catalog),
+    );
+    await saveLocalExtras(extrasFromSelection(selectionFromForm(formData), catalog));
     return toHealthProfileResult(dto);
   },
 
   // GET /healthprofile — null khi tài khoản chưa làm khảo sát (BE trả 404).
   async getHealthProfile(userId) {
     try {
-      const dto = await api.get<HealthProfileDto>(ENDPOINTS.healthProfile.base);
-      return {
-        snapshot: fromHealthProfileDto(dto),
-        extras: await profileExtrasStorage.load(userId),
-      };
+      const [dto, catalog] = await Promise.all([
+        api.get<HealthProfileDto>(ENDPOINTS.healthProfile.base),
+        getMetaCatalog(),
+      ]);
+      return await hydrated(dto, catalog, userId);
     } catch (error) {
       if (isApiError(error) && error.code === 'NOT_FOUND') return null;
       throw error;
@@ -72,35 +89,36 @@ export const healthProfileApiService: Partial<typeof healthProfileMockService> =
       weightKg: input.weightKg,
       recordedAt: toRecordedAtIso(input.dateIso),
     });
-    const dto = await api.get<HealthProfileDto>(ENDPOINTS.healthProfile.base);
-    return fromHealthProfileDto(dto);
+    const [dto, catalog] = await Promise.all([
+      api.get<HealthProfileDto>(ENDPOINTS.healthProfile.base),
+      getMetaCatalog(),
+    ]);
+    return hydrated(dto, catalog);
   },
 
-  // BE chỉ có "ghi đè toàn bộ hồ sơ" → gửi lại hồ sơ hiện tại kèm phần đổi. Mỗi lần gọi BE thêm 1
-  // dòng cân nặng (P1-BE-04). Giữ ngày sinh người dùng vừa nhập (BE chỉ lưu tuổi).
-  async updateBasicInfo(update, current) {
-    const dto = await postSurvey({ ...current, ...update });
-    return { ...fromHealthProfileDto(dto), dateOfBirth: update.dateOfBirth };
+  // PUT /healthprofile { gender, dateOfBirth, heightCm } — BE sửa đúng các trường đó, tính lại chỉ số
+  // và KHÔNG thêm dòng cân nặng (trước đây phải gửi lại cả hồ sơ bằng POST /survey).
+  async updateBasicInfo(update) {
+    const [dto, catalog] = await Promise.all([
+      api.put<HealthProfileDto, UpdateHealthProfileRequest>(
+        ENDPOINTS.healthProfile.profile,
+        toBasicInfoUpdateRequest(update),
+      ),
+      getMetaCatalog(),
+    ]);
+    return hydrated(dto, catalog);
   },
 
-  // Chỉ gọi survey khi dị ứng/bệnh lý CÓ id trên BE đổi: chế độ ăn và các mục không có id
-  // (treeNut, sesame, other...) chỉ ở máy — khỏi ghi đè hồ sơ và khỏi thêm dòng cân nặng thừa.
-  async updateHealthSettings(selection, current) {
-    const next: HealthProfileInput = {
-      ...current,
-      allergyIds: selection.allergyIds,
-      healthConditionIds: selection.healthConditionIds,
-    };
-    const userId = getCurrentUserId();
-    const extras = extrasFromSelection(selection);
-
-    if (hasSameServerSelection(current, next)) {
-      if (userId) await profileExtrasStorage.save(userId, extras);
-      return null;
-    }
-
-    const dto = await postSurvey(next);
-    if (userId) await profileExtrasStorage.save(userId, extras);
-    return fromHealthProfileDto(dto);
+  // PUT /healthprofile { allergyIds, medicalConditionIds, dietaryPreferenceIds } — danh sách rỗng là
+  // "xóa hết". Mục "Khác" (BE không có) chỉ lưu ở máy.
+  async updateHealthSettings(selection) {
+    const catalog = await getMetaCatalog();
+    const dto = await api.put<HealthProfileDto, UpdateHealthProfileRequest>(
+      ENDPOINTS.healthProfile.profile,
+      toSelectionUpdateRequest(selection, catalog),
+    );
+    const extras = extrasFromSelection(selection, catalog);
+    await saveLocalExtras(extras);
+    return { snapshot: fromHealthProfileDto(dto, catalog), extras };
   },
 };

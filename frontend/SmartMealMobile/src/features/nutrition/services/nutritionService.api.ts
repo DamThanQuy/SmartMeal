@@ -1,4 +1,4 @@
-import { allergySlugFromMetaId } from '@/features/health';
+import { getMetaCatalog } from '@/features/health';
 import { ENDPOINTS, api, isApiError, type ApiErrorCode } from '@/services/api';
 import { getIncludeActivityCalories } from '@/state/user/userProfileStore';
 import type { PagedResult } from '@/types/api';
@@ -139,7 +139,8 @@ export const nutritionApiService: Partial<typeof nutritionMockService> = {
     const page = await api.get<PagedResult<FoodItemDto>>(ENDPOINTS.foods.list, {
       params: { search: normalizedQuery || undefined, page: 1, pageSize: FOOD_PAGE_SIZE },
     });
-    const remote = page.items.map(dto => fromFoodDto(dto, allergySlugFromMetaId));
+    const { allergies } = await getMetaCatalog();
+    const remote = page.items.map(dto => fromFoodDto(dto, allergies.codeById));
 
     if (!normalizedQuery) return remote;
     const lowerQuery = normalizedQuery.toLowerCase();
@@ -152,7 +153,8 @@ export const nutritionApiService: Partial<typeof nutritionMockService> = {
     const local = findUserCreatedFood(foodId);
     if (local) return local;
     const dto = await api.get<FoodItemDto>(ENDPOINTS.foods.byId(foodId));
-    return fromFoodDto(dto, allergySlugFromMetaId);
+    const { allergies } = await getMetaCatalog();
+    return fromFoodDto(dto, allergies.codeById);
   },
 
   // GET /nutritiondiary/weekly-progress?startDate= — 7 ngày kết thúc ở `dateIso`.

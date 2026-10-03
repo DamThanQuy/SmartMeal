@@ -4,12 +4,12 @@ import { registerUserDataReset } from '@/state/resetUserData';
 import { todayIso } from '@/utils/date';
 import { calculateHealthProfileResult } from './healthCalculator';
 import { profileInputFromForm, snapshotFromInput } from './health.mapper';
-import type {
-  BasicInfoUpdate,
+import {
+  EMPTY_PROFILE_EXTRAS,
+  type BasicInfoUpdate,
   HealthProfileFormData,
   HealthProfileInput,
   HealthProfileResult,
-  HealthProfileSnapshot,
   HealthSelection,
   HydratedHealthProfile,
   WeightHistoryEntry,
@@ -75,12 +75,15 @@ export const healthProfileMockService = {
   async recordWeight(
     input: WeightRecordInput,
     current: HealthProfileInput,
-  ): Promise<HealthProfileSnapshot> {
+  ): Promise<HydratedHealthProfile> {
     await simulateRequest('Không thể lưu cân nặng, vui lòng thử lại.');
 
     const next: HealthProfileInput = { ...current, weightKg: input.weightKg };
     addWeightEntry(input.weightKg, input.dateIso);
-    return snapshotFromInput(next, calculateHealthProfileResult(next));
+    return {
+      snapshot: snapshotFromInput(next, calculateHealthProfileResult(next)),
+      extras: EMPTY_PROFILE_EXTRAS,
+    };
   },
 
   // EditProfileScreen (BR-003) — đổi giới tính/ngày sinh/chiều cao cũng phải tính lại
@@ -88,19 +91,22 @@ export const healthProfileMockService = {
   async updateBasicInfo(
     update: BasicInfoUpdate,
     current: HealthProfileInput,
-  ): Promise<HealthProfileSnapshot> {
+  ): Promise<HydratedHealthProfile> {
     await simulateRequest('Không thể lưu thay đổi, vui lòng thử lại.');
 
     const next: HealthProfileInput = { ...current, ...update };
-    return snapshotFromInput(next, calculateHealthProfileResult(next));
+    return {
+      snapshot: snapshotFromInput(next, calculateHealthProfileResult(next)),
+      extras: EMPTY_PROFILE_EXTRAS,
+    };
   },
 
   // HealthSettingsScreen — dị ứng/bệnh lý/chế độ ăn không ảnh hưởng chỉ số đã tính, nên không có
-  // snapshot mới (null = chỉ áp lựa chọn vào userProfileStore).
+  // hồ sơ mới (null = chỉ áp lựa chọn vào userProfileStore).
   async updateHealthSettings(
     _selection: HealthSelection,
     _current: HealthProfileInput,
-  ): Promise<HealthProfileSnapshot | null> {
+  ): Promise<HydratedHealthProfile | null> {
     await simulateRequest('Không thể lưu thay đổi, vui lòng thử lại.');
     return null;
   },

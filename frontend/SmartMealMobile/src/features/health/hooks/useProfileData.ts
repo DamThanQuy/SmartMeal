@@ -1,12 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUserProfileStore } from '@/state/user/userProfileStore';
-import { extrasFromSelection } from '../services/health.mapper';
 import { healthProfileService } from '../services/healthProfileService';
 import type {
   BasicInfoUpdate,
   HealthProfileInput,
-  HealthProfileSnapshot,
   HealthSelection,
+  HydratedHealthProfile,
   WeightRecordInput,
 } from '../types/health.types';
 
@@ -28,21 +27,13 @@ function currentProfileInput(): HealthProfileInput {
     goal: state.goal,
     allergyIds: state.allergyIds,
     healthConditionIds: state.healthConditionIds,
-  };
-}
-
-function currentSelection(): HealthSelection {
-  const state = useUserProfileStore.getState();
-  return {
-    allergyIds: state.allergyIds,
-    healthConditionIds: state.healthConditionIds,
     dietaryPreferenceIds: state.dietaryPreferenceIds,
   };
 }
 
-/** Nạp snapshot mới vào store, giữ phần lựa chọn BE không lưu (chế độ ăn, mục không có id). */
-function applySnapshot(snapshot: HealthProfileSnapshot, selection: HealthSelection): void {
-  useUserProfileStore.getState().hydrateFromServer(snapshot, extrasFromSelection(selection));
+/** Nạp hồ sơ vừa nhận từ server (số liệu BE tính + phần "Khác" giữ cục bộ) vào store. */
+function applyHydrated({ snapshot, extras }: HydratedHealthProfile): void {
+  useUserProfileStore.getState().hydrateFromServer(snapshot, extras);
 }
 
 // Mục tiêu calo/macro đổi theo cân nặng/chiều cao/tuổi nên mọi nơi đang dùng chúng phải tải lại
@@ -76,8 +67,8 @@ export function useRecordWeight() {
   return useMutation({
     mutationFn: (input: WeightRecordInput) =>
       healthProfileService.recordWeight(input, currentProfileInput()),
-    onSuccess: snapshot => {
-      applySnapshot(snapshot, currentSelection());
+    onSuccess: profile => {
+      applyHydrated(profile);
       invalidate();
     },
   });
@@ -88,8 +79,8 @@ export function useUpdateBasicInfo() {
   return useMutation({
     mutationFn: (update: BasicInfoUpdate) =>
       healthProfileService.updateBasicInfo(update, currentProfileInput()),
-    onSuccess: snapshot => {
-      applySnapshot(snapshot, currentSelection());
+    onSuccess: profile => {
+      applyHydrated(profile);
       invalidate();
     },
   });
@@ -100,13 +91,13 @@ export function useUpdateHealthSettings() {
   return useMutation({
     mutationFn: async (selection: HealthSelection) => ({
       selection,
-      snapshot: await healthProfileService.updateHealthSettings(selection, currentProfileInput()),
+      profile: await healthProfileService.updateHealthSettings(selection, currentProfileInput()),
     }),
-    onSuccess: ({ selection, snapshot }) => {
-      if (snapshot) {
-        applySnapshot(snapshot, selection);
+    onSuccess: ({ selection, profile }) => {
+      if (profile) {
+        applyHydrated(profile);
       } else {
-        // Không có gì đổi ở phía BE (chỉ chế độ ăn hoặc mục chỉ lưu ở máy) → chỉ áp lựa chọn.
+        // Bản mock không có hồ sơ mới từ server → chỉ áp lựa chọn vào store.
         const store = useUserProfileStore.getState();
         store.setAllergyIds(selection.allergyIds);
         store.setHealthConditionIds(selection.healthConditionIds);

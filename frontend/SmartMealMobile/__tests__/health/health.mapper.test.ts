@@ -1,6 +1,7 @@
 /**
  * health.mapper (docs/fetch-api/part1 §6.2–§6.3): quy đổi form/hồ sơ FE ↔ DTO của BE. Fixture
- * khớp HealthProfileDto/HealthSurveyRequestDto trong backend (JSON camelCase).
+ * khớp HealthProfileDto/HealthSurveyRequestDto trong backend (JSON camelCase). Ánh xạ dị ứng/bệnh
+ * lý/chế độ ăn đi qua MetaCatalog (slug FE ↔ id BE theo `code`).
  */
 import {
   activityLevelFromApi,
@@ -10,16 +11,18 @@ import {
   fromWeightHistoryDto,
   genderFromApi,
   goalFromApi,
-  hasSameServerSelection,
   profileInputFromForm,
   resolveDateOfBirth,
   selectionFromForm,
   selectionFromServer,
   snapshotFromInput,
+  toBasicInfoUpdateRequest,
   toHealthProfileResult,
   toRecordedAtIso,
+  toSelectionUpdateRequest,
   toSurveyRequest,
 } from '@/features/health/services/health.mapper';
+import type { MetaCatalog } from '@/features/health/services/metaLookup';
 import type {
   HealthProfileDto,
   WeightHistoryResponse,
@@ -29,8 +32,15 @@ import {
   type HealthProfileFormData,
   type HealthProfileInput,
 } from '@/features/health/types/health.types';
+import { createTestCatalog } from '../../test-utils/metaCatalog';
 
 const TODAY = new Date(2026, 9, 2); // 02/10/2026
+
+let catalog: MetaCatalog;
+
+beforeAll(async () => {
+  catalog = await createTestCatalog();
+});
 
 function createForm(overrides: Partial<HealthProfileFormData> = {}): HealthProfileFormData {
   return {
@@ -53,11 +63,13 @@ const PROFILE_DTO: HealthProfileDto = {
   id: '0f8fad5b-d9cb-469f-a165-70867728950e',
   gender: 'Male',
   age: 24,
+  dateOfBirth: '2002-01-15',
   heightCm: 172,
   currentWeightKg: 68,
   targetWeightKg: 62,
   activityLevel: 'Light',
   goal: 'LoseWeight',
+  waterGoalMl: 2200,
   bmi: 23,
   bmiClassification: 'Bình thường (Normal)',
   bmr: 1655.0000000000002,
@@ -66,8 +78,9 @@ const PROFILE_DTO: HealthProfileDto = {
   dailyCarbsTargetGrams: 222.0,
   dailyFatTargetGrams: 49.33333,
   dailyProteinTargetGrams: 111.4,
-  allergies: ['Hải sản (Seafood)', 'Sữa động vật (Dairy)'],
-  medicalConditions: ['Tiểu đường (Diabetes)', 'Mỡ máu cao (Dyslipidemia)'],
+  allergyIds: [1, 3],
+  medicalConditionIds: [1, 4],
+  dietaryPreferenceIds: [2, 7],
 };
 
 describe('profileInputFromForm / selectionFromForm', () => {
@@ -82,6 +95,7 @@ describe('profileInputFromForm / selectionFromForm', () => {
       goalWeightKg: 62,
       activityLevel: 'light',
       goal: 'lose',
+      dietaryPreferenceIds: ['keto', 'lowCarb'],
     });
   });
 
@@ -110,32 +124,42 @@ describe('profileInputFromForm / selectionFromForm', () => {
 });
 
 describe('toSurveyRequest', () => {
-  test('quy đổi enum sang PascalCase, tuổi từ ngày sinh, slug sang id BE', () => {
-    const request = toSurveyRequest(profileInputFromForm(createForm()), TODAY);
+  test('gửi NGÀY SINH thật (không còn tuổi), enum PascalCase, slug → id BE theo code', () => {
+    const request = toSurveyRequest(profileInputFromForm(createForm()), catalog);
 
     expect(request).toEqual({
       gender: 'Male',
-      age: 24,
+      dateOfBirth: '2002-01-15',
       heightCm: 172,
       currentWeightKg: 68,
       targetWeightKg: 62,
       activityLevel: 'Light',
       goal: 'LoseWeight',
-      allergyIds: [1],
-      medicalConditionIds: [1],
+      allergyIds: [1, 7], // seafood, treeNut — nay đều có trên BE
+      medicalConditionIds: [1], // diabetes; "other" không có trên BE
+      dietaryPreferenceIds: [2, 7], // keto, lowCarb — chế độ ăn nay do BE lưu
     });
   });
 
-  test('slug không có id trên BE (treeNut, sesame, other) bị bỏ, id không trùng', () => {
+  test('ngày sinh theo giờ máy, không lệch một ngày do UTC', () => {
+    const request = toSurveyRequest(
+      { ...profileInputFromForm(createForm()), dateOfBirth: new Date(2002, 0, 1, 0, 30) },
+      catalog,
+    );
+
+    expect(request.dateOfBirth).toBe('2002-01-01');
+  });
+
+  test('slug không có trên BE ("other") bị bỏ, id không trùng', () => {
     const input: HealthProfileInput = {
       ...profileInputFromForm(createForm()),
-      allergyIds: ['peanut', 'treeNut', 'sesame', 'other', 'peanut'],
+      allergyIds: ['peanut', 'sesame', 'other', 'peanut'],
       healthConditionIds: ['other', 'hypertension'],
     };
 
-    const request = toSurveyRequest(input, TODAY);
+    const request = toSurveyRequest(input, catalog);
 
-    expect(request.allergyIds).toEqual([2]);
+    expect(request.allergyIds).toEqual([2, 8]);
     expect(request.medicalConditionIds).toEqual([3]);
   });
 
@@ -144,7 +168,7 @@ describe('toSurveyRequest', () => {
     ['female', 'Female'],
     ['other', 'Other'],
   ] as const)('gender %s → %s', (gender, expected) => {
-    const request = toSurveyRequest({ ...profileInputFromForm(createForm()), gender }, TODAY);
+    const request = toSurveyRequest({ ...profileInputFromForm(createForm()), gender }, catalog);
     expect(request.gender).toBe(expected);
   });
 
@@ -157,7 +181,7 @@ describe('toSurveyRequest', () => {
   ] as const)('activityLevel %s → %s', (activityLevel, expected) => {
     const request = toSurveyRequest(
       { ...profileInputFromForm(createForm()), activityLevel },
-      TODAY,
+      catalog,
     );
     expect(request.activityLevel).toBe(expected);
   });
@@ -167,8 +191,32 @@ describe('toSurveyRequest', () => {
     ['maintain', 'Maintain'],
     ['gain', 'GainWeight'],
   ] as const)('goal %s → %s', (goal, expected) => {
-    const request = toSurveyRequest({ ...profileInputFromForm(createForm()), goal }, TODAY);
+    const request = toSurveyRequest({ ...profileInputFromForm(createForm()), goal }, catalog);
     expect(request.goal).toBe(expected);
+  });
+});
+
+describe('cập nhật từng phần (PUT /healthprofile)', () => {
+  test('toBasicInfoUpdateRequest chỉ gồm giới tính, ngày sinh, chiều cao', () => {
+    expect(
+      toBasicInfoUpdateRequest({ gender: 'female', dateOfBirth: new Date(1999, 11, 31), heightCm: 165 }),
+    ).toEqual({ gender: 'Female', dateOfBirth: '1999-12-31', heightCm: 165 });
+  });
+
+  test('toSelectionUpdateRequest luôn gửi đủ ba danh sách; rỗng nghĩa là xóa hết', () => {
+    expect(
+      toSelectionUpdateRequest(
+        { allergyIds: ['soy', 'other'], healthConditionIds: [], dietaryPreferenceIds: ['vegan'] },
+        catalog,
+      ),
+    ).toEqual({ allergyIds: [6], medicalConditionIds: [], dietaryPreferenceIds: [3] });
+
+    expect(
+      toSelectionUpdateRequest(
+        { allergyIds: [], healthConditionIds: [], dietaryPreferenceIds: [] },
+        catalog,
+      ),
+    ).toEqual({ allergyIds: [], medicalConditionIds: [], dietaryPreferenceIds: [] });
   });
 });
 
@@ -202,29 +250,49 @@ describe('toHealthProfileResult / fromHealthProfileDto', () => {
     });
   });
 
-  test('đổi tên dị ứng/bệnh lý của BE về slug FE, bỏ tên FE chưa có (Mỡ máu cao)', () => {
-    const snapshot = fromHealthProfileDto(PROFILE_DTO);
+  test('đổi id dị ứng/bệnh lý/chế độ ăn của BE về slug FE theo code; có ngày sinh và mục tiêu nước', () => {
+    const snapshot = fromHealthProfileDto(PROFILE_DTO, catalog);
 
     expect(snapshot).toMatchObject({
       gender: 'male',
       age: 24,
+      dateOfBirth: new Date(2002, 0, 15),
       heightCm: 172,
       weightKg: 68,
       goalWeightKg: 62,
       activityLevel: 'light',
       goal: 'lose',
       allergyIds: ['seafood', 'dairy'],
-      healthConditionIds: ['diabetes'],
+      healthConditionIds: ['diabetes', 'dyslipidemia'],
+      dietaryPreferenceIds: ['keto', 'lowCarb'],
+      waterGoalMl: 2200,
     });
     expect(snapshot.result.calorieTarget).toBe(1776);
   });
 
+  test('hồ sơ cũ chưa có ngày sinh → dateOfBirth undefined (store sẽ ước lượng từ tuổi)', () => {
+    const snapshot = fromHealthProfileDto({ ...PROFILE_DTO, dateOfBirth: null }, catalog);
+
+    expect(snapshot.dateOfBirth).toBeUndefined();
+    expect(snapshot.age).toBe(24);
+  });
+
+  test('id lạ (BE thêm mục mới mà FE chưa biết) bị bỏ, không làm hỏng hồ sơ', () => {
+    const snapshot = fromHealthProfileDto(
+      { ...PROFILE_DTO, allergyIds: [1, 99], medicalConditionIds: [77], dietaryPreferenceIds: [] },
+      catalog,
+    );
+
+    expect(snapshot.allergyIds).toEqual(['seafood']);
+    expect(snapshot.healthConditionIds).toEqual([]);
+    expect(snapshot.dietaryPreferenceIds).toEqual([]);
+  });
+
   test('hồ sơ không có dị ứng/bệnh lý → mảng rỗng', () => {
-    const snapshot = fromHealthProfileDto({
-      ...PROFILE_DTO,
-      allergies: [],
-      medicalConditions: [],
-    });
+    const snapshot = fromHealthProfileDto(
+      { ...PROFILE_DTO, allergyIds: [], medicalConditionIds: [], dietaryPreferenceIds: [] },
+      catalog,
+    );
 
     expect(snapshot.allergyIds).toEqual([]);
     expect(snapshot.healthConditionIds).toEqual([]);
@@ -232,32 +300,27 @@ describe('toHealthProfileResult / fromHealthProfileDto', () => {
 });
 
 describe('phần hồ sơ giữ cục bộ (extras)', () => {
-  test('extrasFromSelection chỉ giữ slug BE không có id', () => {
-    const extras = extrasFromSelection({
-      allergyIds: ['seafood', 'treeNut', 'sesame', 'other'],
-      healthConditionIds: ['diabetes', 'other'],
-      dietaryPreferenceIds: ['keto', 'lowCarb'],
-    });
+  test('extrasFromSelection chỉ giữ slug BE không có (vd. "other")', () => {
+    const extras = extrasFromSelection(
+      {
+        allergyIds: ['seafood', 'treeNut', 'sesame', 'other'],
+        healthConditionIds: ['diabetes', 'other'],
+        dietaryPreferenceIds: ['keto', 'lowCarb'],
+      },
+      catalog,
+    );
 
-    expect(extras).toEqual({
-      dietaryPreferenceIds: ['keto', 'lowCarb'],
-      localAllergyIds: ['treeNut', 'sesame', 'other'],
-      localHealthConditionIds: ['other'],
-    });
+    expect(extras).toEqual({ localAllergyIds: ['other'], localHealthConditionIds: ['other'] });
   });
 
-  test('selectionFromServer ghép mục có id (BE) với mục chỉ có ở máy, không trùng', () => {
+  test('selectionFromServer ghép mục BE lưu với mục "Khác" ở máy, không trùng', () => {
     const selection = selectionFromServer(
-      { allergyIds: ['seafood', 'dairy'], healthConditionIds: ['diabetes'] },
-      {
-        dietaryPreferenceIds: ['keto'],
-        localAllergyIds: ['treeNut', 'seafood'],
-        localHealthConditionIds: ['other'],
-      },
+      { allergyIds: ['seafood', 'dairy'], healthConditionIds: ['diabetes'], dietaryPreferenceIds: ['keto'] },
+      { localAllergyIds: ['other', 'seafood'], localHealthConditionIds: ['other'] },
     );
 
     expect(selection).toEqual({
-      allergyIds: ['seafood', 'dairy', 'treeNut'],
+      allergyIds: ['seafood', 'dairy', 'other'],
       healthConditionIds: ['diabetes', 'other'],
       dietaryPreferenceIds: ['keto'],
     });
@@ -265,36 +328,34 @@ describe('phần hồ sơ giữ cục bộ (extras)', () => {
 
   test('chọn → gửi BE/giữ máy → ghép lại cho ra đúng lựa chọn ban đầu', () => {
     const chosen = {
-      allergyIds: ['peanut', 'sesame'],
+      allergyIds: ['peanut', 'sesame', 'other'],
       healthConditionIds: ['gout', 'other'],
       dietaryPreferenceIds: ['vegan'],
     };
 
-    const extras = extrasFromSelection(chosen);
-    const input: HealthProfileInput = {
-      ...profileInputFromForm(createForm()),
-      allergyIds: chosen.allergyIds,
-      healthConditionIds: chosen.healthConditionIds,
-    };
-    const request = toSurveyRequest(input, TODAY);
-    // BE lưu id 2 (Đậu phộng) và 2 (Gout) → trả về tên.
-    const snapshot = fromHealthProfileDto({
-      ...PROFILE_DTO,
-      allergies: ['Đậu phộng (Peanuts)'],
-      medicalConditions: ['Gout (Axit Uric cao)'],
-    });
+    const extras = extrasFromSelection(chosen, catalog);
+    const request = toSelectionUpdateRequest(chosen, catalog);
+    // BE lưu đúng các id đã nhận rồi trả về.
+    const snapshot = fromHealthProfileDto(
+      {
+        ...PROFILE_DTO,
+        allergyIds: request.allergyIds ?? [],
+        medicalConditionIds: request.medicalConditionIds ?? [],
+        dietaryPreferenceIds: request.dietaryPreferenceIds ?? [],
+      },
+      catalog,
+    );
 
-    expect(request.allergyIds).toEqual([2]);
-    expect(request.medicalConditionIds).toEqual([2]);
+    expect(request).toEqual({ allergyIds: [2, 8], medicalConditionIds: [2], dietaryPreferenceIds: [3] });
     expect(selectionFromServer(snapshot, extras)).toEqual({
-      allergyIds: ['peanut', 'sesame'],
+      allergyIds: ['peanut', 'sesame', 'other'],
       healthConditionIds: ['gout', 'other'],
       dietaryPreferenceIds: ['vegan'],
     });
   });
 });
 
-describe('ngày sinh ước lượng (BE chỉ lưu tuổi)', () => {
+describe('ngày sinh ước lượng (chỉ cho hồ sơ cũ chưa có ngày sinh)', () => {
   test('approximateDateOfBirth = 01/01 của (năm nay − tuổi)', () => {
     expect(approximateDateOfBirth(24, TODAY)).toEqual(new Date(2002, 0, 1));
   });
@@ -387,6 +448,7 @@ describe('snapshotFromInput', () => {
     goal: 'lose',
     allergyIds: ['peanut'],
     healthConditionIds: [],
+    dietaryPreferenceIds: ['vegan'],
   };
   const result = {
     bmi: 21.5,
@@ -410,40 +472,8 @@ describe('snapshotFromInput', () => {
       activityLevel: 'moderate',
       goal: 'lose',
       allergyIds: ['peanut'],
+      dietaryPreferenceIds: ['vegan'],
       result,
     });
-  });
-});
-
-describe('hasSameServerSelection', () => {
-  const base: HealthProfileInput = {
-    gender: 'male',
-    dateOfBirth: new Date(2002, 0, 15),
-    heightCm: 172,
-    weightKg: 68,
-    goalWeightKg: 62,
-    activityLevel: 'light',
-    goal: 'maintain',
-    allergyIds: ['seafood', 'treeNut'],
-    healthConditionIds: ['diabetes', 'other'],
-  };
-
-  test('chỉ khác mục không có id trên BE (treeNut, sesame, other) hoặc thứ tự → coi là không đổi', () => {
-    expect(
-      hasSameServerSelection(base, {
-        ...base,
-        allergyIds: ['sesame', 'seafood'],
-        healthConditionIds: ['diabetes'],
-      }),
-    ).toBe(true);
-    expect(hasSameServerSelection(base, { ...base, allergyIds: ['treeNut', 'seafood'] })).toBe(true);
-  });
-
-  test('thêm/bớt một dị ứng hoặc bệnh lý có id → có đổi', () => {
-    expect(hasSameServerSelection(base, { ...base, allergyIds: ['seafood', 'peanut'] })).toBe(false);
-    expect(hasSameServerSelection(base, { ...base, allergyIds: [] })).toBe(false);
-    expect(hasSameServerSelection(base, { ...base, healthConditionIds: ['diabetes', 'gout'] })).toBe(
-      false,
-    );
   });
 });
