@@ -59,7 +59,7 @@ export type MainStackParamList = {
   MainTabs: NavigatorScreenParams<MainTabParamList>;
   QuickLog: { mealType?: MealType } | undefined;
   AICamera: { mealType: MealType };
-  AIAnalyzing: { mealType: MealType };
+  AIAnalyzing: { mealType: MealType; photoUri?: string };
   AISnapResult: { mealType: MealType; result: AIAnalysisResult };
   /** `initialResult` — set khi đến từ VoicePermission "Hoặc gõ bữa ăn của bạn" (BR-252): bỏ qua
    * bước ghi âm, vào thẳng phase reviewing với kết quả đã có. */
@@ -79,7 +79,7 @@ export type MainStackParamList = {
   OCRReview: { mealType: MealType };
   Fridge: undefined;
   /** `returnTo` — biết quay lại camera nào sau khi "Cho phép camera". */
-  StatePermission: { mealType?: MealType; returnTo: 'Barcode' | 'Fridge' };
+  StatePermission: { mealType?: MealType; returnTo: 'Barcode' | 'Fridge' | 'AICamera' };
 
   // Đợt 5 — Recipes (BR-090→BR-102).
   FilterSheet: { filters: RecipeFilters } | undefined;

@@ -31,7 +31,19 @@
         }
       ],
       "expo-secure-store",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "SmartMeal cần quyền truy cập camera để chụp và nhận diện món ăn."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SmartMeal cần quyền truy cập thư viện ảnh để chọn ảnh món ăn."
+        }
+      ]
     ],
     "experiments": {
       "reactCompiler": true

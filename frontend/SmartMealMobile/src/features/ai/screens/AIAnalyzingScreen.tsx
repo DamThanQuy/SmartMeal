@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Search } from 'lucide-react-native';
 import React, { useEffect } from 'react';
-import { View } from 'react-native';
+import { Image, View } from 'react-native';
 import { ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppButton, AppCard, AppText } from '@/components/ui';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
@@ -45,7 +45,7 @@ function StepRow({ label, status }: StepRowProps) {
 // design/AIAnalyzing.dc.html (BR-060, BR-233). Gọi aiService.analyzeMealPhoto() ngay khi vào
 // màn; thành công → AISnapResult, thất bại → StateAIFailed (không trừ quota — BR-233).
 export function AIAnalyzingScreen({ navigation, route }: Props) {
-  const { mealType } = route.params;
+  const { mealType, photoUri } = route.params;
   const { colors } = useTheme();
   const { consumeQuota } = useAiQuota();
   const analyzeMealPhoto = useAnalyzeMealPhoto();
@@ -69,12 +69,22 @@ export function AIAnalyzingScreen({ navigation, route }: Props) {
     <ScreenContainer>
       <ScreenHeader title="Đang phân tích" onBack={() => navigation.goBack()} />
       <View className="flex-1 gap-xl py-xs">
-        <View className="h-[260px] items-center justify-center gap-xxs rounded-lg bg-primary-soft">
-          <Search size={40} color={colors.primary} />
-          <AppText variant="caption" className="text-on-primary-soft">
-            Ảnh vừa chụp
-          </AppText>
-        </View>
+        {photoUri ? (
+          <View className="h-[260px] w-full overflow-hidden rounded-lg bg-primary-soft border border-border">
+            <Image
+              source={{ uri: photoUri }}
+              className="h-full w-full"
+              resizeMode="cover"
+            />
+          </View>
+        ) : (
+          <View className="h-[260px] items-center justify-center gap-xxs rounded-lg bg-primary-soft">
+            <Search size={40} color={colors.primary} />
+            <AppText variant="caption" className="text-on-primary-soft">
+              Ảnh vừa chụp
+            </AppText>
+          </View>
+        )}
 
         <View className="items-center gap-sm">
           <View className="h-[56px] w-[56px] items-center justify-center rounded-full bg-primary-soft">
