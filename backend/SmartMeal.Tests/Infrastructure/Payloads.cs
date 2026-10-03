@@ -83,3 +83,11 @@ public sealed record PlanDayPayload(
     List<PlannedMealPayload> Meals);
 
 public sealed record WeeklyPlanPayload(DateOnly StartDate, DateOnly EndDate, double TargetDailyCalories, List<PlanDayPayload> Days);
+
+public sealed record GroceryItemPayload(
+    Guid Id, string IngredientName, double Amount, string Unit, string Category, decimal EstimatedPriceVnd, bool IsChecked,
+    string? RecipeTitle, int MergedFromRecipeCount);
+
+public sealed record GroceryCategoryPayload(string CategoryName, List<GroceryItemPayload> Items);
+
+public sealed record GroceryPayload(int TotalItems, int CheckedItems, decimal TotalEstimatedCostVnd, List<GroceryCategoryPayload> Categories);
