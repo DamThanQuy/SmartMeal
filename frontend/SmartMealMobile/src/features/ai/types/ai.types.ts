@@ -40,6 +40,9 @@ export interface AIRecognizedItem {
 export interface AIAnalysisResult {
   mealType: MealType;
   items: AIRecognizedItem[];
+  allergyWarnings?: string[];
+  healthTips?: string;
+  detectedIngredients?: string[];
 }
 
 export interface VoicePortionOption {

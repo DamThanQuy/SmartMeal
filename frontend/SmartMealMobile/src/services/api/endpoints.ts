@@ -1,9 +1,3 @@
-/**
- * Danh sách endpoint của backend — không hard-code chuỗi URL ở nơi khác (.claude/rules/
- * no-hardcode.md mục 2). Đường dẫn tương đối so với `baseURL` (đã gồm `/api`). Khai báo ĐỦ 50
- * endpoint ngay từ PR nền tảng để Phần 1/Phần 2 chỉ import, không sửa chung 1 file
- * (docs/fetch-api/part1 §2, §4.3). ASP.NET không phân biệt hoa/thường trong route.
- */
 export const ENDPOINTS = {
   auth: {
     register: '/auth/register',
@@ -15,6 +9,7 @@ export const ENDPOINTS = {
   healthProfile: {
     base: '/healthprofile',
     survey: '/healthprofile/survey',
+    profile: '/healthprofile',
     weightLog: '/healthprofile/weight-log',
     weightHistory: '/healthprofile/weight-history',
   },
@@ -40,6 +35,7 @@ export const ENDPOINTS = {
   },
   recipes: {
     list: '/recipes',
+    detail: (id: string) => `/recipes/${id}`,
     byId: (id: string) => `/recipes/${id}`,
     suggestByPantry: '/recipes/suggest-by-pantry',
     favorite: (id: string) => `/recipes/${id}/favorite`,
@@ -50,6 +46,7 @@ export const ENDPOINTS = {
   mealPlanner: {
     week: '/mealplanner/week',
     assign: '/mealplanner/assign',
+    delete: (id: string) => `/mealplanner/${id}`,
     byId: (id: string) => `/mealplanner/${id}`,
     autoGenerate: '/mealplanner/auto-generate',
   },
@@ -57,7 +54,9 @@ export const ENDPOINTS = {
     list: '/grocery',
     generateFromPlan: '/grocery/generate-from-plan',
     items: '/grocery/items',
+    check: (id: string) => `/grocery/items/${id}/check`,
     itemCheck: (id: string) => `/grocery/items/${id}/check`,
+    delete: (id: string) => `/grocery/items/${id}`,
     item: (id: string) => `/grocery/items/${id}`,
     clearChecked: '/grocery/clear-checked',
   },
@@ -75,6 +74,7 @@ export const ENDPOINTS = {
   },
   subscription: {
     plans: '/subscription/plans',
+    checkout: '/subscription/create-checkout-session',
     createCheckoutSession: '/subscription/create-checkout-session',
     activateMock: '/subscription/activate-mock',
   },

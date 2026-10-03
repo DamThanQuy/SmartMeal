@@ -1,12 +1,12 @@
-import { create as createAxiosInstance } from 'axios';
+import { create as createAxiosInstance, type AxiosRequestConfig } from 'axios';
 import { API_CONFIG } from '@/config/api';
+import type { ApiEnvelope } from '@/types/api';
 import { installInterceptors } from './interceptors';
+import { ApiError } from './errors';
 
-/**
- * Axios instance duy nhất của app (.claude/rules/state-and-api.md) — không import `axios` ở nơi
- * khác ngoài src/services/api. `baseURL` đã gồm `/api` nên đường dẫn trong ENDPOINTS chỉ bắt đầu
- * bằng `/auth/login`…
- */
+export type { ApiEnvelope } from '@/types/api';
+export { ApiError } from './errors';
+
 export const apiClient = createAxiosInstance({
   baseURL: API_CONFIG.baseURL,
   timeout: API_CONFIG.timeout,
@@ -14,3 +14,15 @@ export const apiClient = createAxiosInstance({
 });
 
 installInterceptors(apiClient);
+
+export function unwrap<T>(response: { data: ApiEnvelope<T> }): T {
+  const envelope = response.data;
+  if (!envelope.success || envelope.data === null) {
+    throw new ApiError(envelope.message || 'API trả về dữ liệu không hợp lệ.', 'BUSINESS');
+  }
+  return envelope.data;
+}
+
+export async function request<T>(config: AxiosRequestConfig): Promise<T> {
+  return unwrap(await apiClient.request<ApiEnvelope<T>>(config));
+}
