@@ -8,10 +8,12 @@ export type AppEnv = 'development' | 'staging' | 'production';
 
 export const ENV: {
   appEnv: AppEnv;
+  useMockApi: boolean;
   apiBaseUrl: string;
   apiTimeoutMs: number;
 } = {
   appEnv: 'development',
-  apiBaseUrl: 'https://api.smartmeal.dev',
+  useMockApi: false,
+  apiBaseUrl: 'http://localhost:5000/api',
   apiTimeoutMs: 15000,
 };

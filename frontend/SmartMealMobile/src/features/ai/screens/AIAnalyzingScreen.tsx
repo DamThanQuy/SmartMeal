@@ -45,13 +45,13 @@ function StepRow({ label, status }: StepRowProps) {
 // design/AIAnalyzing.dc.html (BR-060, BR-233). Gọi aiService.analyzeMealPhoto() ngay khi vào
 // màn; thành công → AISnapResult, thất bại → StateAIFailed (không trừ quota — BR-233).
 export function AIAnalyzingScreen({ navigation, route }: Props) {
-  const { mealType } = route.params;
+  const { mealType, imageUri } = route.params;
   const { colors } = useTheme();
   const { consumeQuota } = useAiQuota();
   const analyzeMealPhoto = useAnalyzeMealPhoto();
 
   useEffect(() => {
-    analyzeMealPhoto.mutate(mealType, {
+    analyzeMealPhoto.mutate({ mealType, imageUri }, {
       onSuccess: result => {
         consumeQuota();
         navigation.replace(MAIN_STACK_ROUTES.AI_SNAP_RESULT, { mealType, result });

@@ -14,7 +14,7 @@ import { usePremiumStore } from '@/state/premium/premiumStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { RecipeCard } from '../components/RecipeCard';
 import { useRecommendedRecipes } from '../hooks/useRecipes';
-import { useFavoritesStore } from '../state/favoritesStore';
+import { useFavoriteRecipes, useToggleFavorite } from '../hooks/useFavorites';
 import { RECIPE_TAG_OPTIONS, type RecipeFilters, type RecipeTag } from '../types/recipe.types';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Discover'>;
@@ -28,8 +28,8 @@ export function DiscoveryScreen({ route }: Props) {
   const [activeTag, setActiveTag] = useState<RecipeTag | undefined>(route.params?.filters?.tag);
   const isGuest = useAuthStore(state => state.isGuest);
   const isPremium = usePremiumStore(state => state.status === 'premium');
-  const favoriteIds = useFavoritesStore(state => state.favoriteIds);
-  const toggleFavorite = useFavoritesStore(state => state.toggleFavorite);
+  const favoritesQuery = useFavoriteRecipes(!isGuest);
+  const toggleFavorite = useToggleFavorite();
 
   // BR-080, BR-230/231 — Fridge Scanner chỉ Pro; Free bấm vào mở màn Premium thay vì camera.
   const openFridgeScanner = () =>
@@ -43,7 +43,9 @@ export function DiscoveryScreen({ route }: Props) {
       ? navigation.navigate(MAIN_STACK_ROUTES.GUEST_PROMPT)
       : navigation.navigate(MAIN_STACK_ROUTES.FAVORITES);
   const handleToggleFavorite = (recipeId: string) =>
-    isGuest ? navigation.navigate(MAIN_STACK_ROUTES.GUEST_PROMPT) : toggleFavorite(recipeId);
+    isGuest
+      ? navigation.navigate(MAIN_STACK_ROUTES.GUEST_PROMPT)
+      : toggleFavorite.mutate(recipeId);
 
   // FilterSheet quay lại đây qua route.params.filters (Discover là tab, không remount) — đồng
   // bộ activeTag ngay trong render (React khuyến nghị cách này thay vì effect — xem
@@ -164,7 +166,7 @@ export function DiscoveryScreen({ route }: Props) {
                 <View key={recipe.id} className="w-[47%]">
                   <RecipeCard
                     recipe={recipe}
-                    isFavorite={favoriteIds.includes(recipe.id)}
+                    isFavorite={favoritesQuery.data?.some(favorite => favorite.id === recipe.id) ?? false}
                     onToggleFavorite={() => handleToggleFavorite(recipe.id)}
                     onPress={() =>
                       navigation.navigate(MAIN_STACK_ROUTES.RECIPE_DETAIL, { recipeId: recipe.id })

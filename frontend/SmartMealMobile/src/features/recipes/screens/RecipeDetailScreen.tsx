@@ -22,8 +22,8 @@ import type { MainStackParamList } from '@/navigation/types';
 import { useAuthStore } from '@/state/auth/authStore';
 import { useUserProfileStore } from '@/state/user/userProfileStore';
 import { useTheme } from '@/theme/ThemeProvider';
+import { useIsFavorite, useToggleFavorite } from '../hooks/useFavorites';
 import { useRecipeDetail } from '../hooks/useRecipes';
-import { useFavoritesStore } from '../state/favoritesStore';
 import { RECIPE_TAG_OPTIONS } from '../types/recipe.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'RecipeDetail'>;
@@ -46,13 +46,15 @@ export function RecipeDetailScreen({ navigation, route }: Props) {
   const { data: recipe, isLoading, isError, error, refetch } = useRecipeDetail(recipeId);
   const isGuest = useAuthStore(state => state.isGuest);
   const currentUserAllergyIds = useUserProfileStore(state => state.allergyIds);
-  const isFavorite = useFavoritesStore(state => state.isFavorite(recipeId));
-  const toggleFavorite = useFavoritesStore(state => state.toggleFavorite);
+  const favoriteQuery = useIsFavorite(recipeId, !isGuest);
+  const toggleFavorite = useToggleFavorite();
   const [servings, setServings] = useState<number | null>(null);
 
   // BR §2.1 — "Yêu thích" cần tài khoản → mở GuestPromptScreen (Đợt 9), không toggle khi Guest.
   const handleToggleFavorite = () =>
-    isGuest ? navigation.navigate(MAIN_STACK_ROUTES.GUEST_PROMPT) : toggleFavorite(recipeId);
+    isGuest
+      ? navigation.navigate(MAIN_STACK_ROUTES.GUEST_PROMPT)
+      : toggleFavorite.mutate(recipeId);
 
   const activeServings = servings ?? recipe?.servings ?? 1;
   const factor = recipe ? activeServings / recipe.servings : 1;
@@ -109,14 +111,14 @@ export function RecipeDetailScreen({ navigation, route }: Props) {
               onPress={() => navigation.goBack()}
             />
             <AppIconButton
-              accessibilityLabel={isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'}
-              accessibilityState={{ selected: isFavorite }}
+              accessibilityLabel={favoriteQuery.isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'}
+              accessibilityState={{ selected: favoriteQuery.isFavorite }}
               variant="elevated"
               icon={
                 <Heart
                   size={22}
-                  color={isFavorite ? colors.primary : colors.textSecondary}
-                  fill={isFavorite ? colors.primary : 'none'}
+                  color={favoriteQuery.isFavorite ? colors.primary : colors.textSecondary}
+                  fill={favoriteQuery.isFavorite ? colors.primary : 'none'}
                 />
               }
               onPress={handleToggleFavorite}

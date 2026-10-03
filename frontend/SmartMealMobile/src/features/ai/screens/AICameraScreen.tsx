@@ -7,6 +7,7 @@ import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useAiQuota } from '../hooks/useAiQuota';
+import { pickMealImage } from '../services/imagePickerService';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'AICamera'>;
 
@@ -20,6 +21,11 @@ export function AICameraScreen({ navigation, route }: Props) {
   const { mealType } = route.params;
   const { colors } = useTheme();
   const { remaining, limit } = useAiQuota();
+
+  const capture = async () => {
+    const imageUri = await pickMealImage();
+    if (imageUri) navigation.navigate(MAIN_STACK_ROUTES.AI_ANALYZING, { mealType, imageUri });
+  };
 
   return (
     <View className="flex-1 bg-overlay">
@@ -62,7 +68,7 @@ export function AICameraScreen({ navigation, route }: Props) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Chụp"
-          onPress={() => navigation.navigate(MAIN_STACK_ROUTES.AI_ANALYZING, { mealType })}
+          onPress={() => void capture()}
           className="h-[76px] w-[76px] items-center justify-center rounded-full border-4 border-on-primary"
         >
           <View className="h-[60px] w-[60px] rounded-full bg-on-primary" />
