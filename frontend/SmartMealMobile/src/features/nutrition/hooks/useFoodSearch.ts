@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { nutritionService } from '../services/nutritionService';
-import type { FoodSearchFilter, NewFoodInput } from '../types/nutrition.types';
+import type { FoodItem, FoodSearchFilter, NewFoodInput } from '../types/nutrition.types';
 
 const SEARCH_DEBOUNCE_MS = 300;
+
+const foodDetailQueryKey = (foodId: string) => ['foods', 'detail', foodId] as const;
 
 export function useFoodSearch(query: string, filter: FoodSearchFilter) {
   // Chờ người dùng ngừng gõ rồi mới gọi tìm kiếm (mỗi lần gõ là 1 request lên backend).
@@ -20,7 +22,7 @@ export function useFoodSearch(query: string, filter: FoodSearchFilter) {
 
 export function useFoodDetail(foodId: string) {
   return useQuery({
-    queryKey: ['foods', 'detail', foodId],
+    queryKey: foodDetailQueryKey(foodId),
     queryFn: () => nutritionService.getFoodById(foodId),
   });
 }
@@ -32,6 +34,21 @@ export function useCreateFood() {
   return useMutation({
     mutationFn: (input: NewFoodInput) => nutritionService.createFood(input),
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['foods', 'search'] });
+    },
+  });
+}
+
+// Nút tim ở FoodDetail: đổi ngay trạng thái trên chi tiết món đang mở (theo kết quả BE trả về) và
+// làm mới các danh sách tìm món để tab "Yêu thích" khớp.
+export function useSetFoodFavorite(foodId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (isFavorite: boolean) => nutritionService.setFoodFavorite(foodId, isFavorite),
+    onSuccess: isFavorite => {
+      queryClient.setQueryData<FoodItem | undefined>(foodDetailQueryKey(foodId), food =>
+        food ? { ...food, isFavorite } : food,
+      );
       void queryClient.invalidateQueries({ queryKey: ['foods', 'search'] });
     },
   });

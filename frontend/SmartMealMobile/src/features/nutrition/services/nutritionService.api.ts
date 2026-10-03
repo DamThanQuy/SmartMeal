@@ -1,43 +1,46 @@
 import { getMetaCatalog } from '@/features/health';
-import { ENDPOINTS, api, isApiError, type ApiErrorCode } from '@/services/api';
+import { ENDPOINTS, api } from '@/services/api';
 import { getIncludeActivityCalories } from '@/state/user/userProfileStore';
 import type { PagedResult } from '@/types/api';
 import { addDaysIso } from '@/utils/date';
 import type {
+  CreateFoodRequestDto,
   DailyDiarySummaryDto,
   DiaryItemDto,
+  FoodFavoriteDto,
   FoodItemDto,
-  LogMealRequestDto,
+  LogMealBatchRequestDto,
+  UpdateDiaryItemRequestDto,
   WeeklyProgressDto,
 } from '../types/nutrition.api.types';
-import type { DiaryDaySummary, MealLogEntry, NewMealLogInput } from '../types/nutrition.types';
+import type { DiaryDaySummary, FoodItem } from '../types/nutrition.types';
 import { findEntryById } from '../utils/diary';
 import { scaleNutritionByGrams } from '../utils/nutritionMath';
 import { healthSyncService } from './healthSyncService';
-import { PartialLogError, UpdateIncompleteError } from './nutrition.errors';
 import {
   fromDailyDiaryDto,
   fromDiaryItemDto,
   fromFoodDto,
   fromWeeklyProgressDto,
-  sourceToLogMethod,
-  toLogMealRequest,
+  toCreateFoodRequest,
+  toLogMealBatchRequest,
+  toUpdateDiaryItemRequest,
 } from './nutrition.mapper';
 import type { nutritionMockService } from './nutritionService.mock';
-import { findUserCreatedFood, listUserCreatedFoods } from './userFoods';
 
-// Bản gọi backend thật (docs/fetch-api/part1 §7). Chỉ khai báo hàm đã nối API; createFood chưa có
-// endpoint (P1-BE-08) nên tự rơi về bản mock trong nutritionService.ts.
+// Bản gọi backend thật (docs/fetch-api/part1 §7): nhật ký (ghi cả bữa một lần, sửa bằng PUT, tiến
+// độ tuần kèm macro) và danh mục thực phẩm (tìm theo scope, yêu thích, món tự nhập).
 
 const FOOD_PAGE_SIZE = 20;
 const WEEK_LENGTH_DAYS = 7;
 
-// Lỗi hạ tầng: các món còn lại cũng sẽ lỗi nên dừng lại thay vì chờ từng request hết hạn.
-const STOP_ON_ERROR_CODES: readonly ApiErrorCode[] = ['NETWORK', 'TIMEOUT', 'UNAUTHORIZED'];
+function getDailyDto(dateIso: string): Promise<DailyDiarySummaryDto> {
+  return api.get<DailyDiarySummaryDto>(ENDPOINTS.nutritionDiary.daily, { params: { date: dateIso } });
+}
 
 async function fetchDiaryDay(dateIso: string): Promise<DiaryDaySummary> {
   const [daily, activity] = await Promise.all([
-    api.get<DailyDiarySummaryDto>(ENDPOINTS.nutritionDiary.daily, { params: { date: dateIso } }),
+    getDailyDto(dateIso),
     // Calo vận động chỉ là phần cộng thêm: lỗi → coi là 0, không làm hỏng cả nhật ký.
     healthSyncService.getDailySummary(dateIso).catch(() => null),
   ]);
@@ -48,80 +51,57 @@ async function fetchDiaryDay(dateIso: string): Promise<DiaryDaySummary> {
   });
 }
 
+async function toFoodItem(dto: FoodItemDto): Promise<FoodItem> {
+  // Đổi id dị ứng của BE sang slug của FE bằng danh mục /meta theo code (cảnh báo dị ứng BR-102).
+  const { allergies } = await getMetaCatalog();
+  return fromFoodDto(dto, allergies.codeById);
+}
+
 export const nutritionApiService: Partial<typeof nutritionMockService> = {
   // GET /nutritiondiary/daily + GET /health-sync/daily-summary (song song).
   getDiaryDay: fetchDiaryDay,
 
-  // POST /nutritiondiary/log × N. BE không có batch. Gọi TUẦN TỰ chứ không song song: BE tìm-hoặc-
-  // tạo dòng nhóm (ngày + bữa) và không có ràng buộc duy nhất, nên N request song song cho cùng
-  // một bữa chưa có dòng nhóm sẽ tạo N dòng trùng — món ở các dòng sau không hiện trong
-  // /daily nhưng vẫn bị cộng vào tổng calo.
+  // POST /nutritiondiary/log/batch — cả bữa trong MỘT request: BE lưu hết hoặc không lưu món nào
+  // (một transaction), nên không còn trạng thái "lưu được một phần" cần xử lý ở FE.
   async addLogEntries(dateIso, mealType, inputs) {
-    const created: MealLogEntry[] = [];
-    const failed: NewMealLogInput[] = [];
-    let firstError: unknown;
-    let stopped = false;
+    if (inputs.length === 0) return [];
 
-    for (const input of inputs) {
-      if (stopped) {
-        failed.push(input);
-        continue;
-      }
-      try {
-        const dto = await api.post<DiaryItemDto, LogMealRequestDto>(
-          ENDPOINTS.nutritionDiary.log,
-          toLogMealRequest(dateIso, mealType, input),
-        );
-        created.push(fromDiaryItemDto(dto, mealType, new Date().toISOString()));
-      } catch (error) {
-        failed.push(input);
-        if (firstError === undefined) firstError = error;
-        if (isApiError(error) && STOP_ON_ERROR_CODES.includes(error.code)) stopped = true;
-      }
-    }
-
-    if (failed.length === 0) return created;
-    // Không lưu được món nào → báo lỗi gốc (có message tiếng Việt từ ApiError).
-    if (created.length === 0) throw firstError;
-    throw new PartialLogError(created, failed);
+    const created = await api.post<DiaryItemDto[], LogMealBatchRequestDto>(
+      ENDPOINTS.nutritionDiary.logBatch,
+      toLogMealBatchRequest(dateIso, mealType, inputs),
+    );
+    return created.map(dto => fromDiaryItemDto(dto, mealType));
   },
 
-  // BE chưa có PUT (P1-BE-05): ghi bản mới RỒI mới xóa bản cũ (id đổi). Không xóa trước để nếu
-  // ghi lỗi thì không mất món.
+  // PUT /nutritiondiary/items/{id} — BE chỉ đổi các trường có mặt. Đổi khối lượng thì dinh dưỡng
+  // phải tính lại từ nutritionPerGram của chính bản ghi (BR-053) nên cần đọc bản ghi hiện tại;
+  // chỉ đổi bữa thì không cần.
   async updateLogEntry(dateIso, entryId, patch) {
-    const diary = await fetchDiaryDay(dateIso);
-    const existing = findEntryById(diary, entryId);
-    if (!existing) {
-      throw new Error('Không tìm thấy bản ghi để sửa.');
+    let request: UpdateDiaryItemRequestDto = toUpdateDiaryItemRequest({ mealType: patch.mealType });
+
+    if (patch.grams !== undefined) {
+      const existing = findEntryById(
+        fromDailyDiaryDto(await getDailyDto(dateIso), {
+          activityCaloriesBurned: 0,
+          includeActivityCalories: false,
+        }),
+        entryId,
+      );
+      if (!existing) {
+        throw new Error('Không tìm thấy bản ghi để sửa.');
+      }
+      request = toUpdateDiaryItemRequest({
+        mealType: patch.mealType,
+        grams: patch.grams,
+        nutrition: scaleNutritionByGrams(existing.nutritionPerGram, patch.grams),
+      });
     }
 
-    const nextAmount = patch.grams ?? existing.grams;
-    const nextMealType = patch.mealType ?? existing.mealType;
-    const dto = await api.post<DiaryItemDto, LogMealRequestDto>(
-      ENDPOINTS.nutritionDiary.log,
-      toLogMealRequest(
-        dateIso,
-        nextMealType,
-        {
-          foodName: existing.foodName,
-          servingLabel: existing.servingLabel,
-          grams: nextAmount,
-          nutrition: scaleNutritionByGrams(existing.nutritionPerGram, nextAmount),
-          source: existing.source,
-          aiConfirmed: existing.aiConfirmed,
-          logMethod: sourceToLogMethod(existing.source),
-        },
-        existing.unit,
-      ),
+    const updated = await api.put<DiaryItemDto, UpdateDiaryItemRequestDto>(
+      ENDPOINTS.nutritionDiary.item(entryId),
+      request,
     );
-    const updated = fromDiaryItemDto(dto, nextMealType, new Date().toISOString());
-
-    try {
-      await api.delete<boolean>(ENDPOINTS.nutritionDiary.item(entryId));
-    } catch {
-      throw new UpdateIncompleteError(updated);
-    }
-    return updated;
+    return fromDiaryItemDto(updated);
   },
 
   // DELETE /nutritiondiary/items/{id}.
@@ -129,32 +109,37 @@ export const nutritionApiService: Partial<typeof nutritionMockService> = {
     await api.delete<boolean>(ENDPOINTS.nutritionDiary.item(entryId));
   },
 
-  // GET /foods?search=&page=1&pageSize=20 — chỉ bộ lọc 'all' có dữ liệu từ BE; 'recent'/'favorite'
-  // chưa có nguồn nào (không trả món giả); 'mine' là món người dùng tự nhập, chỉ ở máy.
+  // GET /foods?search=&scope=all|recent|favorite|mine&page=1&pageSize=20 — bộ lọc của màn tìm món
+  // trùng với `scope` của BE (BE tìm không dấu: "pho" ra "Phở").
   async searchFoods(query, filter) {
-    if (filter === 'mine') return listUserCreatedFoods();
-    if (filter !== 'all') return [];
-
-    const normalizedQuery = query.trim();
+    const search = query.trim();
     const page = await api.get<PagedResult<FoodItemDto>>(ENDPOINTS.foods.list, {
-      params: { search: normalizedQuery || undefined, page: 1, pageSize: FOOD_PAGE_SIZE },
+      params: { search: search || undefined, scope: filter, page: 1, pageSize: FOOD_PAGE_SIZE },
     });
-    const { allergies } = await getMetaCatalog();
-    const remote = page.items.map(dto => fromFoodDto(dto, allergies.codeById));
-
-    if (!normalizedQuery) return remote;
-    const lowerQuery = normalizedQuery.toLowerCase();
-    const local = listUserCreatedFoods().filter(food => food.name.toLowerCase().includes(lowerQuery));
-    return [...local, ...remote];
+    return Promise.all(page.items.map(toFoodItem));
   },
 
-  // GET /foods/{id}; món người dùng tự nhập (không có trên BE) lấy ở máy.
+  // GET /foods/{id} — gồm món do chính người dùng tự nhập.
   async getFoodById(foodId) {
-    const local = findUserCreatedFood(foodId);
-    if (local) return local;
-    const dto = await api.get<FoodItemDto>(ENDPOINTS.foods.byId(foodId));
-    const { allergies } = await getMetaCatalog();
-    return fromFoodDto(dto, allergies.codeById);
+    return toFoodItem(await api.get<FoodItemDto>(ENDPOINTS.foods.byId(foodId)));
+  },
+
+  // POST /foods — món tự nhập (BR-121): BE gắn "do người dùng nhập", chưa xác minh, chỉ chủ sở hữu thấy.
+  async createFood(input) {
+    return toFoodItem(
+      await api.post<FoodItemDto, CreateFoodRequestDto>(
+        ENDPOINTS.foods.list,
+        toCreateFoodRequest(input),
+      ),
+    );
+  },
+
+  // POST|DELETE /foods/{id}/favorite — idempotent: bấm lặp vẫn ra đúng trạng thái yêu cầu.
+  async setFoodFavorite(foodId, isFavorite) {
+    const result = isFavorite
+      ? await api.post<FoodFavoriteDto>(ENDPOINTS.foods.favorite(foodId))
+      : await api.delete<FoodFavoriteDto>(ENDPOINTS.foods.favorite(foodId));
+    return result.isFavorite;
   },
 
   // GET /nutritiondiary/weekly-progress?startDate= — 7 ngày kết thúc ở `dateIso`.

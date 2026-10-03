@@ -24,8 +24,8 @@ import type {
 import { calculateCalorieBudget, nutritionPerGram, sumNutrition } from '../utils/nutritionMath';
 import { addUserCreatedFood, findUserCreatedFood, listUserCreatedFoods } from './userFoods';
 
-// Bản giả lập (EXPO_PUBLIC_USE_MOCK_API=true, hoặc hàm BE chưa hỗ trợ — createFood) — bản gọi API
-// thật nằm ở nutritionService.api.ts, nutritionService.ts chọn giữa hai bản.
+// Bản giả lập (EXPO_PUBLIC_USE_MOCK_API=true) — bản gọi API thật nằm ở nutritionService.api.ts,
+// nutritionService.ts chọn giữa hai bản.
 // TODO: replace mock with real API — toàn bộ "database" dưới đây chỉ là in-memory store mô
 // phỏng Backend cho nhánh feat/mock-ui (CLAUDE.md mục 8). Các hàm export giữ nguyên chữ ký khi
 // nối API thật.
@@ -77,6 +77,13 @@ function nextLogId(): string {
 }
 
 const RECENT_FOOD_IDS = ['bun-bo', 'sua-chua'];
+
+// Món yêu thích trong bản giả lập (nằm ở máy, xóa cùng dữ liệu cá nhân).
+const favoriteFoodIds = new Set<string>();
+
+function withFavoriteFlag(food: FoodItem): FoodItem {
+  return { ...food, isFavorite: favoriteFoodIds.has(food.id) };
+}
 
 export function findFoodById(foodId: string): FoodItem | undefined {
   return FOOD_DATABASE_MOCK.find(food => food.id === foodId) ?? findUserCreatedFood(foodId);
@@ -192,25 +199,26 @@ export const nutritionMockService = {
     }
     if (scenario === 'empty') return [];
 
+    const normalizedQuery = query.trim().toLowerCase();
+    const matchesQuery = (food: FoodItem) =>
+      !normalizedQuery || food.name.toLowerCase().includes(normalizedQuery);
+    const catalog = [...FOOD_DATABASE_MOCK, ...listUserCreatedFoods()];
+
     if (filter === 'favorite') {
-      // Chưa có luồng lưu yêu thích món ăn trong Đợt 3 — trả rỗng để hiện EmptyState.
-      return [];
+      return catalog
+        .filter(food => favoriteFoodIds.has(food.id) && matchesQuery(food))
+        .map(withFavoriteFlag);
     }
     // BR-121 — "Món của tôi" (CreateFoodScreen, Đợt 10): danh sách món user đã tự nhập.
     if (filter === 'mine') {
-      return listUserCreatedFoods();
+      return listUserCreatedFoods().filter(matchesQuery).map(withFavoriteFlag);
     }
-
-    const normalizedQuery = query.trim().toLowerCase();
-    if (filter === 'recent') {
-      return FOOD_DATABASE_MOCK.filter(food => RECENT_FOOD_IDS.includes(food.id));
+    if (filter === 'recent' || !normalizedQuery) {
+      return FOOD_DATABASE_MOCK.filter(food => RECENT_FOOD_IDS.includes(food.id)).map(
+        withFavoriteFlag,
+      );
     }
-    if (!normalizedQuery) {
-      return FOOD_DATABASE_MOCK.filter(food => RECENT_FOOD_IDS.includes(food.id));
-    }
-    return [...FOOD_DATABASE_MOCK, ...listUserCreatedFoods()].filter(food =>
-      food.name.toLowerCase().includes(normalizedQuery),
-    );
+    return catalog.filter(matchesQuery).map(withFavoriteFlag);
   },
 
   async getFoodById(foodId: string): Promise<FoodItem | undefined> {
@@ -219,7 +227,20 @@ export const nutritionMockService = {
     if (scenario === 'error') {
       throw new Error('Không thể tải chi tiết món ăn.');
     }
-    return findFoodById(foodId);
+    const food = findFoodById(foodId);
+    return food ? withFavoriteFlag(food) : undefined;
+  },
+
+  // Bật/tắt yêu thích một món; trả trạng thái sau khi đổi (giống POST|DELETE /foods/{id}/favorite).
+  async setFoodFavorite(foodId: string, isFavorite: boolean): Promise<boolean> {
+    const scenario = getCurrentMockScenario();
+    await wait(getMockDelayMs(scenario));
+    if (scenario === 'error') {
+      throw new Error('Không thể cập nhật yêu thích, vui lòng thử lại.');
+    }
+    if (isFavorite) favoriteFoodIds.add(foodId);
+    else favoriteFoodIds.delete(foodId);
+    return isFavorite;
   },
 
   // BR-121 — CreateFoodScreen: lưu món do user tự nhập (userFoods.ts), gắn isUserCreated=true
@@ -248,3 +269,4 @@ export const nutritionMockService = {
 // BR-271 — DeleteDataScreen: xóa nhật ký ăn uống đã ghi (ngày hôm nay sẽ được seed lại từ đầu ở
 // lần đọc kế tiếp — xem getOrSeedDay — giống trạng thái 1 tài khoản mới, xem src/state/resetUserData.ts).
 registerUserDataReset('nutritionDiary', () => diaryByDate.clear());
+registerUserDataReset('favoriteFoods', () => favoriteFoodIds.clear());

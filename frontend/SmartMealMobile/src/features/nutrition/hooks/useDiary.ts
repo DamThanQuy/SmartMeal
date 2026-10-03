@@ -48,7 +48,8 @@ export function useAddMealLogEntries(dateIso: string) {
         });
       }
     },
-    // Cả khi chỉ lưu được một phần (PartialLogError): món đã lưu vẫn phải hiện ra trong nhật ký.
+    // Cả khi lỗi: không biết request đã tới BE hay chưa (mất mạng sau khi gửi) nên làm mới để nhật
+    // ký luôn phản ánh đúng những gì server đang có.
     onSettled: invalidate,
   });
 }
@@ -63,7 +64,6 @@ export function useUpdateMealLogEntry(dateIso: string) {
       entryId: string;
       patch: { grams?: number; mealType?: MealType };
     }) => nutritionService.updateLogEntry(dateIso, entryId, patch),
-    // Cả khi UpdateIncompleteError (đã ghi bản mới nhưng chưa xóa được bản cũ): nhật ký đã đổi.
     onSettled: invalidate,
   });
 }

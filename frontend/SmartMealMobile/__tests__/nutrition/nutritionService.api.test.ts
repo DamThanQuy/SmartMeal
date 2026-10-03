@@ -1,6 +1,7 @@
 /**
- * nutritionService.api (docs/fetch-api/part1 §7): gọi đúng endpoint BE, ghi nhật ký TUẦN TỰ, xử lý
- * một phần thất bại và sửa món (ghi bản mới rồi xóa bản cũ). `api` được mock — không gọi mạng thật.
+ * nutritionService.api (docs/fetch-api/part1 §7): gọi đúng endpoint BE — ghi cả bữa trong MỘT
+ * request, sửa món bằng PUT, tìm món theo scope, yêu thích, món tự nhập, tiến độ tuần kèm macro.
+ * `api` được mock — không gọi mạng thật.
  */
 import type {
   DailyDiarySummaryDto,
@@ -21,6 +22,12 @@ function item(overrides: Partial<DiaryItemDto> = {}): DiaryItemDto {
     fatGrams: 12,
     proteinGrams: 25,
     logMethod: 'Manual',
+    mealType: 'Lunch',
+    logDate: '2026-10-02',
+    createdAt: '2026-10-02T05:30:00Z',
+    recipeId: null,
+    ingredientId: null,
+    imageUrl: null,
     ...overrides,
   };
 }
@@ -43,18 +50,19 @@ const DAILY_DTO: DailyDiarySummaryDto = {
   ],
 };
 
-function input(foodName: string, grams = 100): NewMealLogInput {
+function input(foodName: string, grams = 100, extra: Partial<NewMealLogInput> = {}): NewMealLogInput {
   return {
     foodName,
     servingLabel: `${grams} g`,
     grams,
     nutrition: { calories: grams, proteinG: 10, carbsG: 20, fatG: 5 },
     source: 'manual',
+    ...extra,
   };
 }
 
 function loadService() {
-  const apiMock = { get: jest.fn(), post: jest.fn(), delete: jest.fn() };
+  const apiMock = { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() };
   const healthSyncMock = { getDailySummary: jest.fn() };
   const includeActivity = { value: true };
 
@@ -62,7 +70,6 @@ function loadService() {
   jest.doMock('@/services/api', () => ({
     api: apiMock,
     ENDPOINTS: jest.requireActual('@/services/api/endpoints').ENDPOINTS,
-    isApiError: jest.requireActual('@/services/api/errors').isApiError,
   }));
   jest.doMock('@/features/nutrition/services/healthSyncService', () => ({
     healthSyncService: healthSyncMock,
@@ -89,24 +96,11 @@ function loadService() {
 
   const { nutritionApiService } =
     require('@/features/nutrition/services/nutritionService.api') as typeof import('@/features/nutrition/services/nutritionService.api');
-  const { PartialLogError, UpdateIncompleteError } =
-    require('@/features/nutrition/services/nutrition.errors') as typeof import('@/features/nutrition/services/nutrition.errors');
-  const { addUserCreatedFood } =
-    require('@/features/nutrition/services/userFoods') as typeof import('@/features/nutrition/services/userFoods');
-  // Cùng registry với isApiError của service để instanceof đúng sau jest.resetModules().
+  // Cùng registry với service để instanceof đúng sau jest.resetModules().
   const { ApiError } =
     jest.requireActual('@/services/api/errors') as typeof import('@/services/api/errors');
 
-  return {
-    service: nutritionApiService,
-    apiMock,
-    healthSyncMock,
-    includeActivity,
-    PartialLogError,
-    UpdateIncompleteError,
-    addUserCreatedFood,
-    ApiError,
-  };
+  return { service: nutritionApiService, apiMock, healthSyncMock, includeActivity, ApiError };
 }
 
 describe('getDiaryDay', () => {
@@ -127,6 +121,8 @@ describe('getDiaryDay', () => {
       activityCalories: 180,
     });
     expect(diary?.entriesByMeal.lunch).toHaveLength(1);
+    // Giờ ghi lấy từ createdAt do BE lưu (không còn để trống).
+    expect(diary?.entriesByMeal.lunch[0].loggedAt).toBe('2026-10-02T05:30:00.000Z');
   });
 
   test('tắt công tắc "Cộng calo vận động" → activityCalories = 0', async () => {
@@ -162,96 +158,58 @@ describe('getDiaryDay', () => {
 });
 
 describe('addLogEntries', () => {
-  test('POST /nutritiondiary/log cho từng món, trả bản ghi đã tạo kèm giờ ghi', async () => {
+  test('cả bữa trong MỘT request POST /nutritiondiary/log/batch, trả các bản ghi đã tạo kèm giờ ghi', async () => {
     const { service, apiMock } = loadService();
-    apiMock.post
-      .mockResolvedValueOnce(item({ id: 'a', foodName: 'Cơm', servingSize: 150 }))
-      .mockResolvedValueOnce(item({ id: 'b', foodName: 'Gà kho', servingSize: 120 }));
+    apiMock.post.mockResolvedValue([
+      item({ id: 'a', foodName: 'Cơm', servingSize: 150 }),
+      item({ id: 'b', foodName: 'Gà kho', servingSize: 120 }),
+      item({ id: 'c', foodName: 'Canh', servingSize: 200 }),
+    ]);
 
     const created = await service.addLogEntries?.('2026-10-02', 'lunch', [
       input('Cơm', 150),
       input('Gà kho', 120),
+      input('Canh', 200),
     ]);
 
-    expect(apiMock.post).toHaveBeenCalledTimes(2);
-    expect(apiMock.post.mock.calls[0]).toEqual([
-      '/nutritiondiary/log',
-      expect.objectContaining({
-        logDate: '2026-10-02',
-        mealType: 'Lunch',
-        foodName: 'Cơm',
-        servingSize: 150,
-        unit: 'g',
-        logMethod: 'Manual',
-      }),
-    ]);
-    expect(created?.map(entry => entry.id)).toEqual(['a', 'b']);
+    expect(apiMock.post).toHaveBeenCalledTimes(1);
+    expect(apiMock.post).toHaveBeenCalledWith('/nutritiondiary/log/batch', {
+      logDate: '2026-10-02',
+      mealType: 'Lunch',
+      items: [
+        expect.objectContaining({ foodName: 'Cơm', servingSize: 150, unit: 'g', logMethod: 'Manual' }),
+        expect.objectContaining({ foodName: 'Gà kho', servingSize: 120 }),
+        expect.objectContaining({ foodName: 'Canh', servingSize: 200 }),
+      ],
+    });
+    expect(created?.map(entry => entry.id)).toEqual(['a', 'b', 'c']);
+    expect(created?.every(entry => entry.mealType === 'lunch')).toBe(true);
     expect(created?.every(entry => typeof entry.loggedAt === 'string')).toBe(true);
   });
 
-  test('ghi TUẦN TỰ, không song song (BE dễ tạo trùng dòng nhóm bữa)', async () => {
+  test('món lấy từ danh mục mang theo id thực phẩm', async () => {
     const { service, apiMock } = loadService();
-    let inFlight = 0;
-    let maxInFlight = 0;
-    apiMock.post.mockImplementation(async () => {
-      inFlight += 1;
-      maxInFlight = Math.max(maxInFlight, inFlight);
-      await new Promise(resolve => setTimeout(resolve, 5));
-      inFlight -= 1;
-      return item();
-    });
+    apiMock.post.mockResolvedValue([item()]);
 
-    await service.addLogEntries?.('2026-10-02', 'lunch', [input('A'), input('B'), input('C')]);
+    await service.addLogEntries?.('2026-10-02', 'lunch', [
+      input('Ức gà', 150, { ingredientId: 'ing-1', source: 'database' }),
+    ]);
 
-    expect(apiMock.post).toHaveBeenCalledTimes(3);
-    expect(maxInFlight).toBe(1);
+    expect(apiMock.post.mock.calls[0][1].items[0]).toMatchObject({ ingredientId: 'ing-1' });
   });
 
-  test('một món lỗi nghiệp vụ → vẫn thử các món sau, ném PartialLogError với món chưa lưu', async () => {
-    const { service, apiMock, ApiError, PartialLogError } = loadService();
-    apiMock.post
-      .mockResolvedValueOnce(item({ id: 'a' }))
-      .mockRejectedValueOnce(new ApiError('Dữ liệu gửi lên không hợp lệ.', 'BUSINESS', 400))
-      .mockResolvedValueOnce(item({ id: 'c' }));
-    const inputs = [input('A'), input('B'), input('C')];
+  test('lỗi → không món nào được lưu: ném đúng lỗi gốc, không còn "lưu một phần"', async () => {
+    const { service, apiMock, ApiError } = loadService();
+    const error = new ApiError('Dữ liệu gửi lên không hợp lệ.', 'BUSINESS', 400);
+    apiMock.post.mockRejectedValue(error);
 
-    const error = await service.addLogEntries?.('2026-10-02', 'lunch', inputs).catch(e => e);
-
-    expect(error).toBeInstanceOf(PartialLogError);
-    expect(error.saved.map((entry: { id: string }) => entry.id)).toEqual(['a', 'c']);
-    expect(error.failed).toEqual([inputs[1]]);
-    expect(error.message).toBe('Đã lưu 2/3 món. 1 món chưa lưu được, vui lòng thử lại.');
-    expect(apiMock.post).toHaveBeenCalledTimes(3);
-  });
-
-  test('mất mạng giữa chừng → dừng, các món còn lại nằm trong danh sách chưa lưu', async () => {
-    const { service, apiMock, ApiError, PartialLogError } = loadService();
-    apiMock.post
-      .mockResolvedValueOnce(item({ id: 'a' }))
-      .mockRejectedValueOnce(new ApiError('Không kết nối được máy chủ.', 'NETWORK'));
-    const inputs = [input('A'), input('B'), input('C')];
-
-    const error = await service.addLogEntries?.('2026-10-02', 'lunch', inputs).catch(e => e);
-
-    expect(error).toBeInstanceOf(PartialLogError);
-    expect(error.saved).toHaveLength(1);
-    expect(error.failed).toEqual([inputs[1], inputs[2]]);
-    expect(apiMock.post).toHaveBeenCalledTimes(2);
-  });
-
-  test('không lưu được món nào → ném đúng lỗi gốc (không phải PartialLogError)', async () => {
-    const { service, apiMock, ApiError, PartialLogError } = loadService();
-    const networkError = new ApiError('Không kết nối được máy chủ.', 'NETWORK');
-    apiMock.post.mockRejectedValue(networkError);
-
-    const error = await service.addLogEntries?.('2026-10-02', 'lunch', [input('A'), input('B')]).catch(e => e);
-
-    expect(error).toBe(networkError);
-    expect(error).not.toBeInstanceOf(PartialLogError);
+    await expect(
+      service.addLogEntries?.('2026-10-02', 'lunch', [input('A'), input('B')]),
+    ).rejects.toBe(error);
     expect(apiMock.post).toHaveBeenCalledTimes(1);
   });
 
-  test('danh sách rỗng → không gọi API', async () => {
+  test('danh sách rỗng → không gọi API (BE từ chối danh sách rỗng)', async () => {
     const { service, apiMock } = loadService();
 
     await expect(service.addLogEntries?.('2026-10-02', 'lunch', [])).resolves.toEqual([]);
@@ -260,83 +218,71 @@ describe('addLogEntries', () => {
 });
 
 describe('updateLogEntry', () => {
-  test('ghi bản mới (tính lại dinh dưỡng, đổi bữa) RỒI mới xóa bản cũ', async () => {
+  test('đổi khối lượng: đọc bản ghi, tính lại dinh dưỡng rồi PUT /nutritiondiary/items/{id} (không tạo bản mới)', async () => {
     const { service, apiMock, healthSyncMock } = loadService();
-    healthSyncMock.getDailySummary.mockResolvedValue({ caloriesBurned: 0 });
     apiMock.get.mockResolvedValue(DAILY_DTO);
-    const order: string[] = [];
-    apiMock.post.mockImplementation(async () => {
-      order.push('post');
-      return item({ id: 'new-1', servingSize: 250, calories: 225 });
+    apiMock.put.mockResolvedValue(item({ servingSize: 250, calories: 225 }));
+
+    const updated = await service.updateLogEntry?.('2026-10-02', 'item-1', { grams: 250 });
+
+    expect(apiMock.get).toHaveBeenCalledWith('/nutritiondiary/daily', {
+      params: { date: '2026-10-02' },
     });
-    apiMock.delete.mockImplementation(async () => {
-      order.push('delete');
-      return true;
+    expect(apiMock.put).toHaveBeenCalledWith('/nutritiondiary/items/item-1', {
+      servingSize: 250,
+      // 450 kcal / 500 g × 250 g; 25 g đạm / 500 g × 250 g…
+      calories: 225,
+      proteinGrams: 13,
+      carbsGrams: 28,
+      fatGrams: 6,
     });
-
-    const updated = await service.updateLogEntry?.('2026-10-02', 'item-1', {
-      grams: 250,
-      mealType: 'dinner',
-    });
-
-    expect(order).toEqual(['post', 'delete']);
-    expect(apiMock.post).toHaveBeenCalledWith(
-      '/nutritiondiary/log',
-      expect.objectContaining({
-        logDate: '2026-10-02',
-        mealType: 'Dinner',
-        foodName: 'Phở bò tái',
-        servingSize: 250,
-        unit: 'g',
-        // 450 kcal / 500 g × 250 g
-        calories: 225,
-        logMethod: 'Manual',
-      }),
-    );
-    expect(apiMock.delete).toHaveBeenCalledWith('/nutritiondiary/items/item-1');
-    expect(updated).toMatchObject({ id: 'new-1', mealType: 'dinner' });
-  });
-
-  test('ghi bản mới lỗi → KHÔNG xóa bản cũ (không mất món)', async () => {
-    const { service, apiMock, healthSyncMock } = loadService();
-    healthSyncMock.getDailySummary.mockResolvedValue({ caloriesBurned: 0 });
-    apiMock.get.mockResolvedValue(DAILY_DTO);
-    const error = new Error('lỗi ghi');
-    apiMock.post.mockRejectedValue(error);
-
-    await expect(service.updateLogEntry?.('2026-10-02', 'item-1', { grams: 250 })).rejects.toBe(error);
+    expect(apiMock.post).not.toHaveBeenCalled();
     expect(apiMock.delete).not.toHaveBeenCalled();
+    // Calo vận động không liên quan đến việc sửa món.
+    expect(healthSyncMock.getDailySummary).not.toHaveBeenCalled();
+    expect(updated).toMatchObject({ id: 'item-1', grams: 250, nutrition: { calories: 225 } });
   });
 
-  test('ghi được bản mới nhưng xóa bản cũ lỗi → UpdateIncompleteError (có thể bị trùng)', async () => {
-    const { service, apiMock, healthSyncMock, UpdateIncompleteError } = loadService();
-    healthSyncMock.getDailySummary.mockResolvedValue({ caloriesBurned: 0 });
+  test('chỉ đổi bữa: PUT { mealType } và không cần đọc nhật ký', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.put.mockResolvedValue(item({ mealType: 'Dinner' }));
+
+    const updated = await service.updateLogEntry?.('2026-10-02', 'item-1', { mealType: 'dinner' });
+
+    expect(apiMock.get).not.toHaveBeenCalled();
+    const body = apiMock.put.mock.calls[0][1];
+    expect(JSON.parse(JSON.stringify(body))).toEqual({ mealType: 'Dinner' });
+    // Bữa lấy từ chính DTO BE trả về.
+    expect(updated?.mealType).toBe('dinner');
+  });
+
+  test('đổi cả bữa lẫn khối lượng trong một PUT', async () => {
+    const { service, apiMock } = loadService();
     apiMock.get.mockResolvedValue(DAILY_DTO);
-    apiMock.post.mockResolvedValue(item({ id: 'new-1', servingSize: 250 }));
-    apiMock.delete.mockRejectedValue(new Error('mất mạng'));
+    apiMock.put.mockResolvedValue(item({ mealType: 'Dinner', servingSize: 250 }));
 
-    const error = await service.updateLogEntry?.('2026-10-02', 'item-1', { grams: 250 }).catch(e => e);
+    await service.updateLogEntry?.('2026-10-02', 'item-1', { grams: 250, mealType: 'dinner' });
 
-    expect(error).toBeInstanceOf(UpdateIncompleteError);
-    expect(error.savedEntry.id).toBe('new-1');
-    expect(error.message).toContain('có thể bị trùng');
+    expect(apiMock.put).toHaveBeenCalledTimes(1);
+    expect(apiMock.put.mock.calls[0][1]).toMatchObject({
+      mealType: 'Dinner',
+      servingSize: 250,
+      calories: 225,
+    });
   });
 
   test('không thấy bản ghi → báo lỗi, không ghi gì', async () => {
-    const { service, apiMock, healthSyncMock } = loadService();
-    healthSyncMock.getDailySummary.mockResolvedValue({ caloriesBurned: 0 });
+    const { service, apiMock } = loadService();
     apiMock.get.mockResolvedValue(DAILY_DTO);
 
     await expect(service.updateLogEntry?.('2026-10-02', 'khong-co', { grams: 1 })).rejects.toThrow(
       'Không tìm thấy bản ghi để sửa.',
     );
-    expect(apiMock.post).not.toHaveBeenCalled();
-    expect(apiMock.delete).not.toHaveBeenCalled();
+    expect(apiMock.put).not.toHaveBeenCalled();
   });
 
-  test('bản ghi đơn vị "phần" giữ nguyên đơn vị khi sửa', async () => {
-    const { service, apiMock, healthSyncMock } = loadService();
-    healthSyncMock.getDailySummary.mockResolvedValue({ caloriesBurned: 0 });
+  test('bản ghi đơn vị "phần": đổi số lượng, không gửi đơn vị (BE giữ nguyên)', async () => {
+    const { service, apiMock } = loadService();
     apiMock.get.mockResolvedValue({
       ...DAILY_DTO,
       meals: [
@@ -347,15 +293,24 @@ describe('updateLogEntry', () => {
         },
       ],
     });
-    apiMock.post.mockResolvedValue(item({ id: 'p-2', servingSize: 2, unit: 'phần', calories: 600 }));
-    apiMock.delete.mockResolvedValue(true);
+    apiMock.put.mockResolvedValue(item({ id: 'p-1', servingSize: 2, unit: 'phần', calories: 600 }));
 
-    await service.updateLogEntry?.('2026-10-02', 'p-1', { grams: 2 });
+    const updated = await service.updateLogEntry?.('2026-10-02', 'p-1', { grams: 2 });
 
-    expect(apiMock.post).toHaveBeenCalledWith(
-      '/nutritiondiary/log',
-      expect.objectContaining({ servingSize: 2, unit: 'phần', calories: 600 }),
-    );
+    const body = apiMock.put.mock.calls[0][1];
+    expect(JSON.parse(JSON.stringify(body))).toMatchObject({ servingSize: 2, calories: 600 });
+    expect(body.unit).toBeUndefined();
+    expect(updated?.unit).toBe('phần');
+  });
+
+  test('PUT lỗi → ném lỗi gốc để màn hình báo, nhật ký không bị đổi', async () => {
+    const { service, apiMock, ApiError } = loadService();
+    const error = new ApiError('Không tìm thấy mục nhật ký dinh dưỡng.', 'NOT_FOUND', 404);
+    apiMock.get.mockResolvedValue(DAILY_DTO);
+    apiMock.put.mockRejectedValue(error);
+
+    await expect(service.updateLogEntry?.('2026-10-02', 'item-1', { grams: 250 })).rejects.toBe(error);
+    expect(apiMock.delete).not.toHaveBeenCalled();
   });
 });
 
@@ -378,7 +333,7 @@ describe('deleteLogEntry', () => {
   });
 });
 
-describe('searchFoods / getFoodById', () => {
+describe('foods', () => {
   const FOOD: FoodItemDto = {
     id: '33333333-3333-3333-3333-333333333333',
     name: 'Ức gà',
@@ -396,72 +351,67 @@ describe('searchFoods / getFoodById', () => {
     sodiumMgPer100g: 74,
     allergyId: 2,
     allergyName: 'Đậu phộng (Peanuts)',
+    allergyIds: [2, 7],
+    isVerified: true,
+    isUserCreated: false,
+    isFavorite: true,
+    barcode: null,
+    servings: [
+      { id: 's1', label: '1 miếng', grams: 150 },
+      { id: 's2', label: '100 g', grams: 100 },
+    ],
+    defaultServingId: 's1',
   };
   const PAGE = { items: [FOOD], page: 1, pageSize: 20, totalCount: 1, totalPages: 1 };
 
-  test('bộ lọc "all" → GET /foods?search=&page=1&pageSize=20, dị ứng đổi sang slug', async () => {
+  test('searchFoods: GET /foods với search, scope, trang; mọi dị ứng đổi sang slug, khẩu phần nhân đúng', async () => {
     const { service, apiMock } = loadService();
     apiMock.get.mockResolvedValue(PAGE);
 
     const foods = await service.searchFoods?.('  gà ', 'all');
 
     expect(apiMock.get).toHaveBeenCalledWith('/foods', {
-      params: { search: 'gà', page: 1, pageSize: 20 },
+      params: { search: 'gà', scope: 'all', page: 1, pageSize: 20 },
     });
     expect(foods).toHaveLength(1);
-    expect(foods?.[0]).toMatchObject({ name: 'Ức gà', verified: true, allergenIds: ['peanut'] });
-  });
-
-  test('không có từ khóa → không gửi search', async () => {
-    const { service, apiMock } = loadService();
-    apiMock.get.mockResolvedValue(PAGE);
-
-    await service.searchFoods?.('   ', 'all');
-
-    expect(apiMock.get).toHaveBeenCalledWith('/foods', {
-      params: { search: undefined, page: 1, pageSize: 20 },
+    expect(foods?.[0]).toMatchObject({
+      name: 'Ức gà',
+      verified: true,
+      isFavorite: true,
+      allergenIds: ['peanut', 'treeNut'],
+      defaultServingId: 's1',
+      // 165 kcal/100 g × 150 g
+      nutritionPerServing: { calories: 248 },
+      servingOptions: [
+        { id: 's1', label: '1 miếng (150 g)', grams: 150 },
+        { id: 's2', label: '100 g', grams: 100 },
+      ],
     });
   });
 
-  test('món tự nhập trùng từ khóa được đặt lên đầu kết quả', async () => {
-    const { service, apiMock, addUserCreatedFood } = loadService();
-    apiMock.get.mockResolvedValue(PAGE);
-    addUserCreatedFood({
-      name: 'Gà rang muối nhà làm',
-      amount: 100,
-      unit: 'g',
-      nutrition: { calories: 200, proteinG: 20, carbsG: 5, fatG: 10 },
-    });
+  test.each(['all', 'recent', 'favorite', 'mine'] as const)(
+    'bộ lọc "%s" → scope tương ứng của BE, không còn tự trả rỗng hay lấy ở máy',
+    async filter => {
+      const { service, apiMock } = loadService();
+      apiMock.get.mockResolvedValue(PAGE);
 
-    const foods = await service.searchFoods?.('gà', 'all');
+      await service.searchFoods?.('', filter);
 
-    expect(foods?.map(food => food.name)).toEqual(['Gà rang muối nhà làm', 'Ức gà']);
+      expect(apiMock.get).toHaveBeenCalledWith('/foods', {
+        params: { search: undefined, scope: filter, page: 1, pageSize: 20 },
+      });
+    },
+  );
+
+  test('searchFoods lỗi → ném lỗi gốc (màn hình hiện ErrorState)', async () => {
+    const { service, apiMock, ApiError } = loadService();
+    const error = new ApiError('Máy chủ gặp sự cố.', 'SERVER', 500);
+    apiMock.get.mockRejectedValue(error);
+
+    await expect(service.searchFoods?.('gà', 'all')).rejects.toBe(error);
   });
 
-  test('"Gần đây"/"Yêu thích" chưa có nguồn dữ liệu → rỗng, không gọi API, không trả món giả', async () => {
-    const { service, apiMock } = loadService();
-
-    await expect(service.searchFoods?.('', 'recent')).resolves.toEqual([]);
-    await expect(service.searchFoods?.('', 'favorite')).resolves.toEqual([]);
-    expect(apiMock.get).not.toHaveBeenCalled();
-  });
-
-  test('"Món của tôi" lấy ở máy, không gọi API', async () => {
-    const { service, apiMock, addUserCreatedFood } = loadService();
-    addUserCreatedFood({
-      name: 'Sinh tố bơ',
-      amount: 250,
-      unit: 'ml',
-      nutrition: { calories: 280, proteinG: 4, carbsG: 30, fatG: 16 },
-    });
-
-    const foods = await service.searchFoods?.('', 'mine');
-
-    expect(foods?.map(food => food.name)).toEqual(['Sinh tố bơ']);
-    expect(apiMock.get).not.toHaveBeenCalled();
-  });
-
-  test('getFoodById: GET /foods/{id} cho món của hệ thống', async () => {
+  test('getFoodById: GET /foods/{id}', async () => {
     const { service, apiMock } = loadService();
     apiMock.get.mockResolvedValue(FOOD);
 
@@ -471,22 +421,77 @@ describe('searchFoods / getFoodById', () => {
     expect(food).toMatchObject({ id: FOOD.id, name: 'Ức gà' });
   });
 
-  test('getFoodById: món tự nhập lấy ở máy, không gọi API', async () => {
-    const { service, apiMock, addUserCreatedFood } = loadService();
-    const created = addUserCreatedFood({
+  test('createFood: POST /foods với số liệu quy về trên 100 g; món trả về là "do bạn nhập", chưa xác minh', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue({
+      ...FOOD,
+      id: 'new-food',
+      name: 'Sinh tố bơ',
+      allergyIds: [],
+      isVerified: false,
+      isUserCreated: true,
+      isFavorite: false,
+      servings: [{ id: 'sv', label: '250 ml', grams: 250 }],
+      defaultServingId: 'sv',
+    });
+
+    const created = await service.createFood?.({
       name: 'Sinh tố bơ',
       amount: 250,
       unit: 'ml',
       nutrition: { calories: 280, proteinG: 4, carbsG: 30, fatG: 16 },
     });
 
-    await expect(service.getFoodById?.(created.id)).resolves.toBe(created);
-    expect(apiMock.get).not.toHaveBeenCalled();
+    expect(apiMock.post).toHaveBeenCalledWith(
+      '/foods',
+      expect.objectContaining({
+        name: 'Sinh tố bơ',
+        caloriesPer100g: 112,
+        proteinPer100g: 1.6,
+        servings: [{ label: '250 ml', grams: 250, isDefault: true }],
+      }),
+    );
+    expect(created).toMatchObject({ id: 'new-food', verified: false, isUserCreated: true });
+  });
+
+  test('createFood: BE từ chối (trùng tên…) → ném lỗi gốc với thông báo tiếng Việt', async () => {
+    const { service, apiMock, ApiError } = loadService();
+    const error = new ApiError('Bạn đã có một món cùng tên.', 'CONFLICT', 409);
+    apiMock.post.mockRejectedValue(error);
+
+    await expect(
+      service.createFood?.({
+        name: 'Sinh tố bơ',
+        amount: 250,
+        unit: 'ml',
+        nutrition: { calories: 280, proteinG: 4, carbsG: 30, fatG: 16 },
+      }),
+    ).rejects.toBe(error);
+  });
+
+  test('setFoodFavorite(true) → POST /foods/{id}/favorite, trả trạng thái do BE xác nhận', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue({ isFavorite: true });
+
+    await expect(service.setFoodFavorite?.(FOOD.id, true)).resolves.toBe(true);
+
+    expect(apiMock.post).toHaveBeenCalledWith(`/foods/${FOOD.id}/favorite`);
+    expect(apiMock.delete).not.toHaveBeenCalled();
+  });
+
+  test('setFoodFavorite(false) → DELETE /foods/{id}/favorite', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.delete.mockResolvedValue({ isFavorite: false });
+
+    await expect(service.setFoodFavorite?.(FOOD.id, false)).resolves.toBe(false);
+
+    expect(apiMock.delete).toHaveBeenCalledWith(`/foods/${FOOD.id}/favorite`);
+    expect(apiMock.post).not.toHaveBeenCalled();
   });
 });
 
 describe('getWeeklyProgress', () => {
-  test('GET /nutritiondiary/weekly-progress?startDate= = 6 ngày trước, kết thúc ở ngày hôm nay', async () => {
+  test('GET /nutritiondiary/weekly-progress?startDate= = 6 ngày trước, kết thúc ở hôm nay; có macro trung bình', async () => {
     const { service, apiMock } = loadService();
     const dates = [
       '2026-09-26',
@@ -503,6 +508,12 @@ describe('getWeeklyProgress', () => {
         dayOfWeek: 'x',
         calories: index === 6 ? 1200 : 0,
         targetCalories: 1776,
+        proteinGrams: index === 6 ? 60 : 0,
+        carbsGrams: index === 6 ? 150 : 0,
+        fatGrams: index === 6 ? 40 : 0,
+        targetProteinGrams: 111,
+        targetCarbsGrams: 222,
+        targetFatGrams: 49,
       })),
     };
     apiMock.get.mockResolvedValue(dto);
@@ -514,14 +525,19 @@ describe('getWeeklyProgress', () => {
     });
     expect(summary?.calorieTarget).toBe(1776);
     expect(summary?.days).toHaveLength(7);
-    expect(summary?.averageMacros).toEqual([]);
+    expect(summary?.averageMacros).toEqual([
+      { label: 'Protein', consumedG: 60, targetG: 111 },
+      { label: 'Carbs', consumedG: 150, targetG: 222 },
+      { label: 'Fat', consumedG: 40, targetG: 49 },
+    ]);
   });
 });
 
-describe('hàm BE chưa có', () => {
-  test('createFood không có trong bản API (tự rơi về mock)', () => {
+describe('phủ hết hàm của feature', () => {
+  test('tạo món và yêu thích đã nối API (không còn rơi về mock)', () => {
     const { service } = loadService();
 
-    expect(service.createFood).toBeUndefined();
+    expect(service.createFood).toBeDefined();
+    expect(service.setFoodFavorite).toBeDefined();
   });
 });

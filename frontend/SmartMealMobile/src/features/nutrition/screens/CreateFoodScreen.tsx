@@ -84,14 +84,20 @@ export function CreateFoodScreen({ navigation, route }: Props) {
       { name: values.name, amount, unit: values.unit, nutrition },
       {
         onSuccess: food => {
+          // Ghi đúng khẩu phần của món vừa tạo: với đơn vị "phần" BE quy ra khối lượng (g) thật, và
+          // nhật ký cần khối lượng đó để tính lại dinh dưỡng khi sửa. Kèm id để "Gần đây" nhớ món.
+          const serving =
+            food.servingOptions.find(option => option.id === food.defaultServingId) ??
+            food.servingOptions[0];
           addMealLogEntries.mutate(
             {
               mealType,
               entries: [
                 {
                   foodName: food.name,
-                  servingLabel: `${amount} ${values.unit}`,
-                  grams: amount,
+                  ingredientId: food.id,
+                  servingLabel: serving?.label ?? `${amount} ${values.unit}`,
+                  grams: serving?.grams ?? amount,
                   nutrition,
                   source: 'manual',
                 },

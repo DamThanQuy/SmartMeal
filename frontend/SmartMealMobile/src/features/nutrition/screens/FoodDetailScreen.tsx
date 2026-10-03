@@ -11,7 +11,7 @@ import { MEAL_TYPE_OPTIONS, MEAL_TYPE_TITLES, type MealType } from '@/types/meal
 import { useTheme } from '@/theme/ThemeProvider';
 import { useUserProfileStore } from '@/state/user/userProfileStore';
 import { useAddMealLogEntries } from '../hooks/useDiary';
-import { useFoodDetail } from '../hooks/useFoodSearch';
+import { useFoodDetail, useSetFoodFavorite } from '../hooks/useFoodSearch';
 import { todayIso } from '../services/nutritionService';
 import { MacroStatGrid } from '../components/MacroStatGrid';
 import { nutritionPerGram, scaleNutritionByGrams } from '../utils/nutritionMath';
@@ -28,6 +28,7 @@ export function FoodDetailScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
   const { data: food, isLoading, isError, error, refetch } = useFoodDetail(foodId);
   const addMealLogEntries = useAddMealLogEntries(todayIso());
+  const setFavorite = useSetFoodFavorite(foodId);
 
   const [servingId, setServingId] = useState<string>('');
   const [customGrams, setCustomGrams] = useState('');
@@ -96,6 +97,8 @@ export function FoodDetailScreen({ navigation, route }: Props) {
         entries: [
           {
             foodName: food.name,
+            // Nhớ món đã ghi để tab "Gần đây" tìm thấy nó (BE gắn theo id thực phẩm).
+            ingredientId: food.id,
             servingLabel: finalServingLabel,
             grams: totalGrams,
             nutrition,
@@ -121,11 +124,18 @@ export function FoodDetailScreen({ navigation, route }: Props) {
         onBack={() => navigation.goBack()}
         rightContent={
           <AppIconButton
-            accessibilityLabel="Yêu thích"
+            accessibilityLabel={food.isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'}
             variant="elevated"
             shape="square"
-            icon={<Heart size={22} color={colors.textPrimary} />}
-            disabled
+            icon={
+              <Heart
+                size={22}
+                color={food.isFavorite ? colors.error : colors.textPrimary}
+                fill={food.isFavorite ? colors.error : 'none'}
+              />
+            }
+            onPress={() => setFavorite.mutate(!food.isFavorite)}
+            disabled={setFavorite.isPending}
           />
         }
       />
@@ -265,6 +275,11 @@ export function FoodDetailScreen({ navigation, route }: Props) {
         {addMealLogEntries.isError ? (
           <AppText variant="caption" color="error" className="text-center">
             {addMealLogEntries.error.message}
+          </AppText>
+        ) : null}
+        {setFavorite.isError ? (
+          <AppText variant="caption" color="error" className="text-center">
+            {setFavorite.error.message}
           </AppText>
         ) : null}
       </ScrollView>

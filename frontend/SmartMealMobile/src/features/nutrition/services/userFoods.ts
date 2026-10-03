@@ -2,9 +2,8 @@ import { registerUserDataReset } from '@/state/resetUserData';
 import type { FoodItem, NewFoodInput } from '../types/nutrition.types';
 
 // BR-121 — CreateFoodScreen (Đợt 10): món do user tự nhập, gắn nhãn "Do bạn nhập", không bịa dữ
-// liệu thay Backend. Backend chưa có endpoint tạo món (P1-BE-08) nên danh sách này chỉ nằm ở máy
-// (in-memory) — dùng chung cho bản mock lẫn bản API của nutritionService, tách khỏi catalog "đã
-// xác minh" để reset độc lập.
+// liệu thay Backend. Chỉ dùng cho bản mock của nutritionService (in-memory, tách khỏi catalog "đã
+// xác minh" để reset độc lập); bản API lưu món này trên server qua POST /foods.
 let userCreatedFoods: FoodItem[] = [];
 let userFoodIdCounter = 0;
 
