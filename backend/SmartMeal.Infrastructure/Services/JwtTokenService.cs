@@ -1,33 +1,33 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SmartMeal.Domain.Entities;
+using SmartMeal.Infrastructure.Options;
 
 namespace SmartMeal.Infrastructure.Services;
 
+/// <summary>Access token vừa phát hành cùng thời điểm hết hạn (UTC).</summary>
+public sealed record AccessToken(string Value, DateTime ExpiresAtUtc);
+
 public interface IJwtTokenService
 {
-    string GenerateToken(User user);
+    AccessToken CreateAccessToken(User user);
 }
 
 public class JwtTokenService : IJwtTokenService
 {
-    private readonly IConfiguration _config;
+    private readonly JwtOptions _options;
 
-    public JwtTokenService(IConfiguration config)
+    public JwtTokenService(IOptions<JwtOptions> options)
     {
-        _config = config;
+        _options = options.Value;
     }
 
-    public string GenerateToken(User user)
+    public AccessToken CreateAccessToken(User user)
     {
-        var secretKey = _config["Jwt:Key"] ?? "SmartMeal_SuperSecret_Jwt_Security_Key_2026_FPT_PRM393";
-        var issuer = _config["Jwt:Issuer"] ?? "SmartMealBackend";
-        var audience = _config["Jwt:Audience"] ?? "SmartMealMobile";
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Key));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new List<Claim>
@@ -39,14 +39,15 @@ public class JwtTokenService : IJwtTokenService
             new("isPro", user.IsPro.ToString().ToLower())
         };
 
+        var expiresAt = DateTime.UtcNow.AddMinutes(_options.AccessTokenMinutes);
         var token = new JwtSecurityToken(
-            issuer: issuer,
-            audience: audience,
+            issuer: _options.Issuer,
+            audience: _options.Audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddDays(30), // 30 days token
+            expires: expiresAt,
             signingCredentials: creds
         );
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        return new AccessToken(new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
     }
 }

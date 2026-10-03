@@ -37,12 +37,12 @@ public class AuthService : IAuthService
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
 
-        var token = _jwtService.GenerateToken(user);
+        var token = _jwtService.CreateAccessToken(user);
 
         var response = new AuthResponseDto
         {
-            Token = token,
-            ExpiresAt = DateTime.UtcNow.AddDays(30),
+            Token = token.Value,
+            ExpiresAt = token.ExpiresAtUtc,
             User = new UserDto
             {
                 Id = user.Id,
@@ -69,12 +69,12 @@ public class AuthService : IAuthService
             return ApiResponse<AuthResponseDto>.Fail("Email hoặc mật khẩu không chính xác.");
         }
 
-        var token = _jwtService.GenerateToken(user);
+        var token = _jwtService.CreateAccessToken(user);
 
         var response = new AuthResponseDto
         {
-            Token = token,
-            ExpiresAt = DateTime.UtcNow.AddDays(30),
+            Token = token.Value,
+            ExpiresAt = token.ExpiresAtUtc,
             User = new UserDto
             {
                 Id = user.Id,
@@ -117,12 +117,12 @@ public class AuthService : IAuthService
             await _db.SaveChangesAsync();
         }
 
-        var token = _jwtService.GenerateToken(user);
+        var token = _jwtService.CreateAccessToken(user);
 
         var response = new AuthResponseDto
         {
-            Token = token,
-            ExpiresAt = DateTime.UtcNow.AddDays(30),
+            Token = token.Value,
+            ExpiresAt = token.ExpiresAtUtc,
             User = new UserDto
             {
                 Id = user.Id,

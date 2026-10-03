@@ -1,24 +1,45 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using SmartMeal.Application.Services;
 using SmartMeal.Infrastructure.Data;
+using SmartMeal.Infrastructure.Options;
 using SmartMeal.Infrastructure.Services;
 
-// Load .env configuration
+// Nạp file .env (chỉ dùng khi chạy local). Môi trường thật tiêm biến môi trường trực tiếp.
 DotNetEnv.Env.TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables();
 
-// 1. Add Database Context (PostgreSQL)
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString));
+// 1. Options — bí mật (Jwt:Key, chuỗi kết nối, Gemini key) chỉ đến từ biến môi trường / .env / User Secrets.
+// Cấu hình được đọc lazy (lúc resolve) nên test và môi trường tiêm cấu hình sau vẫn có hiệu lực.
+builder.Services
+    .AddOptions<JwtOptions>()
+    .Bind(builder.Configuration.GetSection(JwtOptions.SectionName))
+    .ValidateDataAnnotations()
+    .Validate(
+        o => builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing") || !o.LooksLikePublishedSampleKey(),
+        "Jwt:Key đang là giá trị mẫu đã công khai — hãy sinh khóa ngẫu nhiên mới (vd. openssl rand -base64 48).")
+    .ValidateOnStart();
 
-// 2. Add Dependency Injection Services
+// 2. Database (PostgreSQL)
+builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
+{
+    var connectionString = sp.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection");
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        throw new InvalidOperationException(
+            "Thiếu ConnectionStrings:DefaultConnection — đặt biến môi trường ConnectionStrings__DefaultConnection (hoặc file .env, xem .env.example).");
+    }
+
+    options.UseNpgsql(connectionString);
+});
+
+// 3. Dependency Injection
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IHealthProfileService, HealthProfileService>();
@@ -32,45 +53,56 @@ builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddScoped<IFoodService, FoodService>();
 builder.Services.AddHttpClient<IAiVisionService, GeminiAiVisionService>();
 
-// 3. Add JWT Authentication
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "SmartMeal_SuperSecret_Jwt_Security_Key_2026_FPT_PRM393_VeryLongAndSecureKey!";
-var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "SmartMealBackend";
-var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "SmartMealMobile";
-
+// 4. JWT Authentication (khóa, issuer, audience đọc từ JwtOptions — cùng nguồn với JwtTokenService)
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtIssuer,
-        ValidAudience = jwtAudience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
-    };
-});
+.AddJwtBearer();
 
-// 4. Add CORS
+builder.Services
+    .AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+    .Configure<IOptions<JwtOptions>>((bearer, jwtAccessor) =>
+    {
+        var jwt = jwtAccessor.Value;
+        bearer.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwt.Issuer,
+            ValidAudience = jwt.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
+            ClockSkew = TimeSpan.FromSeconds(30)
+        };
+    });
+
+// 5. CORS — app di động native không cần CORS. Development mở tự do; môi trường khác chỉ cho các origin
+// khai báo ở Cors:AllowedOrigins (phân tách bằng dấu phẩy, vd. app web Expo).
+var corsOrigins = (builder.Configuration["Cors:AllowedOrigins"] ?? string.Empty)
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("Default", policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        }
+        else if (corsOrigins.Length > 0)
+        {
+            policy.WithOrigins(corsOrigins).AllowAnyMethod().AllowAnyHeader();
+        }
     });
 });
 
-// 5. Add Controllers
+// 6. Controllers
 builder.Services.AddControllers();
 
-// 6. Add Swagger with JWT Support
+// 7. Swagger với JWT
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -108,8 +140,14 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment() || true) // Enable Swagger in all environments for student testing
+if (string.IsNullOrWhiteSpace(app.Configuration.GetConnectionString("DefaultConnection")))
+{
+    throw new InvalidOperationException(
+        "Thiếu ConnectionStrings:DefaultConnection — đặt biến môi trường ConnectionStrings__DefaultConnection (hoặc file .env, xem .env.example).");
+}
+
+// Swagger chỉ bật ở Development, hoặc khi chủ động đặt Swagger:Enabled=true (vd. môi trường demo).
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled"))
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
@@ -119,25 +157,30 @@ if (app.Environment.IsDevelopment() || true) // Enable Swagger in all environmen
     });
 }
 
-app.UseCors("AllowAll");
+app.UseCors("Default");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// Auto apply migrations on startup if database is available
-using (var scope = app.Services.CreateScope())
+// Tự áp migration + seed khi khởi động. Development vẫn chạy được khi chưa bật database (để xem Swagger);
+// môi trường khác dừng ngay để không phục vụ trên schema cũ.
+await using (var scope = app.Services.CreateAsyncScope())
 {
+    var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
     try
     {
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        db.Database.Migrate();
-        DbInitializer.SeedAsync(db).GetAwaiter().GetResult();
-        Console.WriteLine("[Database] Migration and Seed applied successfully.");
+        await db.Database.MigrateAsync();
+        await DbInitializer.SeedAsync(db);
+        logger.LogInformation("[Database] Migration and seed applied successfully.");
     }
-    catch (Exception ex)
+    catch (Exception ex) when (app.Environment.IsDevelopment())
     {
-        Console.WriteLine($"[Database] Migration warning: {ex.Message}");
+        logger.LogError(ex, "[Database] Migration failed — API keeps running without a usable database.");
     }
 }
 
 app.Run();
+
+// Cho phép test tích hợp (WebApplicationFactory<Program>) truy cập entry point.
+public partial class Program;
