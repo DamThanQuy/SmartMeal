@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using SmartMeal.Application.Common;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.Auth;
 using SmartMeal.Application.Services;
@@ -11,8 +12,6 @@ namespace SmartMeal.Infrastructure.Services;
 
 public class AccountService : IAccountService
 {
-    private static readonly byte[] PngSignature = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
-
     private readonly ApplicationDbContext _db;
     private readonly IFileStorage _storage;
     private readonly ILoginAttemptTracker _attempts;
@@ -176,6 +175,7 @@ public class AccountService : IAccountService
         deleted["collections"] = await _db.RecipeCollections.Where(c => c.UserId == userId).ExecuteDeleteAsync();
         deleted["pet"] = await _db.HealthPets.Where(p => p.UserId == userId).ExecuteDeleteAsync();
         deleted["challenges"] = await _db.UserChallenges.Where(c => c.UserId == userId).ExecuteDeleteAsync();
+        deleted["aiUsage"] = await _db.AiUsageLogs.Where(l => l.UserId == userId).ExecuteDeleteAsync();
 
         return deleted;
     }
@@ -198,27 +198,7 @@ public class AccountService : IAccountService
     }
 
     /// <summary>Nhận diện JPG/PNG/WebP bằng chữ ký đầu file; trả phần mở rộng chuẩn hoặc null.</summary>
-    private static string? DetectImageExtension(byte[] bytes)
-    {
-        if (bytes.Length >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF)
-        {
-            return "jpg";
-        }
-
-        if (bytes.Length >= PngSignature.Length && bytes.AsSpan(0, PngSignature.Length).SequenceEqual(PngSignature))
-        {
-            return "png";
-        }
-
-        if (bytes.Length >= 12 &&
-            bytes.AsSpan(0, 4).SequenceEqual("RIFF"u8) &&
-            bytes.AsSpan(8, 4).SequenceEqual("WEBP"u8))
-        {
-            return "webp";
-        }
-
-        return null;
-    }
+    private static string? DetectImageExtension(byte[] bytes) => ImageSniffer.DetectExtension(bytes);
 
     /// <summary>Nếu avatar hiện tại là file do chính hệ thống lưu cho người dùng này thì trả đường dẫn tương đối để xóa.</summary>
     private static string? ExtractOwnRelativePath(string? avatarUrl, Guid userId)

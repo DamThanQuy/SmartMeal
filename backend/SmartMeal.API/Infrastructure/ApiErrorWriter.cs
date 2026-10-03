@@ -30,6 +30,7 @@ public static class ApiErrorWriter
         StatusCodes.Status415UnsupportedMediaType => "Định dạng nội dung không được hỗ trợ (cần application/json hoặc multipart/form-data).",
         StatusCodes.Status423Locked => "Tài khoản đang bị khóa tạm thời.",
         StatusCodes.Status429TooManyRequests => "Bạn thao tác quá nhanh, vui lòng thử lại sau.",
+        StatusCodes.Status502BadGateway => "Dịch vụ bên thứ ba đang gặp sự cố, vui lòng thử lại sau.",
         >= 500 => "Máy chủ gặp sự cố, vui lòng thử lại sau.",
         _ => "Yêu cầu không thành công."
     };

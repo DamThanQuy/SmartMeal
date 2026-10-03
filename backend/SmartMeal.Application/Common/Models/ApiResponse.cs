@@ -12,7 +12,10 @@ public enum ApiErrorKind
     Conflict,
     Locked,
     TooManyRequests,
-    Unavailable
+    Unavailable,
+
+    /// <summary>Dịch vụ bên thứ ba (vd. Gemini) lỗi → 502.</summary>
+    UpstreamFailure
 }
 
 public class ApiResponse<T>

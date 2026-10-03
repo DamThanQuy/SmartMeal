@@ -32,6 +32,15 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     /// <summary>Thư mục tạm riêng của factory dùng làm Storage:Root (xóa khi dispose).</summary>
     public string UploadsRoot { get; } = Path.Combine(Path.GetTempPath(), "smartmeal-tests", Guid.NewGuid().ToString("N"));
 
+    private readonly List<Action<IServiceCollection>> _serviceOverrides = new();
+
+    /// <summary>Thay/bổ sung dịch vụ cho riêng factory này (gọi trước khi tạo client đầu tiên).</summary>
+    public ApiFactory WithServices(Action<IServiceCollection> configure)
+    {
+        _serviceOverrides.Add(configure);
+        return this;
+    }
+
     /// <summary>Ghi đè một giá trị cấu hình cho riêng factory này (gọi trước khi tạo client đầu tiên).</summary>
     public ApiFactory WithSetting(string key, string? value)
     {
@@ -57,6 +66,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
             services.AddSingleton<IGoogleTokenVerifier>(Google);
             services.RemoveAll<IEmailSender>();
             services.AddSingleton<IEmailSender>(Email);
+            foreach (var configure in _serviceOverrides) configure(services);
         });
         builder.ConfigureAppConfiguration((_, config) =>
         {
@@ -68,7 +78,17 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
                 ["Jwt:Audience"] = "SmartMealTests",
                 // Nhiều test đăng ký người dùng liên tiếp: nới giới hạn tần suất (test riêng sẽ ghi đè về số nhỏ).
                 ["RateLimiting:AuthPermitsPerMinute"] = "100000",
-                ["Storage:Root"] = UploadsRoot
+                ["Storage:Root"] = UploadsRoot,
+
+                // Test phải độc lập với máy chạy: Program.cs nạp file .env của dev (DotNetEnv) vào biến môi trường nên
+                // mọi khóa bên ngoài (Gemini, SMTP, Google, webhook...) được đặt rỗng tường minh. Cấu hình in-memory
+                // này ưu tiên hơn biến môi trường; test cần giá trị thật thì ghi đè bằng WithSetting.
+                ["Gemini:ApiKey"] = "",
+                ["Google:ClientIds"] = "",
+                ["Smtp:Host"] = "",
+                ["Subscription:WebhookSecret"] = "",
+                ["Subscription:AllowMockActivation"] = "false",
+                ["Ai:AllowDemoFallback"] = "false"
             };
 
             foreach (var (key, value) in _overrides)

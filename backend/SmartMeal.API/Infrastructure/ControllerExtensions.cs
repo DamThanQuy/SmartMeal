@@ -31,6 +31,7 @@ public static class ControllerExtensions
             ApiErrorKind.Locked => StatusCodes.Status423Locked,
             ApiErrorKind.TooManyRequests => StatusCodes.Status429TooManyRequests,
             ApiErrorKind.Unavailable => StatusCodes.Status503ServiceUnavailable,
+            ApiErrorKind.UpstreamFailure => StatusCodes.Status502BadGateway,
             _ => StatusCodes.Status400BadRequest
         };
 

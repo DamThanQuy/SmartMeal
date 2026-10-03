@@ -30,6 +30,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<OtpVerification> OtpVerifications => Set<OtpVerification>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
+    public DbSet<AiUsageLog> AiUsageLogs => Set<AiUsageLog>();
     public DbSet<WaterLog> WaterLogs => Set<WaterLog>();
     public DbSet<HealthSyncLog> HealthSyncLogs => Set<HealthSyncLog>();
     public DbSet<HealthPet> HealthPets => Set<HealthPet>();
@@ -93,6 +94,15 @@ public class ApplicationDbContext : DbContext
             .WithMany()
             .HasForeignKey(t => t.UserId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<AiUsageLog>()
+            .HasIndex(l => new { l.UserId, l.CreatedAt });
+
+        modelBuilder.Entity<AiUsageLog>()
+            .HasOne(l => l.User)
+            .WithMany()
+            .HasForeignKey(l => l.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<OtpVerification>()
             .HasIndex(o => new { o.Email, o.Purpose, o.CreatedAt });
