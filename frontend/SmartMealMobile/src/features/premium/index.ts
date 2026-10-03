@@ -2,6 +2,7 @@ export * from './types/premium.types';
 export * from './mocks/premium.mock';
 export * from './services/premiumService';
 export * from './hooks/useCheckoutPremium';
+export * from './hooks/useSubscription';
 export * from './screens/PremiumScreen';
 export * from './screens/PaymentMethodScreen';
 export * from './screens/PaymentPendingScreen';

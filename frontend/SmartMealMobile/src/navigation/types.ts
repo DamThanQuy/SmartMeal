@@ -1,7 +1,7 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { AIAnalysisResult, VoiceLogResult } from '@/features/ai';
 import type { OtpPurpose } from '@/features/auth';
-import type { CheckoutResult, PaymentMethodId } from '@/features/premium';
+import type { CheckoutResult, SelectablePaymentMethodId } from '@/features/premium';
 import type { RecipeFilters } from '@/features/recipes';
 import type { BillingPlanId } from '@/state/premium/premiumStore';
 import type { MealType } from '@/types/meal.types';
@@ -104,7 +104,7 @@ export type MainStackParamList = {
   // Đợt 8 — Gamification + Premium (BR-200→BR-242). Không có bottom nav, sibling của MainTabs.
   Pet: undefined;
   Premium: undefined;
-  PaymentPending: { planId: BillingPlanId; paymentMethodId: PaymentMethodId };
+  PaymentPending: { planId: BillingPlanId; paymentMethodId: SelectablePaymentMethodId };
   PaymentSuccess: { result: CheckoutResult };
 
   // Đợt 9 — auth/profile (design v2, BR-001→003, BR-010→014, BR-270/271).

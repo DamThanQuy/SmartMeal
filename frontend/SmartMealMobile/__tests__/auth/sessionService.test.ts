@@ -4,6 +4,7 @@
  * navigation, QueryClient) đều được mock.
  */
 import type { AuthUser } from '@/state/auth/authStore';
+import type { MembershipSnapshot } from '@/state/premium/premiumStore';
 import type {
   HealthProfileExtras,
   HealthProfileSnapshot,
@@ -48,6 +49,13 @@ const EXTRAS: HealthProfileExtras = {
 
 const HYDRATED: HydratedHealthProfile = { snapshot: SNAPSHOT, extras: EXTRAS };
 
+const FREE_MEMBERSHIP: MembershipSnapshot = { status: 'free', planId: null, expiresAtIso: null };
+const PRO_MEMBERSHIP: MembershipSnapshot = {
+  status: 'premium',
+  planId: 'yearly',
+  expiresAtIso: '2027-10-02',
+};
+
 function flushPromises(): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, 0));
 }
@@ -55,6 +63,7 @@ function flushPromises(): Promise<void> {
 function load(useMockApi = false) {
   const authServiceMock = { getMe: jest.fn(), logout: jest.fn().mockResolvedValue(undefined) };
   const healthMock = { getHealthProfile: jest.fn() };
+  const premiumMock = { getStatus: jest.fn().mockResolvedValue(FREE_MEMBERSHIP) };
   // `clear` là clearSessionTokens (xóa cả access lẫn refresh token); `refreshGet` đọc refresh token.
   const tokenStorageMock = {
     get: jest.fn(),
@@ -72,6 +81,7 @@ function load(useMockApi = false) {
   jest.resetModules();
   jest.doMock('@/config/env', () => ({ ENV: { useMockApi } }));
   jest.doMock('@/features/health', () => ({ healthProfileService: healthMock }));
+  jest.doMock('@/features/premium', () => ({ premiumService: premiumMock }));
   jest.doMock('@/features/auth/services/authService', () => ({ authService: authServiceMock }));
   jest.doMock('@/services/api', () => ({
     isApiError: jest.requireActual('@/services/api/errors').isApiError,
@@ -95,6 +105,8 @@ function load(useMockApi = false) {
     require('@/state/auth/authStore') as typeof import('@/state/auth/authStore');
   const { useUserProfileStore } =
     require('@/state/user/userProfileStore') as typeof import('@/state/user/userProfileStore');
+  const { usePremiumStore } =
+    require('@/state/premium/premiumStore') as typeof import('@/state/premium/premiumStore');
   // Cùng registry với isApiError của sessionService để instanceof đúng sau jest.resetModules().
   const { ApiError } =
     jest.requireActual('@/services/api/errors') as typeof import('@/services/api/errors');
@@ -103,9 +115,11 @@ function load(useMockApi = false) {
     session,
     useAuthStore,
     useUserProfileStore,
+    usePremiumStore,
     ApiError,
     authServiceMock,
     healthMock,
+    premiumMock,
     tokenStorageMock,
     queryClientMock,
     setUnauthorizedHandler,
@@ -156,6 +170,28 @@ describe('openSession', () => {
     healthMock.getHealthProfile.mockRejectedValue(error);
 
     await expect(session.openSession(USER)).rejects.toBe(error);
+  });
+
+  test('nạp gói thành viên do server báo vào premiumStore (cả khi chưa làm khảo sát)', async () => {
+    const { session, premiumMock, usePremiumStore } = load();
+    premiumMock.getStatus.mockResolvedValue(PRO_MEMBERSHIP);
+
+    await session.openSession({ ...USER, hasCompletedSurvey: false });
+
+    expect(usePremiumStore.getState()).toMatchObject(PRO_MEMBERSHIP);
+  });
+
+  test('đọc gói lỗi → không chặn đăng nhập, dùng cờ isPro của đăng nhập làm dự phòng', async () => {
+    const { session, healthMock, premiumMock, usePremiumStore } = load();
+    healthMock.getHealthProfile.mockResolvedValue(HYDRATED);
+    premiumMock.getStatus.mockRejectedValue(new Error('máy chủ lỗi'));
+
+    const asPro = await session.openSession({ ...USER, isPro: true });
+    expect(asPro.needsSurvey).toBe(false);
+    expect(usePremiumStore.getState().status).toBe('premium');
+
+    await session.openSession({ ...USER, isPro: false });
+    expect(usePremiumStore.getState().status).toBe('free');
   });
 });
 
@@ -420,6 +456,18 @@ describe('startSessionLifecycle', () => {
     expect(queryClientMock.cancelQueries).toHaveBeenCalledTimes(1);
     expect(queryClientMock.clear).toHaveBeenCalledTimes(1);
     expect(resetUserDataMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('đăng xuất → gói thành viên về Free (không để tài khoản sau thừa hưởng Pro của người trước)', async () => {
+    const { session, useAuthStore, usePremiumStore } = load();
+    session.startSessionLifecycle();
+    useAuthStore.getState().login(USER);
+    usePremiumStore.getState().hydrateMembership(PRO_MEMBERSHIP);
+
+    useAuthStore.getState().logout();
+    await flushPromises();
+
+    expect(usePremiumStore.getState()).toMatchObject(FREE_MEMBERSHIP);
   });
 
   test('"Đăng nhập lại" sau khi hết hạn cũng dọn dữ liệu của phiên cũ', async () => {

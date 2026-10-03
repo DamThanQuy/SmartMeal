@@ -8,7 +8,7 @@ import { AppBadge, AppButton, AppCard, AppSegmentedControl, AppText } from '@/co
 import { todayIso } from '@/features/nutrition';
 import { MAIN_STACK_ROUTES, PLANNER_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList, PlannerStackParamList } from '@/navigation/types';
-import { usePremiumStore } from '@/state/premium/premiumStore';
+import { useIsPro } from '@/state/premium/premiumStore';
 import { MEAL_TYPE_TITLES, MEAL_TYPES, type MealType } from '@/types/meal.types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { MealSlotSection } from '../components/MealSlotSection';
@@ -38,7 +38,7 @@ export function MealPlannerScreen({ navigation, route }: Props) {
   const weekStartIso = route.params?.weekStartIso ?? currentWeekStartIso();
   const [selectedDateIso, setSelectedDateIso] = useState(todayIso());
   const { data, isLoading, isError, error, refetch } = useWeekPlan(weekStartIso);
-  const isPremium = usePremiumStore(state => state.status === 'premium');
+  const isPremium = useIsPro();
 
   const handleShiftWeek = (direction: 1 | -1) => {
     const nextWeek = shiftWeek(weekStartIso, direction);

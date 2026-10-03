@@ -2,11 +2,27 @@ import { create } from 'zustand';
 import type { PaymentMethodId } from '@/features/premium/types/premium.types';
 
 // BR-230/231 — Membership Status: Free/Premium/Expired/Cancelled, tính năng Premium chỉ mở khi
-// status = Premium và còn hạn. Global client state vì nhiều feature cần đọc (ai — quota AI,
-// meal-planner — gợi ý AI tuần, profile — badge gói) nên đặt ở src/state theo
-// .claude/rules/architecture.md, không phải state riêng của feature premium.
+// gói còn hiệu lực. Global client state vì nhiều feature cần đọc (ai — quota AI, meal-planner —
+// gợi ý AI tuần, profile — badge gói) nên đặt ở src/state theo .claude/rules/architecture.md, không
+// phải state riêng của feature premium.
 export type MembershipStatus = 'free' | 'premium' | 'expired' | 'cancelled';
 export type BillingPlanId = 'monthly' | 'yearly';
+
+/**
+ * Gói còn hiệu lực. "Đã hủy" là đã hủy GIA HẠN: vẫn dùng Pro tới hết hạn (backend giữ IsPro cho tới
+ * `proExpiresAt`), nên tính năng Pro vẫn mở — chỉ khi hết hạn mới thành "expired" (BR-232).
+ */
+export function isProMembership(status: MembershipStatus): boolean {
+  return status === 'premium' || status === 'cancelled';
+}
+
+/** Trạng thái gói của người dùng — backend (GET /subscription/status) là nguồn sự thật. */
+export interface MembershipSnapshot {
+  status: MembershipStatus;
+  planId: BillingPlanId | null;
+  /** ISO date yyyy-MM-dd (giờ máy); null khi chưa từng có gói hoặc gói không có hạn. */
+  expiresAtIso: string | null;
+}
 
 // design/Subscription.dc.html "Lịch sử giao dịch" — 5 trạng thái theo BR-241/242. Đặt cùng chỗ
 // với MembershipStatus/BillingPlanId (không phải features/premium/types) vì TransactionRecord
@@ -37,101 +53,51 @@ export interface TransactionRecord {
 interface PremiumState {
   status: MembershipStatus;
   planId: BillingPlanId | null;
-  /** ISO date yyyy-MM-dd — null khi status = 'free'. */
+  /** ISO date yyyy-MM-dd — null khi chưa có gói. */
   expiresAtIso: string | null;
-  /** SubscriptionScreen (Đợt 13) "Tự động gia hạn" — tắt chỉ dừng gia hạn lần tới, KHÔNG kết
-   * thúc Premium đang hoạt động ngay (đúng UX subscription thông thường). */
-  autoRenew: boolean;
+  /** Nạp trạng thái gói do server báo (đăng nhập, mở màn Gói của tôi, sau khi thanh toán/hủy). */
+  hydrateMembership: (snapshot: MembershipSnapshot) => void;
   // BR-241/242 — chỉ gọi khi Backend (mock: sau khi "webhook" xác nhận) báo thành công, không
   // bao giờ gọi ngay khi user bấm "Nâng cấp Pro" (xem features/premium PaymentPendingScreen).
   activatePremium: (planId: BillingPlanId, expiresAtIso: string) => void;
   // BR-232 — hết hạn → về Free Access, dữ liệu cá nhân giữ nguyên (chỉ đổi status ở đây).
   expireMembership: () => void;
-  /** Màn Dev (ThemePreviewScreen, Đợt 11) — công tắc Free/Pro để demo PlannerRegenerate/Fridge
-   * Scanner gate (BR-230/231) mà không cần đi hết luồng thanh toán. Khác `expireMembership`
-   * (status luôn về 'free', không phải 'expired'). */
+  /** Về Free — đăng xuất/đổi tài khoản (gói là của từng tài khoản) và công tắc Free/Pro ở màn Dev
+   * (ThemePreviewScreen) để demo PlannerRegenerate/Fridge Scanner gate (BR-230/231) mà không cần
+   * đi hết luồng thanh toán. Khác `expireMembership` (status luôn về 'free', không phải 'expired'). */
   resetToFree: () => void;
-  setAutoRenew: (value: boolean) => void;
-
-  /** SubscriptionScreen "Lịch sử giao dịch" (Đợt 13, BR-241/242) — KHÔNG đăng ký resetUserData,
-   * dữ liệu thanh toán được giữ lại theo BR-271 (giống premiumStore nói chung). */
-  transactions: TransactionRecord[];
-  addTransaction: (record: TransactionRecord) => void;
-  updateTransactionStatus: (id: string, status: TransactionStatus, note?: string) => void;
 }
 
-// design/Subscription.dc.html — 3 giao dịch mẫu khớp artboard (Thành công/Thất bại/Đang chờ) +
-// 2 giao dịch minh hoạ thêm để đủ 5 trạng thái BR-241/242 (Cancelled/Expired không có trong
-// artboard gốc nhưng cần thể hiện được trong mô hình dữ liệu).
-const INITIAL_TRANSACTIONS: TransactionRecord[] = [
-  {
-    id: 'txn-seed-1',
-    planId: 'yearly',
-    paymentMethodId: 'vnpay',
-    amountVnd: 699000,
-    status: 'success',
-    createdAtIso: '2026-09-01T09:12:00',
-  },
-  {
-    id: 'txn-seed-2',
-    planId: 'monthly',
-    paymentMethodId: 'momo',
-    amountVnd: 79000,
-    status: 'failed',
-    createdAtIso: '2026-08-14T20:03:00',
-    note: 'Giao dịch không thành công, bạn chưa bị trừ tiền',
-  },
-  {
-    id: 'txn-seed-3',
-    planId: 'monthly',
-    paymentMethodId: 'card',
-    amountVnd: 79000,
-    status: 'pending',
-    createdAtIso: '2026-08-10T11:40:00',
-    note: 'Pro chỉ kích hoạt sau khi giao dịch được xác nhận',
-  },
-  {
-    id: 'txn-seed-4',
-    planId: 'monthly',
-    paymentMethodId: 'vnpay',
-    amountVnd: 79000,
-    status: 'cancelled',
-    createdAtIso: '2026-07-20T15:22:00',
-    note: 'Bạn đã hủy trước khi hoàn tất thanh toán',
-  },
-  {
-    id: 'txn-seed-5',
-    planId: 'monthly',
-    paymentMethodId: 'momo',
-    amountVnd: 79000,
-    status: 'expired',
-    createdAtIso: '2026-07-05T08:00:00',
-    note: 'Phiên thanh toán đã hết hạn',
-  },
-];
-
+// Danh sách giao dịch KHÔNG nằm ở đây: là dữ liệu của server (GET /subscription/transactions, đọc qua
+// TanStack Query) và không bị xóa bởi DeleteDataScreen (BR-271) — bản mock tự giữ danh sách của nó.
 export const usePremiumStore = create<PremiumState>()(set => ({
   status: 'free',
   planId: null,
   expiresAtIso: null,
-  autoRenew: true,
+  hydrateMembership: snapshot =>
+    set({
+      status: snapshot.status,
+      planId: snapshot.planId,
+      expiresAtIso: snapshot.expiresAtIso,
+    }),
   activatePremium: (planId, expiresAtIso) => set({ status: 'premium', planId, expiresAtIso }),
   expireMembership: () => set({ status: 'expired', planId: null, expiresAtIso: null }),
   resetToFree: () => set({ status: 'free', planId: null, expiresAtIso: null }),
-  setAutoRenew: value => set({ autoRenew: value }),
-
-  transactions: INITIAL_TRANSACTIONS,
-  addTransaction: record => set(state => ({ transactions: [record, ...state.transactions] })),
-  updateTransactionStatus: (id, status, note) =>
-    set(state => ({
-      transactions: state.transactions.map(transaction =>
-        transaction.id === id ? { ...transaction, status, note: note ?? transaction.note } : transaction,
-      ),
-    })),
 }));
 
 /** Đọc trạng thái Premium ngoài React tree (trong service, không dùng hook được) — dùng cho
  * BR-233 (giới hạn AI chỉ áp dụng khi Free). */
 export function isPremiumActive(): boolean {
-  return usePremiumStore.getState().status === 'premium';
+  return isProMembership(usePremiumStore.getState().status);
+}
+
+/** Hook: gói còn hiệu lực (gồm "đã hủy gia hạn" nhưng chưa hết hạn) — để mở khóa tính năng Pro. */
+export function useIsPro(): boolean {
+  return usePremiumStore(state => isProMembership(state.status));
+}
+
+/** Đọc snapshot hiện tại ngoài React tree (bản mock dùng để trả "trạng thái từ server"). */
+export function getMembershipSnapshot(): MembershipSnapshot {
+  const { status, planId, expiresAtIso } = usePremiumStore.getState();
+  return { status, planId, expiresAtIso };
 }

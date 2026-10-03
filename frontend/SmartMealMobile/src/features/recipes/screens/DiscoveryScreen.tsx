@@ -10,7 +10,7 @@ import { ALLERGY_OPTIONS } from '@/features/health';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList, MainTabParamList } from '@/navigation/types';
 import { useAuthStore } from '@/state/auth/authStore';
-import { usePremiumStore } from '@/state/premium/premiumStore';
+import { useIsPro } from '@/state/premium/premiumStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { RecipeCard } from '../components/RecipeCard';
 import { useRecommendedRecipes } from '../hooks/useRecipes';
@@ -27,7 +27,7 @@ export function DiscoveryScreen({ route }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTag, setActiveTag] = useState<RecipeTag | undefined>(route.params?.filters?.tag);
   const isGuest = useAuthStore(state => state.isGuest);
-  const isPremium = usePremiumStore(state => state.status === 'premium');
+  const isPremium = useIsPro();
   const favoritesQuery = useFavoriteRecipes(!isGuest);
   const toggleFavorite = useToggleFavorite();
 

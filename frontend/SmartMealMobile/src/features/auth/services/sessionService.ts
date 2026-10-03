@@ -1,6 +1,7 @@
 import { ENV } from '@/config/env';
 import { MAIN_STACK_ROUTES, ROOT_ROUTES } from '@/constants/routes';
 import { healthProfileService } from '@/features/health';
+import { premiumService } from '@/features/premium';
 import { navigationRef } from '@/navigation/navigationRef';
 import { isApiError, queryClient, setUnauthorizedHandler } from '@/services/api';
 import {
@@ -9,6 +10,7 @@ import {
   tokenStorage,
 } from '@/services/storage/secureStorage';
 import { type AuthState, useAuthStore } from '@/state/auth/authStore';
+import { usePremiumStore } from '@/state/premium/premiumStore';
 import { resetUserData } from '@/state/resetUserData';
 import { useUserProfileStore } from '@/state/user/userProfileStore';
 import type { AuthUser, SessionOpenResult } from '../types/auth.types';
@@ -18,11 +20,29 @@ import { authService } from './authService';
 // đăng nhập, xử lý hết hạn (401) và dọn dữ liệu khi đăng xuất. Token chỉ ở SecureStore.
 
 /**
+ * Nạp gói thành viên của tài khoản vào premiumStore để mọi nơi mở khóa tính năng Pro đúng ngay từ
+ * đầu. Không chặn đăng nhập vì lỗi đọc gói: dùng cờ `isPro` của đăng nhập làm dự phòng, và màn "Gói
+ * của tôi" sẽ đọc lại.
+ */
+async function loadMembership(user: AuthUser): Promise<void> {
+  try {
+    usePremiumStore.getState().hydrateMembership(await premiumService.getStatus());
+  } catch {
+    usePremiumStore.getState().hydrateMembership({
+      status: user.isPro ? 'premium' : 'free',
+      planId: null,
+      expiresAtIso: null,
+    });
+  }
+}
+
+/**
  * Sau khi đã có token + user (đăng nhập hoặc khôi phục phiên): nạp hồ sơ sức khỏe vào
  * userProfileStore (bản sao đồng bộ cho các service lọc dị ứng...) rồi báo có cần làm Health
  * Profile không. Phải xong TRƯỚC khi vào Main để màn hình không bao giờ thấy store rỗng.
  */
 export async function openSession(user: AuthUser): Promise<SessionOpenResult> {
+  await loadMembership(user);
   if (!user.hasCompletedSurvey) return { user, needsSurvey: true };
 
   const hydrated = await healthProfileService.getHealthProfile(user.id);
@@ -75,6 +95,8 @@ export async function bootstrapSession(): Promise<void> {
 
 async function clearSessionData(): Promise<void> {
   await clearSessionTokens();
+  // Gói thành viên là của từng tài khoản: không để tài khoản đăng nhập sau thừa hưởng Pro của người trước.
+  usePremiumStore.getState().resetToFree();
   await queryClient.cancelQueries();
   queryClient.clear();
 }

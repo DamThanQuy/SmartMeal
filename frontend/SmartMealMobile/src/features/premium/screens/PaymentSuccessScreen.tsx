@@ -8,7 +8,8 @@ import { AppButton, AppCard, AppText } from '@/components/ui';
 import { MAIN_STACK_ROUTES, MAIN_TAB_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
-import { BILLING_PLAN_OPTIONS, PAYMENT_METHOD_OPTIONS } from '../mocks/premium.mock';
+import { BILLING_PLAN_OPTIONS } from '../mocks/premium.mock';
+import { PAYMENT_METHOD_LABEL } from '../types/premium.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PaymentSuccess'>;
 
@@ -16,13 +17,12 @@ function formatVnd(value: number): string {
   return `${value.toLocaleString('vi-VN')}đ`;
 }
 
-// design/PaymentSuccess.dc.html. Premium đã được activatePremium() ở PaymentPendingScreen (sau
-// khi "webhook" xác nhận) — màn này chỉ hiển thị biên nhận, không tự kích hoạt thêm lần nào.
+// design/PaymentSuccess.dc.html. Premium đã được server xác nhận và nạp vào store (useCheckoutPremium)
+// — màn này chỉ hiển thị biên nhận, không tự kích hoạt thêm lần nào.
 export function PaymentSuccessScreen({ navigation, route }: Props) {
   const { result } = route.params;
   const { colors } = useTheme();
   const plan = BILLING_PLAN_OPTIONS.find(option => option.id === result.planId);
-  const paymentMethod = PAYMENT_METHOD_OPTIONS.find(option => option.id === result.paymentMethodId);
 
   return (
     <ScreenContainer>
@@ -40,9 +40,12 @@ export function PaymentSuccessScreen({ navigation, route }: Props) {
         <AppCard className="w-full gap-xxs">
           <SummaryRow label="Gói" value={`Pro · ${plan?.label ?? ''}`} />
           <SummaryRow label="Số tiền" value={formatVnd(result.amountVnd)} />
-          <SummaryRow label="Phương thức" value={paymentMethod?.label ?? ''} />
+          <SummaryRow label="Phương thức" value={PAYMENT_METHOD_LABEL[result.paymentMethodId]} />
           <SummaryRow label="Mã giao dịch" value={result.transactionId} />
-          <SummaryRow label="Hiệu lực đến" value={format(new Date(result.expiresAtIso), 'dd/MM/yyyy')} />
+          <SummaryRow
+            label="Hiệu lực đến"
+            value={result.expiresAtIso ? format(new Date(result.expiresAtIso), 'dd/MM/yyyy') : '—'}
+          />
         </AppCard>
 
         <AppButton
