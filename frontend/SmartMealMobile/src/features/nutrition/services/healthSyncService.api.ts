@@ -17,8 +17,8 @@ export const healthSyncApiService: Partial<typeof healthSyncMockService> = {
     return fromDailySummaryDto(dto);
   },
 
-  // POST /health-sync/steps-and-calories — BE cộng dồn MỌI lần gọi (P1-BE-09) nên chỉ gửi phần
-  // tăng thêm, không gửi lại tổng của ngày.
+  // POST /health-sync/steps-and-calories — gửi TỔNG của ngày từ một nguồn; BE thay thế giá trị cũ
+  // của (ngày, nguồn) đó nên gửi lặp không làm số liệu nhân đôi.
   async syncMetrics(input) {
     await api.post<unknown, SyncHealthMetricsRequestDto>(ENDPOINTS.healthSync.stepsAndCalories, {
       date: input.dateIso,

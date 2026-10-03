@@ -1,6 +1,6 @@
 /**
- * healthSync (docs/fetch-api/part1 §8): số liệu vận động 1 ngày. Ngày chưa có log nào BE vẫn trả
- * `sources: ["Manual"]` và `lastSyncedAt = bây giờ` → phải coi là "chưa đồng bộ".
+ * healthSync (docs/fetch-api/part1 §8): số liệu vận động 1 ngày. Chưa đồng bộ gì thì BE trả
+ * `sources: []` và `lastSyncedAt: null`; một ngày chỉ dùng MỘT nguồn ưu tiên cao nhất (BR-042).
  */
 import { fromDailySummaryDto } from '@/features/nutrition/services/healthSync.mapper';
 import type { DailyHealthSyncSummaryDto } from '@/features/nutrition/types/healthSync.api.types';
@@ -17,6 +17,7 @@ function dto(overrides: Partial<DailyHealthSyncSummaryDto> = {}): DailyHealthSyn
     remainingCalories: 836.4,
     distanceMeters: 4700,
     sources: ['GoogleFit'],
+    activeSource: 'GoogleFit',
     lastSyncedAt: '2026-10-02T01:30:00Z',
     ...overrides,
   };
@@ -46,14 +47,15 @@ describe('fromDailySummaryDto', () => {
     });
   });
 
-  test('chưa có log nào (placeholder "Manual", 0 bước, giờ = bây giờ) → chưa đồng bộ', () => {
+  test('chưa đồng bộ (sources rỗng, lastSyncedAt null) → chưa có dữ liệu, không hiện "vừa đồng bộ"', () => {
     const activity = fromDailySummaryDto(
       dto({
         steps: 0,
         burnedCalories: 0,
         distanceMeters: 0,
-        sources: ['Manual'],
-        lastSyncedAt: '2026-10-02T09:00:00Z',
+        sources: [],
+        activeSource: null,
+        lastSyncedAt: null,
       }),
     );
 
@@ -69,19 +71,33 @@ describe('fromDailySummaryDto', () => {
   });
 
   test('đã đồng bộ nhưng 0 bước từ một nguồn thật vẫn là "đã đồng bộ"', () => {
-    const activity = fromDailySummaryDto(
-      dto({ steps: 0, burnedCalories: 0, sources: ['GoogleFit'] }),
-    );
+    const activity = fromDailySummaryDto(dto({ steps: 0, burnedCalories: 0 }));
 
     expect(activity.hasSyncedData).toBe(true);
     expect(activity.lastSyncedAt).toBe('2026-10-02T01:30:00Z');
   });
 
-  test('nhập tay có số liệu (nguồn "Manual" nhưng có bước/calo) → đã có dữ liệu', () => {
-    const activity = fromDailySummaryDto(dto({ sources: ['Manual'], steps: 3000 }));
+  test('nhiều nguồn: chỉ nguồn ưu tiên cao nhất được cộng vào ngân sách, các nguồn còn lại bị bỏ qua (BR-042)', () => {
+    const activity = fromDailySummaryDto(
+      dto({ sources: ['HealthConnect', 'GoogleFit', 'Manual'], activeSource: 'HealthConnect' }),
+    );
 
-    expect(activity.hasSyncedData).toBe(true);
-    expect(activity.sources).toEqual(['Manual']);
+    expect(activity.sources).toEqual(['HealthConnect', 'GoogleFit', 'Manual']);
+    expect(activity.sourceDetails.map(source => [source.id, source.countsTowardBudget])).toEqual([
+      ['HealthConnect', true],
+      ['GoogleFit', false],
+      ['Manual', false],
+    ]);
+    expect(activity.sourceDetails[0].note).toBe('Nguồn đang dùng cho hôm nay');
+    expect(activity.sourceDetails[1].note).toContain('không tính trùng');
+  });
+
+  test('thiếu activeSource (không nên xảy ra) → coi nguồn đầu tiên là nguồn đang dùng', () => {
+    const activity = fromDailySummaryDto(
+      dto({ sources: ['AppleHealth', 'Manual'], activeSource: null }),
+    );
+
+    expect(activity.sourceDetails.map(source => source.countsTowardBudget)).toEqual([true, false]);
   });
 });
 

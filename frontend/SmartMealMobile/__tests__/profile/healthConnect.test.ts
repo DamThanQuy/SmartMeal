@@ -1,7 +1,7 @@
 /**
  * Health Connect (docs/fetch-api/part1 §9): "đã kết nối"/nguồn nào bật là tùy chọn cục bộ, số liệu
- * hôm nay lấy từ backend (health-sync). Nút "Đồng bộ ngay" chỉ tạo số liệu mẫu ở DEV, 1 lần/ngày vì
- * BE cộng dồn mọi lần gửi.
+ * hôm nay lấy từ backend (health-sync). Nút "Đồng bộ ngay" chỉ gửi số liệu mẫu (nguồn Manual) ở DEV;
+ * BE thay thế số liệu của (ngày, nguồn) nên bấm lặp không làm số bước nhân đôi.
  */
 import { format } from 'date-fns';
 import { toHealthConnectState } from '@/features/profile/services/healthConnect.mapper';
@@ -207,9 +207,8 @@ describe('healthConnectApiService', () => {
     expect(preferences.save).toHaveBeenLastCalledWith({ connected: true, disabledSources: ['steps'] });
   });
 
-  test('syncNow ở DEV: hôm nay chưa có số liệu → gửi số liệu mẫu 1 lần với ngày giờ máy', async () => {
+  test('syncNow ở DEV: gửi số liệu mẫu (nguồn "Manual") với ngày giờ máy', async () => {
     const { service, healthSync } = load();
-    healthSync.getDailySummary.mockResolvedValue({ ...ACTIVITY, hasSyncedData: false });
 
     await service.syncNow?.();
 
@@ -219,17 +218,18 @@ describe('healthConnectApiService', () => {
       steps: 6240,
       burnedCalories: 180,
       distanceMeters: 4300,
-      source: 'DevSample',
+      source: 'Manual',
     });
   });
 
-  test('syncNow ở DEV: hôm nay đã có số liệu → KHÔNG gửi (BE cộng dồn, gửi lặp sẽ nhân đôi)', async () => {
+  test('syncNow ở DEV: bấm lặp vẫn gửi (BE thay thế số liệu cũ) và không cần đọc số liệu hôm nay trước', async () => {
     const { service, healthSync } = load();
-    healthSync.getDailySummary.mockResolvedValue(ACTIVITY);
 
     await service.syncNow?.();
+    await service.syncNow?.();
 
-    expect(healthSync.syncMetrics).not.toHaveBeenCalled();
+    expect(healthSync.syncMetrics).toHaveBeenCalledTimes(2);
+    expect(healthSync.getDailySummary).not.toHaveBeenCalled();
   });
 
   test('syncNow ngoài DEV: báo rõ cần Dev Client, không gọi API', async () => {

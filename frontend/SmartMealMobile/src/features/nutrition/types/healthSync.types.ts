@@ -1,12 +1,18 @@
-/** Số liệu vận động đẩy lên backend (health-sync). BE CỘNG DỒN mọi lần gửi trong ngày. */
+/** Nguồn số liệu vận động BE chấp nhận, xếp theo ưu tiên giảm dần (BR-042 — một ngày dùng MỘT nguồn). */
+export type HealthSyncSource = 'HealthConnect' | 'AppleHealth' | 'GoogleFit' | 'Manual';
+
+/**
+ * Số liệu vận động đẩy lên backend (health-sync): TỔNG của một ngày từ một nguồn. Gửi lại cùng
+ * (ngày, nguồn) thay thế giá trị cũ (không cộng dồn) nên gửi lặp là an toàn.
+ */
 export interface SyncMetricsInput {
   /** ISO date yyyy-MM-dd (giờ máy). */
   dateIso: string;
   steps: number;
   burnedCalories: number;
   distanceMeters: number;
-  /** Tên nguồn, vd. "GoogleFit". */
-  source: string;
+  /** HealthConnect | AppleHealth | GoogleFit | Manual — nguồn đứng trước được dùng khi có nhiều nguồn. */
+  source: HealthSyncSource;
 }
 
 /** 1 nguồn vận động và việc nó có được cộng vào ngân sách hay không (BR-042 — không cộng 2 lần). */
