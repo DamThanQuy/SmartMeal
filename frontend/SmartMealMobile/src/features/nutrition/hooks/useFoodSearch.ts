@@ -1,11 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { nutritionService, type FoodSearchFilter } from '../services/nutritionService';
-import type { NewFoodInput } from '../types/nutrition.types';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { nutritionService } from '../services/nutritionService';
+import type { FoodSearchFilter, NewFoodInput } from '../types/nutrition.types';
+
+const SEARCH_DEBOUNCE_MS = 300;
 
 export function useFoodSearch(query: string, filter: FoodSearchFilter) {
+  // Chờ người dùng ngừng gõ rồi mới gọi tìm kiếm (mỗi lần gõ là 1 request lên backend).
+  const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_MS);
   return useQuery({
-    queryKey: ['foods', 'search', query, filter],
-    queryFn: () => nutritionService.searchFoods(query, filter),
+    queryKey: ['foods', 'search', debouncedQuery, filter],
+    queryFn: () => nutritionService.searchFoods(debouncedQuery, filter),
+    // Đang gõ tiếp thì giữ kết quả cũ thay vì nhấp nháy Loading; đổi bộ lọc thì không giữ (khác
+    // danh sách hoàn toàn).
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[3] === filter ? previousData : undefined,
   });
 }
 

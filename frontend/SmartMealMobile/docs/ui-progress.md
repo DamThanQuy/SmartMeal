@@ -178,3 +178,24 @@ xem cột Ghi chú tương ứng ở bảng trên). Cột Feature ghi theo nhóm
 - **GuestPrompt "Đăng nhập"/"Tạo tài khoản"** vẫn cùng đích Welcome (không tách Login/Register) — lệch
   nhỏ còn lại sau khi sửa StateSession, xem "Quyết định kiến trúc mới ở Đợt 9" ở trên.
 - Chi tiết đầy đủ theo từng màn xem cột "Ghi chú" ở bảng trên.
+
+### Nối API thật — Phần 1 (nhánh `feat/fetch-api-part1`, 2026-10-03)
+
+Các màn dưới đây đã đổi hành vi khi `EXPO_PUBLIC_USE_MOCK_API=false` (mặc định): gọi backend thật qua `Screen → Hook → Service → apiClient`. Bật `EXPO_PUBLIC_USE_MOCK_API=true` thì mọi thứ chạy như các đợt mock ở trên. Chi tiết, phần khác đặc tả và yêu cầu BE: `docs/fetch-api/part1_foundation_core.md` §16.
+
+| Màn | Thay đổi khi gọi API thật |
+|---|---|
+| `LoginScreen`, `RegisterScreen` | Đăng nhập/đăng ký thật (token ở SecureStore). Đăng ký **bỏ OTP** (BE không có) → vào thẳng wizard. Tài khoản chưa khảo sát đăng nhập xong → vào thẳng wizard thay vì Main. |
+| `HealthProfileBasicInfoScreen` … `HealthResultScreen` | Bước 7 gửi `POST /healthprofile/survey`, `HealthResult` hiện số BE tính (BMI/BMR/TDEE/macro). "Quay lại" ở bước 1 (khi không còn màn phía sau) = đăng xuất về Welcome. |
+| `StateSessionScreen` | Tự mở khi request có token nhận 401 (hết phiên); "Đăng nhập lại" → Login. Variant `locked` vẫn chỉ là mock. |
+| App khởi động | Giữ splash tới khi khôi phục xong phiên (đọc token + `GET /auth/me`); lỗi mạng → màn "Không kết nối được máy chủ" có nút thử lại (không đăng xuất). |
+| `DiaryScreen`, `EditMealLogScreen`, `DeleteConfirmScreen` | Nhật ký thật theo ngày; sửa/xóa nhận `dateIso`. Sửa món = ghi bản mới rồi xóa bản cũ (BE chưa có PUT) nên id đổi; ô "Thời gian" ẩn với món tải từ BE (BE không trả giờ ghi); món đơn vị "phần" hiện "Số lượng". Ghi nhiều món lưu tuần tự, lưu dở → thông báo "Đã lưu x/N món". |
+| `FoodSearchScreen`, `FoodDetailScreen` | `GET /foods` (nguyên liệu, dinh dưỡng theo 100 g), debounce 300 ms. "Gần đây"/"Yêu thích" rỗng, "Món của tôi" chỉ ở máy. |
+| `ProgressChartScreen` | Tuần thật; ẩn khối "Macro trung bình" (BE chưa trả macro theo ngày); ngày chưa ghi không tính vào trung bình. |
+| `DashboardScreen`, `ActivityCard`, `CalorieBudgetScreen` | Gom bằng `Promise.allSettled`: chỉ nhật ký lỗi mới báo lỗi cả màn, vận động/Bé Mầm lỗi thì khối đó ẩn. Hôm nay chưa đồng bộ → "Chưa đồng bộ". Khối "Nguồn vận động"/"Hoạt động được tính" chỉ hiện khi có dữ liệu chi tiết (mock). |
+| `WeightHistoryScreen` | Lịch sử và ghi cân nặng thật (có Loading/Error, kiểm tra 30–300 kg); chỉ số mới lấy từ BE. |
+| `EditProfileScreen` | Họ tên → `PUT /auth/profile`; giới tính/năm sinh/chiều cao → hồ sơ sức khỏe (năm sinh là ước lượng vì BE chỉ lưu tuổi). Chỉ gửi phần đã đổi. |
+| `HealthSettingsScreen` | Chỉ gọi BE khi dị ứng/bệnh lý có id trên BE đổi; chế độ ăn và mục không có id chỉ lưu ở máy. Có nút Lưu loading + hiện lỗi. |
+| `HealthConnectScreen` | Số liệu hôm nay từ `GET /health-sync/daily-summary`; "Kết nối"/bật tắt nguồn là tùy chọn cục bộ; "Đồng bộ ngay" chỉ có số liệu mẫu ở DEV (ngoài DEV báo cần Dev Client). |
+| `DeleteDataScreen` | Vẫn chỉ xóa phía máy rồi đăng xuất — dữ liệu trên server còn (BE chưa có endpoint xóa, P1-BE-10). |
+| Chưa nối (giữ mock) | OTP/quên mật khẩu/đổi mật khẩu, nút Google, tạo món, nước uống, nhắc nhở/thông báo, gợi ý bữa tối, avatar. |

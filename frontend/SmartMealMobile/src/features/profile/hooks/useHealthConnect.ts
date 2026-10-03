@@ -24,11 +24,19 @@ export function useToggleHealthConnectSource() {
   });
 }
 
+// Số liệu vận động hôm nay đổi → calo vận động cộng vào ngân sách (Trang chủ, Nhật ký, Ngân sách
+// calo) phải tính lại, không chỉ màn Health Connect.
+const QUERY_KEYS_USING_ACTIVITY = [HEALTH_CONNECT_QUERY_KEY[0], 'health-sync', 'dashboard', 'diary'];
+
 export function useSyncHealthConnect() {
-  const invalidate = useInvalidateHealthConnect();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => healthConnectService.syncNow(),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      QUERY_KEYS_USING_ACTIVITY.forEach(key => {
+        void queryClient.invalidateQueries({ queryKey: [key] });
+      });
+    },
   });
 }
 

@@ -145,16 +145,18 @@ export function ProgressChartScreen({ navigation }: Props) {
             </AppCard>
           </View>
 
-          <AppCard className="gap-md">
-            <AppText variant="h3">Macro trung bình</AppText>
-            <MacroProgressList
-              macros={summary.averageMacros.map(macro => ({
-                label: macro.label,
-                consumedG: macro.consumedG,
-                targetG: macro.targetG,
-              }))}
-            />
-          </AppCard>
+          {summary.averageMacros.length > 0 ? (
+            <AppCard className="gap-md">
+              <AppText variant="h3">Macro trung bình</AppText>
+              <MacroProgressList
+                macros={summary.averageMacros.map(macro => ({
+                  label: macro.label,
+                  consumedG: macro.consumedG,
+                  targetG: macro.targetG,
+                }))}
+              />
+            </AppCard>
+          ) : null}
         </View>
       ) : null}
     </ScreenContainer>

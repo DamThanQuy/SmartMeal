@@ -183,7 +183,9 @@ export function DiaryScreen({ route }: Props) {
                 mealType={mealType}
                 entries={diary.entriesByMeal[mealType]}
                 onAdd={() => goToQuickLog(mealType)}
-                onEditEntry={logId => navigation.navigate(MAIN_STACK_ROUTES.EDIT_MEAL_LOG, { logId })}
+                onEditEntry={logId =>
+                  navigation.navigate(MAIN_STACK_ROUTES.EDIT_MEAL_LOG, { logId, dateIso })
+                }
                 pendingSyncIds={pendingSyncIds}
               />
             ))}

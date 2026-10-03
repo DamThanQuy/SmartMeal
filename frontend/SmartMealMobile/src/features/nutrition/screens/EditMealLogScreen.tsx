@@ -20,9 +20,9 @@ type Props = NativeStackScreenProps<MainStackParamList, 'EditMealLog'>;
 // tại — bỏ bớt chip "Đơn vị" (gram/phần/miếng) so với artboard gốc để khớp shape MealLogEntry
 // (grams + nutritionPerGram), ghi rõ ở báo cáo Đợt 3.
 export function EditMealLogScreen({ navigation, route }: Props) {
-  const { logId } = route.params;
+  const { logId, dateIso: routeDateIso } = route.params;
   const { colors } = useTheme();
-  const dateIso = todayIso();
+  const dateIso = routeDateIso ?? todayIso();
   const { data: entry, isLoading, isError } = useMealLogEntry(dateIso, logId);
   const updateMealLogEntry = useUpdateMealLogEntry(dateIso);
 
@@ -55,6 +55,9 @@ export function EditMealLogScreen({ navigation, route }: Props) {
     );
   }
 
+  // Bản ghi do nơi khác tạo có thể dùng đơn vị khác gram (vd. 'phần').
+  const unit = entry.unit ?? 'g';
+
   const handleSave = () => {
     updateMealLogEntry.mutate(
       { entryId: entry.id, patch: { grams: activeGrams, mealType: activeMealType } },
@@ -80,7 +83,9 @@ export function EditMealLogScreen({ navigation, route }: Props) {
             variant="elevated"
             shape="square"
             icon={<Trash2 size={22} color={colors.error} />}
-            onPress={() => navigation.navigate(MAIN_STACK_ROUTES.DELETE_CONFIRM, { logId })}
+            onPress={() =>
+              navigation.navigate(MAIN_STACK_ROUTES.DELETE_CONFIRM, { logId, dateIso })
+            }
           />
         }
       />
@@ -100,13 +105,13 @@ export function EditMealLogScreen({ navigation, route }: Props) {
 
         <AppCard className="gap-lg">
           <AppInput
-            label="Khối lượng"
+            label={unit === 'g' ? 'Khối lượng' : 'Số lượng'}
             keyboardType="number-pad"
             value={gramsInput === '' ? String(entry.grams) : gramsInput}
             onChangeText={setGramsInput}
             rightAdornment={
               <AppText variant="body" color="secondary">
-                g
+                {unit}
               </AppText>
             }
           />
@@ -125,11 +130,13 @@ export function EditMealLogScreen({ navigation, route }: Props) {
             </View>
           </View>
 
-          <AppInput
-            label="Thời gian"
-            editable={false}
-            value={format(parseISO(entry.loggedAt), "HH:mm '·' dd/MM")}
-          />
+          {entry.loggedAt ? (
+            <AppInput
+              label="Thời gian"
+              editable={false}
+              value={format(parseISO(entry.loggedAt), "HH:mm '·' dd/MM")}
+            />
+          ) : null}
         </AppCard>
 
         {previewNutrition ? (

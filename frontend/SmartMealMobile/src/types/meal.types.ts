@@ -32,3 +32,27 @@ export function getMealTypeForHour(hour: number): MealType {
   if (hour < 18) return 'snack';
   return 'dinner';
 }
+
+/**
+ * Giá trị MealType phía backend (PascalCase). BE coi mealType là string tự do, không validate —
+ * gửi sai hoa/thường (vd. `breakfast`) sẽ tạo bản ghi nhật ký riêng và món có thể không hiện trong
+ * `/nutritiondiary/daily` (docs/fetch-api/part1 §3.6).
+ */
+export type ApiMealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack';
+
+const API_MEAL_TYPE: Record<MealType, ApiMealType> = {
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
+  snack: 'Snack',
+};
+
+export function toApiMealType(mealType: MealType): ApiMealType {
+  return API_MEAL_TYPE[mealType];
+}
+
+/** So khớp không phân biệt hoa/thường; giá trị lạ rơi về 'snack' (bữa phụ). */
+export function fromApiMealType(value: string): MealType {
+  const normalized = value.trim().toLowerCase();
+  return MEAL_TYPES.find(mealType => mealType === normalized) ?? 'snack';
+}
