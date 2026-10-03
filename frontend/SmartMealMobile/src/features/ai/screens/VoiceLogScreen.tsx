@@ -15,10 +15,11 @@ import {
   todayIso,
   useAddMealLogEntries,
 } from '@/features/nutrition';
+import { AiDemoNotice } from '../components/AiResultNotices';
 import { AiResultItemRow } from '../components/AiResultItemRow';
 import { useTranscribeVoice } from '../hooks/useAiAnalysis';
-import { useAiQuota } from '../hooks/useAiQuota';
-import { AiRecognitionFailedError } from '../services/aiService';
+import { useAiQuota, useRefreshAiQuota } from '../hooks/useAiQuota';
+import { AiRecognitionFailedError, isAiQuotaExceededError } from '../services/aiService';
 import type { AIRecognizedItem, VoiceLogResult } from '../types/ai.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'VoiceLog'>;
@@ -47,6 +48,7 @@ export function VoiceLogScreen({ navigation, route }: Props) {
   const { mealType, initialResult } = route.params;
   const { colors } = useTheme();
   const { consumeQuota } = useAiQuota();
+  const refreshQuota = useRefreshAiQuota();
   const transcribeVoice = useTranscribeVoice();
   const addMealLogEntries = useAddMealLogEntries(todayIso());
 
@@ -143,20 +145,35 @@ export function VoiceLogScreen({ navigation, route }: Props) {
     }
 
     setPhase('processing');
-    transcribeVoice.mutate(mealType, {
-      onSuccess: result => {
-        consumeQuota();
-        setVoiceResult(result);
-        setItems(result.items);
-        setSelectedPortionId(resolvePortionIdFor(result));
-        setPhase('reviewing');
+    transcribeVoice.mutate(
+      { mealType },
+      {
+        onSuccess: result => {
+          consumeQuota();
+          setVoiceResult(result);
+          setItems(result.items);
+          setSelectedPortionId(resolvePortionIdFor(result));
+          setPhase('reviewing');
+        },
+        onError: error => {
+          if (error instanceof AiRecognitionFailedError) {
+            navigation.replace(MAIN_STACK_ROUTES.STATE_AI_FAILED, { mealType, source: 'voice' });
+            return;
+          }
+          if (isAiQuotaExceededError(error)) {
+            refreshQuota();
+            navigation.replace(MAIN_STACK_ROUTES.STATE_AI_LIMIT, { mealType });
+            return;
+          }
+          // Vd. chưa có nhận dạng giọng nói trên máy: báo rõ lý do thay vì treo ở "Đang nhận diện…".
+          navigation.replace(MAIN_STACK_ROUTES.STATE_AI_FAILED, {
+            mealType,
+            source: 'voice',
+            message: error.message,
+          });
+        },
       },
-      onError: error => {
-        if (error instanceof AiRecognitionFailedError) {
-          navigation.replace(MAIN_STACK_ROUTES.STATE_AI_FAILED, { mealType, source: 'voice' });
-        }
-      },
-    });
+    );
   };
 
   // Nghe lại đoạn âm thanh vừa thu
@@ -301,6 +318,7 @@ export function VoiceLogScreen({ navigation, route }: Props) {
 
         {voiceResult ? (
           <>
+            {voiceResult.isDemo ? <AiDemoNotice /> : null}
             {/* Thẻ hiển thị nội dung nhận diện kèm nút nghe lại file ghi âm */}
             <View className="rounded-card bg-primary-soft p-md gap-xs">
               <View className="flex-row items-center justify-between">

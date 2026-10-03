@@ -7,9 +7,9 @@ import { AppButton, AppCard, AppText } from '@/components/ui';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
-import { AiRecognitionFailedError } from '../services/aiService';
+import { AiRecognitionFailedError, isAiQuotaExceededError } from '../services/aiService';
 import { useAnalyzeMealPhoto } from '../hooks/useAiAnalysis';
-import { useAiQuota } from '../hooks/useAiQuota';
+import { useAiQuota, useRefreshAiQuota } from '../hooks/useAiQuota';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'AIAnalyzing'>;
 
@@ -48,6 +48,7 @@ export function AIAnalyzingScreen({ navigation, route }: Props) {
   const { mealType, imageUri } = route.params;
   const { colors } = useTheme();
   const { consumeQuota } = useAiQuota();
+  const refreshQuota = useRefreshAiQuota();
   const analyzeMealPhoto = useAnalyzeMealPhoto();
 
   useEffect(() => {
@@ -59,7 +60,21 @@ export function AIAnalyzingScreen({ navigation, route }: Props) {
       onError: error => {
         if (error instanceof AiRecognitionFailedError) {
           navigation.replace(MAIN_STACK_ROUTES.STATE_AI_FAILED, { mealType, source: 'photo' });
+          return;
         }
+        // Server báo hết lượt miễn phí (BR-233) → màn "Hết lượt AI"; hạn mức hiển thị được đọc lại.
+        if (isAiQuotaExceededError(error)) {
+          refreshQuota();
+          navigation.replace(MAIN_STACK_ROUTES.STATE_AI_LIMIT, { mealType });
+          return;
+        }
+        // Lỗi khác (mất mạng, AI chưa cấu hình/đang lỗi, ảnh không hợp lệ): kèm thông báo của BE thay vì
+        // để người dùng kẹt ở "Đang phân tích".
+        navigation.replace(MAIN_STACK_ROUTES.STATE_AI_FAILED, {
+          mealType,
+          source: 'photo',
+          message: error.message,
+        });
       },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps

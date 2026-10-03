@@ -67,7 +67,7 @@ export type MainStackParamList = {
    * bước ghi âm, vào thẳng phase reviewing với kết quả đã có. */
   VoiceLog: { mealType: MealType; initialResult?: VoiceLogResult };
   /** `source` đổi copy/CTA cho đúng luồng thất bại (Chụp lại vs Nói lại). */
-  StateAIFailed: { mealType: MealType; source: 'photo' | 'voice' };
+  StateAIFailed: { mealType: MealType; source: 'photo' | 'voice'; message?: string };
   StateAILimit: { mealType?: MealType } | undefined;
   FoodSearch: { mealType: MealType };
   FoodDetail: { foodId: string; mealType: MealType };

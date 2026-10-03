@@ -9,8 +9,11 @@ export function useAnalyzeMealPhoto() {
   });
 }
 
+// `transcript` là văn bản mô tả bữa ăn (người dùng gõ, hoặc kết quả nhận dạng giọng nói khi có).
+// Backend chỉ nhận văn bản, nên không có `transcript` thì bản thật báo chưa hỗ trợ (xem aiService.api).
 export function useTranscribeVoice() {
   return useMutation({
-    mutationFn: (mealType: MealType) => aiService.transcribeVoice(mealType),
+    mutationFn: (input: { mealType: MealType; transcript?: string }) =>
+      aiService.transcribeVoice(input.mealType, input.transcript),
   });
 }

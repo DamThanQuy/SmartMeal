@@ -59,7 +59,7 @@ function QuickLogActionRow({ icon, title, description, aiBadge, onPress }: Quick
 export function QuickLogScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
-  const { remaining, limit, hasRemaining } = useAiQuota();
+  const { remaining, limit, hasRemaining, isUnlimited } = useAiQuota();
   const micPermissionGranted = useAiQuotaStore(state => state.micPermissionGranted);
   const [mealType, setMealType] = useState<MealType>(
     route.params?.mealType ?? getMealTypeForHour(new Date().getHours()),
@@ -147,14 +147,28 @@ export function QuickLogScreen({ navigation, route }: Props) {
         <View className="flex-row items-center gap-sm rounded-md bg-background p-sm">
           <Sparkles size={20} color={colors.primary} />
           <AppText variant="caption" color="secondary" className="flex-1">
-            {'Còn '}
-            <AppText variant="bodyMedium">{`${remaining}/${limit}`}</AppText>
-            {' lượt AI hôm nay'}
+            {isUnlimited ? (
+              'Pro: dùng AI không giới hạn'
+            ) : (
+              <>
+                {'Còn '}
+                <AppText variant="bodyMedium">{`${remaining}/${limit}`}</AppText>
+                {' lượt AI hôm nay'}
+              </>
+            )}
           </AppText>
-          {/* TODO: điều hướng sang Premium khi Đợt 8 dựng xong. */}
-          <AppText variant="bodyMedium" color="onPrimarySoft" className="opacity-40">
-            Nâng cấp Pro
-          </AppText>
+          {isUnlimited ? null : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Nâng cấp Pro"
+              onPress={() => navigation.navigate(MAIN_STACK_ROUTES.PREMIUM)}
+              className="min-h-[44px] items-center justify-center"
+            >
+              <AppText variant="bodyMedium" color="onPrimarySoft">
+                Nâng cấp Pro
+              </AppText>
+            </Pressable>
+          )}
         </View>
       </View>
     </View>

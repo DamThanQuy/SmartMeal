@@ -17,6 +17,7 @@ import { MEAL_TYPE_TITLES } from '@/types/meal.types';
 import { MAIN_STACK_ROUTES, MAIN_TAB_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
+import { AiAllergyWarnings, AiDemoNotice } from '../components/AiResultNotices';
 import { AiResultItemRow } from '../components/AiResultItemRow';
 import { AiUncertainItemCard, CUSTOM_CANDIDATE_ID } from '../components/AiUncertainItemCard';
 import type { AIRecognizedItem } from '../types/ai.types';
@@ -171,6 +172,9 @@ export function AISnapResultScreen({ navigation, route }: Props) {
             className="absolute left-sm top-sm bg-surface"
           />
         </View>
+
+        {result.isDemo ? <AiDemoNotice /> : null}
+        <AiAllergyWarnings warnings={result.allergyWarnings ?? []} />
 
         {allUncertainResolved ? (
           <AppCard className="gap-sm">
