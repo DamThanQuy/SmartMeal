@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CameraView, useCameraPermissions, type CameraType } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, Image as ImageIcon, RefreshCw, X, Zap } from 'lucide-react-native';
+import { Camera, Image as ImageIcon, RefreshCw, Settings, X, Zap } from 'lucide-react-native';
 import React, { useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { AppButton, AppIconButton, AppText } from '@/components/ui';
@@ -17,11 +17,24 @@ export function AICameraScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
   const { remaining, limit } = useAiQuota();
 
-  const [permission, requestPermission] = useCameraPermissions();
+  // Tự động yêu cầu quyền camera ngay khi người dùng vào màn hình (request: true)
+  const [permission, requestPermission] = useCameraPermissions({ request: true });
   const [facing, setFacing] = useState<CameraType>('back');
   const [torch, setTorch] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const cameraRef = useRef<CameraView>(null);
+
+  const handleRequestPermission = async () => {
+    try {
+      const res = await requestPermission();
+      // Nếu quyền đã bị từ chối vĩnh viễn (hệ điều hành không hiện lại popup) -> mở Cài đặt máy
+      if (!res.granted && !res.canAskAgain) {
+        await Linking.openSettings();
+      }
+    } catch {
+      await Linking.openSettings();
+    }
+  };
 
   const handleCapture = async () => {
     if (isCapturing) return;
@@ -68,7 +81,7 @@ export function AICameraScreen({ navigation, route }: Props) {
     }
   };
 
-  // Trạng thái đang kiểm tra quyền lần đầu
+  // Trạng thái đang kiểm tra quyền
   if (!permission) {
     return (
       <View className="flex-1 items-center justify-center bg-overlay">
@@ -95,7 +108,7 @@ export function AICameraScreen({ navigation, route }: Props) {
         </View>
 
         <View className="items-center gap-md">
-          <View className="h-[80px] w-[80px] items-center justify-center rounded-full bg-primary-soft">
+          <View className="h-[80px] w-[80px] items-center justify-center rounded-full bg-primary-soft shadow-md">
             <Camera size={40} color={colors.primary} />
           </View>
           <AppText variant="h2" className="text-center text-on-primary">
@@ -104,18 +117,17 @@ export function AICameraScreen({ navigation, route }: Props) {
           <AppText variant="body" className="text-center text-on-primary/80">
             SmartMeal cần quyền dùng camera để chụp và tự động phân tích hàm lượng dinh dưỡng, calo trong đĩa ăn của bạn.
           </AppText>
+
           <View className="w-full gap-sm mt-md">
             <AppButton
               label="Cho phép truy cập camera"
-              onPress={() => requestPermission()}
+              onPress={handleRequestPermission}
             />
-            {!permission.canAskAgain && (
-              <AppButton
-                label="Mở cài đặt máy"
-                variant="outline"
-                onPress={() => Linking.openSettings()}
-              />
-            )}
+            <AppButton
+              label="Mở cài đặt máy"
+              variant="outline"
+              onPress={() => Linking.openSettings()}
+            />
             <AppButton
               label="Chọn ảnh từ thư viện"
               variant="outline"
@@ -129,6 +141,10 @@ export function AICameraScreen({ navigation, route }: Props) {
               }
             />
           </View>
+
+          <AppText variant="caption" className="text-center text-on-primary/60 mt-xs">
+            Lưu ý: Nếu dùng Expo Go, hãy chắc chắn ứng dụng Expo Go đã được cấp quyền Camera trong Cài đặt của điện thoại.
+          </AppText>
         </View>
 
         <View />
