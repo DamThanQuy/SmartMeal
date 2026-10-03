@@ -10,4 +10,17 @@ export const RECOMMENDED_MEAL_MOCK: RecommendedMeal = {
   durationMinutes: 25,
   calories: 420,
   tag: 'Eat Clean',
+  imageKey: 'bowl',
 };
+
+export const RECOMMENDED_MEALS_MOCK: RecommendedMeal[] = [
+  RECOMMENDED_MEAL_MOCK,
+  {
+    recipeId: 'salad-uc-ga',
+    name: 'Salad ức gà',
+    durationMinutes: 15,
+    calories: 320,
+    tag: 'Low Carb',
+    imageKey: 'salad',
+  },
+];

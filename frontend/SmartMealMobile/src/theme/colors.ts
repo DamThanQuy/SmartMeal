@@ -7,6 +7,12 @@ export interface AppColorTokens {
   onPrimary: string;
   onPrimarySoft: string;
 
+  energyStart: string;
+  energyEnd: string;
+  onEnergy: string;
+  energyTrack: string;
+  energyFill: string;
+
   background: string;
   surface: string;
   surfaceElevated: string;

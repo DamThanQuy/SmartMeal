@@ -12,6 +12,7 @@ export type AppTextColor =
   | 'error'
   | 'info'
   | 'onPrimary'
+  | 'onEnergy'
   | 'onPrimarySoft';
 
 export interface AppTextProps extends TextProps {
@@ -47,6 +48,7 @@ const COLOR_CLASSNAME: Record<AppTextColor, string> = {
   error: 'text-error',
   info: 'text-info',
   onPrimary: 'text-on-primary',
+  onEnergy: 'text-on-energy',
   onPrimarySoft: 'text-on-primary-soft',
 };
 
@@ -61,7 +63,10 @@ export function AppText({
   return (
     <Text
       className={`${VARIANT_CLASSNAME[variant]} ${COLOR_CLASSNAME[color]} ${className}`}
-      style={[{ includeFontPadding: false, textAlignVertical: 'center' }, style]}
+      style={[
+        { includeFontPadding: false, textAlignVertical: 'center' },
+        style,
+      ]}
       {...rest}
     >
       {children}

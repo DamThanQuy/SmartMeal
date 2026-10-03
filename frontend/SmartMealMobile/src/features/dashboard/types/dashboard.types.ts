@@ -24,6 +24,7 @@ export interface RecommendedMeal {
   durationMinutes: number;
   calories: number;
   tag: string;
+  imageKey?: 'bowl' | 'salad';
 }
 
 /**
@@ -35,4 +36,5 @@ export interface DashboardSummary {
   activity: ActivitySummary | null;
   pet: PetSnippet | null;
   recommendedMeal: RecommendedMeal;
+  recommendedMeals?: RecommendedMeal[];
 }

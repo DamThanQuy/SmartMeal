@@ -1,7 +1,17 @@
-import { createBottomTabNavigator, type BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import {
+  createBottomTabNavigator,
+  type BottomTabNavigationProp,
+} from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { CalendarDays, Compass, Home, NotebookText, User } from 'lucide-react-native';
+import {
+  BookOpen,
+  CalendarDays,
+  Home,
+  Search,
+  CircleUserRound,
+} from 'lucide-react-native';
 import React from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DashboardScreen } from '@/features/dashboard';
 import { DiaryScreen } from '@/features/nutrition';
 import { ProfileScreen } from '@/features/profile';
@@ -9,6 +19,8 @@ import { DiscoveryScreen } from '@/features/recipes';
 import { MAIN_STACK_ROUTES, MAIN_TAB_ROUTES } from '@/constants/routes';
 import { useAuthStore } from '@/state/auth/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
+import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing } from '@/theme/spacing';
 import { PlannerStackNavigator } from './PlannerStackNavigator';
 import type { MainStackParamList, MainTabParamList } from './types';
 
@@ -26,11 +38,11 @@ function HomeTabIcon({ color, size }: TabIconProps) {
 }
 
 function DiscoverTabIcon({ color, size }: TabIconProps) {
-  return <Compass color={color} size={size} />;
+  return <Search color={color} size={size} />;
 }
 
 function DiaryTabIcon({ color, size }: TabIconProps) {
-  return <NotebookText color={color} size={size} />;
+  return <BookOpen color={color} size={size} />;
 }
 
 function PlannerTabIcon({ color, size }: TabIconProps) {
@@ -38,7 +50,7 @@ function PlannerTabIcon({ color, size }: TabIconProps) {
 }
 
 function ProfileTabIcon({ color, size }: TabIconProps) {
-  return <User color={color} size={size} />;
+  return <CircleUserRound color={color} size={size} />;
 }
 
 // Đợt 9 (design v2, BR §2.1) — Guest chỉ được xem Discovery/RecipeDetail, các tab còn lại (đọc
@@ -46,7 +58,11 @@ function ProfileTabIcon({ color, size }: TabIconProps) {
 // getParent() vì GuestPrompt là route ở MainStackParamList (sibling của MainTabs), không nằm
 // trong MainTabParamList — xem MainNavigator.tsx.
 function useGuestTabGuardListeners(isGuest: boolean) {
-  return ({ navigation }: { navigation: BottomTabNavigationProp<MainTabParamList> }) => ({
+  return ({
+    navigation,
+  }: {
+    navigation: BottomTabNavigationProp<MainTabParamList>;
+  }) => ({
     tabPress: (e: { preventDefault: () => void }) => {
       if (!isGuest) return;
       e.preventDefault();
@@ -59,19 +75,31 @@ function useGuestTabGuardListeners(isGuest: boolean) {
 
 export function MainTabNavigator() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const isGuest = useAuthStore(state => state.isGuest);
   const guestGuardListeners = useGuestTabGuardListeners(isGuest);
 
   return (
     <Tab.Navigator
-      initialRouteName={isGuest ? MAIN_TAB_ROUTES.DISCOVER : MAIN_TAB_ROUTES.HOME}
+      initialRouteName={
+        isGuest ? MAIN_TAB_ROUTES.DISCOVER : MAIN_TAB_ROUTES.HOME
+      }
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
+        tabBarLabelStyle: {
+          fontFamily: fontFamily.sans,
+          fontSize: fontSize.caption.size,
+          lineHeight: fontSize.caption.lineHeight,
+          marginTop: spacing.xxs,
+        },
+        tabBarItemStyle: { paddingVertical: spacing.xxs },
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
+          height: spacing.xxxl + spacing.xl + insets.bottom,
+          paddingBottom: insets.bottom,
         },
       }}
     >
@@ -81,6 +109,15 @@ export function MainTabNavigator() {
         options={{
           title: 'Trang chủ',
           tabBarIcon: HomeTabIcon,
+        }}
+        listeners={guestGuardListeners}
+      />
+      <Tab.Screen
+        name={MAIN_TAB_ROUTES.PLANNER}
+        component={PlannerStackNavigator}
+        options={{
+          title: 'Bữa ăn',
+          tabBarIcon: PlannerTabIcon,
         }}
         listeners={guestGuardListeners}
       />
@@ -98,15 +135,6 @@ export function MainTabNavigator() {
         options={{
           title: 'Nhật ký',
           tabBarIcon: DiaryTabIcon,
-        }}
-        listeners={guestGuardListeners}
-      />
-      <Tab.Screen
-        name={MAIN_TAB_ROUTES.PLANNER}
-        component={PlannerStackNavigator}
-        options={{
-          title: 'Thực đơn',
-          tabBarIcon: PlannerTabIcon,
         }}
         listeners={guestGuardListeners}
       />
