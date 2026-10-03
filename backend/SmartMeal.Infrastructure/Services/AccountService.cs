@@ -239,14 +239,5 @@ public class AccountService : IAccountService
         return string.IsNullOrEmpty(fileName) ? null : $"avatars/{userId:N}/{fileName}";
     }
 
-    private static UserDto ToUserDto(User user, bool hasCompletedSurvey) => new()
-    {
-        Id = user.Id,
-        Email = user.Email,
-        FullName = user.FullName,
-        AvatarUrl = user.AvatarUrl,
-        IsPro = user.IsPro,
-        Role = user.Role,
-        HasCompletedSurvey = hasCompletedSurvey
-    };
+    private static UserDto ToUserDto(User user, bool hasCompletedSurvey) => UserMapper.ToDto(user, hasCompletedSurvey);
 }

@@ -29,6 +29,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<UserFavorite> UserFavorites => Set<UserFavorite>();
     public DbSet<OtpVerification> OtpVerifications => Set<OtpVerification>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
     public DbSet<WaterLog> WaterLogs => Set<WaterLog>();
     public DbSet<HealthSyncLog> HealthSyncLogs => Set<HealthSyncLog>();
     public DbSet<HealthPet> HealthPets => Set<HealthPet>();
@@ -78,6 +79,20 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<User>()
             .HasIndex(u => u.GoogleId)
             .IsUnique();
+
+        // Giao dịch thanh toán được giữ lại khi người dùng xóa tài khoản (BR-271): UserId về NULL, chỉ còn UserRef (băm).
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasIndex(t => t.SessionId)
+            .IsUnique();
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasIndex(t => t.UserId);
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasOne(t => t.User)
+            .WithMany()
+            .HasForeignKey(t => t.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<OtpVerification>()
             .HasIndex(o => new { o.Email, o.Purpose, o.CreatedAt });

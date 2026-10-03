@@ -10,6 +10,16 @@ public class User
     public string? GoogleId { get; set; }
     public bool IsEmailVerified { get; set; } = false;
     public bool IsPro { get; set; } = false;
+
+    /// <summary>Hạn dùng gói Pro (UTC). Null với dữ liệu cũ nghĩa là không có hạn.</summary>
+    public DateTime? ProExpiresAt { get; set; }
+
+    /// <summary>Gói đang dùng (vd. PRO_MONTHLY).</summary>
+    public string? ProPlanId { get; set; }
+
+    /// <summary>Free | Premium | Expired | Cancelled. Dùng <c>EffectiveSubscriptionStatus</c> để có trạng thái theo thời điểm hiện tại.</summary>
+    public string SubscriptionStatus { get; set; } = SubscriptionStatuses.Free;
+
     public string Role { get; set; } = "User"; // "User", "Admin"
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }

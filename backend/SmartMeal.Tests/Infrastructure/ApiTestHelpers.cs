@@ -6,7 +6,9 @@ namespace SmartMeal.Tests.Infrastructure;
 
 public sealed record ApiEnvelope<T>(bool Success, string? Message, T? Data, List<string>? Errors);
 
-public sealed record UserPayload(Guid Id, string Email, string FullName, string? AvatarUrl, bool IsPro, string Role, bool HasCompletedSurvey);
+public sealed record UserPayload(
+    Guid Id, string Email, string FullName, string? AvatarUrl, bool IsPro, string SubscriptionStatus, DateTime? ProExpiresAt,
+    string Role, bool HasCompletedSurvey);
 
 public sealed record AuthPayload(string Token, DateTime ExpiresAt, string RefreshToken, DateTime RefreshTokenExpiresAt, UserPayload User);
 

@@ -72,7 +72,15 @@ public class UserDto
     public string Email { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public string? AvatarUrl { get; set; }
+    /// <summary>Quyền Pro còn hiệu lực. Nguồn đáng tin duy nhất — đừng đọc claim "isPro" trong token vì sẽ cũ sau khi nâng cấp.</summary>
     public bool IsPro { get; set; }
+
+    /// <summary>Free | Premium | Expired | Cancelled.</summary>
+    public string SubscriptionStatus { get; set; } = "Free";
+
+    /// <summary>Hạn dùng gói Pro (UTC); null nếu chưa có hoặc không có hạn.</summary>
+    public DateTime? ProExpiresAt { get; set; }
+
     public string Role { get; set; } = "User";
     public bool HasCompletedSurvey { get; set; }
 }

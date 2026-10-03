@@ -36,7 +36,8 @@ public class JwtTokenService : IJwtTokenService
             new(ClaimTypes.Email, user.Email),
             new(ClaimTypes.Name, user.FullName),
             new(ClaimTypes.Role, user.Role),
-            new("isPro", user.IsPro.ToString().ToLower())
+            // Chỉ để tham khảo: sẽ cũ sau khi nâng cấp/hết hạn. Nguồn đáng tin là GET /auth/me.
+            new("isPro", user.IsProActive(DateTime.UtcNow).ToString().ToLower())
         };
 
         var expiresAt = DateTime.UtcNow.AddMinutes(_options.AccessTokenMinutes);

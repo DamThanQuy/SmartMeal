@@ -355,16 +355,7 @@ public class AuthService : IAuthService
             ApiErrorKind.Locked);
     }
 
-    private static UserDto ToUserDto(User user, bool hasCompletedSurvey) => new()
-    {
-        Id = user.Id,
-        Email = user.Email,
-        FullName = user.FullName,
-        AvatarUrl = user.AvatarUrl,
-        IsPro = user.IsPro,
-        Role = user.Role,
-        HasCompletedSurvey = hasCompletedSurvey
-    };
+    private static UserDto ToUserDto(User user, bool hasCompletedSurvey) => UserMapper.ToDto(user, hasCompletedSurvey);
 
     /// <summary>Phát hành cặp access + refresh token mới; nếu thay thế một refresh token cũ thì ghi nhận liên kết xoay vòng.</summary>
     private async Task<AuthResponseDto> IssueTokensAsync(User user, bool hasCompletedSurvey, RefreshToken? replaced = null)

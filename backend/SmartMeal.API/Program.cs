@@ -57,6 +57,8 @@ builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<ILoginAttemptTracker, LoginAttemptTracker>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 
+builder.Services.Configure<SubscriptionOptions>(builder.Configuration.GetSection(SubscriptionOptions.SectionName));
+
 // File người dùng tải lên (ảnh đại diện) lưu cục bộ dưới Storage:Root và phục vụ tĩnh tại /uploads.
 builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.SectionName));
 builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
