@@ -69,6 +69,11 @@ public class ApplicationDbContext : DbContext
             .HasIndex(d => new { d.UserId, d.LogDate, d.MealType })
             .IsUnique();
 
+        // Thực đơn: mỗi (người dùng, ngày, bữa) chỉ có một món — chặn việc các request song song xếp trùng ô.
+        modelBuilder.Entity<MealPlan>()
+            .HasIndex(m => new { m.UserId, m.PlanDate, m.MealType })
+            .IsUnique();
+
         modelBuilder.Entity<WaterLog>()
             .HasIndex(w => new { w.UserId, w.LogDate });
 
