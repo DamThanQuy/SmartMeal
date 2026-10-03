@@ -48,7 +48,7 @@ export function AICameraScreen({ navigation, route }: Props) {
         if (photo?.uri) {
           navigation.navigate(MAIN_STACK_ROUTES.AI_ANALYZING, {
             mealType,
-            photoUri: photo.uri,
+            imageUri: photo.uri,
           });
           return;
         }
@@ -73,7 +73,7 @@ export function AICameraScreen({ navigation, route }: Props) {
       if (!result.canceled && result.assets && result.assets[0]?.uri) {
         navigation.navigate(MAIN_STACK_ROUTES.AI_ANALYZING, {
           mealType,
-          photoUri: result.assets[0].uri,
+          imageUri: result.assets[0].uri,
         });
       }
     } catch {

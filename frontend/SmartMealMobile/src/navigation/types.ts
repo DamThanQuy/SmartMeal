@@ -59,7 +59,7 @@ export type MainStackParamList = {
   MainTabs: NavigatorScreenParams<MainTabParamList>;
   QuickLog: { mealType?: MealType } | undefined;
   AICamera: { mealType: MealType };
-  AIAnalyzing: { mealType: MealType; photoUri?: string };
+  AIAnalyzing: { mealType: MealType; imageUri?: string };
   AISnapResult: { mealType: MealType; result: AIAnalysisResult };
   /** `initialResult` — set khi đến từ VoicePermission "Hoặc gõ bữa ăn của bạn" (BR-252): bỏ qua
    * bước ghi âm, vào thẳng phase reviewing với kết quả đã có. */

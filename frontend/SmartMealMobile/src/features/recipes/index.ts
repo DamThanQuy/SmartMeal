@@ -1,6 +1,7 @@
 export * from './types/recipe.types';
 export * from './services/recipeService';
 export * from './hooks/useRecipes';
+export * from './hooks/useFavorites';
 export * from './state/favoritesStore';
 export * from './mocks/recipes.mock';
 export * from './components/RecipeCard';
