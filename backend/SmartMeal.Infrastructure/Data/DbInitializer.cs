@@ -216,6 +216,44 @@ public static class DbInitializer
             await db.Challenges.AddRangeAsync(challenges);
         }
 
+        // 6. Seed Default User (smartmealuser@gmail.com / Smartmeal@123)
+        var defaultEmail = "smartmealuser@gmail.com";
+        if (!db.Users.Any(u => u.Email == defaultEmail))
+        {
+            var seedUser = new User
+            {
+                Email = defaultEmail,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Smartmeal@123"),
+                FullName = "SmartMeal User",
+                Role = "User",
+                IsEmailVerified = true,
+                IsPro = true
+            };
+            db.Users.Add(seedUser);
+            await db.SaveChangesAsync();
+
+            var healthProfile = new HealthProfile
+            {
+                UserId = seedUser.Id,
+                Gender = "Male",
+                Age = 25,
+                HeightCm = 175,
+                CurrentWeightKg = 68,
+                TargetWeightKg = 65,
+                ActivityLevel = "Moderate",
+                Goal = "FatLoss",
+                DailyCalorieTarget = 2000,
+                CarbsRatio = 45,
+                ProteinRatio = 30,
+                FatRatio = 25,
+                Bmr = 1680,
+                Tdee = 2300,
+                Bmi = 22.2
+            };
+            db.HealthProfiles.Add(healthProfile);
+            await db.SaveChangesAsync();
+        }
+
         await db.SaveChangesAsync();
     }
 }
