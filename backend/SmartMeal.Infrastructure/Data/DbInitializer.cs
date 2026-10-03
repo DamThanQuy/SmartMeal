@@ -190,6 +190,8 @@ public static class DbInitializer
                     Description = "Uống tối thiểu 2000ml nước mỗi ngày liên tục trong 7 ngày để thanh lọc cơ thể và tăng cường chuyển hóa.",
                     ImageUrl = "https://images.unsplash.com/photo-1550572017-ed22e43e2609",
                     DurationDays = 7,
+                    Category = "DrinkWater",
+                    TargetValuePerDay = 2000,
                     RewardExp = 150,
                     RewardBadge = "Hydration Master",
                     IsActive = true
@@ -200,6 +202,8 @@ public static class DbInitializer
                     Description = "Duy trì ghi chép đầy đủ nhật ký dinh dưỡng và ăn theo kế hoạch bữa ăn trong 14 ngày.",
                     ImageUrl = "https://images.unsplash.com/photo-1498837167922-ddd27525d352",
                     DurationDays = 14,
+                    Category = "EatClean",
+                    TargetValuePerDay = 3,
                     RewardExp = 300,
                     RewardBadge = "Clean Eater Pro",
                     IsActive = true
@@ -210,6 +214,8 @@ public static class DbInitializer
                     Description = "Đạt mục tiêu 10.000 bước đi bộ/chạy bộ mỗi ngày cùng SmartMeal Health Sync.",
                     ImageUrl = "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8",
                     DurationDays = 5,
+                    Category = "Exercise",
+                    TargetValuePerDay = 10000,
                     RewardExp = 200,
                     RewardBadge = "Speed Runner",
                     IsActive = true
@@ -220,11 +226,35 @@ public static class DbInitializer
 
         await db.SaveChangesAsync();
 
+        await EnsureChallengeRulesAsync(db);
         await EnsureRecipeMealTypesAsync(db);
         await EnsureSeedDishesAsync(db);
         await EnsureIngredientAllergensAsync(db);
         await EnsureFoodServingsAsync(db);
         await EnsureFoodSearchTextAsync(db);
+    }
+
+    // Luật chấm của ba thử thách mẫu (dữ liệu cũ tạo trước khi có cột Category/TargetValuePerDay nên mọi dòng đều là EatClean, mục tiêu 0).
+    private static readonly (string Title, string Category, int Target)[] ChallengeRules =
+    {
+        ("7 Ngày Uống Đủ 2L Nước", "DrinkWater", 2000), // ml nước mỗi ngày
+        ("Eat Clean 14 Ngày", "EatClean", 3),            // số nhóm bữa (sáng/trưa/tối...) đã ghi mỗi ngày
+        ("10.000 Bước Chân Mỗi Ngày", "Exercise", 10000) // số bước mỗi ngày
+    };
+
+    private static async Task EnsureChallengeRulesAsync(ApplicationDbContext db)
+    {
+        foreach (var (title, category, target) in ChallengeRules)
+        {
+            var challenge = await db.Challenges.FirstOrDefaultAsync(c => c.Title == title && c.TargetValuePerDay == 0);
+            if (challenge != null)
+            {
+                challenge.Category = category;
+                challenge.TargetValuePerDay = target;
+            }
+        }
+
+        await db.SaveChangesAsync();
     }
 
     private sealed record ServingSeed(string Label, double Grams, bool IsDefault = false);

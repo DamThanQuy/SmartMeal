@@ -101,3 +101,24 @@ public sealed record FoodPayload(
     bool IsFavorite, string? Barcode, List<FoodServingPayload> Servings, Guid? DefaultServingId);
 
 public sealed record FoodFavoritePayload(bool IsFavorite);
+
+public sealed record PetTaskPayload(string Id, string Label, int XpReward, double ProgressCurrent, double ProgressTarget, string Unit, bool Completed);
+
+public sealed record PetPayload(
+    string PetName, string PetType, int Level, int Exp, int NextLevelExp, int TotalXp, int XpIntoLevel, int XpPerLevel, string Stage,
+    string Mood, string StatusMessage, string CurrentOutfit, double NutritionScoreToday, List<PetTaskPayload> Tasks);
+
+public sealed record StreakDayPayload(DateOnly Date, string DayOfWeek, bool HasLogged);
+
+public sealed record StreakPayload(int CurrentStreak, int LongestStreak, int TotalActiveDays, bool HasLoggedToday, List<StreakDayPayload> RecentActivity);
+
+public sealed record ChallengePayload(
+    Guid Id, string Title, string Description, string ImageUrl, int DurationDays, int CompletedDays, int RewardExp, string RewardBadge,
+    bool IsJoined, bool IsCompleted, string Category, int TargetValuePerDay, DateOnly? StartDate, DateOnly? EndDate, int CurrentDay, bool IsExpired);
+
+public sealed record BadgePayload(string Id, string Title, string Description, bool Unlocked, DateTime? UnlockedAt);
+
+public sealed record CostumePayload(string Id, string Title, string UnlockDescription, bool Unlocked, bool Equipped);
+
+public sealed record BadgesPayload(
+    string PetName, int Level, int StreakDays, int UnlockedBadgeCount, int TotalBadgeCount, List<BadgePayload> Badges, List<CostumePayload> Costumes);

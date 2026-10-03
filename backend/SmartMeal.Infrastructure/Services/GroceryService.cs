@@ -15,11 +15,13 @@ public class GroceryService : IGroceryService
     private const int MaxRangeDays = 31;
 
     private readonly ApplicationDbContext _db;
+    private readonly IGamificationService _gamification;
     private readonly ILogger<GroceryService> _logger;
 
-    public GroceryService(ApplicationDbContext db, ILogger<GroceryService> logger)
+    public GroceryService(ApplicationDbContext db, IGamificationService gamification, ILogger<GroceryService> logger)
     {
         _db = db;
+        _gamification = gamification;
         _logger = logger;
     }
 
@@ -172,6 +174,7 @@ public class GroceryService : IGroceryService
 
         item.IsChecked = isChecked;
         await _db.SaveChangesAsync();
+        await NotifyGamificationAsync(userId);
 
         return ApiResponse<GroceryItemDto>.Ok(ToDto(item), item.IsChecked ? "Đã đánh dấu đã mua." : "Đã bỏ đánh dấu mua.");
     }
@@ -181,6 +184,7 @@ public class GroceryService : IGroceryService
         await _db.GroceryItems
             .Where(g => g.UserId == userId && g.IsChecked != isChecked)
             .ExecuteUpdateAsync(s => s.SetProperty(g => g.IsChecked, isChecked));
+        await NotifyGamificationAsync(userId);
 
         var summary = await GetGroceryListAsync(userId);
         summary.Message = isChecked ? "Đã đánh dấu mua tất cả." : "Đã bỏ đánh dấu tất cả.";
@@ -208,6 +212,19 @@ public class GroceryService : IGroceryService
     }
 
     // ───────────────────────────── Nội bộ ─────────────────────────────
+
+    /// <summary>Báo cho gamification biết người dùng vừa đi chợ (huy hiệu "Người đi chợ" mở ngay cả khi họ dọn danh sách ngay sau đó). Lỗi ở đây không được làm hỏng thao tác đi chợ.</summary>
+    private async Task NotifyGamificationAsync(Guid userId)
+    {
+        try
+        {
+            await _gamification.EvaluateAsync(userId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Gamification evaluation failed after a grocery change for user {UserId}.", userId);
+        }
+    }
 
     private sealed class Aggregate
     {

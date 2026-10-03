@@ -32,6 +32,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
     public DbSet<AiUsageLog> AiUsageLogs => Set<AiUsageLog>();
     public DbSet<IngredientAllergy> IngredientAllergies => Set<IngredientAllergy>();
+    public DbSet<XpEvent> XpEvents => Set<XpEvent>();
+    public DbSet<UserBadge> UserBadges => Set<UserBadge>();
     public DbSet<FoodServing> FoodServings => Set<FoodServing>();
     public DbSet<UserFavoriteFood> UserFavoriteFoods => Set<UserFavoriteFood>();
     public DbSet<WaterLog> WaterLogs => Set<WaterLog>();
@@ -75,6 +77,34 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<MealPlan>()
             .HasIndex(m => new { m.UserId, m.PlanDate, m.MealType })
             .IsUnique();
+
+        // Gamification: mỗi người một pet; một người tham gia một thử thách một lần; sổ XP không cộng trùng một sự kiện (BR-202).
+        modelBuilder.Entity<HealthPet>()
+            .HasIndex(p => p.UserId)
+            .IsUnique();
+
+        modelBuilder.Entity<UserChallenge>()
+            .HasIndex(uc => new { uc.UserId, uc.ChallengeId })
+            .IsUnique();
+
+        modelBuilder.Entity<XpEvent>()
+            .HasIndex(e => new { e.UserId, e.EventKey })
+            .IsUnique();
+
+        modelBuilder.Entity<UserBadge>()
+            .HasKey(b => new { b.UserId, b.BadgeId });
+
+        modelBuilder.Entity<UserBadge>()
+            .HasOne(b => b.User)
+            .WithMany()
+            .HasForeignKey(b => b.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<XpEvent>()
+            .HasOne(e => e.User)
+            .WithMany()
+            .HasForeignKey(e => e.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<WaterLog>()
             .HasIndex(w => new { w.UserId, w.LogDate });
