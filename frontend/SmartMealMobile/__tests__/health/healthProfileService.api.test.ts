@@ -138,11 +138,11 @@ describe('submitHealthProfile', () => {
 
   test('BE báo lỗi → ném ApiError và KHÔNG lưu phần cục bộ', async () => {
     const { service, apiMock, extrasStorage, useAuthStore, ApiError } = loadService();
-    apiMock.post.mockRejectedValue(new ApiError('Dữ liệu gửi lên không hợp lệ.', 'VALIDATION', 400));
+    apiMock.post.mockRejectedValue(new ApiError('Dữ liệu gửi lên không hợp lệ.', 'BUSINESS', 400));
     useAuthStore.setState({ pendingUser: PENDING_USER });
 
     await expect(service.submitHealthProfile?.(createForm())).rejects.toMatchObject({
-      code: 'VALIDATION',
+      code: 'BUSINESS',
     });
     expect(extrasStorage.save).not.toHaveBeenCalled();
   });

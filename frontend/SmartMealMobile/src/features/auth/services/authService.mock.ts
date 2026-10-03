@@ -66,6 +66,9 @@ export const authMockService = {
     };
   },
 
+  // Mock không có phiên phía máy chủ để thu hồi.
+  async logout(_refreshToken: string): Promise<void> {},
+
   // Chỉ dùng khi khôi phục phiên lúc khởi động — chế độ mock không có phiên để khôi phục
   // (sessionService.bootstrapSession bỏ qua bước này).
   async getMe(): Promise<AuthUser> {

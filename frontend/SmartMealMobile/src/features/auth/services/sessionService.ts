@@ -3,7 +3,11 @@ import { MAIN_STACK_ROUTES, ROOT_ROUTES } from '@/constants/routes';
 import { healthProfileService } from '@/features/health';
 import { navigationRef } from '@/navigation/navigationRef';
 import { isApiError, queryClient, setUnauthorizedHandler } from '@/services/api';
-import { tokenStorage } from '@/services/storage/secureStorage';
+import {
+  clearSessionTokens,
+  refreshTokenStorage,
+  tokenStorage,
+} from '@/services/storage/secureStorage';
 import { type AuthState, useAuthStore } from '@/state/auth/authStore';
 import { resetUserData } from '@/state/resetUserData';
 import { useUserProfileStore } from '@/state/user/userProfileStore';
@@ -60,7 +64,7 @@ export async function bootstrapSession(): Promise<void> {
     auth.setBootstrapStatus('ready');
   } catch (error) {
     if (isApiError(error) && (error.code === 'UNAUTHORIZED' || error.code === 'NOT_FOUND')) {
-      await tokenStorage.clear();
+      await clearSessionTokens();
       auth.logout('expired');
       auth.setBootstrapStatus('ready');
       return;
@@ -70,9 +74,24 @@ export async function bootstrapSession(): Promise<void> {
 }
 
 async function clearSessionData(): Promise<void> {
-  await tokenStorage.clear();
+  await clearSessionTokens();
   await queryClient.cancelQueries();
   queryClient.clear();
+}
+
+/**
+ * Đăng xuất chủ động: xóa dữ liệu cục bộ NGAY, rồi thu hồi refresh token ở máy chủ (best effort,
+ * dùng bản đã đọc trước khi xóa). Mất mạng không được chặn đăng xuất; token còn lại tự hết hạn.
+ */
+async function endSession(): Promise<void> {
+  const refreshToken = await refreshTokenStorage.get();
+  await clearSessionData();
+  if (!refreshToken) return;
+  try {
+    await authService.logout(refreshToken);
+  } catch {
+    // Bỏ qua: xem chú thích ở trên.
+  }
 }
 
 /**
@@ -115,7 +134,7 @@ export function startSessionLifecycle(): () => void {
   setUnauthorizedHandler(handleSessionExpired);
   const unsubscribe = useAuthStore.subscribe((state, previous) => {
     if (!hasSession(previous) || hasSession(state)) return;
-    void clearSessionData();
+    void endSession();
     resetUserData();
   });
 

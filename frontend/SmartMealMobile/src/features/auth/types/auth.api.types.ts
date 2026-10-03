@@ -24,16 +24,28 @@ export interface UserDto {
   email: string;
   fullName: string;
   avatarUrl: string | null;
+  /** Quyền Pro còn hiệu lực — nguồn đáng tin duy nhất (claim trong token sẽ cũ sau khi nâng cấp). */
   isPro: boolean;
+  /** Free | Premium | Expired | Cancelled. */
+  subscriptionStatus: string;
+  /** Hạn dùng gói Pro (ISO 8601 UTC); null nếu chưa có. */
+  proExpiresAt: string | null;
   role: string;
   /** BE tính bằng `user.HealthProfile != null`. */
   hasCompletedSurvey: boolean;
 }
 
 export interface AuthResponseDto {
-  /** JWT, sống 30 ngày; không có refresh token. */
+  /** Access token (JWT) ngắn hạn. */
   token: string;
   /** ISO 8601 UTC. */
   expiresAt: string;
+  /** Dùng một lần ở POST /auth/refresh để lấy cặp token mới. */
+  refreshToken: string;
+  refreshTokenExpiresAt: string;
   user: UserDto;
+}
+
+export interface RefreshTokenRequestDto {
+  refreshToken: string;
 }

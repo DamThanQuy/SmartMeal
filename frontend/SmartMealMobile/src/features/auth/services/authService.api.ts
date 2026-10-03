@@ -1,5 +1,5 @@
 import { ENDPOINTS, api } from '@/services/api';
-import { tokenStorage } from '@/services/storage/secureStorage';
+import { saveSessionTokens } from '@/services/storage/secureStorage';
 import type {
   AuthResponseDto,
   LoginRequestDto,
@@ -20,7 +20,7 @@ export const authApiService: Partial<typeof authMockService> = {
       email: payload.email.trim(),
       password: payload.password,
     });
-    await tokenStorage.set(dto.token);
+    await saveSessionTokens(dto);
     return { user: fromUserDto(dto.user) };
   },
 
@@ -31,8 +31,14 @@ export const authApiService: Partial<typeof authMockService> = {
       password: payload.password,
       fullName: payload.fullName.trim(),
     });
-    await tokenStorage.set(dto.token);
+    await saveSessionTokens(dto);
     return { email: dto.user.email, user: fromUserDto(dto.user), requiresOtp: false };
+  },
+
+  // POST /auth/logout { refreshToken } — thu hồi phiên phía máy chủ (best effort: không cần access
+  // token, BE luôn trả 200). Nhận refresh token từ người gọi vì token cục bộ đã bị xóa.
+  async logout(refreshToken) {
+    await api.post<boolean>(ENDPOINTS.auth.logout, { refreshToken }, { skipAuth: true });
   },
 
   // GET /auth/me — làm mới isPro/hasCompletedSurvey khi khôi phục phiên.

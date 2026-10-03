@@ -14,4 +14,6 @@ export const STORAGE_KEYS = {
  */
 export const SECURE_KEYS = {
   ACCESS_TOKEN: 'auth.accessToken',
+  /** Dùng một lần để lấy cặp token mới ở POST /auth/refresh (BE xoay vòng mỗi lần dùng). */
+  REFRESH_TOKEN: 'auth.refreshToken',
 } as const;

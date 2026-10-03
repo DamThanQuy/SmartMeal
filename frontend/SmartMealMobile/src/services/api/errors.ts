@@ -1,9 +1,11 @@
 import { isAxiosError } from 'axios';
-import type { ApiEnvelope, ApiProblemDetails } from '@/types/api';
+import type { ApiEnvelope } from '@/types/api';
 
 // Chuẩn hóa MỌI lỗi gọi API về 1 kiểu ApiError có `message` tiếng Việt thân thiện — screen/hook
-// hiện đã hiển thị `error.message` nên giữ được nguyên UI (docs/fetch-api/part1 §4.4). BE trả lỗi
-// ở 3 dạng body khác nhau (envelope, ProblemDetails, rỗng — §3.3), toApiError xử lý cả ba.
+// hiển thị `error.message` là đủ. Backend trả MỌI lỗi (kể cả validate, 401 của JWT, route không
+// có, lỗi chưa bắt) trong cùng một envelope { success:false, message, data:null, errors } nên chỉ
+// còn hai nguồn: envelope (dùng message của BE) và "không có envelope" (mất mạng, timeout, proxy
+// chen vào giữa) → message theo HTTP status.
 
 export type ApiErrorCode =
   | 'NETWORK'
@@ -11,8 +13,15 @@ export type ApiErrorCode =
   | 'UNAUTHORIZED'
   | 'FORBIDDEN'
   | 'NOT_FOUND'
-  | 'VALIDATION'
   | 'BUSINESS'
+  /** 409 — vd. trùng dữ liệu, thực đơn đang được cập nhật ở nơi khác. */
+  | 'CONFLICT'
+  /** 423 — tài khoản bị khóa tạm thời do đăng nhập sai nhiều lần. */
+  | 'LOCKED'
+  /** 429 — quá nhiều request hoặc hết hạn mức (vd. quota AI của gói Free). */
+  | 'RATE_LIMITED'
+  /** 502/503 — dịch vụ phía sau (vd. Gemini) lỗi hoặc chưa cấu hình. */
+  | 'UNAVAILABLE'
   | 'SERVER'
   | 'UNKNOWN';
 
@@ -49,7 +58,10 @@ const MESSAGES = {
   unauthorized: 'Phiên đăng nhập đã hết hạn.',
   forbidden: 'Bạn không có quyền thực hiện thao tác này.',
   notFound: 'Không tìm thấy dữ liệu.',
-  validation: 'Dữ liệu gửi lên không hợp lệ.',
+  conflict: 'Dữ liệu vừa được thay đổi ở nơi khác, vui lòng thử lại.',
+  locked: 'Tài khoản tạm thời bị khóa, vui lòng thử lại sau.',
+  rateLimited: 'Bạn thao tác quá nhanh, vui lòng thử lại sau ít phút.',
+  unavailable: 'Dịch vụ tạm thời không khả dụng, vui lòng thử lại sau.',
   server: 'Máy chủ gặp sự cố, vui lòng thử lại sau.',
   canceled: 'Yêu cầu đã bị hủy.',
   unknown: 'Đã xảy ra lỗi không xác định.',
@@ -64,30 +76,40 @@ export function isApiEnvelope(body: unknown): body is ApiEnvelope<unknown> {
   return isRecord(body) && typeof body.success === 'boolean';
 }
 
-function isProblemDetails(body: unknown): body is ApiProblemDetails {
-  return isRecord(body) && (typeof body.title === 'string' || isRecord(body.errors));
-}
-
 function codeForStatus(status: number): ApiErrorCode {
   if (status === 401) return 'UNAUTHORIZED';
   if (status === 403) return 'FORBIDDEN';
   if (status === 404) return 'NOT_FOUND';
+  if (status === 409) return 'CONFLICT';
+  if (status === 423) return 'LOCKED';
+  if (status === 429) return 'RATE_LIMITED';
+  if (status === 502 || status === 503) return 'UNAVAILABLE';
   if (status >= 500) return 'SERVER';
-  // 400/409/... — lỗi nghiệp vụ do BE trả kèm message.
+  // 400 và các 4xx còn lại — lỗi nghiệp vụ/validate do BE trả kèm message.
   return 'BUSINESS';
 }
 
 function messageForStatus(status: number): string {
-  if (status === 401) return MESSAGES.unauthorized;
-  if (status === 403) return MESSAGES.forbidden;
-  if (status === 404) return MESSAGES.notFound;
-  if (status >= 500) return MESSAGES.server;
-  return MESSAGES.unknown;
-}
-
-function flattenProblemErrors(errors: ApiProblemDetails['errors']): string[] {
-  if (!errors) return [];
-  return Object.values(errors).flatMap(messages => (Array.isArray(messages) ? messages : []));
+  switch (codeForStatus(status)) {
+    case 'UNAUTHORIZED':
+      return MESSAGES.unauthorized;
+    case 'FORBIDDEN':
+      return MESSAGES.forbidden;
+    case 'NOT_FOUND':
+      return MESSAGES.notFound;
+    case 'CONFLICT':
+      return MESSAGES.conflict;
+    case 'LOCKED':
+      return MESSAGES.locked;
+    case 'RATE_LIMITED':
+      return MESSAGES.rateLimited;
+    case 'UNAVAILABLE':
+      return MESSAGES.unavailable;
+    case 'SERVER':
+      return MESSAGES.server;
+    default:
+      return MESSAGES.unknown;
+  }
 }
 
 export function toApiError(error: unknown): ApiError {
@@ -115,14 +137,6 @@ export function toApiError(error: unknown): ApiError {
     );
   }
 
-  if (isProblemDetails(data)) {
-    const details = flattenProblemErrors(data.errors);
-    const code = status === 400 ? 'VALIDATION' : codeForStatus(status);
-    // `title` của ProblemDetails là tiếng Anh kỹ thuật — không hiển thị cho người dùng.
-    const message = status === 400 ? MESSAGES.validation : messageForStatus(status);
-    return new ApiError(message, code, status, details);
-  }
-
-  // Body rỗng: 401 (JWT middleware), 404 (route/ràng buộc :guid), 415, 500 chưa bắt...
+  // Không có envelope (proxy trả HTML, cổng sai...): chỉ biết HTTP status.
   return new ApiError(messageForStatus(status), codeForStatus(status), status);
 }

@@ -199,7 +199,7 @@ describe('addLogEntries', () => {
     const { service, apiMock, ApiError, PartialLogError } = loadService();
     apiMock.post
       .mockResolvedValueOnce(item({ id: 'a' }))
-      .mockRejectedValueOnce(new ApiError('Dữ liệu gửi lên không hợp lệ.', 'VALIDATION', 400))
+      .mockRejectedValueOnce(new ApiError('Dữ liệu gửi lên không hợp lệ.', 'BUSINESS', 400))
       .mockResolvedValueOnce(item({ id: 'c' }));
     const inputs = [input('A'), input('B'), input('C')];
 

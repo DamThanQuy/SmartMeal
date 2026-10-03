@@ -53,11 +53,13 @@ function flushPromises(): Promise<void> {
 }
 
 function load(useMockApi = false) {
-  const authServiceMock = { getMe: jest.fn() };
+  const authServiceMock = { getMe: jest.fn(), logout: jest.fn().mockResolvedValue(undefined) };
   const healthMock = { getHealthProfile: jest.fn() };
+  // `clear` là clearSessionTokens (xóa cả access lẫn refresh token); `refreshGet` đọc refresh token.
   const tokenStorageMock = {
     get: jest.fn(),
     clear: jest.fn().mockResolvedValue(undefined),
+    refreshGet: jest.fn().mockResolvedValue(null),
   };
   const queryClientMock = {
     cancelQueries: jest.fn().mockResolvedValue(undefined),
@@ -76,7 +78,11 @@ function load(useMockApi = false) {
     queryClient: queryClientMock,
     setUnauthorizedHandler,
   }));
-  jest.doMock('@/services/storage/secureStorage', () => ({ tokenStorage: tokenStorageMock }));
+  jest.doMock('@/services/storage/secureStorage', () => ({
+    tokenStorage: tokenStorageMock,
+    refreshTokenStorage: { get: tokenStorageMock.refreshGet },
+    clearSessionTokens: tokenStorageMock.clear,
+  }));
   jest.doMock('@/navigation/navigationRef', () => ({ navigationRef: navigationRefMock }));
   jest.doMock('@/state/resetUserData', () => ({
     registerUserDataReset: jest.fn(),
@@ -360,6 +366,45 @@ describe('startSessionLifecycle', () => {
 
     stop();
     expect(setUnauthorizedHandler).toHaveBeenCalledTimes(2);
+  });
+
+  test('đăng xuất chủ động → thu hồi refresh token ở máy chủ bằng bản đã đọc trước khi xóa', async () => {
+    const { session, useAuthStore, tokenStorageMock, authServiceMock } = load();
+    tokenStorageMock.refreshGet.mockResolvedValue('refresh-1');
+    session.startSessionLifecycle();
+    useAuthStore.getState().login(USER);
+
+    useAuthStore.getState().logout();
+    await flushPromises();
+
+    expect(tokenStorageMock.clear).toHaveBeenCalledTimes(1);
+    expect(authServiceMock.logout).toHaveBeenCalledWith('refresh-1');
+  });
+
+  test('không có refresh token (phiên cũ) → chỉ dọn cục bộ, không gọi máy chủ', async () => {
+    const { session, useAuthStore, authServiceMock } = load();
+    session.startSessionLifecycle();
+    useAuthStore.getState().login(USER);
+
+    useAuthStore.getState().logout();
+    await flushPromises();
+
+    expect(authServiceMock.logout).not.toHaveBeenCalled();
+  });
+
+  test('thu hồi ở máy chủ lỗi (mất mạng) → vẫn đăng xuất và dọn dữ liệu cục bộ', async () => {
+    const { session, useAuthStore, tokenStorageMock, authServiceMock, resetUserDataMock } = load();
+    tokenStorageMock.refreshGet.mockResolvedValue('refresh-1');
+    authServiceMock.logout.mockRejectedValue(new Error('mất mạng'));
+    session.startSessionLifecycle();
+    useAuthStore.getState().login(USER);
+
+    useAuthStore.getState().logout();
+    await flushPromises();
+
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(tokenStorageMock.clear).toHaveBeenCalledTimes(1);
+    expect(resetUserDataMock).toHaveBeenCalledTimes(1);
   });
 
   test('đăng xuất → xóa token, cache và dữ liệu người dùng cục bộ', async () => {

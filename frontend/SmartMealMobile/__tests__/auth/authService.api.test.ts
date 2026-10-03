@@ -10,6 +10,8 @@ const USER_DTO: UserDto = {
   fullName: 'Nguyễn An',
   avatarUrl: null,
   isPro: false,
+  subscriptionStatus: 'Free',
+  proExpiresAt: null,
   role: 'User',
   hasCompletedSurvey: false,
 };
@@ -17,23 +19,22 @@ const USER_DTO: UserDto = {
 const AUTH_RESPONSE: AuthResponseDto = {
   token: 'jwt-token',
   expiresAt: '2026-11-01T08:00:00Z',
+  refreshToken: 'refresh-token',
+  refreshTokenExpiresAt: '2026-12-01T08:00:00Z',
   user: USER_DTO,
 };
 
 function loadService() {
   const apiMock = { get: jest.fn(), post: jest.fn(), put: jest.fn() };
-  const tokenStorageMock = {
-    get: jest.fn(),
-    set: jest.fn().mockResolvedValue(undefined),
-    clear: jest.fn().mockResolvedValue(undefined),
-  };
+  // saveSessionTokens lưu cả access lẫn refresh token (một lần gọi).
+  const tokenStorageMock = { set: jest.fn().mockResolvedValue(undefined) };
 
   jest.resetModules();
   jest.doMock('@/services/api', () => ({
     api: apiMock,
     ENDPOINTS: jest.requireActual('@/services/api/endpoints').ENDPOINTS,
   }));
-  jest.doMock('@/services/storage/secureStorage', () => ({ tokenStorage: tokenStorageMock }));
+  jest.doMock('@/services/storage/secureStorage', () => ({ saveSessionTokens: tokenStorageMock.set }));
 
   const { authApiService } =
     require('@/features/auth/services/authService.api') as typeof import('@/features/auth/services/authService.api');
@@ -54,7 +55,9 @@ describe('login', () => {
       email: 'an@smartmeal.vn',
       password: 'matkhau123',
     });
-    expect(tokenStorageMock.set).toHaveBeenCalledWith('jwt-token');
+    expect(tokenStorageMock.set).toHaveBeenCalledWith(
+      expect.objectContaining({ token: 'jwt-token', refreshToken: 'refresh-token' }),
+    );
     expect(result).toEqual({
       user: {
         id: USER_DTO.id,
@@ -94,7 +97,9 @@ describe('register', () => {
       password: 'matkhau123',
       fullName: 'Nguyễn An',
     });
-    expect(tokenStorageMock.set).toHaveBeenCalledWith('jwt-token');
+    expect(tokenStorageMock.set).toHaveBeenCalledWith(
+      expect.objectContaining({ token: 'jwt-token', refreshToken: 'refresh-token' }),
+    );
     expect(result?.requiresOtp).toBe(false);
     expect(result?.email).toBe('an@smartmeal.vn');
     expect(result?.user).toMatchObject({ id: USER_DTO.id, hasCompletedSurvey: false });
@@ -161,5 +166,20 @@ describe('hàm BE chưa có', () => {
     expect(service.verifyOtp).toBeUndefined();
     expect(service.resendOtp).toBeUndefined();
     expect(service.requestPasswordReset).toBeUndefined();
+  });
+});
+
+describe('logout', () => {
+  test('POST /auth/logout với refresh token đã đọc từ trước, không gắn Bearer', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue(true);
+
+    await service.logout?.('refresh-1');
+
+    expect(apiMock.post).toHaveBeenCalledWith(
+      '/auth/logout',
+      { refreshToken: 'refresh-1' },
+      { skipAuth: true },
+    );
   });
 });
