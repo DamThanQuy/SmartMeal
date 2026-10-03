@@ -79,6 +79,9 @@ public class ApplicationDbContext : DbContext
             .HasIndex(u => u.GoogleId)
             .IsUnique();
 
+        modelBuilder.Entity<OtpVerification>()
+            .HasIndex(o => new { o.Email, o.Purpose, o.CreatedAt });
+
         // RefreshToken: tra theo bản băm; xóa người dùng thì xóa luôn các phiên.
         modelBuilder.Entity<RefreshToken>()
             .HasIndex(t => t.TokenHash)

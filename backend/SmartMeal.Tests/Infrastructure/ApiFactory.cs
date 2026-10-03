@@ -26,6 +26,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     /// <summary>Bộ xác minh Google giả: đăng ký token → danh tính để kiểm thử đăng nhập Google.</summary>
     public FakeGoogleTokenVerifier Google { get; } = new();
 
+    /// <summary>Bộ gửi email giả: giữ các email đã "gửi" (OTP...) để test đọc mã.</summary>
+    public FakeEmailSender Email { get; } = new();
+
     /// <summary>Ghi đè một giá trị cấu hình cho riêng factory này (gọi trước khi tạo client đầu tiên).</summary>
     public ApiFactory WithSetting(string key, string? value)
     {
@@ -49,6 +52,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         {
             services.RemoveAll<IGoogleTokenVerifier>();
             services.AddSingleton<IGoogleTokenVerifier>(Google);
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton<IEmailSender>(Email);
         });
         builder.ConfigureAppConfiguration((_, config) =>
         {

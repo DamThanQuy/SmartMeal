@@ -93,17 +93,11 @@ public class AuthService : IAuthService
 
         if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
         {
-            user.FailedLoginCount++;
-            if (user.FailedLoginCount >= _auth.MaxFailedLoginAttempts)
+            if (await RegisterFailedAttemptAsync(user, now) is { } lockedUntil)
             {
-                var until = now.AddMinutes(_auth.LockoutMinutes);
-                user.FailedLoginCount = 0;
-                user.LockoutEnd = until;
-                await _db.SaveChangesAsync();
-                return LockedResponse(until - now);
+                return LockedResponse(lockedUntil - now);
             }
 
-            await _db.SaveChangesAsync();
             return ApiResponse<AuthResponseDto>.Fail(InvalidCredentialsMessage, null, ApiErrorKind.Unauthorized);
         }
 
@@ -295,7 +289,74 @@ public class AuthService : IAuthService
         return ApiResponse<UserDto>.Ok(ToUserDto(user, hasSurvey), "Cập nhật thông tin tài khoản thành công.");
     }
 
+    public async Task<ApiResponse<AuthResponseDto>> ChangePasswordAsync(Guid userId, ChangePasswordRequestDto dto)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user is null)
+        {
+            return ApiResponse<AuthResponseDto>.Fail("Người dùng không tồn tại.", null, ApiErrorKind.NotFound);
+        }
+
+        if (string.IsNullOrEmpty(user.PasswordHash))
+        {
+            return ApiResponse<AuthResponseDto>.Fail("Tài khoản đăng nhập bằng Google chưa có mật khẩu. Hãy dùng \"Quên mật khẩu\" để tạo mật khẩu.");
+        }
+
+        var now = DateTime.UtcNow;
+        if (user.LockoutEnd is { } lockoutEnd && lockoutEnd > now)
+        {
+            return LockedResponse(lockoutEnd - now);
+        }
+
+        // Dùng chung bộ đếm sai mật khẩu: kẻ cầm access token bị đánh cắp không thể dò mật khẩu hiện tại.
+        // Trả 400 (không phải 401) vì đây là lỗi nhập liệu, không phải phiên hết hạn.
+        if (!BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.PasswordHash))
+        {
+            if (await RegisterFailedAttemptAsync(user, now) is { } lockedUntil)
+            {
+                return LockedResponse(lockedUntil - now);
+            }
+
+            return ApiResponse<AuthResponseDto>.Fail("Mật khẩu hiện tại không đúng.");
+        }
+
+        if (dto.NewPassword == dto.CurrentPassword)
+        {
+            return ApiResponse<AuthResponseDto>.Fail("Mật khẩu mới phải khác mật khẩu hiện tại.");
+        }
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+        user.FailedLoginCount = 0;
+        user.LockoutEnd = null;
+        user.UpdatedAt = now;
+        await _db.SaveChangesAsync();
+
+        // Đổi mật khẩu → mọi phiên cũ (kể cả của thiết bị khác) bị đăng xuất; phiên hiện tại nhận token mới.
+        await _db.RefreshTokens
+            .Where(t => t.UserId == user.Id && t.RevokedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now));
+
+        var hasSurvey = await _db.HealthProfiles.AnyAsync(hp => hp.UserId == user.Id);
+        return ApiResponse<AuthResponseDto>.Ok(await IssueTokensAsync(user, hasSurvey), "Đổi mật khẩu thành công.");
+    }
+
     // ───────────────────────────── Nội bộ ─────────────────────────────
+
+    /// <summary>Tăng bộ đếm sai mật khẩu; đủ ngưỡng thì khóa tạm thời và trả thời điểm hết khóa, ngược lại null.</summary>
+    private async Task<DateTime?> RegisterFailedAttemptAsync(User user, DateTime now)
+    {
+        user.FailedLoginCount++;
+        DateTime? lockedUntil = null;
+        if (user.FailedLoginCount >= _auth.MaxFailedLoginAttempts)
+        {
+            lockedUntil = now.AddMinutes(_auth.LockoutMinutes);
+            user.FailedLoginCount = 0;
+            user.LockoutEnd = lockedUntil;
+        }
+
+        await _db.SaveChangesAsync();
+        return lockedUntil;
+    }
 
     private static string NormalizeEmail(string email) => (email ?? string.Empty).Trim().ToLowerInvariant();
 
@@ -304,6 +365,7 @@ public class AuthService : IAuthService
 
     private static ApiResponse<AuthResponseDto> LockedResponse(TimeSpan remaining)
     {
+        // (dùng chung cho đăng nhập và đổi mật khẩu)
         var minutes = Math.Max(1, (int)Math.Ceiling(remaining.TotalMinutes));
         return ApiResponse<AuthResponseDto>.Fail(
             $"Tài khoản tạm thời bị khóa do nhập sai mật khẩu quá nhiều lần. Vui lòng thử lại sau {minutes} phút hoặc dùng \"Quên mật khẩu\".",

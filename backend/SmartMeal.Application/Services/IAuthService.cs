@@ -12,4 +12,7 @@ public interface IAuthService
     Task<ApiResponse<bool>> LogoutAsync(string? refreshToken);
     Task<ApiResponse<UserDto>> GetCurrentUserAsync(Guid userId);
     Task<ApiResponse<UserDto>> UpdateProfileAsync(Guid userId, UpdateProfileRequestDto dto);
+
+    /// <summary>Đổi mật khẩu: thu hồi mọi phiên cũ và trả cặp token mới cho phiên hiện tại.</summary>
+    Task<ApiResponse<AuthResponseDto>> ChangePasswordAsync(Guid userId, ChangePasswordRequestDto dto);
 }

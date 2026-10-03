@@ -62,11 +62,24 @@ public class UserFavorite
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
+/// <summary>
+/// Mã dùng một lần gửi qua email (OTP) hoặc mã đặt lại mật khẩu sau khi xác minh OTP. Chỉ lưu bản băm
+/// (HMAC-SHA256) của mã, không lưu mã gốc.
+/// </summary>
 public class OtpVerification
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public string Email { get; set; } = string.Empty;
-    public string OtpCode { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty; // chữ thường
+
+    /// <summary>"reset-password" | "verify-email" (OTP) hoặc "reset-token" (mã đặt lại sau khi OTP đúng).</summary>
+    public string Purpose { get; set; } = string.Empty;
+
+    public string CodeHash { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime ExpiredAt { get; set; }
+
+    /// <summary>Số lần nhập sai; quá giới hạn thì mã bị vô hiệu.</summary>
+    public int Attempts { get; set; }
+
     public bool IsUsed { get; set; } = false;
 }

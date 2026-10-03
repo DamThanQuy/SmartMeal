@@ -51,6 +51,17 @@ builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
 
 // 3. Dependency Injection
 builder.Services.AddSingleton<IGoogleTokenVerifier, GoogleTokenVerifier>();
+builder.Services.AddScoped<IPasswordService, PasswordService>();
+
+// Gửi email: SMTP thật khi có Smtp:Host, ngược lại chỉ ghi log (Development in cả mã OTP).
+builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.SectionName));
+builder.Services.AddSingleton<IEmailSender>(sp =>
+{
+    var smtp = sp.GetRequiredService<IOptions<SmtpOptions>>();
+    return string.IsNullOrWhiteSpace(smtp.Value.Host)
+        ? ActivatorUtilities.CreateInstance<LogOnlyEmailSender>(sp)
+        : ActivatorUtilities.CreateInstance<SmtpEmailSender>(sp, smtp);
+});
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IHealthProfileService, HealthProfileService>();

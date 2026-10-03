@@ -13,10 +13,12 @@ namespace SmartMeal.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly IPasswordService _passwordService;
 
-    public AuthController(IAuthService authService)
+    public AuthController(IAuthService authService, IPasswordService passwordService)
     {
         _authService = authService;
+        _passwordService = passwordService;
     }
 
     [EnableRateLimiting(RateLimitPolicies.Auth)]
@@ -46,6 +48,41 @@ public class AuthController : ControllerBase
     [HttpPost("logout")]
     public async Task<ActionResult<ApiResponse<bool>>> Logout([FromBody] LogoutRequestDto? dto) =>
         this.ToActionResult(await _authService.LogoutAsync(dto?.RefreshToken));
+
+    // ───────────── Quên / đặt lại / đổi mật khẩu (OTP qua email) ─────────────
+
+    /// <summary>Gửi OTP đặt lại mật khẩu tới email. Luôn trả 200 (không lộ email nào đã đăng ký).</summary>
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    [HttpPost("forgot-password")]
+    public async Task<ActionResult<ApiResponse<bool>>> ForgotPassword([FromBody] ForgotPasswordRequestDto dto) =>
+        this.ToActionResult(await _passwordService.ForgotPasswordAsync(dto));
+
+    /// <summary>Gửi lại OTP (<c>reset-password</c> hoặc <c>verify-email</c>); có thời gian chờ giữa hai lần gửi.</summary>
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    [HttpPost("resend-otp")]
+    public async Task<ActionResult<ApiResponse<bool>>> ResendOtp([FromBody] ResendOtpRequestDto dto) =>
+        this.ToActionResult(await _passwordService.ResendOtpAsync(dto));
+
+    /// <summary>Xác minh OTP 6 số. Với <c>reset-password</c> trả <c>resetToken</c> dùng một lần cho bước đặt lại.</summary>
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    [HttpPost("verify-otp")]
+    public async Task<ActionResult<ApiResponse<VerifyOtpResponseDto>>> VerifyOtp([FromBody] VerifyOtpRequestDto dto) =>
+        this.ToActionResult(await _passwordService.VerifyOtpAsync(dto));
+
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    [HttpPost("reset-password")]
+    public async Task<ActionResult<ApiResponse<bool>>> ResetPassword([FromBody] ResetPasswordRequestDto dto) =>
+        this.ToActionResult(await _passwordService.ResetPasswordAsync(dto));
+
+    /// <summary>Đổi mật khẩu khi đã đăng nhập: thu hồi mọi phiên cũ và trả cặp token mới cho phiên hiện tại.</summary>
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<ActionResult<ApiResponse<AuthResponseDto>>> ChangePassword([FromBody] ChangePasswordRequestDto dto)
+    {
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<AuthResponseDto>();
+
+        return this.ToActionResult(await _authService.ChangePasswordAsync(userId, dto));
+    }
 
     [Authorize]
     [HttpGet("me")]
