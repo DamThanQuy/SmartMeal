@@ -3,17 +3,30 @@
  * người dùng mới không được thấy số liệu giả của người khác (docs/fetch-api/part1 §14.4).
  */
 
+// waterService là bộ chọn mock/API (selectService): cờ useMockApi quyết định bản nào chạy.
 function loadWaterService(useMockApi: boolean) {
+  const apiMock = {
+    get: jest.fn().mockResolvedValue({
+      goalMl: 2000,
+      days: [{ date: '2026-10-02', totalMl: 0, entries: [] }],
+    }),
+    post: jest.fn(),
+    delete: jest.fn(),
+  };
   jest.resetModules();
   jest.doMock('@/config/env', () => ({ ENV: { useMockApi } }));
   jest.doMock('@/config/mock', () => ({ getMockDelayMs: () => 0, wait: async () => undefined }));
   jest.doMock('@/state/app/appStore', () => ({ getCurrentMockScenario: () => 'success' }));
   jest.doMock('@/state/resetUserData', () => ({ registerUserDataReset: jest.fn() }));
   jest.doMock('@/state/user/userProfileStore', () => ({ getWaterGoalMl: () => 2000 }));
-  jest.doMock('@/features/nutrition', () => ({ todayIso: () => '2026-10-02' }));
+  jest.doMock('@/services/api', () => ({
+    selectService: jest.requireActual('@/services/api/serviceSelector').selectService,
+    api: apiMock,
+    ENDPOINTS: jest.requireActual('@/services/api/endpoints').ENDPOINTS,
+  }));
   const { waterService } =
     require('@/features/gamification/services/waterService') as typeof import('@/features/gamification/services/waterService');
-  return waterService;
+  return { waterService, apiMock };
 }
 
 function loadNotificationsService(useMockApi: boolean) {
@@ -27,37 +40,37 @@ function loadNotificationsService(useMockApi: boolean) {
 }
 
 describe('waterService', () => {
-  test('chạy mock → 5 ly mẫu hôm nay và lịch sử 7 ngày của design', async () => {
-    const water = loadWaterService(true);
+  // Bản mock gieo dữ liệu cho "hôm nay" theo giờ máy.
+  beforeEach(() => {
+    jest.useFakeTimers({ now: new Date(2026, 9, 2, 12) });
+  });
 
-    const day = await water.getDaySummary('2026-10-02');
-    const week = await water.getWeekSummary('2026-10-02');
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test('chạy mock → 5 ly mẫu hôm nay và lịch sử 7 ngày của design, không gọi API', async () => {
+    const { waterService, apiMock } = loadWaterService(true);
+
+    const day = await waterService.getDaySummary('2026-10-02');
+    const week = await waterService.getWeekSummary('2026-10-02');
 
     expect(day.entries).toHaveLength(5);
     expect(day.totalMl).toBe(1250);
     expect(week.days).toHaveLength(7);
     expect(week.days.slice(0, 6).map(item => item.totalMl)).toEqual([2000, 1500, 2000, 1200, 1750, 2000]);
     expect(week.daysOnTarget).toBe(3);
+    expect(apiMock.get).not.toHaveBeenCalled();
   });
 
-  test('gọi API thật → người dùng mới bắt đầu từ 0, không có lịch sử giả', async () => {
-    const water = loadWaterService(false);
+  test('gọi API thật → đọc từ server, người dùng mới bắt đầu từ 0, không có số liệu giả của design', async () => {
+    const { waterService, apiMock } = loadWaterService(false);
 
-    const day = await water.getDaySummary('2026-10-02');
-    const week = await water.getWeekSummary('2026-10-02');
+    const day = await waterService.getDaySummary('2026-10-02');
 
+    expect(apiMock.get).toHaveBeenCalledTimes(1);
     expect(day.entries).toEqual([]);
     expect(day.totalMl).toBe(0);
-    expect(week.days.map(item => item.totalMl)).toEqual([0, 0, 0, 0, 0, 0, 0]);
-    expect(week.daysOnTarget).toBe(0);
-  });
-
-  test('gọi API thật → vẫn ghi được nước cục bộ, bắt đầu cộng từ 0', async () => {
-    const water = loadWaterService(false);
-
-    await water.addEntry('2026-10-02', 250);
-
-    expect((await water.getDaySummary('2026-10-02')).totalMl).toBe(250);
   });
 });
 
