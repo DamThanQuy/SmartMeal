@@ -1,11 +1,12 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { AIAnalysisResult, VoiceLogResult } from '@/features/ai';
+import type { OtpPurpose } from '@/features/auth';
 import type { CheckoutResult, PaymentMethodId } from '@/features/premium';
 import type { RecipeFilters } from '@/features/recipes';
 import type { BillingPlanId } from '@/state/premium/premiumStore';
 import type { MealType } from '@/types/meal.types';
 
-export type OtpPurpose = 'register' | 'reset-password';
+export type { OtpPurpose };
 
 /**
  * ForgotPasswordScreen/OtpScreen được đăng ký ở cả AuthNavigator (quên mật khẩu trước đăng nhập)
@@ -21,6 +22,7 @@ export type AuthStackParamList = {
   Register: undefined;
   Otp: { email: string; purpose: OtpPurpose; returnTo?: ForgotPasswordReturnTo };
   ForgotPassword: { returnTo?: ForgotPasswordReturnTo } | undefined;
+  ResetPassword: { email: string; resetToken: string; returnTo?: ForgotPasswordReturnTo };
   HealthProfileBasicInfo: undefined;
   HealthProfileBody: undefined;
   HealthProfileGoal: undefined;
@@ -114,6 +116,7 @@ export type MainStackParamList = {
   /** "Đổi mật khẩu" ở Settings (sửa lệch sau Đợt 9) — cùng shape với AuthStackParamList. */
   ForgotPassword: { returnTo?: ForgotPasswordReturnTo } | undefined;
   Otp: { email: string; purpose: OtpPurpose; returnTo?: ForgotPasswordReturnTo };
+  ResetPassword: { email: string; resetToken: string; returnTo?: ForgotPasswordReturnTo };
 
   // Đợt 10 — ai/scanner (design v2, BR-072, BR-080→083, BR-121, BR-130→132, BR-162, BR-252,
   // BR-290/291). Không có bottom nav, sibling của MainTabs.

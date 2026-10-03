@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { authService } from '../services/authService';
-import type { VerifyOtpPayload } from '../types/auth.types';
+import type { ResendOtpPayload, VerifyOtpPayload } from '../types/auth.types';
 
 export function useVerifyOtp() {
   return useMutation({
@@ -10,6 +10,6 @@ export function useVerifyOtp() {
 
 export function useResendOtp() {
   return useMutation({
-    mutationFn: (email: string) => authService.resendOtp(email),
+    mutationFn: (payload: ResendOtpPayload) => authService.resendOtp(payload),
   });
 }

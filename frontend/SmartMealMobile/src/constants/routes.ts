@@ -12,6 +12,7 @@ export const AUTH_ROUTES = {
   REGISTER: 'Register',
   OTP: 'Otp',
   FORGOT_PASSWORD: 'ForgotPassword',
+  RESET_PASSWORD: 'ResetPassword',
   HEALTH_PROFILE_BASIC_INFO: 'HealthProfileBasicInfo',
   HEALTH_PROFILE_BODY: 'HealthProfileBody',
   HEALTH_PROFILE_GOAL: 'HealthProfileGoal',
@@ -83,6 +84,7 @@ export const MAIN_STACK_ROUTES = {
    * chung với AuthNavigator, đăng ký thêm ở đây để mở được từ Main (xem MainNavigator.tsx). */
   FORGOT_PASSWORD: 'ForgotPassword',
   OTP: 'Otp',
+  RESET_PASSWORD: 'ResetPassword',
   // Đợt 10 — ai/scanner (design v2).
   FRIDGE_CAMERA: 'FridgeCamera',
   OCR_CAMERA: 'OCRCamera',

@@ -13,6 +13,7 @@ import {
   ForgotPasswordScreen,
   GuestPromptScreen,
   OtpScreen,
+  ResetPasswordScreen,
   StateSessionScreen,
 } from '@/features/auth';
 import { CalorieBudgetScreen, QuickLogScreen } from '@/features/dashboard';
@@ -147,6 +148,7 @@ export function MainNavigator() {
           OtpScreen với AuthNavigator, quay lại Settings khi xong (route.params.returnTo). */}
       <Stack.Screen name={MAIN_STACK_ROUTES.FORGOT_PASSWORD} component={ForgotPasswordScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.OTP} component={OtpScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.RESET_PASSWORD} component={ResetPasswordScreen} />
 
       {/* Bottom sheet / dialog — CLAUDE.md mục 10: QuickLog, StateAILimit, DeleteConfirm,
           FilterSheet, GuestPrompt (Đợt 9), AddToMealPlan (Đợt 10), GroceryAdd/GroceryDone/

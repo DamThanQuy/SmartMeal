@@ -46,6 +46,41 @@ export interface AuthResponseDto {
   user: UserDto;
 }
 
+export interface GoogleLoginRequestDto {
+  idToken: string;
+}
+
+export interface ForgotPasswordRequestDto {
+  email: string;
+}
+
+/** BE nhận mục đích dạng slug: 'reset-password' | 'verify-email'. */
+export type OtpPurposeDto = 'reset-password' | 'verify-email';
+
+export interface ResendOtpRequestDto {
+  email: string;
+  purpose: OtpPurposeDto;
+}
+
+export interface VerifyOtpRequestDto {
+  email: string;
+  /** Đúng 6 chữ số. */
+  code: string;
+  purpose: OtpPurposeDto;
+}
+
+export interface VerifyOtpResponseDto {
+  verified: boolean;
+  resetToken: string | null;
+  resetTokenExpiresAt: string | null;
+}
+
+export interface ResetPasswordRequestDto {
+  email: string;
+  resetToken: string;
+  newPassword: string;
+}
+
 export interface RefreshTokenRequestDto {
   refreshToken: string;
 }

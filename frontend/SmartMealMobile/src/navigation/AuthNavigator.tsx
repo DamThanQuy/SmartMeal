@@ -6,6 +6,7 @@ import {
   LoginScreen,
   OtpScreen,
   RegisterScreen,
+  ResetPasswordScreen,
   WelcomeScreen,
 } from '@/features/auth';
 import { useAuthStore } from '@/state/auth/authStore';
@@ -52,6 +53,7 @@ export function AuthNavigator() {
         name={AUTH_ROUTES.FORGOT_PASSWORD}
         component={ForgotPasswordScreen}
       />
+      <Stack.Screen name={AUTH_ROUTES.RESET_PASSWORD} component={ResetPasswordScreen} />
       <Stack.Screen
         name={AUTH_ROUTES.HEALTH_PROFILE_BASIC_INFO}
         component={HealthProfileBasicInfoScreen}

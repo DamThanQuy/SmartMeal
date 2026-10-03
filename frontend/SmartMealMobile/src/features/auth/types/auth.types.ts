@@ -13,6 +13,11 @@ export interface LoginResult {
   user: AuthUser;
 }
 
+/** Đăng nhập Google: gửi Google ID token để máy chủ tự xác minh chữ ký/audience (không gửi email do client tự khai). */
+export interface GoogleLoginPayload {
+  idToken: string;
+}
+
 export interface RegisterPayload {
   fullName: string;
   email: string;
@@ -28,14 +33,41 @@ export interface RegisterResult {
   requiresOtp: boolean;
 }
 
+/** Mục đích mã OTP: xác thực email lúc đăng ký (chỉ mock — BE không bắt OTP khi đăng ký) hoặc đặt lại mật khẩu. */
+export type OtpPurpose = 'register' | 'reset-password';
+
 export interface VerifyOtpPayload {
   email: string;
   code: string;
+  purpose: OtpPurpose;
+}
+
+export interface VerifyOtpResult {
+  /** Chỉ có với mục đích reset-password: dùng một lần ở bước đặt mật khẩu mới (hiệu lực ngắn). */
+  resetToken?: string;
+}
+
+export interface ResendOtpPayload {
+  email: string;
+  purpose: OtpPurpose;
+}
+
+export interface ResetPasswordPayload {
+  email: string;
+  resetToken: string;
+  newPassword: string;
 }
 
 /** EditProfileScreen — chỉ họ tên đổi được (email gắn 1 tài khoản, BR-011). */
 export interface UpdateProfilePayload {
   fullName: string;
+}
+
+/** Ảnh đại diện đã chọn trên máy (đường dẫn cục bộ) để tải lên. */
+export interface UploadAvatarPayload {
+  uri: string;
+  mimeType: string;
+  fileName: string;
 }
 
 export interface ForgotPasswordPayload {

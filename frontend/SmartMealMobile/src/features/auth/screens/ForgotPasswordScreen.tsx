@@ -7,6 +7,7 @@ import { Pressable, View } from 'react-native';
 import { z } from 'zod';
 import { InlineBanner, ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppButton, AppInput, AppText } from '@/components/ui';
+import { AUTH_RULES } from '@/constants/auth';
 import { AUTH_ROUTES, MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { ForgotPasswordReturnTo } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -27,10 +28,10 @@ interface ForgotPasswordScreenProps {
   route: { params?: { returnTo?: ForgotPasswordReturnTo } };
 }
 
-// design/ForgotPassword.dc.html. Không thuộc BR đã đánh số — vì mock đăng nhập không kiểm
-// tra mật khẩu thật (CLAUDE.md mục 8), sau khi xác thực OTP chỉ cần quay lại Login (hoặc Settings
-// nếu mở từ đó — xem route.params.returnTo), không cần màn "đặt mật khẩu mới" riêng (không có
-// artboard cho bước đó).
+// design/ForgotPassword.dc.html. Không thuộc BR đã đánh số. Luồng: email → mã OTP (OtpScreen) → mật
+// khẩu mới (ResetPasswordScreen, không có artboard riêng). route.params.returnTo cho biết mở từ
+// Login hay từ Settings. Backend luôn trả thành công dù email có đăng ký hay không (không lộ tài
+// khoản) nên thông báo ở đây không khẳng định email tồn tại.
 export function ForgotPasswordScreen({ navigation, route }: ForgotPasswordScreenProps) {
   const { colors } = useTheme();
   const returnTo = route.params?.returnTo ?? 'Login';
@@ -106,8 +107,8 @@ export function ForgotPasswordScreen({ navigation, route }: ForgotPasswordScreen
           <InlineBanner
             tone="success-outline"
             icon={<Check size={22} color={colors.primary} />}
-            title="Đã gửi mã tới email của bạn"
-            description="Mã có hiệu lực trong 10 phút."
+            title="Nếu email đã đăng ký, mã đã được gửi"
+            description={`Mã có hiệu lực trong ${AUTH_RULES.OTP_VALIDITY_MINUTES} phút.`}
           />
         ) : null}
 

@@ -25,7 +25,7 @@ const AUTH_RESPONSE: AuthResponseDto = {
 };
 
 function loadService() {
-  const apiMock = { get: jest.fn(), post: jest.fn(), put: jest.fn() };
+  const apiMock = { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() };
   // saveSessionTokens lưu cả access lẫn refresh token (một lần gọi).
   const tokenStorageMock = { set: jest.fn().mockResolvedValue(undefined) };
 
@@ -159,16 +159,6 @@ describe('updateProfile', () => {
   });
 });
 
-describe('hàm BE chưa có', () => {
-  test('OTP và quên mật khẩu không có trong bản API (tự rơi về mock)', () => {
-    const { service } = loadService();
-
-    expect(service.verifyOtp).toBeUndefined();
-    expect(service.resendOtp).toBeUndefined();
-    expect(service.requestPasswordReset).toBeUndefined();
-  });
-});
-
 describe('logout', () => {
   test('POST /auth/logout với refresh token đã đọc từ trước, không gắn Bearer', async () => {
     const { service, apiMock } = loadService();
@@ -181,5 +171,129 @@ describe('logout', () => {
       { refreshToken: 'refresh-1' },
       { skipAuth: true },
     );
+  });
+});
+
+describe('quên / xác thực OTP / đặt lại mật khẩu', () => {
+  test('requestPasswordReset: POST /auth/forgot-password với email đã cắt khoảng trắng', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue(true);
+
+    await service.requestPasswordReset?.({ email: '  an@smartmeal.vn ' });
+
+    expect(apiMock.post).toHaveBeenCalledWith('/auth/forgot-password', { email: 'an@smartmeal.vn' });
+  });
+
+  test.each([
+    ['reset-password', 'reset-password'],
+    ['register', 'verify-email'],
+  ] as const)('resendOtp: mục đích %s gửi slug %s', async (purpose, slug) => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue(true);
+
+    await service.resendOtp?.({ email: 'an@smartmeal.vn', purpose });
+
+    expect(apiMock.post).toHaveBeenCalledWith('/auth/resend-otp', { email: 'an@smartmeal.vn', purpose: slug });
+  });
+
+  test('verifyOtp: gửi mã 6 số và trả resetToken của BE', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue({ verified: true, resetToken: 'reset-abc', resetTokenExpiresAt: '2026-10-03T10:10:00Z' });
+
+    const result = await service.verifyOtp?.({ email: 'an@smartmeal.vn', code: '123456', purpose: 'reset-password' });
+
+    expect(apiMock.post).toHaveBeenCalledWith('/auth/verify-otp', {
+      email: 'an@smartmeal.vn',
+      code: '123456',
+      purpose: 'reset-password',
+    });
+    expect(result).toEqual({ resetToken: 'reset-abc' });
+  });
+
+  test('verifyOtp: xác thực email (không có resetToken) → resetToken undefined', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue({ verified: true, resetToken: null, resetTokenExpiresAt: null });
+
+    const result = await service.verifyOtp?.({ email: 'an@smartmeal.vn', code: '123456', purpose: 'register' });
+
+    expect(result).toEqual({ resetToken: undefined });
+  });
+
+  test('verifyOtp: mã sai → ném lỗi của BE', async () => {
+    const { service, apiMock } = loadService();
+    const error = new Error('Mã xác thực không đúng hoặc đã hết hạn.');
+    apiMock.post.mockRejectedValue(error);
+
+    await expect(
+      service.verifyOtp?.({ email: 'an@smartmeal.vn', code: '000000', purpose: 'reset-password' }),
+    ).rejects.toBe(error);
+  });
+
+  test('resetPassword: POST /auth/reset-password kèm resetToken', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue(true);
+
+    await service.resetPassword?.({ email: 'an@smartmeal.vn', resetToken: 'reset-abc', newPassword: 'MatKhauMoi1!' });
+
+    expect(apiMock.post).toHaveBeenCalledWith('/auth/reset-password', {
+      email: 'an@smartmeal.vn',
+      resetToken: 'reset-abc',
+      newPassword: 'MatKhauMoi1!',
+    });
+  });
+});
+
+describe('ảnh đại diện và xóa dữ liệu', () => {
+  test('uploadAvatar: POST /auth/avatar dạng multipart với trường file, trả avatarUrl mới', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue({ ...USER_DTO, avatarUrl: 'https://cdn.smartmeal.vn/a.jpg' });
+
+    const result = await service.uploadAvatar?.({ uri: 'file:///a.jpg', mimeType: 'image/jpeg', fileName: 'a.jpg' });
+
+    const [url, body, config] = apiMock.post.mock.calls[0];
+    expect(url).toBe('/auth/avatar');
+    expect(body).toBeInstanceOf(FormData);
+    expect(config.headers['Content-Type']).toBe('multipart/form-data');
+    expect(config.timeout).toBeGreaterThan(15000);
+    expect(result).toEqual({ avatarUrl: 'https://cdn.smartmeal.vn/a.jpg' });
+  });
+
+  test('uploadAvatar: BE từ chối ảnh (sai loại/quá lớn) → ném lỗi của BE', async () => {
+    const { service, apiMock } = loadService();
+    const error = new Error('Ảnh tối đa 2 MB.');
+    apiMock.post.mockRejectedValue(error);
+
+    await expect(service.uploadAvatar?.({ uri: 'file:///a.jpg', mimeType: 'image/jpeg', fileName: 'a.jpg' })).rejects.toBe(error);
+  });
+
+  test('deleteMyData: DELETE /me/data', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.delete.mockResolvedValue({ deleted: { diaryItems: 3 } });
+
+    await service.deleteMyData?.();
+
+    expect(apiMock.delete).toHaveBeenCalledWith('/me/data');
+  });
+});
+
+describe('loginWithGoogle', () => {
+  test('POST /auth/google { idToken }, lưu cặp token và trả user', async () => {
+    const { service, apiMock, tokenStorageMock } = loadService();
+    apiMock.post.mockResolvedValue({ ...AUTH_RESPONSE, user: { ...USER_DTO, hasCompletedSurvey: true } });
+
+    const result = await service.loginWithGoogle?.({ idToken: 'google-id-token' });
+
+    expect(apiMock.post).toHaveBeenCalledWith('/auth/google', { idToken: 'google-id-token' });
+    expect(tokenStorageMock.set).toHaveBeenCalledWith(expect.objectContaining({ token: 'jwt-token', refreshToken: 'refresh-token' }));
+    expect(result?.user).toMatchObject({ id: USER_DTO.id, hasCompletedSurvey: true });
+  });
+
+  test('token bị từ chối → ném lỗi và KHÔNG lưu token', async () => {
+    const { service, apiMock, tokenStorageMock } = loadService();
+    const error = new Error('Google ID token không hợp lệ hoặc đã hết hạn.');
+    apiMock.post.mockRejectedValue(error);
+
+    await expect(service.loginWithGoogle?.({ idToken: 'x' })).rejects.toBe(error);
+    expect(tokenStorageMock.set).not.toHaveBeenCalled();
   });
 });

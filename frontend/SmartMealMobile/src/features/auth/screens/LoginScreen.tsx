@@ -39,7 +39,10 @@ export function LoginScreen({ navigation }: Props) {
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: 'smartmealuser@gmail.com', password: 'Smartmeal@123' },
+    // Tài khoản dùng thử chỉ có khi backend chạy Development; bản phát hành không được điền sẵn mật khẩu.
+    defaultValues: __DEV__
+      ? { email: 'smartmealuser@gmail.com', password: 'Smartmeal@123' }
+      : { email: '', password: '' },
   });
 
   const onSubmit = handleSubmit(values => {

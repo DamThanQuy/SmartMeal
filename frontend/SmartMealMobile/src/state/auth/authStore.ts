@@ -53,8 +53,8 @@ export interface AuthState {
   /** reason mặc định 'logout' (Đăng xuất chủ động) — StateSessionScreen truyền 'expired'/'locked',
    * GuestPromptScreen truyền 'guest' khi thoát Guest mode. */
   logout: (reason?: AuthExitReason) => void;
-  /** EditProfileScreen (Đợt 9) — chỉ sửa field cho phép đổi (họ tên); email chỉ đọc (BR-011). */
-  updateUser: (patch: Partial<Pick<AuthUser, 'fullName'>>) => void;
+  /** EditProfileScreen (Đợt 9) — chỉ sửa field cho phép đổi (họ tên, ảnh đại diện); email chỉ đọc (BR-011). */
+  updateUser: (patch: Partial<Pick<AuthUser, 'fullName' | 'avatarUrl'>>) => void;
 }
 
 // Global client state — trạng thái đăng nhập cần cho AppNavigator (Auth/Main switch) và
