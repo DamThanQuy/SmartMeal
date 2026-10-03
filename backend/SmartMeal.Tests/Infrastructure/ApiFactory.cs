@@ -1,7 +1,11 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Npgsql;
+using SmartMeal.Application.Services;
 
 namespace SmartMeal.Tests.Infrastructure;
 
@@ -18,6 +22,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     private readonly string _databaseName = "smartmeal_test_" + Guid.NewGuid().ToString("N");
     private readonly Dictionary<string, string?> _overrides = new();
     private string? _adminConnectionString;
+
+    /// <summary>Bộ xác minh Google giả: đăng ký token → danh tính để kiểm thử đăng nhập Google.</summary>
+    public FakeGoogleTokenVerifier Google { get; } = new();
 
     /// <summary>Ghi đè một giá trị cấu hình cho riêng factory này (gọi trước khi tạo client đầu tiên).</summary>
     public ApiFactory WithSetting(string key, string? value)
@@ -38,6 +45,11 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         }.ConnectionString;
 
         builder.UseEnvironment("Testing");
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<IGoogleTokenVerifier>();
+            services.AddSingleton<IGoogleTokenVerifier>(Google);
+        });
         builder.ConfigureAppConfiguration((_, config) =>
         {
             var settings = new Dictionary<string, string?>
@@ -45,7 +57,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
                 ["ConnectionStrings:DefaultConnection"] = appConnection,
                 ["Jwt:Key"] = TestJwtKey,
                 ["Jwt:Issuer"] = "SmartMealTests",
-                ["Jwt:Audience"] = "SmartMealTests"
+                ["Jwt:Audience"] = "SmartMealTests",
+                // Nhiều test đăng ký người dùng liên tiếp: nới giới hạn tần suất (test riêng sẽ ghi đè về số nhỏ).
+                ["RateLimiting:AuthPermitsPerMinute"] = "100000"
             };
 
             foreach (var (key, value) in _overrides)

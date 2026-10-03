@@ -29,18 +29,40 @@ public class LoginRequestDto
     public string Password { get; set; } = string.Empty;
 }
 
-public class GoogleAuthRequestDto
+/// <summary>Đăng nhập Google: gửi Google ID token để server tự xác minh (không tin email/id do client gửi).</summary>
+public class GoogleLoginRequestDto
 {
-    public string GoogleId { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string FullName { get; set; } = string.Empty;
-    public string? AvatarUrl { get; set; }
+    [Required(ErrorMessage = "idToken là bắt buộc.")]
+    [StringLength(8192, ErrorMessage = "idToken quá dài.")]
+    public string IdToken { get; set; } = string.Empty;
+}
+
+public class RefreshTokenRequestDto
+{
+    [Required(ErrorMessage = "refreshToken là bắt buộc.")]
+    [StringLength(512, ErrorMessage = "refreshToken không hợp lệ.")]
+    public string RefreshToken { get; set; } = string.Empty;
+}
+
+public class LogoutRequestDto
+{
+    [StringLength(512, ErrorMessage = "refreshToken không hợp lệ.")]
+    public string? RefreshToken { get; set; }
 }
 
 public class AuthResponseDto
 {
+    /// <summary>Access token (JWT) — gửi trong header Authorization: Bearer.</summary>
     public string Token { get; set; } = string.Empty;
+
+    /// <summary>Thời điểm access token hết hạn (UTC).</summary>
     public DateTime ExpiresAt { get; set; }
+
+    /// <summary>Refresh token dùng một lần để lấy cặp token mới ở POST /auth/refresh.</summary>
+    public string RefreshToken { get; set; } = string.Empty;
+
+    public DateTime RefreshTokenExpiresAt { get; set; }
+
     public UserDto User { get; set; } = null!;
 }
 

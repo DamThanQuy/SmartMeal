@@ -1,9 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using SmartMeal.API.Infrastructure;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.Auth;
 using SmartMeal.Application.Services;
-using System.Security.Claims;
 
 namespace SmartMeal.API.Controllers;
 
@@ -18,56 +19,49 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
     [HttpPost("register")]
-    public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Register([FromBody] RegisterRequestDto dto)
-    {
-        var result = await _authService.RegisterAsync(dto);
-        if (!result.Success) return BadRequest(result);
-        return Ok(result);
-    }
+    public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Register([FromBody] RegisterRequestDto dto) =>
+        this.ToActionResult(await _authService.RegisterAsync(dto));
 
+    /// <summary>Đăng nhập. Sai quá nhiều lần → 423 (khóa tạm thời); sai thông tin → 401.</summary>
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
     [HttpPost("login")]
-    public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Login([FromBody] LoginRequestDto dto)
-    {
-        var result = await _authService.LoginAsync(dto);
-        if (!result.Success) return Unauthorized(result);
-        return Ok(result);
-    }
+    public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Login([FromBody] LoginRequestDto dto) =>
+        this.ToActionResult(await _authService.LoginAsync(dto));
 
+    /// <summary>Đăng nhập Google bằng Google ID token (server tự xác minh chữ ký và audience).</summary>
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
     [HttpPost("google")]
-    public async Task<ActionResult<ApiResponse<AuthResponseDto>>> GoogleLogin([FromBody] GoogleAuthRequestDto dto)
-    {
-        var result = await _authService.GoogleLoginAsync(dto);
-        return Ok(result);
-    }
+    public async Task<ActionResult<ApiResponse<AuthResponseDto>>> GoogleLogin([FromBody] GoogleLoginRequestDto dto) =>
+        this.ToActionResult(await _authService.GoogleLoginAsync(dto));
+
+    /// <summary>Đổi refresh token (dùng một lần) lấy cặp access + refresh token mới. 401 nếu token sai/đã dùng/hết hạn.</summary>
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    [HttpPost("refresh")]
+    public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Refresh([FromBody] RefreshTokenRequestDto dto) =>
+        this.ToActionResult(await _authService.RefreshAsync(dto));
+
+    /// <summary>Đăng xuất: thu hồi refresh token. Không cần access token (có thể đã hết hạn); luôn trả 200.</summary>
+    [HttpPost("logout")]
+    public async Task<ActionResult<ApiResponse<bool>>> Logout([FromBody] LogoutRequestDto? dto) =>
+        this.ToActionResult(await _authService.LogoutAsync(dto?.RefreshToken));
 
     [Authorize]
     [HttpGet("me")]
     public async Task<ActionResult<ApiResponse<UserDto>>> GetCurrentUser()
     {
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdStr, out var userId))
-        {
-            return Unauthorized(ApiResponse<UserDto>.Fail("Không tìm thấy thông tin phiên đăng nhập."));
-        }
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<UserDto>();
 
-        var result = await _authService.GetCurrentUserAsync(userId);
-        if (!result.Success) return NotFound(result);
-        return Ok(result);
+        return this.ToActionResult(await _authService.GetCurrentUserAsync(userId));
     }
 
     [Authorize]
     [HttpPut("profile")]
     public async Task<ActionResult<ApiResponse<UserDto>>> UpdateProfile([FromBody] UpdateProfileRequestDto dto)
     {
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdStr, out var userId))
-        {
-            return Unauthorized(ApiResponse<UserDto>.Fail("Không tìm thấy thông tin phiên đăng nhập."));
-        }
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<UserDto>();
 
-        var result = await _authService.UpdateProfileAsync(userId, dto);
-        if (!result.Success) return BadRequest(result);
-        return Ok(result);
+        return this.ToActionResult(await _authService.UpdateProfileAsync(userId, dto));
     }
 }

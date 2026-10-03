@@ -28,6 +28,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<GroceryItem> GroceryItems => Set<GroceryItem>();
     public DbSet<UserFavorite> UserFavorites => Set<UserFavorite>();
     public DbSet<OtpVerification> OtpVerifications => Set<OtpVerification>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<WaterLog> WaterLogs => Set<WaterLog>();
     public DbSet<HealthSyncLog> HealthSyncLogs => Set<HealthSyncLog>();
     public DbSet<HealthPet> HealthPets => Set<HealthPet>();
@@ -72,6 +73,25 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<HealthSyncLog>()
             .HasIndex(l => new { l.UserId, l.SyncDate, l.Source })
             .IsUnique();
+
+        // Một tài khoản Google chỉ liên kết với một tài khoản SmartMeal (BR-012); NULL được phép lặp.
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.GoogleId)
+            .IsUnique();
+
+        // RefreshToken: tra theo bản băm; xóa người dùng thì xóa luôn các phiên.
+        modelBuilder.Entity<RefreshToken>()
+            .HasIndex(t => t.TokenHash)
+            .IsUnique();
+
+        modelBuilder.Entity<RefreshToken>()
+            .HasIndex(t => t.UserId);
+
+        modelBuilder.Entity<RefreshToken>()
+            .HasOne(t => t.User)
+            .WithMany(u => u.RefreshTokens)
+            .HasForeignKey(t => t.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // User - HealthProfile (1-1)
         modelBuilder.Entity<HealthProfile>()

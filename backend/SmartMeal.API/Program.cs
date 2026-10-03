@@ -1,5 +1,8 @@
+using System.Globalization;
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -27,6 +30,12 @@ builder.Services
         "Jwt:Key đang là giá trị mẫu đã công khai — hãy sinh khóa ngẫu nhiên mới (vd. openssl rand -base64 48).")
     .ValidateOnStart();
 
+builder.Services
+    .AddOptions<AuthOptions>()
+    .Bind(builder.Configuration.GetSection(AuthOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
 // 2. Database (PostgreSQL)
 builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
 {
@@ -41,6 +50,7 @@ builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
 });
 
 // 3. Dependency Injection
+builder.Services.AddSingleton<IGoogleTokenVerifier, GoogleTokenVerifier>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IHealthProfileService, HealthProfileService>();
@@ -131,6 +141,39 @@ builder.Services
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
+// Giới hạn tần suất theo IP cho các endpoint xác thực (chống dò mật khẩu/spam OTP). Quá giới hạn → 429 envelope.
+// Chạy sau reverse proxy thì cấu hình ForwardedHeaders để RemoteIpAddress là IP thật của client.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, _) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+        }
+
+        await ApiErrorWriter.WriteAsync(
+            context.HttpContext,
+            StatusCodes.Status429TooManyRequests,
+            ApiErrorWriter.DefaultMessage(StatusCodes.Status429TooManyRequests));
+    };
+
+    options.AddPolicy(RateLimitPolicies.Auth, httpContext =>
+    {
+        var permitsPerMinute = httpContext.RequestServices.GetRequiredService<IConfiguration>()
+            .GetValue("RateLimiting:AuthPermitsPerMinute", 30);
+        var key = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = permitsPerMinute,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
+});
+
 // 7. Swagger với JWT
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -201,6 +244,7 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger
 }
 
 app.UseCors("Default");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

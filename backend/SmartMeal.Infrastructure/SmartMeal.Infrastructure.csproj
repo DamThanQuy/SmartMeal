@@ -7,6 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Xác minh Google ID token phía server (đăng nhập Google). -->
+    <PackageReference Include="Google.Apis.Auth" Version="1.77.0" />
     <!-- Ghim EF Core cùng phiên bản với gói Design để mọi project (kể cả test) nạp đúng một phiên bản. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.2" />

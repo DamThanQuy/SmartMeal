@@ -8,7 +8,7 @@ public sealed record ApiEnvelope<T>(bool Success, string? Message, T? Data, List
 
 public sealed record UserPayload(Guid Id, string Email, string FullName, string? AvatarUrl, bool IsPro, string Role, bool HasCompletedSurvey);
 
-public sealed record AuthPayload(string Token, DateTime ExpiresAt, UserPayload User);
+public sealed record AuthPayload(string Token, DateTime ExpiresAt, string RefreshToken, DateTime RefreshTokenExpiresAt, UserPayload User);
 
 /// <summary>Người dùng thử đã đăng ký + client có sẵn Bearer token.</summary>
 public sealed class TestUser
@@ -18,6 +18,7 @@ public sealed class TestUser
     public required string Email { get; init; }
     public required string Password { get; init; }
     public required string Token { get; init; }
+    public required string RefreshToken { get; init; }
 }
 
 public static class ApiTestHelpers
@@ -59,7 +60,8 @@ public static class ApiTestHelpers
             Id = auth.User.Id,
             Email = auth.User.Email,
             Password = password,
-            Token = auth.Token
+            Token = auth.Token,
+            RefreshToken = auth.RefreshToken
         };
     }
 }
