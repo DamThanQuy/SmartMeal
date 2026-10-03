@@ -4,7 +4,7 @@ import { aiService } from '../services/aiService';
 
 export function useAnalyzeMealPhoto() {
   return useMutation({
-    mutationFn: (input: { mealType: MealType; imageUri: string }) =>
+    mutationFn: (input: { mealType: MealType; imageUri?: string }) =>
       aiService.analyzeMealPhoto(input.mealType, input.imageUri),
   });
 }
