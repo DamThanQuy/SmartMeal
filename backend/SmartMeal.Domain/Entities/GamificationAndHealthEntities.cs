@@ -19,7 +19,7 @@ public class HealthSyncLog
     public int StepCount { get; set; }
     public double ActiveCaloriesBurned { get; set; }
     public double DistanceMeters { get; set; }
-    public string Source { get; set; } = "GoogleFit"; // GoogleFit, HealthConnect, AppleHealth
+    public string Source { get; set; } = "GoogleFit"; // HealthConnect, AppleHealth, GoogleFit, Manual
     public DateTime SyncedAt { get; set; } = DateTime.UtcNow;
 }
 

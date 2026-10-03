@@ -41,3 +41,10 @@ public sealed record WeightHistoryPayload(
     string BmiCategory, List<WeightPointPayload> History);
 
 public sealed record MetaItemPayload(int Id, string Code, string Name, string? Description);
+
+public sealed record HealthSyncSummaryPayload(
+    DateOnly Date, int Steps, int StepGoal, double BurnedCalories, double ConsumedCalories, double NetCalories,
+    double TargetCalories, double RemainingCalories, double DistanceMeters, List<string> Sources, string? ActiveSource,
+    DateTime? LastSyncedAt);
+
+public sealed record SyncResultPayload(DateOnly Date, int Steps, double BurnedCalories, double DistanceMeters, string Source, DateTime SyncedAt);

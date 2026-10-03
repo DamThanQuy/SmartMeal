@@ -68,6 +68,11 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<WaterLog>()
             .HasIndex(w => new { w.UserId, w.LogDate });
 
+        // HealthSyncLog: mỗi (người dùng, ngày, nguồn) một bản ghi — gửi lại thì thay thế, không nhân đôi (P1-BE-09).
+        modelBuilder.Entity<HealthSyncLog>()
+            .HasIndex(l => new { l.UserId, l.SyncDate, l.Source })
+            .IsUnique();
+
         // User - HealthProfile (1-1)
         modelBuilder.Entity<HealthProfile>()
             .HasOne(hp => hp.User)
