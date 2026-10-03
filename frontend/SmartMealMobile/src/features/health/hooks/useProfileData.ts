@@ -86,6 +86,28 @@ export function useUpdateBasicInfo() {
   });
 }
 
+// Mục tiêu nước/ngày nằm trong hồ sơ trên server: đổi xong nạp hồ sơ mới vào store và làm mới nơi
+// hiển thị nó (màn Uống nước, nhiệm vụ "Uống đủ nước" của Bé Mầm).
+export function useUpdateWaterGoal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (waterGoalMl: number) => ({
+      waterGoalMl,
+      profile: await healthProfileService.updateWaterGoal(waterGoalMl),
+    }),
+    onSuccess: ({ waterGoalMl, profile }) => {
+      if (profile) {
+        applyHydrated(profile);
+      } else {
+        // Bản mock không có hồ sơ mới từ server → chỉ áp mục tiêu vào store.
+        useUserProfileStore.getState().setWaterGoalMl(waterGoalMl);
+      }
+      void queryClient.invalidateQueries({ queryKey: ['water'] });
+      void queryClient.invalidateQueries({ queryKey: ['pet'] });
+    },
+  });
+}
+
 export function useUpdateHealthSettings() {
   const queryClient = useQueryClient();
   return useMutation({

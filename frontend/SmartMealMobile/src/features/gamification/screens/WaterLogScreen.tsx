@@ -5,6 +5,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { Circle, Svg } from 'react-native-svg';
 import { ErrorState, LoadingState, ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppBadge, AppButton, AppCard, AppChip, AppIconButton, AppInput, AppText } from '@/components/ui';
+import { useUpdateWaterGoal } from '@/features/health';
 import { todayIso } from '@/features/nutrition';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
@@ -40,7 +41,7 @@ export function WaterLogScreen({ navigation }: Props) {
   const undoLast = useUndoLastWaterEntry(dateIso);
   const deleteEntry = useDeleteWaterEntry(dateIso);
   const waterGoalMl = useUserProfileStore(state => state.waterGoalMl);
-  const setWaterGoalMl = useUserProfileStore(state => state.setWaterGoalMl);
+  const updateWaterGoal = useUpdateWaterGoal();
 
   const [customAmount, setCustomAmount] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
@@ -78,15 +79,19 @@ export function WaterLogScreen({ navigation }: Props) {
     setShowCustomInput(false);
   };
 
+  // Mục tiêu nằm trong hồ sơ trên server: chỉ đóng ô nhập khi lưu xong; lỗi (vd. ngoài 500–10000 ml)
+  // thì giữ ô nhập và hiện thông báo của BE.
   const submitGoal = () => {
     const goal = Number(draftGoal);
     if (Number.isFinite(goal) && goal > 0) {
-      setWaterGoalMl(Math.round(goal));
+      updateWaterGoal.mutate(Math.round(goal), { onSuccess: () => setShowGoalInput(false) });
     } else {
       setDraftGoal(String(waterGoalMl));
+      setShowGoalInput(false);
     }
-    setShowGoalInput(false);
   };
+
+  const actionError = addEntry.error ?? undoLast.error ?? deleteEntry.error;
 
   return (
     <ScreenContainer>
@@ -179,6 +184,12 @@ export function WaterLogScreen({ navigation }: Props) {
         </View>
       ) : null}
 
+      {actionError ? (
+        <AppText variant="caption" color="error" className="pt-sm text-center">
+          {actionError.message}
+        </AppText>
+      ) : null}
+
       <AppCard className="mt-lg gap-xxs">
         <View className="flex-row items-center justify-between pb-xxs">
           <AppText variant="h3">Hôm nay</AppText>
@@ -258,7 +269,12 @@ export function WaterLogScreen({ navigation }: Props) {
               onChangeText={setDraftGoal}
               className="flex-1"
             />
-            <AppButton label="Lưu" onPress={submitGoal} className="h-[48px]" />
+            <AppButton
+              label="Lưu"
+              onPress={submitGoal}
+              loading={updateWaterGoal.isPending}
+              className="h-[48px]"
+            />
           </View>
         ) : (
           <>

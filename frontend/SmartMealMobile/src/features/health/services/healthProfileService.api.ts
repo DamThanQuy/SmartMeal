@@ -121,4 +121,16 @@ export const healthProfileApiService: Partial<typeof healthProfileMockService> =
     await saveLocalExtras(extras);
     return { snapshot: fromHealthProfileDto(dto, catalog), extras };
   },
+
+  // PUT /healthprofile { waterGoalMl } — mục tiêu nước/ngày (500–10000 ml) nằm trong hồ sơ trên
+  // server nên đổi ở đây là đổi cho mọi nơi đọc nó (nhật ký nước, nhiệm vụ của Bé Mầm).
+  async updateWaterGoal(waterGoalMl) {
+    const [dto, catalog] = await Promise.all([
+      api.put<HealthProfileDto, UpdateHealthProfileRequest>(ENDPOINTS.healthProfile.profile, {
+        waterGoalMl,
+      }),
+      getMetaCatalog(),
+    ]);
+    return hydrated(dto, catalog);
+  },
 };

@@ -409,3 +409,25 @@ describe('updateHealthSettings', () => {
     expect(extrasStorage.save).not.toHaveBeenCalled();
   });
 });
+
+describe('updateWaterGoal', () => {
+  test('PUT /healthprofile chỉ với waterGoalMl; trả hồ sơ mới có mục tiêu nước do BE lưu', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.put.mockResolvedValue({ ...PROFILE_DTO, waterGoalMl: 2400 });
+
+    const profile = await service.updateWaterGoal?.(2400);
+
+    expect(apiMock.put).toHaveBeenCalledTimes(1);
+    expect(apiMock.put).toHaveBeenCalledWith('/healthprofile', { waterGoalMl: 2400 });
+    expect(apiMock.post).not.toHaveBeenCalled();
+    expect(profile?.snapshot.waterGoalMl).toBe(2400);
+  });
+
+  test('BE từ chối (ngoài 500–10000 ml) → ném lỗi của BE', async () => {
+    const { service, apiMock, ApiError } = loadService();
+    const error = new ApiError('Mục tiêu nước uống phải từ 500 đến 10000 ml.', 'BUSINESS', 400);
+    apiMock.put.mockRejectedValue(error);
+
+    await expect(service.updateWaterGoal?.(50)).rejects.toBe(error);
+  });
+});

@@ -110,6 +110,13 @@ export const healthProfileMockService = {
     await simulateRequest('Không thể lưu thay đổi, vui lòng thử lại.');
     return null;
   },
+
+  // WaterLogScreen "Đổi mục tiêu" — mục tiêu nước chỉ là một con số trong hồ sơ, không ảnh hưởng
+  // chỉ số đã tính, nên cũng không có hồ sơ mới (null = chỉ áp vào userProfileStore).
+  async updateWaterGoal(_waterGoalMl: number): Promise<HydratedHealthProfile | null> {
+    await simulateRequest('Không thể lưu mục tiêu nước, vui lòng thử lại.');
+    return null;
+  },
 };
 
 // BR-271 — DeleteDataScreen: hồ sơ sức khỏe/cân nặng về lại giá trị khởi tạo (mô phỏng "xóa dữ

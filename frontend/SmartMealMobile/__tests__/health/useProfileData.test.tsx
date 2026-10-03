@@ -8,6 +8,7 @@ import {
   useRecordWeight,
   useUpdateBasicInfo,
   useUpdateHealthSettings,
+  useUpdateWaterGoal,
   useWeightHistory,
 } from '@/features/health/hooks/useProfileData';
 import { healthProfileService } from '@/features/health/services/healthProfileService';
@@ -25,6 +26,7 @@ jest.mock('@/features/health/services/healthProfileService', () => ({
     recordWeight: jest.fn(),
     updateBasicInfo: jest.fn(),
     updateHealthSettings: jest.fn(),
+    updateWaterGoal: jest.fn(),
   },
 }));
 
@@ -231,6 +233,46 @@ describe('useWeightHistory', () => {
 
     expect(hook.current.data).toEqual(history);
     expect(hook.queryClient.getQueryData(WEIGHT_HISTORY_QUERY_KEY)).toEqual(history);
+    await hook.unmount();
+  });
+});
+
+describe('useUpdateWaterGoal', () => {
+  test('BE trả hồ sơ mới → nạp mục tiêu nước vào store và làm mới nước + Bé Mầm', async () => {
+    service.updateWaterGoal.mockResolvedValue(profile({ waterGoalMl: 2400 }));
+    const hook = await renderHookWithQuery(() => useUpdateWaterGoal());
+    const invalidate = jest.spyOn(hook.queryClient, 'invalidateQueries');
+
+    await hook.run(() => hook.current.mutateAsync(2400));
+
+    expect(service.updateWaterGoal).toHaveBeenCalledWith(2400);
+    expect(useUserProfileStore.getState().waterGoalMl).toBe(2400);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['water'] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['pet'] });
+    await hook.unmount();
+  });
+
+  test('bản mock (service trả null) → chỉ áp mục tiêu vào store', async () => {
+    service.updateWaterGoal.mockResolvedValue(null);
+    const hook = await renderHookWithQuery(() => useUpdateWaterGoal());
+
+    await hook.run(() => hook.current.mutateAsync(1800));
+
+    expect(useUserProfileStore.getState().waterGoalMl).toBe(1800);
+    await hook.unmount();
+  });
+
+  test('BE từ chối → store giữ nguyên mục tiêu cũ, mutation báo lỗi', async () => {
+    useUserProfileStore.setState({ waterGoalMl: 2000 });
+    const error = new Error('Mục tiêu nước uống phải từ 500 đến 10000 ml.');
+    service.updateWaterGoal.mockRejectedValue(error);
+    const hook = await renderHookWithQuery(() => useUpdateWaterGoal());
+    const invalidate = jest.spyOn(hook.queryClient, 'invalidateQueries');
+
+    await expect(hook.run(() => hook.current.mutateAsync(50))).rejects.toBe(error);
+
+    expect(useUserProfileStore.getState().waterGoalMl).toBe(2000);
+    expect(invalidate).not.toHaveBeenCalled();
     await hook.unmount();
   });
 });
