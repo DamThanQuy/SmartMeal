@@ -16,6 +16,17 @@ import type {
 // TODO: replace mock with real API (src/services/api/client.ts + endpoints.ts khi nối backend thật)
 
 function buildMockUser(fullName: string, email: string, hasCompletedSurvey: boolean): AuthUser {
+  if (email.toLowerCase() === 'smartmealuser@gmail.com') {
+    return {
+      id: 'usr_smartmeal_default_01',
+      fullName: 'SmartMeal User',
+      email: 'smartmealuser@gmail.com',
+      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde',
+      isPro: true,
+      role: 'User',
+      hasCompletedSurvey: true,
+    };
+  }
   return {
     id: 'mock-user-1',
     fullName,

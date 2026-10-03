@@ -315,7 +315,11 @@ await using (var scope = app.Services.CreateAsyncScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         await db.Database.MigrateAsync();
-        await DbInitializer.SeedAsync(db);
+        // Tài khoản dùng thử (smartmealuser@gmail.com) có mật khẩu đã biết nên CHỈ được tạo ở môi trường Development.
+        await DbInitializer.SeedAsync(
+            db,
+            seedDevAccount: app.Environment.IsDevelopment(),
+            devAccountPassword: app.Configuration["Seed:DevAccountPassword"]);
         logger.LogInformation("[Database] Migration and seed applied successfully.");
     }
     catch (Exception ex) when (app.Environment.IsDevelopment())

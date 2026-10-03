@@ -1,12 +1,21 @@
 using Microsoft.EntityFrameworkCore;
 using SmartMeal.Application.Common;
+using SmartMeal.Application.Services;
 using SmartMeal.Domain.Entities;
 
 namespace SmartMeal.Infrastructure.Data;
 
 public static class DbInitializer
 {
-    public static async Task SeedAsync(ApplicationDbContext db)
+    /// <summary>Email tài khoản dùng thử cho môi trường phát triển (app mock đăng nhập bằng tài khoản này).</summary>
+    public const string DevAccountEmail = "smartmealuser@gmail.com";
+
+    /// <summary>Mật khẩu mặc định của tài khoản dev; đổi bằng cấu hình <c>Seed:DevAccountPassword</c>.</summary>
+    public const string DefaultDevPassword = "Smartmeal@123";
+
+    /// <param name="seedDevAccount">Chỉ bật ở môi trường Development: tạo tài khoản dùng thử có mật khẩu đã biết. TUYỆT ĐỐI không bật khi triển khai thật.</param>
+    /// <param name="devAccountPassword">Mật khẩu cho tài khoản dev (mặc định <see cref="DefaultDevPassword"/>).</param>
+    public static async Task SeedAsync(ApplicationDbContext db, bool seedDevAccount = false, string? devAccountPassword = null)
     {
         if (!db.Recipes.Any())
         {
@@ -226,12 +235,65 @@ public static class DbInitializer
 
         await db.SaveChangesAsync();
 
+        if (seedDevAccount)
+        {
+            await EnsureDevAccountAsync(db, devAccountPassword ?? DefaultDevPassword);
+        }
+
         await EnsureChallengeRulesAsync(db);
         await EnsureRecipeMealTypesAsync(db);
         await EnsureSeedDishesAsync(db);
         await EnsureIngredientAllergensAsync(db);
         await EnsureFoodServingsAsync(db);
         await EnsureFoodSearchTextAsync(db);
+    }
+
+    /// <summary>
+    /// Tài khoản dùng thử cho môi trường Development: đã xác thực email, có hồ sơ sức khỏe và Premium một năm.
+    /// Chỉ tạo khi chưa có nên không ghi đè mật khẩu nếu người dùng đã đổi.
+    /// </summary>
+    private static async Task EnsureDevAccountAsync(ApplicationDbContext db, string password)
+    {
+        if (await db.Users.AnyAsync(u => u.Email == DevAccountEmail))
+        {
+            return;
+        }
+
+        var user = new User
+        {
+            Email = DevAccountEmail,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+            FullName = "SmartMeal User",
+            Role = "User",
+            IsEmailVerified = true,
+            IsPro = true,
+            SubscriptionStatus = SubscriptionStatuses.Premium,
+            ProExpiresAt = DateTime.UtcNow.AddYears(1)
+        };
+
+        var profile = new HealthProfile
+        {
+            UserId = user.Id,
+            Gender = "Male",
+            Age = 25,
+            HeightCm = 175,
+            CurrentWeightKg = 68,
+            TargetWeightKg = 65,
+            ActivityLevel = "Moderate",
+            Goal = "LoseWeight"
+        };
+        profile.BMI = NutritionCalculator.CalculateBmi(profile.CurrentWeightKg, profile.HeightCm);
+        profile.BMR = NutritionCalculator.CalculateBmr(profile.Gender, profile.CurrentWeightKg, profile.HeightCm, profile.Age);
+        profile.TDEE = NutritionCalculator.CalculateTdee(profile.BMR, profile.ActivityLevel);
+        var (calories, carbs, fat, protein) = NutritionCalculator.CalculateGoals(profile.TDEE, profile.Goal);
+        profile.DailyCaloriesTarget = calories;
+        profile.DailyCarbsTargetGrams = carbs;
+        profile.DailyFatTargetGrams = fat;
+        profile.DailyProteinTargetGrams = protein;
+
+        db.Users.Add(user);
+        db.HealthProfiles.Add(profile);
+        await db.SaveChangesAsync();
     }
 
     // Luật chấm của ba thử thách mẫu (dữ liệu cũ tạo trước khi có cột Category/TargetValuePerDay nên mọi dòng đều là EatClean, mục tiêu 0).

@@ -1,9 +1,7 @@
-import { UtensilsCrossed } from 'lucide-react-native';
+import { Image } from 'expo-image';
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { AppBadge, AppText } from '@/components/ui';
-import { shadows } from '@/theme/shadows';
-import { useTheme } from '@/theme/ThemeProvider';
 import type { RecommendedMeal } from '../types/dashboard.types';
 
 export interface RecommendedMealCardProps {
@@ -11,19 +9,33 @@ export interface RecommendedMealCardProps {
   onPress?: () => void;
 }
 
-// design/Dashboard.dc.html "Gợi ý bữa tối" — trỏ tới RecipeDetail.dc.html (Đợt 5 mới dựng),
-// nên tạm hiển thị tĩnh, không điều hướng (TODO nối khi Đợt 5 xong — xem báo cáo Đợt 2).
-export function RecommendedMealCard({ meal, onPress }: RecommendedMealCardProps) {
-  const { colors } = useTheme();
+const MEAL_IMAGES = {
+  bowl: require('../../../../assets/images/meal-bowl.jpg'),
+  salad: require('../../../../assets/images/vegetable-salad.jpg'),
+};
 
+export function RecommendedMealCard({
+  meal,
+  onPress,
+}: RecommendedMealCardProps) {
   return (
-    <Pressable style={shadows.card} className="flex-row gap-sm rounded-card bg-surface p-sm" onPress={onPress}>
-      <View className="h-[96px] w-[112px] items-center justify-center rounded-md bg-primary-soft">
-        <UtensilsCrossed size={26} color={colors.primary} />
-      </View>
-      <View className="justify-center gap-xs py-xxs">
-        <AppText variant="bodyMedium">{meal.name}</AppText>
-        <AppText variant="body" color="secondary">
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${meal.name}, ${meal.durationMinutes} phút, ${meal.calories} kcal`}
+      onPress={onPress}
+      className="flex-1 overflow-hidden rounded-card border border-border bg-surface active:opacity-80"
+    >
+      <Image
+        source={MEAL_IMAGES[meal.imageKey ?? 'bowl']}
+        accessibilityLabel={meal.name}
+        contentFit="cover"
+        style={{ width: '100%', height: 136 }}
+      />
+      <View className="gap-xs p-sm">
+        <AppText variant="bodyMedium" numberOfLines={1}>
+          {meal.name}
+        </AppText>
+        <AppText variant="caption" color="secondary">
           {`${meal.durationMinutes} phút · ${meal.calories} kcal`}
         </AppText>
         <AppBadge label={meal.tag} />

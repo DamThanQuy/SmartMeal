@@ -1,14 +1,28 @@
 import { format } from 'date-fns';
 import { gamificationService } from '@/features/gamification';
-import { healthSyncService, nutritionService, todayIso, type DailyActivity } from '@/features/nutrition';
+import {
+  healthSyncService,
+  nutritionService,
+  todayIso,
+  type DailyActivity,
+} from '@/features/nutrition';
 import { parseApiDateTime } from '@/utils/date';
-import { RECOMMENDED_MEAL_MOCK } from '../mocks/dashboard.mock';
-import type { ActivitySummary, DashboardSummary, PetSnippet } from '../types/dashboard.types';
+import {
+  RECOMMENDED_MEAL_MOCK,
+  RECOMMENDED_MEALS_MOCK,
+} from '../mocks/dashboard.mock';
+import type {
+  ActivitySummary,
+  DashboardSummary,
+  PetSnippet,
+} from '../types/dashboard.types';
 
 // TODO: replace mock with real API — recommendedMeal sẽ đến từ feature recipes AI suggestion khi
 // có. Loading/Empty/Error của cả Dashboard đi theo đúng 1 nguồn (nutritionService.getDiaryDay) để
 // nhất quán với Diary — không tự thêm delay/scenario riêng ở đây.
-function toPetSnippet(pet: Awaited<ReturnType<typeof gamificationService.getPetState>>): PetSnippet {
+function toPetSnippet(
+  pet: Awaited<ReturnType<typeof gamificationService.getPetState>>,
+): PetSnippet {
   return {
     name: pet.name,
     level: pet.level,
@@ -45,9 +59,13 @@ export const dashboardService = {
     return {
       diary: diaryResult.value,
       activity:
-        activityResult.status === 'fulfilled' ? toActivitySummary(activityResult.value) : null,
-      pet: petResult.status === 'fulfilled' ? toPetSnippet(petResult.value) : null,
+        activityResult.status === 'fulfilled'
+          ? toActivitySummary(activityResult.value)
+          : null,
+      pet:
+        petResult.status === 'fulfilled' ? toPetSnippet(petResult.value) : null,
       recommendedMeal: RECOMMENDED_MEAL_MOCK,
+      recommendedMeals: RECOMMENDED_MEALS_MOCK,
     };
   },
 };

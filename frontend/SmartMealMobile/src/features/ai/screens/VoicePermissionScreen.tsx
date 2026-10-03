@@ -1,6 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Audio } from 'expo-av';
 import { MicOff } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Linking, View } from 'react-native';
 import { ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppButton, AppCard, AppInput, AppText } from '@/components/ui';
@@ -14,9 +15,6 @@ import { useAiQuotaStore } from '../state/aiQuotaStore';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'VoicePermission'>;
 
-// design/VoicePermission.dc.html (BR-252). Nhánh feat/mock-ui mô phỏng "chưa cấp quyền micro"
-// mỗi khi vào luồng Voice Logging lần đầu trong phiên — không gọi expo-av thật. "Hoặc gõ bữa ăn
-// của bạn" vẫn đi qua đúng aiService + bước Review như VoiceLog (không tự lưu, BR-054).
 export function VoicePermissionScreen({ navigation, route }: Props) {
   const { mealType } = route.params;
   const { colors } = useTheme();
@@ -24,10 +22,43 @@ export function VoicePermissionScreen({ navigation, route }: Props) {
   const { consumeQuota } = useAiQuota();
   const transcribeVoice = useTranscribeVoice();
   const [manualText, setManualText] = useState('');
+  const [isRequesting, setIsRequesting] = useState(false);
 
-  const handleAllowMic = () => {
-    grantMicPermission();
-    navigation.replace(MAIN_STACK_ROUTES.VOICE_LOG, { mealType });
+  // Nếu thiết bị đã cấp quyền trước đó, tự động chuyển vào màn hình ghi âm
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const { status } = await Audio.getPermissionsAsync();
+        if (status === 'granted' && isMounted) {
+          grantMicPermission();
+          navigation.replace(MAIN_STACK_ROUTES.VOICE_LOG, { mealType });
+        }
+      } catch {
+        // Bỏ qua lỗi đọc quyền ban đầu
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [grantMicPermission, mealType, navigation]);
+
+  const handleAllowMic = async () => {
+    if (isRequesting) return;
+    try {
+      setIsRequesting(true);
+      const res = await Audio.requestPermissionsAsync();
+      if (res.granted) {
+        grantMicPermission();
+        navigation.replace(MAIN_STACK_ROUTES.VOICE_LOG, { mealType });
+      } else if (!res.canAskAgain) {
+        await Linking.openSettings();
+      }
+    } catch {
+      await Linking.openSettings();
+    } finally {
+      setIsRequesting(false);
+    }
   };
 
   const handleAnalyzeText = () => {
@@ -57,12 +88,19 @@ export function VoicePermissionScreen({ navigation, route }: Props) {
             SmartMeal cần quyền dùng micro
           </AppText>
           <AppText variant="body" color="secondary" className="text-center">
-            Micro dùng để ghi lại mô tả bữa ăn của bạn. Bạn có thể bật lại trong cài đặt máy bất cứ
-            lúc nào.
+            Micro dùng để ghi lại mô tả bữa ăn của bạn bằng giọng nói. Bạn có thể bật lại trong cài đặt máy bất cứ lúc nào.
           </AppText>
           <View className="mt-sm w-full gap-sm">
-            <AppButton label="Cho phép micro" onPress={handleAllowMic} />
-            <AppButton label="Mở cài đặt máy" variant="outline" onPress={() => Linking.openSettings()} />
+            <AppButton
+              label="Cho phép dùng micro"
+              onPress={handleAllowMic}
+              loading={isRequesting}
+            />
+            <AppButton
+              label="Mở cài đặt máy"
+              variant="outline"
+              onPress={() => Linking.openSettings()}
+            />
           </View>
         </View>
 

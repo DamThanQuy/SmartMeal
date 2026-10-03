@@ -2,6 +2,21 @@
 
 Cập nhật sau mỗi màn/đợt theo CLAUDE.md mục 10. Thứ tự theo `design/screens.json`.
 
+**Theme theo ảnh tham chiếu — 03/10/2026:** cập nhật palette sáng/tối dùng chung, nạp font Inter
+cục bộ, header trang chủ có nút đổi theme lưu preference, thẻ calo xanh với thanh tiến độ,
+`MacroStatGrid.targets` hiển thị ba ô dinh dưỡng, mẹo hôm nay và gợi ý hai cột có ảnh cục bộ.
+`ScreenContainer.header` hỗ trợ header cố định. Các khối ghi bữa ăn, bữa ăn hôm nay, vận động
+và Bé Mầm tiếp tục xuất hiện bên dưới. Thanh tab theo mẫu: Trang chủ · Bữa ăn · Khám phá ·
+Nhật ký · Cá nhân. Gợi ý món vẫn là dữ liệu mẫu của dashboard.
+
+**Điều chỉnh dark mode:** nền đen thuần `#000000`, thẻ xám đen `#111111`, chữ và viền xám
+trung tính; màu xanh lá tiếp tục dùng cho điểm nhấn.
+
+Kiểm tra: `tsc --noEmit` và ESLint các file thay đổi đạt; 6 test `dashboardService` đạt.
+Preview web 390/320 px không tràn ngang, chuyển theme và lưu lựa chọn sau reload hoạt động,
+điều hướng từ Chi tiết dinh dưỡng sang Nhật ký hoạt động, không có lỗi JavaScript runtime.
+Lint toàn dự án còn 2 lỗi có sẵn của `react-hooks/immutability` trong `PetAnimation`/`PetScreen`.
+
 | Artboard | Feature | Screen file | Trạng thái | Ghi chú |
 |---|---|---|---|---|
 | Main.dc.html | auth | `features/auth/screens/LoginScreen.tsx` | done | Đợt 1. Nút "Khám phá không cần đăng nhập" chưa nối (chờ Đợt 5 — Discovery). **Đợt 9:** đã nối — gọi `continueAsGuest()` (authStore). Không còn là điểm vào duy nhất trước đăng nhập — `AuthNavigator` nay khởi đầu ở `WelcomeScreen`, Login chỉ còn là 1 bước (từ "Tôi đã có tài khoản"). |

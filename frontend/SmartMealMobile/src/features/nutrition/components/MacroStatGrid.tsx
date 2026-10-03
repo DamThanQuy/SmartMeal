@@ -8,6 +8,8 @@ export interface MacroStatGridProps {
   fatG: number;
   /** Thêm tiền tố "≈" khi số liệu đến từ AI Estimate (BR-061). */
   estimated?: boolean;
+  /** Dashboard dùng ba ô tổng quan và phần trăm mục tiêu. */
+  targets?: { proteinG: number; carbsG: number; fatG: number };
   className?: string;
 }
 
@@ -17,29 +19,56 @@ export function MacroStatGrid({
   carbsG,
   fatG,
   estimated = false,
+  targets,
   className = '',
 }: MacroStatGridProps) {
   const prefix = estimated ? '≈ ' : '';
-  const items: { label: string; value: number }[] = [
-    { label: 'Protein', value: proteinG },
-    { label: 'Carbs', value: carbsG },
-    { label: 'Fat', value: fatG },
+  const items = [
+    {
+      label: targets ? 'Đạm' : 'Protein',
+      value: proteinG,
+      target: targets?.proteinG,
+    },
+    {
+      label: targets ? 'Tinh bột' : 'Carbs',
+      value: carbsG,
+      target: targets?.carbsG,
+    },
+    { label: targets ? 'Chất béo' : 'Fat', value: fatG, target: targets?.fatG },
   ];
 
   return (
     <View className={`flex-row gap-xs ${className}`}>
       {items.map(item => (
-        <View key={item.label} className="flex-1 gap-xxs rounded-md bg-background p-sm">
+        <View
+          key={item.label}
+          className={`flex-1 gap-xxs p-sm ${targets ? 'rounded-card border border-border bg-surface' : 'rounded-md bg-background'}`}
+        >
           <AppText variant="caption" color="secondary">
             {item.label}
           </AppText>
           <AppText variant="h3">
             {prefix}
-            {item.value}
-            <AppText variant="caption" color="secondary">
+            {targets ? Math.round(item.value * 10) / 10 : item.value}
+            <AppText
+              variant={targets ? 'bodyMedium' : 'caption'}
+              color={targets ? 'primary' : 'secondary'}
+            >
               {' g'}
             </AppText>
           </AppText>
+          {targets ? (
+            <AppText
+              variant="caption"
+              color="onPrimarySoft"
+              className="font-sans-semibold"
+            >
+              {item.target && item.target > 0
+                ? Math.round((item.value / item.target) * 100)
+                : 0}
+              %
+            </AppText>
+          ) : null}
         </View>
       ))}
     </View>

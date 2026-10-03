@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Camera } from 'lucide-react-native';
 import React from 'react';
-import { View } from 'react-native';
+import { Linking, View } from 'react-native';
 import { ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppButton, AppText } from '@/components/ui';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
@@ -10,8 +10,6 @@ import { useTheme } from '@/theme/ThemeProvider';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'StatePermission'>;
 
-// design/StatePermission.dc.html. Camera thật (expo-camera) chưa nối nên "Cho phép camera" chỉ
-// thử lại đúng màn camera trước đó (returnTo); "Mở cài đặt máy" chưa có OS setting thật để mở.
 export function StatePermissionScreen({ navigation, route }: Props) {
   const { mealType, returnTo } = route.params;
   const { colors } = useTheme();
@@ -19,6 +17,8 @@ export function StatePermissionScreen({ navigation, route }: Props) {
   const handleAllow = () => {
     if (returnTo === 'Fridge') {
       navigation.replace(MAIN_STACK_ROUTES.FRIDGE);
+    } else if (returnTo === 'AICamera') {
+      navigation.replace(MAIN_STACK_ROUTES.AI_CAMERA, { mealType: mealType ?? 'dinner' });
     } else {
       navigation.replace(MAIN_STACK_ROUTES.BARCODE, { mealType: mealType ?? 'snack' });
     }
@@ -26,7 +26,7 @@ export function StatePermissionScreen({ navigation, route }: Props) {
 
   return (
     <ScreenContainer>
-      <ScreenHeader title="Quét sản phẩm" onBack={() => navigation.navigate(MAIN_STACK_ROUTES.QUICK_LOG, { mealType })} />
+      <ScreenHeader title="Quyền camera" onBack={() => navigation.goBack()} />
       <View className="flex-1 items-center justify-center gap-sm px-lg">
         <View className="h-[72px] w-[72px] items-center justify-center rounded-full bg-primary-soft">
           <Camera size={34} color={colors.primary} />
@@ -41,11 +41,10 @@ export function StatePermissionScreen({ navigation, route }: Props) {
 
         <View className="mt-sm w-full gap-sm">
           <AppButton label="Cho phép camera" onPress={handleAllow} />
-          {/* Chưa có API mở Settings hệ điều hành thật trong phạm vi mock UI. */}
           <AppButton
             label="Mở cài đặt máy"
             variant="outline"
-            disabled
+            onPress={() => Linking.openSettings()}
           />
           <AppButton
             label="Nhập thủ công"
