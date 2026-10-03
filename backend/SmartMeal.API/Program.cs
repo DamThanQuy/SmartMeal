@@ -1,9 +1,11 @@
 using System.Globalization;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -52,6 +54,12 @@ builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
 // 3. Dependency Injection
 builder.Services.AddSingleton<IGoogleTokenVerifier, GoogleTokenVerifier>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
+builder.Services.AddScoped<ILoginAttemptTracker, LoginAttemptTracker>();
+builder.Services.AddScoped<IAccountService, AccountService>();
+
+// File người dùng tải lên (ảnh đại diện) lưu cục bộ dưới Storage:Root và phục vụ tĩnh tại /uploads.
+builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.SectionName));
+builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
 
 // Gửi email: SMTP thật khi có Smtp:Host, ngược lại chỉ ghi log (Development in cả mã OTP).
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.SectionName));
@@ -103,6 +111,21 @@ builder.Services
         // 401/403 trả envelope ApiResponse thay vì body rỗng.
         bearer.Events = new JwtBearerEvents
         {
+            // Token còn hạn nhưng tài khoản đã bị xóa → từ chối ngay (thay vì lỗi khóa ngoại ở các thao tác sau).
+            OnTokenValidated = async context =>
+            {
+                if (!Guid.TryParse(context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                {
+                    context.Fail("invalid_subject");
+                    return;
+                }
+
+                var db = context.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+                if (!await db.Users.AsNoTracking().AnyAsync(u => u.Id == userId, context.HttpContext.RequestAborted))
+                {
+                    context.Fail("user_not_found");
+                }
+            },
             OnChallenge = async context =>
             {
                 context.HandleResponse();
@@ -253,6 +276,21 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger
         c.RoutePrefix = "swagger";
     });
 }
+
+// Phục vụ file người dùng tải lên. File có tên ngẫu nhiên nên cache lâu được; nosniff chặn trình duyệt đoán loại file.
+var uploadsRoot = LocalFileStorage.ResolveRoot(
+    app.Services.GetRequiredService<IOptions<StorageOptions>>().Value, app.Environment);
+Directory.CreateDirectory(uploadsRoot);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsRoot),
+    RequestPath = "/uploads",
+    OnPrepareResponse = context =>
+    {
+        context.Context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+        context.Context.Response.Headers["Cache-Control"] = "public,max-age=31536000,immutable";
+    }
+});
 
 app.UseCors("Default");
 app.UseRateLimiter();

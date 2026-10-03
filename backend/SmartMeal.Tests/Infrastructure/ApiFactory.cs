@@ -29,6 +29,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     /// <summary>Bộ gửi email giả: giữ các email đã "gửi" (OTP...) để test đọc mã.</summary>
     public FakeEmailSender Email { get; } = new();
 
+    /// <summary>Thư mục tạm riêng của factory dùng làm Storage:Root (xóa khi dispose).</summary>
+    public string UploadsRoot { get; } = Path.Combine(Path.GetTempPath(), "smartmeal-tests", Guid.NewGuid().ToString("N"));
+
     /// <summary>Ghi đè một giá trị cấu hình cho riêng factory này (gọi trước khi tạo client đầu tiên).</summary>
     public ApiFactory WithSetting(string key, string? value)
     {
@@ -64,7 +67,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
                 ["Jwt:Issuer"] = "SmartMealTests",
                 ["Jwt:Audience"] = "SmartMealTests",
                 // Nhiều test đăng ký người dùng liên tiếp: nới giới hạn tần suất (test riêng sẽ ghi đè về số nhỏ).
-                ["RateLimiting:AuthPermitsPerMinute"] = "100000"
+                ["RateLimiting:AuthPermitsPerMinute"] = "100000",
+                ["Storage:Root"] = UploadsRoot
             };
 
             foreach (var (key, value) in _overrides)
@@ -79,6 +83,18 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
+
+        if (disposing)
+        {
+            try
+            {
+                if (Directory.Exists(UploadsRoot)) Directory.Delete(UploadsRoot, recursive: true);
+            }
+            catch (IOException)
+            {
+                // thư mục tạm, bỏ qua nếu còn bị khóa
+            }
+        }
 
         if (!disposing || _adminConnectionString is null)
         {

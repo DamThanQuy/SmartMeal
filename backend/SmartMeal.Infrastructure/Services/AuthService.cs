@@ -24,6 +24,7 @@ public class AuthService : IAuthService
     private readonly ApplicationDbContext _db;
     private readonly IJwtTokenService _jwtService;
     private readonly IGoogleTokenVerifier _google;
+    private readonly ILoginAttemptTracker _attempts;
     private readonly JwtOptions _jwt;
     private readonly AuthOptions _auth;
 
@@ -31,12 +32,14 @@ public class AuthService : IAuthService
         ApplicationDbContext db,
         IJwtTokenService jwtService,
         IGoogleTokenVerifier google,
+        ILoginAttemptTracker attempts,
         IOptions<JwtOptions> jwt,
         IOptions<AuthOptions> auth)
     {
         _db = db;
         _jwtService = jwtService;
         _google = google;
+        _attempts = attempts;
         _jwt = jwt.Value;
         _auth = auth.Value;
     }
@@ -86,14 +89,14 @@ public class AuthService : IAuthService
         }
 
         // Đang bị khóa: không kiểm mật khẩu (kể cả đúng) để không giúp kẻ dò mật khẩu.
-        if (user.LockoutEnd is { } lockoutEnd && lockoutEnd > now)
+        if (_attempts.RemainingLockout(user, now) is { } remaining)
         {
-            return LockedResponse(lockoutEnd - now);
+            return LockedResponse(remaining);
         }
 
         if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
         {
-            if (await RegisterFailedAttemptAsync(user, now) is { } lockedUntil)
+            if (await _attempts.RegisterFailureAsync(user, now) is { } lockedUntil)
             {
                 return LockedResponse(lockedUntil - now);
             }
@@ -101,12 +104,7 @@ public class AuthService : IAuthService
             return ApiResponse<AuthResponseDto>.Fail(InvalidCredentialsMessage, null, ApiErrorKind.Unauthorized);
         }
 
-        if (user.FailedLoginCount != 0 || user.LockoutEnd is not null)
-        {
-            user.FailedLoginCount = 0;
-            user.LockoutEnd = null;
-            await _db.SaveChangesAsync();
-        }
+        await _attempts.ResetAsync(user);
 
         var hasSurvey = await _db.HealthProfiles.AnyAsync(hp => hp.UserId == user.Id);
         return ApiResponse<AuthResponseDto>.Ok(await IssueTokensAsync(user, hasSurvey), "Đăng nhập thành công.");
@@ -303,16 +301,16 @@ public class AuthService : IAuthService
         }
 
         var now = DateTime.UtcNow;
-        if (user.LockoutEnd is { } lockoutEnd && lockoutEnd > now)
+        if (_attempts.RemainingLockout(user, now) is { } remaining)
         {
-            return LockedResponse(lockoutEnd - now);
+            return LockedResponse(remaining);
         }
 
         // Dùng chung bộ đếm sai mật khẩu: kẻ cầm access token bị đánh cắp không thể dò mật khẩu hiện tại.
         // Trả 400 (không phải 401) vì đây là lỗi nhập liệu, không phải phiên hết hạn.
         if (!BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.PasswordHash))
         {
-            if (await RegisterFailedAttemptAsync(user, now) is { } lockedUntil)
+            if (await _attempts.RegisterFailureAsync(user, now) is { } lockedUntil)
             {
                 return LockedResponse(lockedUntil - now);
             }
@@ -341,22 +339,6 @@ public class AuthService : IAuthService
     }
 
     // ───────────────────────────── Nội bộ ─────────────────────────────
-
-    /// <summary>Tăng bộ đếm sai mật khẩu; đủ ngưỡng thì khóa tạm thời và trả thời điểm hết khóa, ngược lại null.</summary>
-    private async Task<DateTime?> RegisterFailedAttemptAsync(User user, DateTime now)
-    {
-        user.FailedLoginCount++;
-        DateTime? lockedUntil = null;
-        if (user.FailedLoginCount >= _auth.MaxFailedLoginAttempts)
-        {
-            lockedUntil = now.AddMinutes(_auth.LockoutMinutes);
-            user.FailedLoginCount = 0;
-            user.LockoutEnd = lockedUntil;
-        }
-
-        await _db.SaveChangesAsync();
-        return lockedUntil;
-    }
 
     private static string NormalizeEmail(string email) => (email ?? string.Empty).Trim().ToLowerInvariant();
 

@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 using SmartMeal.API.Infrastructure;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.Auth;
 using SmartMeal.Application.Services;
+using SmartMeal.Infrastructure.Options;
 
 namespace SmartMeal.API.Controllers;
 
@@ -14,11 +16,13 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
     private readonly IPasswordService _passwordService;
+    private readonly IAccountService _accountService;
 
-    public AuthController(IAuthService authService, IPasswordService passwordService)
+    public AuthController(IAuthService authService, IPasswordService passwordService, IAccountService accountService)
     {
         _authService = authService;
         _passwordService = passwordService;
+        _accountService = accountService;
     }
 
     [EnableRateLimiting(RateLimitPolicies.Auth)]
@@ -100,5 +104,37 @@ public class AuthController : ControllerBase
         if (!this.TryGetUserId(out var userId)) return this.InvalidSession<UserDto>();
 
         return this.ToActionResult(await _authService.UpdateProfileAsync(userId, dto));
+    }
+
+    /// <summary>Tải ảnh đại diện (multipart, trường <c>file</c>; JPG/PNG/WebP, tối đa 2 MB). Trả người dùng với <c>avatarUrl</c> mới.</summary>
+    [Authorize]
+    [HttpPost("avatar")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(4 * 1024 * 1024)] // chặn cứng ở máy chủ; giới hạn nghiệp vụ (2 MB) kiểm ở service
+    public async Task<ActionResult<ApiResponse<UserDto>>> UploadAvatar(IFormFile? file, [FromServices] IOptions<StorageOptions> storage)
+    {
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<UserDto>();
+
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest(ApiResponse<UserDto>.Fail("Vui lòng chọn một ảnh (trường multipart tên \"file\")."));
+        }
+
+        var baseUrl = !string.IsNullOrWhiteSpace(storage.Value.PublicBaseUrl)
+            ? storage.Value.PublicBaseUrl!
+            : $"{Request.Scheme}://{Request.Host}";
+
+        await using var stream = file.OpenReadStream();
+        return this.ToActionResult(await _accountService.UploadAvatarAsync(userId, stream, file.Length, baseUrl));
+    }
+
+    /// <summary>Xóa vĩnh viễn tài khoản và dữ liệu (BR-271). Cần <c>password</c> (hoặc <c>confirmEmail</c> với tài khoản Google).</summary>
+    [Authorize]
+    [HttpDelete("account")]
+    public async Task<ActionResult<ApiResponse<bool>>> DeleteAccount([FromBody] DeleteAccountRequestDto? dto)
+    {
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<bool>();
+
+        return this.ToActionResult(await _accountService.DeleteAccountAsync(userId, dto ?? new DeleteAccountRequestDto()));
     }
 }
