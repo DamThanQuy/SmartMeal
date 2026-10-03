@@ -55,7 +55,7 @@ async function getFoodAllergyIndex(): Promise<ReadonlyMap<string, string | undef
   while (page <= totalPages) {
     const result = await request<FoodPageApiDto>({
       method: 'GET',
-      url: ENDPOINTS.foods,
+      url: ENDPOINTS.foods.list,
       params: { page, pageSize },
     });
     result.items.forEach(food => index.set(food.id, mapAllergyId(food.allergyId)));
