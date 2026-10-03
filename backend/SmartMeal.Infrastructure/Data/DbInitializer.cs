@@ -221,7 +221,123 @@ public static class DbInitializer
         await db.SaveChangesAsync();
 
         await EnsureRecipeMealTypesAsync(db);
+        await EnsureSeedDishesAsync(db);
         await EnsureIngredientAllergensAsync(db);
+        await EnsureFoodServingsAsync(db);
+        await EnsureFoodSearchTextAsync(db);
+    }
+
+    private sealed record ServingSeed(string Label, double Grams, bool IsDefault = false);
+
+    private sealed record DishSeed(
+        string Name, string Description, double Calories, double Protein, double Carbs, double Fat, ServingSeed[] Servings, string[] AllergyCodes);
+
+    // Món ăn Việt thường gặp. Số liệu là ƯỚC LƯỢNG trên 100 g theo bảng dinh dưỡng phổ biến, CHƯA được chuyên gia dinh dưỡng
+    // rà soát nên gắn IsVerified = false (BR-120/121). Chất xơ/đường/natri chưa có số liệu nên để 0. Chất gây dị ứng ghi theo
+    // công thức phổ biến (vd. bún bò Huế dùng mắm ruốc); từng quán có thể khác.
+    private static readonly DishSeed[] Dishes =
+    {
+        new("Phở bò", "Bún phở nước dùng xương bò với thịt bò thái mỏng.", 75, 5, 9, 2,
+            new[] { new ServingSeed("1 tô nhỏ", 400), new ServingSeed("1 tô vừa", 500, true), new ServingSeed("1 tô lớn", 650) }, Array.Empty<string>()),
+        new("Bún bò Huế", "Bún sợi to nước dùng sả, mắm ruốc, giò heo và thịt bò.", 85, 5.5, 9.5, 3,
+            new[] { new ServingSeed("1 tô", 550, true) }, new[] { "seafood" }),
+        new("Cơm tấm sườn nướng", "Cơm tấm với sườn heo nướng, bì, chả và nước mắm.", 175, 9, 21, 6,
+            new[] { new ServingSeed("1 đĩa", 400, true) }, Array.Empty<string>()),
+        new("Bún chả", "Bún với chả viên và chả miếng nướng, nước chấm chua ngọt.", 140, 8, 14, 6,
+            new[] { new ServingSeed("1 phần", 450, true) }, Array.Empty<string>()),
+        new("Bánh mì thịt", "Bánh mì kẹp thịt nguội, pate, rau và dưa leo.", 250, 10, 32, 9,
+            new[] { new ServingSeed("1 ổ", 180, true) }, new[] { "gluten" }),
+        new("Gỏi cuốn tôm thịt", "Cuốn bánh tráng với tôm, thịt luộc, bún và rau thơm.", 110, 7, 15, 2.5,
+            new[] { new ServingSeed("1 cuốn", 60, true), new ServingSeed("2 cuốn", 120) }, new[] { "seafood" }),
+        new("Cháo gà", "Cháo trắng nấu với thịt gà xé.", 55, 4, 7, 1.2,
+            new[] { new ServingSeed("1 tô", 350, true) }, Array.Empty<string>()),
+        new("Bánh xèo", "Bánh bột gạo nghệ chiên giòn nhân tôm, thịt và giá.", 215, 6, 20, 12,
+            new[] { new ServingSeed("1 cái", 150, true) }, new[] { "seafood" }),
+        new("Mì Quảng", "Mì sợi to với tôm, thịt, nước dùng đậm và bánh tráng.", 120, 7, 15, 3.5,
+            new[] { new ServingSeed("1 tô", 450, true) }, new[] { "seafood" }),
+        new("Hủ tiếu", "Hủ tiếu nước với thịt heo, tôm và gan.", 90, 5, 12, 2.5,
+            new[] { new ServingSeed("1 tô", 450, true) }, new[] { "seafood" }),
+        new("Canh chua cá", "Canh chua nấu với cá, cà chua, dứa, đậu bắp và giá.", 35, 4, 3, 1,
+            new[] { new ServingSeed("1 tô", 300, true) }, new[] { "seafood" }),
+        new("Thịt kho trứng", "Thịt ba chỉ kho nước dừa với trứng.", 190, 14, 4, 13,
+            new[] { new ServingSeed("1 phần", 200, true) }, new[] { "egg" }),
+        new("Rau muống xào tỏi", "Rau muống xào nhanh với tỏi.", 60, 3, 4, 3.5,
+            new[] { new ServingSeed("1 đĩa", 150, true) }, Array.Empty<string>()),
+        new("Chả giò", "Nem rán nhân thịt heo, miến và rau củ.", 270, 9, 22, 16,
+            new[] { new ServingSeed("1 cái", 40, true), new ServingSeed("3 cái", 120) }, Array.Empty<string>()),
+        new("Cơm trắng", "Cơm gạo tẻ nấu chín.", 130, 2.7, 28, 0.3,
+            new[] { new ServingSeed("1 chén", 150, true), new ServingSeed("1 chén đầy", 200) }, Array.Empty<string>())
+    };
+
+    /// <summary>Thêm các món ăn mẫu còn thiếu theo tên (không đụng vào món đã có, chạy lại an toàn).</summary>
+    private static async Task EnsureSeedDishesAsync(ApplicationDbContext db)
+    {
+        var existing = (await db.Ingredients.Where(i => i.OwnerUserId == null).Select(i => i.Name).ToListAsync())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var allergyIdByCode = await db.Allergies.AsNoTracking().ToDictionaryAsync(a => a.Code, a => a.Id, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var dish in Dishes.Where(d => !existing.Contains(d.Name)))
+        {
+            var food = new Ingredient
+            {
+                Name = dish.Name,
+                Description = dish.Description,
+                Category = "Dish",
+                DefaultUnit = "g",
+                CaloriesPer100g = dish.Calories,
+                ProteinPer100g = dish.Protein,
+                CarbsPer100g = dish.Carbs,
+                FatPer100g = dish.Fat,
+                IsVerified = false,
+                SearchText = TextNormalizer.Fold($"{dish.Name} {dish.Description}").Trim()
+            };
+
+            foreach (var serving in dish.Servings)
+            {
+                food.Servings.Add(new FoodServing { IngredientId = food.Id, Label = serving.Label, Grams = serving.Grams, IsDefault = serving.IsDefault });
+            }
+
+            foreach (var code in dish.AllergyCodes.Where(allergyIdByCode.ContainsKey))
+            {
+                food.IngredientAllergies.Add(new IngredientAllergy { IngredientId = food.Id, AllergyId = allergyIdByCode[code] });
+            }
+
+            db.Ingredients.Add(food);
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>Mọi thực phẩm có ít nhất một khẩu phần (mặc định "100 g"); trứng gà có thêm "1 quả".</summary>
+    private static async Task EnsureFoodServingsAsync(ApplicationDbContext db)
+    {
+        var withoutServings = await db.Ingredients
+            .Where(i => !i.Servings.Any())
+            .Select(i => new { i.Id, i.Name })
+            .ToListAsync();
+
+        foreach (var food in withoutServings)
+        {
+            db.FoodServings.Add(new FoodServing { IngredientId = food.Id, Label = "100 g", Grams = 100, IsDefault = true });
+            if (food.Name.StartsWith("Trứng", StringComparison.OrdinalIgnoreCase))
+            {
+                db.FoodServings.Add(new FoodServing { IngredientId = food.Id, Label = "1 quả", Grams = 50 });
+            }
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>Điền SearchText (tên + mô tả đã bỏ dấu) cho thực phẩm chưa có — dữ liệu cũ trước khi có cột này.</summary>
+    private static async Task EnsureFoodSearchTextAsync(ApplicationDbContext db)
+    {
+        var missing = await db.Ingredients.Where(i => i.SearchText == "").ToListAsync();
+        foreach (var food in missing)
+        {
+            food.SearchText = TextNormalizer.Fold($"{food.Name} {food.Description}").Trim();
+        }
+
+        await db.SaveChangesAsync();
     }
 
     // Bữa phù hợp của các công thức mẫu (dữ liệu cũ chưa có cột này nên được bù ở đây, idempotent).

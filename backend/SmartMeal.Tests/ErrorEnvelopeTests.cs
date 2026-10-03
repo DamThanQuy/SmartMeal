@@ -60,7 +60,7 @@ public class ErrorEnvelopeTests : IClassFixture<ApiFactory>
     [DbFact]
     public async Task Wrong_http_method_returns_405_envelope()
     {
-        var response = await _factory.CreateClient().PostJsonAsync("/api/foods", new { });
+        var response = await _factory.CreateClient().PutJsonAsync("/api/foods", new { });
 
         await AssertEnvelopeAsync(response, HttpStatusCode.MethodNotAllowed);
     }
@@ -124,10 +124,13 @@ public class ErrorEnvelopeTests : IClassFixture<ApiFactory>
 
     private sealed class ThrowingFoodService : IFoodService
     {
-        public Task<PagedResult<FoodItemDto>> GetFoodsAsync(string? search, string? category, int page, int pageSize) =>
-            throw new InvalidOperationException("secret internal detail");
+        private static Exception Boom() => new InvalidOperationException("secret internal detail");
 
-        public Task<ApiResponse<FoodItemDto>> GetFoodByIdAsync(Guid id) =>
-            throw new InvalidOperationException("secret internal detail");
+        public Task<ApiResponse<PagedResult<FoodItemDto>>> GetFoodsAsync(FoodQuery query, Guid? userId) => throw Boom();
+        public Task<ApiResponse<FoodItemDto>> GetFoodByIdAsync(Guid id, Guid? userId) => throw Boom();
+        public Task<ApiResponse<FoodItemDto>> GetFoodByBarcodeAsync(string barcode, Guid? userId) => throw Boom();
+        public Task<ApiResponse<FoodItemDto>> CreateFoodAsync(Guid userId, CreateFoodRequestDto dto) => throw Boom();
+        public Task<ApiResponse<bool>> DeleteFoodAsync(Guid userId, Guid id) => throw Boom();
+        public Task<ApiResponse<FoodFavoriteDto>> SetFavoriteAsync(Guid userId, Guid id, bool isFavorite) => throw Boom();
     }
 }

@@ -26,6 +26,23 @@ public class Ingredient
     /// <summary>Mọi chất gây dị ứng của nguyên liệu (BR-101/102).</summary>
     public ICollection<IngredientAllergy> IngredientAllergies { get; set; } = new List<IngredientAllergy>();
 
+    // ── Danh mục thực phẩm (nguyên liệu và món ăn dùng chung một bảng để nhật ký ghi theo IngredientId) ──
+
+    /// <summary>Số liệu đã được kiểm chứng. Món người dùng tự nhập và món mẫu chưa kiểm chứng thì false (BR-120/121).</summary>
+    public bool IsVerified { get; set; } = true;
+
+    /// <summary>null = thực phẩm chung của hệ thống; có giá trị = do người dùng đó tự nhập và chỉ họ thấy.</summary>
+    public Guid? OwnerUserId { get; set; }
+    public User? Owner { get; set; }
+
+    /// <summary>Mã vạch (chỉ chữ số) nếu có.</summary>
+    public string? Barcode { get; set; }
+
+    /// <summary>Tên + mô tả đã bỏ dấu, viết thường — để tìm "pho bo" ra "Phở bò" bằng một câu SQL.</summary>
+    public string SearchText { get; set; } = string.Empty;
+
+    public ICollection<FoodServing> Servings { get; set; } = new List<FoodServing>();
+
     public ICollection<RecipeIngredient> RecipeIngredients { get; set; } = new List<RecipeIngredient>();
 }
 

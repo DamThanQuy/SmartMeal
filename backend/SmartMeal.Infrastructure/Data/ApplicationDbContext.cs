@@ -32,6 +32,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
     public DbSet<AiUsageLog> AiUsageLogs => Set<AiUsageLog>();
     public DbSet<IngredientAllergy> IngredientAllergies => Set<IngredientAllergy>();
+    public DbSet<FoodServing> FoodServings => Set<FoodServing>();
+    public DbSet<UserFavoriteFood> UserFavoriteFoods => Set<UserFavoriteFood>();
     public DbSet<WaterLog> WaterLogs => Set<WaterLog>();
     public DbSet<HealthSyncLog> HealthSyncLogs => Set<HealthSyncLog>();
     public DbSet<HealthPet> HealthPets => Set<HealthPet>();
@@ -190,6 +192,39 @@ public class ApplicationDbContext : DbContext
             .HasOne(ia => ia.Allergy)
             .WithMany()
             .HasForeignKey(ia => ia.AllergyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Thực phẩm: món do người dùng tự nhập thuộc về họ (xóa tài khoản thì xóa theo); khẩu phần và yêu thích đi theo thực phẩm.
+        modelBuilder.Entity<Ingredient>()
+            .HasOne(i => i.Owner)
+            .WithMany()
+            .HasForeignKey(i => i.OwnerUserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Ingredient>().HasIndex(i => i.OwnerUserId);
+        modelBuilder.Entity<Ingredient>().HasIndex(i => i.Barcode);
+
+        modelBuilder.Entity<FoodServing>()
+            .HasOne(s => s.Ingredient)
+            .WithMany(i => i.Servings)
+            .HasForeignKey(s => s.IngredientId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<FoodServing>().HasIndex(s => s.IngredientId);
+
+        modelBuilder.Entity<UserFavoriteFood>()
+            .HasKey(f => new { f.UserId, f.IngredientId });
+
+        modelBuilder.Entity<UserFavoriteFood>()
+            .HasOne(f => f.User)
+            .WithMany()
+            .HasForeignKey(f => f.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserFavoriteFood>()
+            .HasOne(f => f.Ingredient)
+            .WithMany()
+            .HasForeignKey(f => f.IngredientId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // RecipeTag (N-N)

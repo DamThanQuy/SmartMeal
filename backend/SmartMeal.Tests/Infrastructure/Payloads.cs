@@ -91,3 +91,13 @@ public sealed record GroceryItemPayload(
 public sealed record GroceryCategoryPayload(string CategoryName, List<GroceryItemPayload> Items);
 
 public sealed record GroceryPayload(int TotalItems, int CheckedItems, decimal TotalEstimatedCostVnd, List<GroceryCategoryPayload> Categories);
+
+public sealed record FoodServingPayload(Guid Id, string Label, double Grams);
+
+public sealed record FoodPayload(
+    Guid Id, string Name, string? Description, string? ImageUrl, string Category, string DefaultUnit, decimal EstimatedPriceVnd,
+    double CaloriesPer100g, double CarbsPer100g, double FatPer100g, double ProteinPer100g, double FiberPer100g, double SugarPer100g,
+    double SodiumMgPer100g, int? AllergyId, string? AllergyName, List<int> AllergyIds, bool IsVerified, bool IsUserCreated,
+    bool IsFavorite, string? Barcode, List<FoodServingPayload> Servings, Guid? DefaultServingId);
+
+public sealed record FoodFavoritePayload(bool IsFavorite);
