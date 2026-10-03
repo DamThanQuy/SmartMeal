@@ -26,3 +26,18 @@ public sealed record WaterEntryPayload(Guid Id, int AmountMl, DateTime CreatedAt
 public sealed record WaterDayPayload(DateOnly Date, int TotalMl, List<WaterEntryPayload> Entries);
 
 public sealed record WaterHistoryPayload(int GoalMl, List<WaterDayPayload> Days);
+
+public sealed record HealthProfilePayload(
+    Guid Id, string Gender, int Age, DateOnly? DateOfBirth, double HeightCm, double CurrentWeightKg, double TargetWeightKg,
+    string ActivityLevel, string Goal, int WaterGoalMl, double Bmi, string BmiClassification, double Bmr, double Tdee,
+    double DailyCaloriesTarget, double DailyCarbsTargetGrams, double DailyFatTargetGrams, double DailyProteinTargetGrams,
+    List<string> Allergies, List<string> MedicalConditions, List<string> DietaryPreferences,
+    List<int> AllergyIds, List<int> MedicalConditionIds, List<int> DietaryPreferenceIds);
+
+public sealed record WeightPointPayload(Guid Id, double WeightKg, DateTime RecordedAt, double DiffFromTargetKg);
+
+public sealed record WeightHistoryPayload(
+    double CurrentWeightKg, double TargetWeightKg, double InitialWeightKg, double TotalWeightChangedKg, double Bmi,
+    string BmiCategory, List<WeightPointPayload> History);
+
+public sealed record MetaItemPayload(int Id, string Code, string Name, string? Description);

@@ -431,5 +431,14 @@ public class NutritionDiaryService : INutritionDiaryService
         };
     }
 
-    private Task<int> GetWaterGoalMlAsync(Guid userId) => Task.FromResult(DefaultWaterGoalMl);
+    /// <summary>Mục tiêu nước lấy từ hồ sơ sức khỏe; chưa có hồ sơ thì dùng mặc định.</summary>
+    private async Task<int> GetWaterGoalMlAsync(Guid userId)
+    {
+        var goal = await _db.HealthProfiles
+            .Where(hp => hp.UserId == userId)
+            .Select(hp => hp.WaterGoalMl)
+            .FirstOrDefaultAsync();
+
+        return goal > 0 ? goal : DefaultWaterGoalMl;
+    }
 }

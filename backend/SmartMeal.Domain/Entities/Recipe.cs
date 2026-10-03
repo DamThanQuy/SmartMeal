@@ -65,6 +65,10 @@ public class RecipeIngredient
 public class Tag
 {
     public int Id { get; set; }
+
+    /// <summary>Mã ổn định (slug), vd. "eatClean", "keto".</summary>
+    public string Code { get; set; } = string.Empty;
+
     public string Name { get; set; } = string.Empty; // EatClean, Keto, Vegan, HighProtein, QuickMeal
     public ICollection<RecipeTag> RecipeTags { get; set; } = new List<RecipeTag>();
 }

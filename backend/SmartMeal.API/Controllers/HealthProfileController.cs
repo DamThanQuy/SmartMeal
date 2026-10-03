@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SmartMeal.API.Infrastructure;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.Health;
 using SmartMeal.Application.Services;
-using System.Security.Claims;
 
 namespace SmartMeal.API.Controllers;
 
@@ -19,52 +19,47 @@ public class HealthProfileController : ControllerBase
         _healthProfileService = healthProfileService;
     }
 
+    /// <summary>Khảo sát sức khỏe: tạo hồ sơ hoặc ghi đè toàn bộ. Cần <c>dateOfBirth</c> hoặc <c>age</c>.</summary>
     [HttpPost("survey")]
     [HttpPost("setup")]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<HealthProfileDto>>> SubmitSurvey([FromBody] HealthSurveyRequestDto dto)
     {
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdStr, out var userId))
-            return Unauthorized(ApiResponse<HealthProfileDto>.Fail("Phiên đăng nhập không hợp lệ."));
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<HealthProfileDto>();
 
-        var result = await _healthProfileService.SubmitSurveyAsync(userId, dto);
-        return Ok(result);
+        return this.ToActionResult(await _healthProfileService.SubmitSurveyAsync(userId, dto));
+    }
+
+    /// <summary>Cập nhật từng phần hồ sơ đã có; tự tính lại BMI/BMR/TDEE/mục tiêu. 404 nếu chưa có hồ sơ.</summary>
+    [HttpPut]
+    public async Task<ActionResult<ApiResponse<HealthProfileDto>>> UpdateProfile([FromBody] UpdateHealthProfileRequestDto dto)
+    {
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<HealthProfileDto>();
+
+        return this.ToActionResult(await _healthProfileService.UpdateProfileAsync(userId, dto));
     }
 
     [HttpGet]
     public async Task<ActionResult<ApiResponse<HealthProfileDto>>> GetProfile()
     {
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdStr, out var userId))
-            return Unauthorized(ApiResponse<HealthProfileDto>.Fail("Phiên đăng nhập không hợp lệ."));
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<HealthProfileDto>();
 
-        var result = await _healthProfileService.GetProfileAsync(userId);
-        if (!result.Success) return NotFound(result);
-        return Ok(result);
+        return this.ToActionResult(await _healthProfileService.GetProfileAsync(userId));
     }
 
     [HttpPost("weight-log")]
     public async Task<ActionResult<ApiResponse<WeightPointDto>>> LogWeight([FromBody] WeightLogRequestDto dto)
     {
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdStr, out var userId))
-            return Unauthorized(ApiResponse<WeightPointDto>.Fail("Phiên đăng nhập không hợp lệ."));
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<WeightPointDto>();
 
-        var result = await _healthProfileService.LogWeightAsync(userId, dto);
-        if (!result.Success) return BadRequest(result);
-        return Ok(result);
+        return this.ToActionResult(await _healthProfileService.LogWeightAsync(userId, dto));
     }
 
     [HttpGet("weight-history")]
     public async Task<ActionResult<ApiResponse<WeightHistoryResponseDto>>> GetWeightHistory()
     {
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdStr, out var userId))
-            return Unauthorized(ApiResponse<WeightHistoryResponseDto>.Fail("Phiên đăng nhập không hợp lệ."));
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<WeightHistoryResponseDto>();
 
-        var result = await _healthProfileService.GetWeightHistoryAsync(userId);
-        if (!result.Success) return NotFound(result);
-        return Ok(result);
+        return this.ToActionResult(await _healthProfileService.GetWeightHistoryAsync(userId));
     }
 }

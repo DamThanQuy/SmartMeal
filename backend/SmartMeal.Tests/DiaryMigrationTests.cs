@@ -5,6 +5,7 @@ using Npgsql;
 using SmartMeal.Infrastructure.Data;
 using SmartMeal.Tests.Infrastructure;
 using Xunit;
+using static SmartMeal.Tests.Infrastructure.SqlHelper;
 
 namespace SmartMeal.Tests;
 
@@ -17,28 +18,10 @@ public class DiaryMigrationTests
     private const string PreviousMigration = "20260926152332_AddRemainingModules";
     private const string TargetMigration = "20261003014147_DiaryIntegrity";
 
-    private static async Task ExecuteAsync(string connectionString, string sql)
-    {
-        await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
-        await using var command = new NpgsqlCommand(sql, connection);
-        await command.ExecuteNonQueryAsync();
-    }
-
-    private static async Task<T> ScalarAsync<T>(string connectionString, string sql)
-    {
-        await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
-        await using var command = new NpgsqlCommand(sql, connection);
-        return (T)(await command.ExecuteScalarAsync())!;
-    }
-
     [DbFact]
     public async Task Migration_merges_duplicate_groups_normalizes_meal_types_and_keeps_every_item()
     {
-        var admin = Environment.GetEnvironmentVariable(ApiFactory.ServerEnvVar)!;
-        var dbName = "smartmeal_mig_" + Guid.NewGuid().ToString("N");
-        var connection = new NpgsqlConnectionStringBuilder(admin) { Database = dbName }.ConnectionString;
+        var (admin, dbName, connection) = NewDatabase("smartmeal_mig");
         var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseNpgsql(connection).Options;
 
         try
@@ -100,8 +83,7 @@ public class DiaryMigrationTests
         }
         finally
         {
-            NpgsqlConnection.ClearAllPools();
-            await ExecuteAsync(admin, $"DROP DATABASE IF EXISTS \"{dbName}\" WITH (FORCE)");
+            await DropDatabaseAsync(admin, dbName);
         }
     }
 }
