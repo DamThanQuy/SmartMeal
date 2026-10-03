@@ -58,6 +58,15 @@ public class ApplicationDbContext : DbContext
             .HasIndex(u => u.Email)
             .IsUnique();
 
+        // NutritionDiary: mỗi (người dùng, ngày, bữa) chỉ có đúng một dòng nhóm. Ràng buộc này chặn việc
+        // các request song song tạo dòng trùng làm món "biến mất" khỏi /daily (P1-BE-12).
+        modelBuilder.Entity<NutritionDiary>()
+            .HasIndex(d => new { d.UserId, d.LogDate, d.MealType })
+            .IsUnique();
+
+        modelBuilder.Entity<WaterLog>()
+            .HasIndex(w => new { w.UserId, w.LogDate });
+
         // User - HealthProfile (1-1)
         modelBuilder.Entity<HealthProfile>()
             .HasOne(hp => hp.User)

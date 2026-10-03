@@ -32,8 +32,11 @@ public class DiaryItem
     public double FatGrams { get; set; }
     public double ProteinGrams { get; set; }
 
-    public string LogMethod { get; set; } = "Manual"; // Manual, AiImage, Voice, Barcode
+    public string LogMethod { get; set; } = "Manual"; // Manual, AiImage, Voice, Barcode, Ocr
     public string? ImageUrl { get; set; }
+
+    /// <summary>Thời điểm ghi món — dùng để sắp xếp trong bữa và hiển thị giờ ghi (BR-053).</summary>
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
 public class MealPlan
