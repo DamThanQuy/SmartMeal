@@ -28,14 +28,19 @@ const Stack = createNativeStackNavigator<AuthStackParamList>();
 //
 // initialRouteName phụ thuộc authStore.lastExitReason (Đợt 9 sửa lệch — trước luôn là Welcome):
 // StateSession "Đăng nhập lại" (expired/locked) → Login thẳng, không qua Welcome (đúng artboard
-// StateSession.dc.html). Đăng xuất chủ động/thoát Guest (logout/guest) và mọi trường hợp khác vẫn
-// → Welcome — xem StateSessionScreen.tsx/GuestPromptScreen.tsx/DeleteDataScreen.tsx.
+// StateSession.dc.html). Có pendingUser (tài khoản đã tạo nhưng chưa làm xong Health Profile —
+// mở lại app/đăng nhập giữa chừng) → vào thẳng wizard khảo sát. Đăng xuất chủ động/thoát Guest
+// (logout/guest) và mọi trường hợp khác vẫn → Welcome — xem StateSessionScreen.tsx/
+// GuestPromptScreen.tsx/DeleteDataScreen.tsx.
 export function AuthNavigator() {
   const lastExitReason = useAuthStore(state => state.lastExitReason);
-  const initialRouteName =
-    lastExitReason === 'expired' || lastExitReason === 'locked'
-      ? AUTH_ROUTES.LOGIN
-      : AUTH_ROUTES.WELCOME;
+  const hasPendingUser = useAuthStore(state => state.pendingUser !== null);
+  let initialRouteName: keyof AuthStackParamList = AUTH_ROUTES.WELCOME;
+  if (hasPendingUser) {
+    initialRouteName = AUTH_ROUTES.HEALTH_PROFILE_BASIC_INFO;
+  } else if (lastExitReason === 'expired' || lastExitReason === 'locked') {
+    initialRouteName = AUTH_ROUTES.LOGIN;
+  }
 
   return (
     <Stack.Navigator initialRouteName={initialRouteName} screenOptions={{ headerShown: false }}>

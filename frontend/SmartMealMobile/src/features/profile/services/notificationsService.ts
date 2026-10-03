@@ -1,10 +1,14 @@
+import { ENV } from '@/config/env';
 import { getMockDelayMs, wait } from '@/config/mock';
 import { getCurrentMockScenario } from '@/state/app/appStore';
 import { NOTIFICATIONS_MOCK } from '../mocks/notifications.mock';
 import type { NotificationItem } from '../types/profile.types';
 
-// TODO: replace mock with real API.
-let notifications: NotificationItem[] = NOTIFICATIONS_MOCK.map(item => ({ ...item }));
+// TODO: replace mock with real API — backend không có thông báo (docs/fetch-api/part1 §9). Danh sách
+// mẫu của design chỉ dùng khi chạy mock; gọi API thật thì bắt đầu rỗng thay vì hiện thông báo giả.
+let notifications: NotificationItem[] = ENV.useMockApi
+  ? NOTIFICATIONS_MOCK.map(item => ({ ...item }))
+  : [];
 
 export const notificationsService = {
   async getNotifications(): Promise<NotificationItem[]> {

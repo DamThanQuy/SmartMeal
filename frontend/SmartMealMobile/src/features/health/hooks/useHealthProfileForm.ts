@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { registerUserDataReset } from '@/state/resetUserData';
 import {
   createEmptyHealthProfileFormData,
   type HealthProfileFormData,
@@ -26,3 +27,7 @@ export const useHealthProfileForm = create<HealthProfileFormState>()(set => ({
   reset: () =>
     set({ data: createEmptyHealthProfileFormData(), result: null }),
 }));
+
+// Dữ liệu wizard bỏ dở của tài khoản trước không được hiện lại cho tài khoản kế tiếp trên cùng máy
+// (đăng xuất/xóa dữ liệu → resetUserData, xem src/state/resetUserData.ts).
+registerUserDataReset('healthProfileForm', () => useHealthProfileForm.getState().reset());

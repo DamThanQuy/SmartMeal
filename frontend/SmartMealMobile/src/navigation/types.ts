@@ -69,8 +69,9 @@ export type MainStackParamList = {
   StateAILimit: { mealType?: MealType } | undefined;
   FoodSearch: { mealType: MealType };
   FoodDetail: { foodId: string; mealType: MealType };
-  EditMealLog: { logId: string };
-  DeleteConfirm: { logId: string };
+  /** `dateIso` — ngày của nhật ký chứa bản ghi (mặc định hôm nay); cần khi sửa/xóa món của ngày khác. */
+  EditMealLog: { logId: string; dateIso?: string };
+  DeleteConfirm: { logId: string; dateIso?: string };
   ProgressChart: undefined;
 
   // Đợt 4 — Scanner (BR-080, BR-120, BR-130, BR-140).

@@ -7,15 +7,14 @@ import { AppBadge, AppCard, AppSwitch, AppText } from '@/components/ui';
 import {
   calculateCalorieBudget,
   todayIso,
-  TODAY_ACTIVITY_CALORIES_BURNED_MOCK,
   useDiaryDay,
+  useHealthSyncDaily,
   useSetIncludeActivityCalories,
 } from '@/features/nutrition';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useUserProfileStore } from '@/state/user/userProfileStore';
 import { useTheme } from '@/theme/ThemeProvider';
-import { ACTIVITY_CALORIE_SOURCES_MOCK, ACTIVITY_LOG_ENTRIES_MOCK } from '../mocks/calorieBudget.mock';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CalorieBudget'>;
 
@@ -28,11 +27,14 @@ function formatNumber(value: number): string {
 // ProgressChart (calculateCalorieBudget, features/nutrition) — không tự cộng lại ở đây.
 export function CalorieBudgetScreen({ navigation }: Props) {
   const { colors } = useTheme();
-  const { data: diary, isLoading, isError, error, refetch } = useDiaryDay(todayIso());
+  const dateIso = todayIso();
+  const { data: diary, isLoading, isError, error, refetch } = useDiaryDay(dateIso);
+  // Calo vận động từ health-sync. Lỗi/chưa có → 0; chỉ chờ khi đang tải để số không nhảy từ 0.
+  const { data: activity, isLoading: isActivityLoading } = useHealthSyncDaily(dateIso);
   const includeActivityCalories = useUserProfileStore(state => state.includeActivityCalories);
   const setIncludeActivityCalories = useSetIncludeActivityCalories();
 
-  if (isLoading || !diary) {
+  if (isLoading || isActivityLoading || !diary) {
     return (
       <ScreenContainer>
         <ScreenHeader title="Ngân sách calo" onBack={() => navigation.goBack()} />
@@ -52,9 +54,13 @@ export function CalorieBudgetScreen({ navigation }: Props) {
 
   const budget = calculateCalorieBudget({
     calorieTarget: diary.calorieTarget,
-    activityCaloriesBurned: TODAY_ACTIVITY_CALORIES_BURNED_MOCK,
+    activityCaloriesBurned: activity?.caloriesBurned ?? 0,
     includeActivityCalories,
   });
+  // Backend chỉ có tên nguồn và tổng calo; chi tiết từng nguồn/hoạt động chỉ có ở bản mock nên
+  // các khối này tự ẩn khi không có dữ liệu.
+  const sourceDetails = activity?.sourceDetails ?? [];
+  const activities = activity?.activities ?? [];
   const consumed = Object.values(diary.entriesByMeal)
     .flat()
     .reduce((sum, entry) => sum + entry.nutrition.calories, 0);
@@ -133,55 +139,61 @@ export function CalorieBudgetScreen({ navigation }: Props) {
           </View>
         </AppCard>
 
-        <AppCard className="gap-xxs">
-          <AppText variant="h3" className="pb-xxs">
-            Nguồn vận động
-          </AppText>
-          {ACTIVITY_CALORIE_SOURCES_MOCK.map(source => (
-            <View key={source.id} className="flex-row items-center gap-sm border-t border-border py-sm">
-              <View className="h-[40px] w-[40px] items-center justify-center rounded-md bg-primary-soft">
-                <CheckCircle2 size={20} color={colors.primary} />
-              </View>
-              <View className="flex-1 gap-xxs">
-                <AppText variant="bodyMedium">{source.label}</AppText>
-                <AppText variant="caption" color="secondary">
-                  {source.note}
-                </AppText>
-              </View>
-              <View className="items-end gap-xxs">
-                <AppText variant="bodyMedium">{`${source.calories} kcal`}</AppText>
-                <AppBadge
-                  label={source.countsTowardBudget ? 'Đã cộng' : 'Bỏ qua trùng'}
-                  tone={source.countsTowardBudget ? 'primary' : 'warning'}
-                  icon={<CheckCircle2 size={12} color={colors.onPrimarySoft} />}
-                />
-              </View>
-            </View>
-          ))}
-        </AppCard>
-
-        <AppCard className="gap-xxs">
-          <AppText variant="h3" className="pb-xxs">
-            Hoạt động được tính
-          </AppText>
-          {ACTIVITY_LOG_ENTRIES_MOCK.map(activity => (
-            <View
-              key={activity.label}
-              className="flex-row items-center justify-between border-t border-border py-sm"
-            >
-              <View className="gap-xxs">
-                <AppText variant="bodyMedium">{activity.label}</AppText>
-                <View className="flex-row items-center gap-xxs">
-                  <Clock size={12} color={colors.textSecondary} />
+        {sourceDetails.length > 0 ? (
+          <AppCard className="gap-xxs">
+            <AppText variant="h3" className="pb-xxs">
+              Nguồn vận động
+            </AppText>
+            {sourceDetails.map(source => (
+              <View key={source.id} className="flex-row items-center gap-sm border-t border-border py-sm">
+                <View className="h-[40px] w-[40px] items-center justify-center rounded-md bg-primary-soft">
+                  <CheckCircle2 size={20} color={colors.primary} />
+                </View>
+                <View className="flex-1 gap-xxs">
+                  <AppText variant="bodyMedium">{source.label}</AppText>
                   <AppText variant="caption" color="secondary">
-                    {activity.windowLabel}
+                    {source.note}
                   </AppText>
                 </View>
+                <View className="items-end gap-xxs">
+                  {source.calories !== undefined ? (
+                    <AppText variant="bodyMedium">{`${source.calories} kcal`}</AppText>
+                  ) : null}
+                  <AppBadge
+                    label={source.countsTowardBudget ? 'Đã cộng' : 'Bỏ qua trùng'}
+                    tone={source.countsTowardBudget ? 'primary' : 'warning'}
+                    icon={<CheckCircle2 size={12} color={colors.onPrimarySoft} />}
+                  />
+                </View>
               </View>
-              <AppText variant="body">{`≈ ${activity.calories} kcal`}</AppText>
-            </View>
-          ))}
-        </AppCard>
+            ))}
+          </AppCard>
+        ) : null}
+
+        {activities.length > 0 ? (
+          <AppCard className="gap-xxs">
+            <AppText variant="h3" className="pb-xxs">
+              Hoạt động được tính
+            </AppText>
+            {activities.map(item => (
+              <View
+                key={item.label}
+                className="flex-row items-center justify-between border-t border-border py-sm"
+              >
+                <View className="gap-xxs">
+                  <AppText variant="bodyMedium">{item.label}</AppText>
+                  <View className="flex-row items-center gap-xxs">
+                    <Clock size={12} color={colors.textSecondary} />
+                    <AppText variant="caption" color="secondary">
+                      {item.windowLabel}
+                    </AppText>
+                  </View>
+                </View>
+                <AppText variant="body">{`≈ ${item.calories} kcal`}</AppText>
+              </View>
+            ))}
+          </AppCard>
+        ) : null}
 
         <AppCard className="flex-row items-center gap-sm">
           <View className="flex-1 gap-xxs">

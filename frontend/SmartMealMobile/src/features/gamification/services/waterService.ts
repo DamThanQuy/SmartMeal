@@ -1,5 +1,6 @@
 import { addDays, format, subDays } from 'date-fns';
 import { todayIso } from '@/features/nutrition';
+import { ENV } from '@/config/env';
 import { getMockDelayMs, wait } from '@/config/mock';
 import { getCurrentMockScenario } from '@/state/app/appStore';
 import { registerUserDataReset } from '@/state/resetUserData';
@@ -14,6 +15,9 @@ import type {
 
 // TODO: replace mock with real API — theo đúng pattern nutritionService (in-memory store mô
 // phỏng Backend cho nhánh feat/mock-ui).
+// Backend mới có POST ghi nước, chưa có GET/DELETE (P1-BE-06) nên toàn bộ service vẫn là mock cục bộ
+// (docs/fetch-api/part1 §10). Dữ liệu mẫu của design (5 ly hôm nay, lịch sử 7 ngày) chỉ dùng khi chạy
+// mock; gọi API thật thì người dùng mới bắt đầu từ 0 chứ không thấy số liệu của người khác.
 
 export const CUP_ML = 250;
 /** date-fns Date.getDay(): 0=CN...6=T7. */
@@ -30,7 +34,7 @@ function getOrSeedDay(dateIso: string): WaterEntry[] {
   const existing = waterByDate.get(dateIso);
   if (existing) return existing;
   const seeded =
-    dateIso === todayIso()
+    ENV.useMockApi && dateIso === todayIso()
       ? createTodayWaterEntriesMock().map(entry => ({ ...entry, id: nextEntryId() }))
       : [];
   waterByDate.set(dateIso, seeded);
@@ -104,7 +108,7 @@ export const waterService = {
       return {
         dateIso: format(date, 'yyyy-MM-dd'),
         label: WEEKDAY_SHORT_LABELS[date.getDay()],
-        totalMl: scenario === 'empty' ? 0 : totalMl,
+        totalMl: scenario === 'empty' || !ENV.useMockApi ? 0 : totalMl,
         goalMl,
       };
     });
