@@ -13,7 +13,7 @@ public class SubscriptionPlanDto
 public class CreateCheckoutSessionRequestDto
 {
     public string PlanId { get; set; } = "PRO_MONTHLY";
-    public string PaymentMethod { get; set; } = "VNPAY"; // VNPAY, MOMO, STRIPE
+    public string PaymentMethod { get; set; } = "VNPAY"; // VNPAY, MOMO, STRIPE, PAYOS
 }
 
 public class CheckoutSessionResponseDto

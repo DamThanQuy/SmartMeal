@@ -3,7 +3,8 @@ using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.Subscription;
 using SmartMeal.Application.Services;
 using SmartMeal.Infrastructure.Data;
-
+using Net.payOS;
+using Net.payOS.Types;
 namespace SmartMeal.Infrastructure.Services;
 
 public class SubscriptionService : ISubscriptionService
@@ -64,8 +65,33 @@ public class SubscriptionService : ISubscriptionService
 
         decimal amount = dto.PlanId == "PRO_YEARLY" ? 699000 : 79000;
         var sessionId = $"SES_{Guid.NewGuid():N}";
-        var paymentUrl = $"https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Session={sessionId}&vnp_Amount={amount * 100}&vnp_OrderInfo={dto.PlanId}";
-        var qrCodeUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={paymentUrl}";
+        
+        string paymentUrl = string.Empty;
+        string qrCodeUrl = string.Empty;
+
+        if (dto.PaymentMethod == "PAYOS")
+        {
+            var payOS = new PayOS("f222d523-5c08-4bdb-b216-3f78f7e9a6b5", "0ff53c5c-baca-4bbc-954a-92c7ebe4fe53", "4269156b92bb565c0e340b92a5e77027c28548d350ea9a256b89c1115cd89bb1");
+            int orderCode = int.Parse(DateTimeOffset.Now.ToString("ffffff"));
+            var paymentData = new PaymentData(
+                orderCode,
+                (int)amount,
+                "Thanh toan SmartMeal",
+                new List<ItemData> { new ItemData(dto.PlanId, 1, (int)amount) },
+                "https://smartmeal.app/cancel",
+                "https://smartmeal.app/success"
+            );
+            CreatePaymentResult createPayment = await payOS.createPaymentLink(paymentData);
+            paymentUrl = createPayment.checkoutUrl;
+            // Dùng API tạo QR code từ checkoutUrl nếu PayOS QR code ko có sẵn, nhưng PayOS checkoutUrl đã hiển thị QR.
+            // Để đồng bộ với frontend hiện tại, ta vẫn trả về qrCodeUrl hoặc dùng QR.
+            qrCodeUrl = createPayment.qrCode ?? $"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={paymentUrl}";
+        }
+        else
+        {
+            paymentUrl = $"https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Session={sessionId}&vnp_Amount={amount * 100}&vnp_OrderInfo={dto.PlanId}";
+            qrCodeUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={paymentUrl}";
+        }
 
         var response = new CheckoutSessionResponseDto
         {
