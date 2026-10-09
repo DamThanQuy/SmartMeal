@@ -8,7 +8,7 @@ import type { CheckoutResult, PaymentMethodId } from '../types/premium.types';
 export const premiumService = {
   async checkout(planId: BillingPlanId, paymentMethodId: PaymentMethodId): Promise<CheckoutResult> {
     const apiPlanId = planId === 'monthly' ? 'PRO_MONTHLY' : 'PRO_YEARLY';
-    const apiPaymentMethod = paymentMethodId === 'vnpay' ? 'VNPAY' : paymentMethodId === 'momo' ? 'MOMO' : 'STRIPE';
+    const apiPaymentMethod = paymentMethodId === 'payos' ? 'PAYOS' : paymentMethodId === 'vnpay' ? 'VNPAY' : paymentMethodId === 'momo' ? 'MOMO' : 'STRIPE';
     const session = await request<{
       sessionId: string;
       paymentUrl: string;

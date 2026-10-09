@@ -18,7 +18,7 @@ export const MEMBERSHIP_STATUS_LABEL: Record<MembershipStatus, string> = {
   cancelled: 'Đã hủy',
 };
 
-export type PaymentMethodId = 'vnpay' | 'momo' | 'card';
+export type PaymentMethodId = 'vnpay' | 'momo' | 'card' | 'payos';
 
 export interface BillingPlanOption {
   id: BillingPlanId;

@@ -28,6 +28,7 @@ export const PAYMENT_METHOD_OPTIONS: PaymentMethodOption[] = [
   { id: 'vnpay', label: 'VNPAY' },
   { id: 'momo', label: 'MoMo' },
   { id: 'card', label: 'Thẻ quốc tế' },
+  { id: 'payos', label: 'PayOS QR' },
 ];
 
 export const FEATURE_COMPARISON_MOCK: FeatureComparisonRow[] = [
