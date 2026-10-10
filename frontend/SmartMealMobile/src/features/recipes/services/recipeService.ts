@@ -189,4 +189,12 @@ export const recipeService = {
       data: payload,
     });
   },
+
+  async addRecipeToCollection(collectionId: string, recipeId: string): Promise<boolean> {
+    return request({
+      method: 'POST',
+      url: ENDPOINTS.recipes.collectionItems(collectionId),
+      data: { recipeId },
+    });
+  },
 };

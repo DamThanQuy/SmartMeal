@@ -66,11 +66,33 @@ export const nutritionApiService: Partial<typeof nutritionMockService> = {
   async addLogEntries(dateIso, mealType, inputs) {
     if (inputs.length === 0) return [];
 
-    const created = await api.post<DiaryItemDto[], LogMealBatchRequestDto>(
-      ENDPOINTS.nutritionDiary.logBatch,
-      toLogMealBatchRequest(dateIso, mealType, inputs),
-    );
-    return created.map(dto => fromDiaryItemDto(dto, mealType));
+    try {
+      const created = await api.post<DiaryItemDto[], LogMealBatchRequestDto>(
+        ENDPOINTS.nutritionDiary.logBatch,
+        toLogMealBatchRequest(dateIso, mealType, inputs),
+      );
+      return created.map(dto => fromDiaryItemDto(dto, mealType));
+    } catch (error) {
+      if (typeof error === 'object' && error !== null && 'code' in error && (error as { code: unknown }).code === 'NOT_FOUND') {
+        // Fallback: Ghi từng món qua POST /nutritiondiary/log khi server chưa có /log/batch
+        const created = await Promise.all(
+          inputs.map(input =>
+            api.post<DiaryItemDto, Record<string, unknown>>(ENDPOINTS.nutritionDiary.log, {
+              planDate: dateIso,
+              mealType: mealType.charAt(0).toUpperCase() + mealType.slice(1),
+              customFoodName: input.foodName,
+              servingSizeGrams: input.grams,
+              calories: input.nutrition.calories,
+              carbs: input.nutrition.carbsG,
+              protein: input.nutrition.proteinG,
+              fat: input.nutrition.fatG,
+            }),
+          ),
+        );
+        return created.map(dto => fromDiaryItemDto(dto, mealType));
+      }
+      throw error;
+    }
   },
 
   // PUT /nutritiondiary/items/{id} — BE chỉ đổi các trường có mặt. Đổi khối lượng thì dinh dưỡng

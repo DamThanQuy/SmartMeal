@@ -1,6 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CheckCircle2, Image as ImageIcon, ShieldCheck, X } from 'lucide-react-native';
 import React, { useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
 import { Pressable, View } from 'react-native';
 import { AppBadge, AppButton, AppIconButton, AppText } from '@/components/ui';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
@@ -11,15 +12,44 @@ type Props = NativeStackScreenProps<MainStackParamList, 'FridgeCamera'>;
 
 const MAX_PHOTOS = 4;
 
-// design/FridgeCamera.dc.html (BR-080→083). Chỉ Pro — Discovery chặn Free trước khi vào màn này
-// (mở Premium thay vì FridgeCamera, xem DiscoveryScreen.tsx). Nhánh feat/mock-ui: chưa gọi
-// expo-camera thật — nút chụp chỉ tăng bộ đếm ảnh, "Xong" điều hướng sang FridgeScreen (nơi
-// scannerService.scanFridge() mô phỏng nhận diện).
 export function FridgeCameraScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const [photoCount, setPhotoCount] = useState(0);
+  const [selectedUri, setSelectedUri] = useState<string | undefined>();
 
-  const handleCapture = () => setPhotoCount(count => Math.min(count + 1, MAX_PHOTOS));
+  const handleCapture = async () => {
+    try {
+      const res = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
+        allowsEditing: false,
+      });
+      if (!res.canceled && res.assets[0]?.uri) {
+        setSelectedUri(res.assets[0].uri);
+        setPhotoCount(count => Math.min(count + 1, MAX_PHOTOS));
+        return;
+      }
+    } catch {
+      // Bỏ qua lỗi launchCamera trên môi trường không hỗ trợ (web/mock)
+    }
+    setPhotoCount(count => Math.min(count + 1, MAX_PHOTOS));
+  };
+
+  const handlePickFromGallery = async () => {
+    try {
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
+        allowsEditing: false,
+      });
+      if (!res.canceled && res.assets[0]?.uri) {
+        setSelectedUri(res.assets[0].uri);
+        setPhotoCount(1);
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   return (
     <View className="flex-1 bg-overlay">
@@ -77,7 +107,7 @@ export function FridgeCameraScreen({ navigation }: Props) {
           accessibilityLabel="Chọn từ thư viện ảnh"
           icon={<ImageIcon size={22} color={colors.onPrimary} />}
           className="bg-on-primary/15"
-          disabled
+          onPress={handlePickFromGallery}
         />
         <Pressable
           accessibilityRole="button"
@@ -91,7 +121,7 @@ export function FridgeCameraScreen({ navigation }: Props) {
           label={`Xong · ${photoCount}`}
           variant="secondary"
           disabled={photoCount === 0}
-          onPress={() => navigation.replace(MAIN_STACK_ROUTES.FRIDGE)}
+          onPress={() => navigation.replace(MAIN_STACK_ROUTES.FRIDGE, { imageUri: selectedUri })}
           className="h-[44px] px-md"
         />
       </View>

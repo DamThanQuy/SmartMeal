@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Check, Pencil, Refrigerator, ShieldCheck, Sparkles } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Image, Pressable, ScrollView, View } from 'react-native';
 import { EmptyState, ErrorState, LoadingState, ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppBadge, AppButton, AppCard, AppText } from '@/components/ui';
 import { RecipeCard, useFridgeRecipes } from '@/features/recipes';
@@ -16,15 +16,16 @@ type Props = NativeStackScreenProps<MainStackParamList, 'Fridge'>;
 
 // design/Fridge.dc.html (BR-080). Nguyên liệu phải qua bước xác nhận của user trước khi tính
 // vào gợi ý món — không tự lưu (docs/ui-mock-prompts.md Phase 4).
-export function FridgeScreen({ navigation }: Props) {
+export function FridgeScreen({ route, navigation }: Props) {
   const { colors } = useTheme();
   const scanFridge = useScanFridge();
+  const imageUri = route.params?.imageUri;
   const [ingredients, setIngredients] = useState<FridgeIngredient[] | null>(null);
   const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set());
   const [hasConfirmedForRecipes, setHasConfirmedForRecipes] = useState(false);
 
   useEffect(() => {
-    scanFridge.mutate(undefined, {
+    scanFridge.mutate(imageUri, {
       onSuccess: result => {
         setIngredients(result);
         setConfirmedIds(new Set(result.filter(item => item.status === 'confirmed').map(i => i.id)));
@@ -36,7 +37,7 @@ export function FridgeScreen({ navigation }: Props) {
       },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [imageUri]);
 
   const confirmedNames = (ingredients ?? [])
     .filter(item => confirmedIds.has(item.id))
@@ -84,12 +85,20 @@ export function FridgeScreen({ navigation }: Props) {
       />
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerClassName="gap-lg py-xs">
         <View>
-          <View className="h-[170px] items-center justify-center gap-xxs rounded-lg bg-primary-soft">
-            <Refrigerator size={40} color={colors.primary} />
-            <AppText variant="caption" className="text-on-primary-soft">
-              Ảnh tủ lạnh của bạn
-            </AppText>
-          </View>
+          {imageUri ? (
+            <Image
+              source={{ uri: imageUri }}
+              style={{ height: 170, width: '100%', borderRadius: 12 }}
+              resizeMode="cover"
+            />
+          ) : (
+            <View className="h-[170px] items-center justify-center gap-xxs rounded-lg bg-primary-soft">
+              <Refrigerator size={40} color={colors.primary} />
+              <AppText variant="caption" className="text-on-primary-soft">
+                Ảnh tủ lạnh của bạn
+              </AppText>
+            </View>
+          )}
           <AppBadge
             label="AI nhận diện · hãy kiểm tra"
             tone="info"

@@ -146,4 +146,11 @@ export const groceryService = {
       },
     });
   },
+
+  async deleteItem(itemId: string): Promise<boolean> {
+    return request<boolean>({
+      method: 'DELETE',
+      url: ENDPOINTS.grocery.item(itemId),
+    });
+  },
 };

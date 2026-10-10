@@ -241,14 +241,14 @@ public static class DbInitializer
                 CurrentWeightKg = 68,
                 TargetWeightKg = 65,
                 ActivityLevel = "Moderate",
-                Goal = "FatLoss",
-                DailyCalorieTarget = 2000,
-                CarbsRatio = 45,
-                ProteinRatio = 30,
-                FatRatio = 25,
-                Bmr = 1680,
-                Tdee = 2300,
-                Bmi = 22.2
+                Goal = "LoseWeight",
+                DailyCaloriesTarget = 2000,
+                DailyCarbsTargetGrams = 225,      // 45% of 2000 kcal / 4
+                DailyProteinTargetGrams = 150,    // 30% of 2000 kcal / 4
+                DailyFatTargetGrams = 55.6,       // 25% of 2000 kcal / 9
+                BMR = 1680,
+                TDEE = 2300,
+                BMI = 22.2
             };
             db.HealthProfiles.Add(healthProfile);
             await db.SaveChangesAsync();
