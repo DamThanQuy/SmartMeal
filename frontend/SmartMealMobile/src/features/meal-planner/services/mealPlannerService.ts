@@ -143,4 +143,11 @@ export const mealPlannerService = {
       excludedAllergenIds: [],
     };
   },
+
+  async deleteSlot(mealPlanId: string): Promise<boolean> {
+    return request<boolean>({
+      method: 'DELETE',
+      url: ENDPOINTS.mealPlanner.delete(mealPlanId),
+    });
+  },
 };

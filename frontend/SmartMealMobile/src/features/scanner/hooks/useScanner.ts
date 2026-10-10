@@ -15,6 +15,6 @@ export function useAnalyzeOcrLabel() {
 
 export function useScanFridge() {
   return useMutation({
-    mutationFn: () => scannerService.scanFridge(),
+    mutationFn: (imageUri?: string) => scannerService.scanFridge(imageUri),
   });
 }

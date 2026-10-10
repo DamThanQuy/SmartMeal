@@ -31,7 +31,8 @@ export function createMetaLookup(items: readonly MetaItem[]): MetaLookup {
 }
 
 /** Quy đổi danh sách slug → id BE: bỏ slug BE không có và loại trùng. */
-export function toMetaIds(slugs: readonly string[], lookup: MetaLookup): number[] {
+export function toMetaIds(slugs: readonly string[] | undefined | null, lookup: MetaLookup): number[] {
+  if (!slugs) return [];
   const ids = slugs
     .map(slug => lookup.idByCode(slug))
     .filter((id): id is number => id !== undefined);
@@ -39,9 +40,11 @@ export function toMetaIds(slugs: readonly string[], lookup: MetaLookup): number[
 }
 
 /** Quy đổi danh sách id BE → slug: bỏ id lạ và loại trùng. */
-export function toMetaCodes(ids: readonly number[], lookup: MetaLookup): string[] {
+export function toMetaCodes(ids: readonly number[] | undefined | null, lookup: MetaLookup): string[] {
+  if (!ids) return [];
   const codes = ids
     .map(id => lookup.codeById(id))
     .filter((code): code is string => code !== undefined);
   return Array.from(new Set(codes));
 }
+

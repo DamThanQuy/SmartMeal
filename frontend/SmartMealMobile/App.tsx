@@ -36,6 +36,9 @@ function AppContent() {
     if (bootstrapStatus !== 'loading') {
       void SplashScreen.hideAsync();
     }
+    if (typeof window !== 'undefined') {
+      (window as any).navigationRef = navigationRef;
+    }
   }, [bootstrapStatus]);
 
   return (

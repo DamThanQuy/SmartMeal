@@ -80,7 +80,7 @@ export type MainStackParamList = {
   Barcode: { mealType: MealType };
   ProductNotFound: { barcode: string; mealType: MealType };
   OCRReview: { mealType: MealType };
-  Fridge: undefined;
+  Fridge: { imageUri?: string } | undefined;
   /** `returnTo` — biết quay lại camera nào sau khi "Cho phép camera". */
   StatePermission: { mealType?: MealType; returnTo: 'Barcode' | 'Fridge' | 'AICamera' };
 
