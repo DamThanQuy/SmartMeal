@@ -1,7 +1,7 @@
 # 🥗 SmartMeal - AI-Powered Smart Nutrition & Meal Management
 
 > **Dự án môn học**: PRM (Mobile Programming) - Đại học FPT  
-> **Nền tảng**: Flutter (Mobile) + ASP.NET Core & PostgreSQL (Backend API)  
+> **Nền tảng**: React Native / Expo (Mobile) + ASP.NET Core & PostgreSQL (Backend API)  
 > **Phiên bản**: V2 (Tích hợp AI Vision, Voice Logging, OCR Scanner, Health Sync, Gamification)
 
 ---
@@ -42,11 +42,11 @@
 
 | Thành phần | Công nghệ sử dụng |
 | :--- | :--- |
-| **Mobile App** | Flutter 3.13.2+ (Dart), Provider / Riverpod, Dio, fl_chart, SharedPreferences |
-| **Backend API** | ASP.NET Core (.NET 8), Entity Framework Core, RESTful Architecture |
+| **Mobile App** | React Native 0.86 + Expo SDK 57 (TypeScript), TanStack Query, Zustand, Axios, NativeWind, React Hook Form + Zod, AsyncStorage / expo-secure-store |
+| **Backend API** | ASP.NET Core (.NET 9), Entity Framework Core 9, RESTful Architecture |
 | **Database** | PostgreSQL 16 |
 | **Authentication** | JWT (JSON Web Token), Google Sign-In, Email/SMS OTP |
-| **AI & Machine Learning** | Google Gemini Vision API, Google ML Kit (OCR & Barcode Scanner) |
+| **AI & Machine Learning** | Google Gemini (ảnh món ăn, nhãn dinh dưỡng, tủ lạnh, giọng nói) qua backend; quét mã vạch bằng `expo-camera` |
 | **Health Integration** | Google Health Connect / Apple HealthKit |
 | **DevOps / Containers** | Docker & Docker Compose |
 
@@ -63,13 +63,12 @@ SmartMeal/
 │   ├── SmartMeal.API/              # Controllers, Program.cs, Middleware, Swagger
 │   ├── Dockerfile                  # Container build cho Backend API
 │   └── SmartMeal.sln               # Solution file
-├── mobile/                         # Mã nguồn Flutter Mobile App
-│   ├── lib/
-│   │   ├── models/                 # Data Models
-│   │   ├── views/                  # UI Screens & Custom Widgets
-│   │   ├── viewmodels/             # State Management (Provider/Riverpod)
-│   │   └── services/               # API Services & Local Storage
-│   └── pubspec.yaml
+├── frontend/SmartMealMobile/       # Mã nguồn app React Native / Expo
+│   ├── src/features/<feature>/     # screens, components, hooks, services (mock/api/mapper), types
+│   ├── src/services/api/           # Axios client, endpoints, interceptors (refresh token)
+│   ├── src/navigation/, src/state/ # React Navigation, Zustand stores
+│   ├── docs/                       # business_rule, design, structure_system, tech_stack, ui-progress
+│   └── package.json
 ├── docs/                           # Tài liệu thiết kế hệ thống, ERD, API specs
 ├── docker-compose.yml              # Chạy PostgreSQL, pgAdmin & Backend API
 ├── .env.example                    # File mẫu biến môi trường
@@ -83,9 +82,9 @@ SmartMeal/
 ### 1. Yêu cầu môi trường (Prerequisites)
 Trước khi bắt đầu, máy tính của bạn cần cài đặt sẵn:
 - **Git**: [Tải tại đây](https://git-scm.com/)
-- **.NET 8.0 SDK**: [Tải tại đây](https://dotnet.microsoft.com/download/dotnet/8.0)
+- **.NET 9.0 SDK**: [Tải tại đây](https://dotnet.microsoft.com/download/dotnet/9.0)
 - **Docker Desktop**: [Tải tại đây](https://www.docker.com/products/docker-desktop/) *(Khuyên dùng để chạy PostgreSQL và pgAdmin nhanh chóng)*
-- **Flutter SDK** *(nếu làm phần Mobile)*: [Tải tại đây](https://docs.flutter.dev/get-started/install)
+- **Node.js 20+ và npm** *(nếu làm phần Mobile)*: [Tải tại đây](https://nodejs.org/) — app chạy bằng Expo (`npx expo start`), xem `frontend/SmartMealMobile/README.md`
 - **IDE khuyên dùng**: Visual Studio Code, Visual Studio 2022, Rider hoặc Android Studio.
 
 ---
@@ -198,9 +197,9 @@ Sau khi khởi động API thành công:
 
 ---
 
-### 5. Hướng dẫn dành cho Mobile Developers (Flutter)
+### 5. Hướng dẫn dành cho Mobile Developers (React Native / Expo)
 
-Khi kết nối ứng dụng Flutter tới Backend API:
+Khi kết nối app tới Backend API, đặt `EXPO_PUBLIC_API_URL` trong `frontend/SmartMealMobile/.env` (xem `.env.example`, đổi xong chạy lại `npx expo start --clear`):
 
 1. **Chạy trên Android Emulator**:
    - Sử dụng Base URL: `http://10.0.2.2:5000/api`
