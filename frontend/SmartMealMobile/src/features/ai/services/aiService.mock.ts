@@ -56,4 +56,8 @@ export const aiMockService = {
     const mock = createVoiceLogResultMock();
     return { ...mock, mealType };
   },
+
+  async transcribeVoiceAudio(mealType: MealType, _audioUri?: string): Promise<VoiceLogResult> {
+    return aiMockService.transcribeVoice(mealType);
+  },
 };

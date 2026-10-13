@@ -1,11 +1,12 @@
 import { API_CONFIG } from '@/config/api';
-import { ENDPOINTS, api } from '@/services/api';
+import { ENDPOINTS, api, isApiError } from '@/services/api';
 import type {
   AiQuotaDto,
   SnapAndTrackResponseDto,
   VoiceLogRequestDto,
   VoiceLogResponseDto,
 } from '../types/ai.api.types';
+import { AiRecognitionFailedError } from './ai.errors';
 import { fromQuotaDto, fromSnapResponse, fromVoiceResponse } from './ai.mapper';
 import type { aiMockService } from './aiService.mock';
 
@@ -15,6 +16,10 @@ import type { aiMockService } from './aiService.mock';
 export const NO_IMAGE_MESSAGE = 'Chưa có ảnh để phân tích. Hãy chụp hoặc chọn lại ảnh món ăn.';
 export const VOICE_UNSUPPORTED_MESSAGE =
   'Nhận dạng giọng nói chưa được hỗ trợ trên bản này. Bạn có thể ghi món thủ công hoặc chụp ảnh món ăn.';
+export const NO_AUDIO_MESSAGE = 'Chưa thu được đoạn ghi âm nào. Hãy thử nói lại hoặc gõ bữa ăn của bạn.';
+
+/** Mã BE khi đoạn ghi âm không nghe ra món nào — không trừ lượt, chuyển sang màn "AI chưa nhận diện được". */
+const VOICE_UNRECOGNIZED = 'voice_unrecognized';
 
 export const aiApiService: Partial<typeof aiMockService> = {
   // GET /ai/quota — Free: limit/used/remaining; Pro: isUnlimited.
@@ -38,9 +43,8 @@ export const aiApiService: Partial<typeof aiMockService> = {
     return fromSnapResponse(mealType, dto);
   },
 
-  // POST /ai/voice-log nhận VĂN BẢN đã nhận dạng giọng nói (BE không có endpoint nhận file âm thanh).
-  // Chưa có nhận dạng giọng nói trên máy (cần Dev Client) nên không có văn bản → báo rõ thay vì trả
-  // kết quả giả như thể AI đã nghe người dùng nói.
+  // POST /ai/voice-log nhận VĂN BẢN người dùng gõ (VoicePermission "Hoặc gõ bữa ăn của bạn"). Không có
+  // văn bản thì báo rõ thay vì trả kết quả giả như thể AI đã nghe người dùng nói.
   async transcribeVoice(mealType, transcript) {
     const text = transcript?.trim();
     if (!text) throw new Error(VOICE_UNSUPPORTED_MESSAGE);
@@ -51,5 +55,25 @@ export const aiApiService: Partial<typeof aiMockService> = {
       { timeout: API_CONFIG.aiTimeout },
     );
     return fromVoiceResponse(mealType, text, dto);
+  },
+
+  // POST /ai/voice-log/audio (multipart, trường `audio`; expo-av ghi .m4a). AI vừa chép lời vừa bóc món;
+  // câu hiển thị lấy từ bản chép lời của server. Không nghe ra món nào → 400 voice_unrecognized.
+  async transcribeVoiceAudio(mealType, audioUri) {
+    if (!audioUri) throw new Error(NO_AUDIO_MESSAGE);
+
+    const form = new FormData();
+    form.append('audio', { uri: audioUri, name: 'voice.m4a', type: 'audio/mp4' } as unknown as Blob);
+    try {
+      const dto = await api.post<VoiceLogResponseDto, FormData>(ENDPOINTS.ai.voiceLogAudio, form, {
+        timeout: API_CONFIG.aiTimeout,
+      });
+      return fromVoiceResponse(mealType, '', dto);
+    } catch (error) {
+      if (isApiError(error) && error.details.includes(VOICE_UNRECOGNIZED)) {
+        throw new AiRecognitionFailedError(error.message);
+      }
+      throw error;
+    }
   },
 };

@@ -146,7 +146,7 @@ export function VoiceLogScreen({ navigation, route }: Props) {
 
     setPhase('processing');
     transcribeVoice.mutate(
-      { mealType },
+      { mealType, audioUri: audioUri ?? undefined },
       {
         onSuccess: result => {
           consumeQuota();
@@ -165,7 +165,7 @@ export function VoiceLogScreen({ navigation, route }: Props) {
             navigation.replace(MAIN_STACK_ROUTES.STATE_AI_LIMIT, { mealType });
             return;
           }
-          // Vd. chưa có nhận dạng giọng nói trên máy: báo rõ lý do thay vì treo ở "Đang nhận diện…".
+          // Vd. không thu được ghi âm, lỗi mạng: báo rõ lý do thay vì treo ở "Đang nhận diện…".
           navigation.replace(MAIN_STACK_ROUTES.STATE_AI_FAILED, {
             mealType,
             source: 'voice',
@@ -252,6 +252,7 @@ export function VoiceLogScreen({ navigation, route }: Props) {
           grams: item.grams,
           nutrition: item.nutrition,
           source: 'ai',
+          logMethod: 'Voice',
           aiConfirmed: true,
         })),
       },

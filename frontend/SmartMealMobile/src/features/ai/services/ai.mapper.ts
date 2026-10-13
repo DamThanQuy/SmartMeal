@@ -114,7 +114,8 @@ export function fromVoiceResponse(
 ): VoiceLogResult {
   return {
     mealType,
-    transcript,
+    // Ghi âm: câu hiển thị là bản chép lời của server; gõ tay: giữ đúng câu người dùng gõ.
+    transcript: transcript || dto.transcript?.trim() || '',
     items: dto.extractedItems.map((item, index) => ({
       id: `voice-${index}`,
       name: item.foodName,

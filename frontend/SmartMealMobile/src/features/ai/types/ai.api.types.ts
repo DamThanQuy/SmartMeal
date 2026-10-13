@@ -50,6 +50,8 @@ export interface ExtractedMealItemDto {
 
 export interface VoiceLogResponseDto {
   mealType: string;
+  /** Câu đã gửi (voice-log) hoặc bản chép lời AI nghe được (voice-log/audio). */
+  transcript?: string;
   extractedItems: ExtractedMealItemDto[];
   totalCalories: number;
   totalCarbs: number;
