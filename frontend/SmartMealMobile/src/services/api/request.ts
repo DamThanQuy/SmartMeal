@@ -1,7 +1,7 @@
 import type { AxiosRequestConfig } from 'axios';
 import type { ApiEnvelope } from '@/types/api';
 import { apiClient } from './client';
-import { unwrap } from './unwrap';
+import { unwrap, unwrapWithMessage } from './unwrap';
 
 /**
  * Helper gọi API + bóc envelope trong một bước — feature service dùng thay vì tự gọi
@@ -18,6 +18,15 @@ export const api = {
     config?: AxiosRequestConfig,
   ): Promise<TResponse> {
     return unwrap(await apiClient.post<ApiEnvelope<TResponse>>(url, body, config));
+  },
+
+  /** POST và giữ cả `message` của BE (xem unwrapWithMessage). */
+  async postWithMessage<TResponse, TBody = unknown>(
+    url: string,
+    body?: TBody,
+    config?: AxiosRequestConfig,
+  ): Promise<{ data: TResponse; message: string }> {
+    return unwrapWithMessage(await apiClient.post<ApiEnvelope<TResponse>>(url, body, config));
   },
 
   async put<TResponse, TBody = unknown>(

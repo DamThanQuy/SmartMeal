@@ -50,7 +50,7 @@ export function SlotPickerScreen({ navigation, route }: Props) {
   const [tab, setTab] = useState<SuggestionTab>('suggested');
 
   const weekPlan = useWeekPlan(weekStartIso);
-  const suggestions = useSlotSuggestions(tab === 'suggested');
+  const suggestions = useSlotSuggestions(tab === 'suggested', mealType);
   const setSlot = useSetMealSlot(weekStartIso);
   const favoritesQuery = useFavoriteRecipes(tab === 'favorite');
   const collectionsQuery = useCollections(tab === 'collection');

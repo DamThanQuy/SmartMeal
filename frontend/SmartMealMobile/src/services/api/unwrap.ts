@@ -22,3 +22,12 @@ export function unwrap<T>(response: AxiosResponse<ApiEnvelope<T>>): T {
   }
   return body.data as T;
 }
+
+/**
+ * Như `unwrap` nhưng giữ cả `message` của BE — cho thao tác mà câu thông báo có nội dung cần hiển thị
+ * (vd. tạo thực đơn tự động ghi rõ đã bỏ món nào theo bệnh lý, hoàn tất đi chợ giữ lại bao nhiêu món).
+ */
+export function unwrapWithMessage<T>(response: AxiosResponse<ApiEnvelope<T>>): { data: T; message: string } {
+  const data = unwrap(response);
+  return { data, message: (response.data as ApiEnvelope<T>).message ?? '' };
+}

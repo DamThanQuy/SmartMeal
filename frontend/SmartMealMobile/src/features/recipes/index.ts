@@ -3,6 +3,7 @@ export * from './services/recipeService';
 export * from './hooks/useRecipes';
 export * from './hooks/useFavorites';
 export * from './components/RecipeCard';
+export * from './components/RecipeImage';
 export * from './screens/DiscoveryScreen';
 export * from './screens/FilterSheetScreen';
 export * from './screens/RecipeDetailScreen';
