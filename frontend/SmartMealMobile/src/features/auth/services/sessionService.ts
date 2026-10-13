@@ -2,6 +2,7 @@ import { ENV } from '@/config/env';
 import { MAIN_STACK_ROUTES, ROOT_ROUTES } from '@/constants/routes';
 import { healthProfileService } from '@/features/health';
 import { premiumService } from '@/features/premium';
+import { cancelReminders, resyncReminders } from '@/features/profile/services/reminderSync';
 import { navigationRef } from '@/navigation/navigationRef';
 import { isApiError, queryClient, setUnauthorizedHandler } from '@/services/api';
 import {
@@ -49,6 +50,8 @@ export async function openSession(user: AuthUser): Promise<SessionOpenResult> {
   if (hydrated) {
     useUserProfileStore.getState().hydrateFromServer(hydrated.snapshot, hydrated.extras);
   }
+  // Nhắc nhở cục bộ theo cài đặt của tài khoản này (không chờ — không được chặn vào app).
+  void resyncReminders();
   return { user, needsSurvey: false };
 }
 
@@ -97,6 +100,8 @@ async function clearSessionData(): Promise<void> {
   await clearSessionTokens();
   // Gói thành viên là của từng tài khoản: không để tài khoản đăng nhập sau thừa hưởng Pro của người trước.
   usePremiumStore.getState().resetToFree();
+  // Lịch nhắc nhở ở cấp máy: không để tài khoản sau nhận nhắc của người trước.
+  await cancelReminders();
   await queryClient.cancelQueries();
   queryClient.clear();
 }

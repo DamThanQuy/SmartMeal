@@ -6,6 +6,8 @@ export const STORAGE_KEYS = {
   PROFILE_EXTRAS_PREFIX: 'user.profileExtras.',
   /** + userId — tùy chọn Health Connect cục bộ (đã kết nối, nguồn nào bật). */
   HEALTH_CONNECT_PREFIX: 'user.healthConnect.',
+  /** + userId — bật/tắt nhắc nhở cục bộ (bữa ăn, nước, chuỗi ngày). */
+  REMINDERS_PREFIX: 'user.reminders.',
 } as const;
 
 /**

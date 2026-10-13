@@ -16,8 +16,8 @@ import {
 
 type Props = NativeStackScreenProps<MainStackParamList, 'Reminders'>;
 
-// design/Reminders.dc.html. Quyền thông báo hệ thống chưa nối expo-notifications thật (CLAUDE.md
-// mục 9) — banner "Thông báo đang tắt" chỉ hiển thị theo state mock.
+// design/Reminders.dc.html. Nhắc nhở cục bộ bằng expo-notifications (xem remindersService); banner
+// "Thông báo đang tắt" theo quyền thông báo thật của hệ thống.
 export function RemindersScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const { data, isLoading, isError, error, refetch } = useReminders();
