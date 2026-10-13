@@ -1,11 +1,11 @@
 /**
  * Live: AI với backend thật — hạn mức (5 lượt/ngày cho Free, Pro không giới hạn), Voice Log từ văn bản,
  * lượt chỉ bị trừ khi AI thành công, hết lượt → 429 và chuyển sang Pro thì dùng lại được. Backend
- * Development chưa cấu hình Gemini trả dữ liệu MẪU (isDemo). Không kiểm AI Snap (multipart) vì adapter
- * Node của test live chưa gửi được FormData của React Native.
+ * Development chưa cấu hình Gemini trả dữ liệu MẪU (isDemo). Voice Log từ file ghi âm đi qua multipart
+ * (adapter live đọc file `file://` như app trên máy).
  * Chỉ chạy khi có LIVE_API_URL (xem test-utils/live.ts).
  */
-import { describeLive, installLiveBackend, uniqueEmail } from '../../test-utils/live';
+import { describeLive, installLiveBackend, uniqueEmail, writeLiveFixture } from '../../test-utils/live';
 
 type AuthModule = typeof import('@/features/auth/services/authService');
 type AiModule = typeof import('@/features/ai/services/aiService');
@@ -57,6 +57,18 @@ describeLive('AI (backend thật)', () => {
     expect(result.transcript).toBe(MEAL_TEXT);
     expect(result.items.length).toBeGreaterThan(0);
     expect(result.items.every(item => item.grams > 0 && item.nutrition.calories >= 0)).toBe(true);
+    expect(quota).toMatchObject({ used: 1, remaining: 4 });
+  });
+
+  test('Voice Log từ file ghi âm: gửi multipart `audio`, trả món + câu chép lời, trừ đúng một lượt', async () => {
+    await newUser();
+
+    const result = await ai.aiService.transcribeVoiceAudio('dinner', writeLiveFixture('audio'));
+    const quota = await ai.aiService.getQuota();
+
+    expect(result.mealType).toBe('dinner');
+    expect(result.transcript.length).toBeGreaterThan(0);
+    expect(result.items.length).toBeGreaterThan(0);
     expect(quota).toMatchObject({ used: 1, remaining: 4 });
   });
 

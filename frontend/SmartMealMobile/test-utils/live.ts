@@ -10,12 +10,43 @@
  * Cách dùng trong test: gọi `installLiveBackend()` trong beforeAll, SAU ĐÓ mới `require` các service
  * (cấu hình env của app được đọc lúc import).
  */
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import http from 'http';
+import { fileURLToPath, pathToFileURL } from 'url';
 import type { AxiosAdapter, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 export const LIVE_API_URL = process.env.LIVE_API_URL;
 export const describeLive = LIVE_API_URL ? describe : describe.skip;
+
+interface RnFormDataPart {
+  string?: string;
+  uri?: string;
+  headers: Record<string, string>;
+}
+
+/**
+ * FormData của React Native (phần file là `{ uri, name, type }`) → multipart thật: đọc file từ đĩa theo
+ * `file://` URI, để test live gửi được ảnh/ghi âm như app trên máy.
+ */
+function encodeRnFormData(data: { getParts: () => RnFormDataPart[] }): { body: Buffer; contentType: string } {
+  const boundary = `----smartmeal-live-${Date.now().toString(36)}`;
+  const chunks: Buffer[] = [];
+  for (const part of data.getParts()) {
+    const headerLines = Object.entries(part.headers).map(([key, value]) => `${key}: ${value}`);
+    chunks.push(Buffer.from(`--${boundary}\r\n${headerLines.join('\r\n')}\r\n\r\n`));
+    const file = part.uri ? readFileSync(part.uri.startsWith('file:') ? fileURLToPath(part.uri) : part.uri) : undefined;
+    chunks.push(file ?? Buffer.from(part.string ?? ''));
+    chunks.push(Buffer.from('\r\n'));
+  }
+  chunks.push(Buffer.from(`--${boundary}--\r\n`));
+  return { body: Buffer.concat(chunks), contentType: `multipart/form-data; boundary=${boundary}` };
+}
+
+function isRnFormData(data: unknown): data is { getParts: () => RnFormDataPart[] } {
+  return typeof (data as { getParts?: unknown } | null)?.getParts === 'function';
+}
 
 /**
  * Adapter axios dùng `http` của Node. Axios trong môi trường Jest của React Native chọn adapter XHR
@@ -31,7 +62,15 @@ const nodeHttpAdapter: AxiosAdapter = config =>
     }
 
     const headers = AxiosHeaders.from(config.headers).toJSON() as Record<string, string>;
-    const body = config.data === undefined || config.data === null ? undefined : String(config.data);
+    let body: string | Buffer | undefined;
+    if (isRnFormData(config.data)) {
+      const encoded = encodeRnFormData(config.data);
+      body = encoded.body;
+      for (const key of Object.keys(headers)) if (key.toLowerCase() === 'content-type') delete headers[key];
+      headers['Content-Type'] = encoded.contentType;
+    } else if (config.data !== undefined && config.data !== null) {
+      body = String(config.data);
+    }
     if (body !== undefined) headers['Content-Length'] = String(Buffer.byteLength(body));
 
     const request = http.request(
@@ -105,6 +144,9 @@ export function installLiveBackend(): void {
   jest.doMock('@react-native-async-storage/async-storage', () =>
     require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
   );
+  // Jest chạy trên Node nên FormData toàn cục là bản của Node (biến `{ uri, name, type }` thành chuỗi).
+  // Dùng FormData của React Native như app trên máy để adapter gửi đúng file.
+  globalThis.FormData = (require('react-native/Libraries/Network/FormData') as { default: typeof FormData }).default;
   const axios = require('axios') as typeof import('axios');
   axios.default.defaults.adapter = nodeHttpAdapter;
 }
@@ -127,4 +169,35 @@ export function readLatestOtp(email: string): string {
   const match = /\b(\d{6})\b/.exec(log.slice(marker));
   if (!match) throw new Error(`Email gửi tới ${email} không có mã 6 số.`);
   return match[1];
+}
+
+/** Ảnh PNG 1×1 hợp lệ — đủ để BE nhận diện định dạng (chế độ demo không cần ảnh thật). */
+const TINY_PNG_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+/** WAV PCM 16-bit mono 8 kHz, 0,25 giây im lặng. */
+function silentWav(): Buffer {
+  const samples = 2000;
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0);
+  header.writeUInt32LE(36 + samples * 2, 4);
+  header.write('WAVE', 8);
+  header.write('fmt ', 12);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(8000, 24);
+  header.writeUInt32LE(16000, 28);
+  header.writeUInt16LE(2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write('data', 36);
+  header.writeUInt32LE(samples * 2, 40);
+  return Buffer.concat([header, Buffer.alloc(samples * 2)]);
+}
+
+/** Ghi file mẫu ra thư mục tạm, trả `file://` URI như expo-image-picker/expo-av trả trên máy. */
+export function writeLiveFixture(kind: 'image' | 'audio'): string {
+  const path = join(tmpdir(), `smartmeal-live-${kind}-${process.pid}.${kind === 'image' ? 'png' : 'wav'}`);
+  writeFileSync(path, kind === 'image' ? Buffer.from(TINY_PNG_BASE64, 'base64') : silentWav());
+  return pathToFileURL(path).href;
 }

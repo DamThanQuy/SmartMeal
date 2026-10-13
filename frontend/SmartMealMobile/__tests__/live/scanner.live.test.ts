@@ -1,9 +1,10 @@
 /**
- * Live: quét mã vạch với backend thật — mã lạ trả null (không bịa sản phẩm), món người dùng tự nhập kèm
- * mã vạch được tìm thấy ở lần quét sau, dinh dưỡng /100 g và cảnh báo ngưỡng đến từ server (BR-120,
- * BR-140; review PR #9 S1). Chỉ chạy khi có LIVE_API_URL (xem test-utils/live.ts).
+ * Live: scanner với backend thật — mã lạ trả null (không bịa sản phẩm), món người dùng tự nhập kèm mã
+ * vạch được tìm thấy ở lần quét sau, dinh dưỡng /100 g và cảnh báo ngưỡng đến từ server (BR-120, BR-140;
+ * review PR #9 S1); đọc nhãn và quét tủ lạnh gửi ảnh thật qua multipart (S2/S3). Backend Development
+ * chưa cấu hình Gemini trả dữ liệu mẫu và phải gắn cờ isDemo. Chỉ chạy khi có LIVE_API_URL (xem test-utils/live.ts).
  */
-import { describeLive, installLiveBackend, uniqueEmail } from '../../test-utils/live';
+import { describeLive, installLiveBackend, uniqueEmail, writeLiveFixture } from '../../test-utils/live';
 
 type AuthModule = typeof import('@/features/auth/services/authService');
 type HealthModule = typeof import('@/features/health/services/healthProfileService');
@@ -17,7 +18,7 @@ function uniqueBarcode(): string {
   return `89${Date.now().toString().slice(-11)}`;
 }
 
-describeLive('quét mã vạch (backend thật)', () => {
+describeLive('scanner (backend thật)', () => {
   let authService: AuthModule['authService'];
   let healthProfileService: HealthModule['healthProfileService'];
   let healthTypes: HealthTypesModule;
@@ -73,5 +74,26 @@ describeLive('quét mã vạch (backend thật)', () => {
     // 30 g đường /100 g vượt ngưỡng "cao" → server gắn cảnh báo, không còn ngưỡng cứng phía FE.
     expect(product?.alerts.length).toBeGreaterThan(0);
     expect(product?.alerts.some(alert => alert.severity !== 'info')).toBe(true);
+  });
+
+  test('đọc nhãn: ảnh gửi multipart `image` tới /ai/scan-label, kết quả bản demo được gắn cờ', async () => {
+    const result = await scannerService.analyzeOcrLabel(writeLiveFixture('image'));
+
+    expect(result.fields.length).toBeGreaterThan(0);
+    if (result.isDemo) {
+      // Dữ liệu mẫu không bao giờ được trình bày như đọc từ nhãn thật.
+      expect(result.isDemo).toBe(true);
+    } else {
+      expect(result.productName.length).toBeGreaterThan(0);
+    }
+  });
+
+  test('tủ lạnh: gửi từng ảnh tới /ai/fridge-scanner, nguyên liệu gộp và đều chờ xác nhận', async () => {
+    const image = writeLiveFixture('image');
+    const result = await scannerService.scanFridge([image, image]);
+
+    expect(result.ingredients.length).toBeGreaterThan(0);
+    expect(new Set(result.ingredients.map(item => item.name.toLowerCase())).size).toBe(result.ingredients.length);
+    expect(result.ingredients.every(item => item.status === 'uncertain')).toBe(true);
   });
 });

@@ -1,5 +1,5 @@
 /**
- * aiService.api (docs/fetch-api/part1 §12): hạn mức, AI Snap (multipart), Voice Log (văn bản) và
+ * aiService.api (docs/fetch-api/part1 §12): hạn mức, AI Snap (multipart), Voice Log (văn bản + file ghi âm) và
  * thông báo rõ khi thiếu ảnh/văn bản — không bao giờ trả kết quả giả. `api` được mock.
  */
 import { API_CONFIG } from '@/config/api';
@@ -11,6 +11,7 @@ function loadService() {
   jest.doMock('@/services/api', () => ({
     api: apiMock,
     ENDPOINTS: jest.requireActual('@/services/api/endpoints').ENDPOINTS,
+    isApiError: jest.requireActual('@/services/api/errors').isApiError,
   }));
 
   const module =
@@ -161,6 +162,56 @@ describe('transcribeVoice', () => {
 
     await expect(service.transcribeVoice?.('lunch', undefined)).rejects.toThrow(VOICE_UNSUPPORTED_MESSAGE);
     await expect(service.transcribeVoice?.('lunch', '   ')).rejects.toThrow(VOICE_UNSUPPORTED_MESSAGE);
+    expect(apiMock.post).not.toHaveBeenCalled();
+  });
+});
+
+describe('transcribeVoiceAudio', () => {
+  test('POST /ai/voice-log/audio multipart; câu hiển thị lấy từ bản chép lời của server', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue({
+      mealType: 'Breakfast',
+      transcript: ' Sáng nay tôi ăn bánh mì ',
+      extractedItems: [
+        { foodName: 'Bánh mì', portionDescription: '1 ổ', portionGrams: 120, calories: 300, carbs: 50, protein: 10, fat: 6 },
+      ],
+      totalCalories: 300,
+      totalCarbs: 50,
+      totalProtein: 10,
+      totalFat: 6,
+      isDemo: false,
+    });
+
+    const result = await service.transcribeVoiceAudio?.('breakfast', 'file:///voice.m4a');
+
+    const [url, form, config] = apiMock.post.mock.calls[0] as [string, FormData, { timeout: number }];
+    expect(url).toBe('/ai/voice-log/audio');
+    expect(form).toBeInstanceOf(FormData);
+    expect(config).toEqual({ timeout: API_CONFIG.aiTimeout });
+    expect(result).toMatchObject({
+      mealType: 'breakfast',
+      transcript: 'Sáng nay tôi ăn bánh mì',
+      items: [{ name: 'Bánh mì', grams: 120 }],
+    });
+  });
+
+  test('server không nghe ra món (voice_unrecognized) → AiRecognitionFailedError, lỗi khác ném nguyên', async () => {
+    const { service, apiMock, ApiError, AiRecognitionFailedError } = loadService();
+    apiMock.post.mockRejectedValueOnce(new ApiError('Chưa nghe ra món ăn nào', 'BUSINESS', 400, ['voice_unrecognized']));
+    await expect(service.transcribeVoiceAudio?.('lunch', 'file:///voice.m4a')).rejects.toBeInstanceOf(
+      AiRecognitionFailedError,
+    );
+
+    apiMock.post.mockRejectedValueOnce(new ApiError('Hết lượt', 'RATE_LIMITED', 429));
+    await expect(service.transcribeVoiceAudio?.('lunch', 'file:///voice.m4a')).rejects.toMatchObject({
+      code: 'RATE_LIMITED',
+    });
+  });
+
+  test('không có file ghi âm → báo rõ, không gọi server', async () => {
+    const { service, apiMock, NO_AUDIO_MESSAGE } = loadService();
+
+    await expect(service.transcribeVoiceAudio?.('lunch', undefined)).rejects.toThrow(NO_AUDIO_MESSAGE);
     expect(apiMock.post).not.toHaveBeenCalled();
   });
 });
