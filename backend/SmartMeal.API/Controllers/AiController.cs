@@ -1,99 +1,133 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using SmartMeal.API.Infrastructure;
+using SmartMeal.Application.Common;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.AI;
 using SmartMeal.Application.Services;
+using SmartMeal.Infrastructure.Options;
 
 namespace SmartMeal.API.Controllers;
 
+/// <summary>
+/// Tính năng AI. Mọi endpoint yêu cầu đăng nhập (để áp hạn mức BR-233, cảnh báo dị ứng theo hồ sơ và không để người lạ
+/// dùng hết hạn mức của khóa Gemini). Tài khoản Free có hạn mức lượt/ngày; Pro không giới hạn.
+/// </summary>
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class AiController : ControllerBase
 {
     private readonly IAiVisionService _aiVisionService;
+    private readonly IAiQuotaService _quota;
+    private readonly AiOptions _options;
 
-    public AiController(IAiVisionService aiVisionService)
+    public AiController(IAiVisionService aiVisionService, IAiQuotaService quota, IOptions<AiOptions> options)
     {
         _aiVisionService = aiVisionService;
+        _quota = quota;
+        _options = options.Value;
     }
 
-    /// <summary>
-    /// AI Snap & Track: Chụp ảnh đĩa thức ăn -> Nhận diện tên món, ước tính Calo, Carbs, Protein, Fat và cảnh báo dị ứng.
-    /// </summary>
+    /// <summary>Hạn mức AI còn lại hôm nay.</summary>
+    [HttpGet("quota")]
+    public async Task<ActionResult<ApiResponse<AiQuotaDto>>> GetQuota()
+    {
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<AiQuotaDto>();
+
+        return Ok(ApiResponse<AiQuotaDto>.Ok(await _quota.GetAsync(userId)));
+    }
+
+    /// <summary>AI Snap &amp; Track: ảnh đĩa thức ăn (multipart, trường <c>image</c>; JPG/PNG/WebP, tối đa 5 MB).</summary>
     [HttpPost("snap-and-track")]
     [Consumes("multipart/form-data")]
+    [RequestSizeLimit(8 * 1024 * 1024)]
     public async Task<ActionResult<ApiResponse<SnapAndTrackResponseDto>>> SnapAndTrack(IFormFile? image)
     {
-        if (image == null || image.Length == 0)
-        {
-            return BadRequest(ApiResponse<SnapAndTrackResponseDto>.Fail("Vui lòng tải lên file ảnh đĩa thức ăn hợp lệ."));
-        }
+        var (bytes, mime, error) = await ReadImageAsync(image);
+        if (error is not null) return BadRequest(ApiResponse<SnapAndTrackResponseDto>.Fail(error));
 
-        Guid? userId = null;
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (Guid.TryParse(userIdStr, out var parsedId))
-        {
-            userId = parsedId;
-        }
-
-        using var memoryStream = new MemoryStream();
-        await image.CopyToAsync(memoryStream);
-        var imageBytes = memoryStream.ToArray();
-
-        var result = await _aiVisionService.SnapAndTrackAsync(imageBytes, image.ContentType, userId);
-        return Ok(result);
+        return await RunWithQuotaAsync("snap", userId => _aiVisionService.SnapAndTrackAsync(bytes!, mime!, userId));
     }
 
-    /// <summary>
-    /// Fridge Scanner: Chụp ảnh các nguyên liệu trong tủ lạnh -> AI phân tích và đề xuất 2-3 món nấu được ngay.
-    /// </summary>
+    /// <summary>Fridge Scanner: ảnh nguyên liệu trong tủ lạnh (multipart, trường <c>image</c>).</summary>
     [HttpPost("fridge-scanner")]
     [Consumes("multipart/form-data")]
+    [RequestSizeLimit(8 * 1024 * 1024)]
     public async Task<ActionResult<ApiResponse<FridgeScannerResponseDto>>> FridgeScanner(IFormFile? image)
     {
-        if (image == null || image.Length == 0)
-        {
-            return BadRequest(ApiResponse<FridgeScannerResponseDto>.Fail("Vui lòng tải lên file ảnh nguyên liệu trong tủ lạnh."));
-        }
+        var (bytes, mime, error) = await ReadImageAsync(image);
+        if (error is not null) return BadRequest(ApiResponse<FridgeScannerResponseDto>.Fail(error));
 
-        using var memoryStream = new MemoryStream();
-        await image.CopyToAsync(memoryStream);
-        var imageBytes = memoryStream.ToArray();
-
-        var result = await _aiVisionService.ScanFridgeAsync(imageBytes, image.ContentType);
-        return Ok(result);
+        return await RunWithQuotaAsync("fridge", _ => _aiVisionService.ScanFridgeAsync(bytes!, mime!));
     }
 
-    /// <summary>
-    /// Voice Log NLP: Nhận diện câu nói tự nhiên thành dữ liệu bữa ăn kèm dinh dưỡng.
-    /// </summary>
+    /// <summary>Voice Log: văn bản (đã nhận dạng giọng nói trên máy) → món ăn kèm dinh dưỡng.</summary>
     [HttpPost("voice-log")]
-    public async Task<ActionResult<ApiResponse<VoiceLogResponseDto>>> VoiceLog([FromBody] VoiceLogRequestDto dto)
-    {
-        if (string.IsNullOrWhiteSpace(dto.Transcript))
-        {
-            return BadRequest(ApiResponse<VoiceLogResponseDto>.Fail("Vui lòng nhập đoạn văn bản giọng nói."));
-        }
-
-        var result = await _aiVisionService.ParseVoiceLogAsync(dto.Transcript);
-        return Ok(result);
-    }
+    public async Task<ActionResult<ApiResponse<VoiceLogResponseDto>>> VoiceLog([FromBody] VoiceLogRequestDto dto) =>
+        await RunWithQuotaAsync("voice", _ => _aiVisionService.ParseVoiceLogAsync(dto.Transcript));
 
     /// <summary>
-    /// OCR & Barcode Safety Check: Phân tích thành phần quét từ bao bì và kiểm tra an toàn theo bệnh lý/dị ứng của User.
+    /// Kiểm tra an toàn sản phẩm theo dị ứng/bệnh lý của người dùng (BR-140). Không tính vào hạn mức miễn phí vì đây là
+    /// tính năng an toàn, nhưng vẫn cần đăng nhập.
     /// </summary>
     [HttpPost("check-safety")]
     public async Task<ActionResult<ApiResponse<CheckSafetyResponseDto>>> CheckSafety([FromBody] CheckSafetyRequestDto dto)
     {
-        Guid? userId = null;
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (Guid.TryParse(userIdStr, out var parsedId))
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<CheckSafetyResponseDto>();
+
+        return this.ToActionResult(await _aiVisionService.CheckSafetyAsync(dto, userId));
+    }
+
+    // ───────────────────────────── Nội bộ ─────────────────────────────
+
+    /// <summary>Đọc ảnh có giới hạn dung lượng và nhận loại ảnh bằng nội dung (không tin Content-Type do client gửi).</summary>
+    private async Task<(byte[]? Bytes, string? Mime, string? Error)> ReadImageAsync(IFormFile? image)
+    {
+        if (image is null || image.Length == 0)
         {
-            userId = parsedId;
+            return (null, null, "Vui lòng tải lên file ảnh hợp lệ (trường multipart tên \"image\").");
         }
 
-        var result = await _aiVisionService.CheckSafetyAsync(dto, userId);
-        return Ok(result);
+        if (image.Length > _options.MaxImageBytes)
+        {
+            return (null, null, $"Ảnh quá lớn, tối đa {_options.MaxImageBytes / (1024 * 1024)} MB.");
+        }
+
+        using var buffer = new MemoryStream();
+        await using (var stream = image.OpenReadStream())
+        {
+            await stream.CopyToAsync(buffer);
+        }
+
+        var bytes = buffer.ToArray();
+        var extension = ImageSniffer.DetectExtension(bytes);
+        return extension is null
+            ? (null, null, "Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP.")
+            : (bytes, ImageSniffer.MimeType(extension), null);
+    }
+
+    /// <summary>Kiểm hạn mức (BR-233) trước khi chạy; chỉ ghi nhận lượt dùng khi AI trả kết quả thành công.</summary>
+    private async Task<ActionResult<ApiResponse<T>>> RunWithQuotaAsync<T>(string kind, Func<Guid, Task<ApiResponse<T>>> action)
+    {
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<T>();
+
+        var quota = await _quota.GetAsync(userId);
+        if (!quota.IsUnlimited && quota.Remaining <= 0)
+        {
+            return StatusCode(StatusCodes.Status429TooManyRequests, ApiResponse<T>.Fail(
+                $"Bạn đã dùng hết {quota.Limit} lượt AI miễn phí hôm nay. Nâng cấp Pro để dùng không giới hạn.",
+                new List<string> { "ai_quota_exceeded" },
+                ApiErrorKind.TooManyRequests));
+        }
+
+        var result = await action(userId);
+        if (result.Success)
+        {
+            await _quota.RecordUseAsync(userId, kind);
+        }
+
+        return this.ToActionResult(result);
     }
 }

@@ -16,6 +16,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<UserAllergy> UserAllergies => Set<UserAllergy>();
     public DbSet<MedicalCondition> MedicalConditions => Set<MedicalCondition>();
     public DbSet<UserCondition> UserConditions => Set<UserCondition>();
+    public DbSet<UserDietaryPreference> UserDietaryPreferences => Set<UserDietaryPreference>();
     public DbSet<Ingredient> Ingredients => Set<Ingredient>();
     public DbSet<Recipe> Recipes => Set<Recipe>();
     public DbSet<RecipeIngredient> RecipeIngredients => Set<RecipeIngredient>();
@@ -27,6 +28,14 @@ public class ApplicationDbContext : DbContext
     public DbSet<GroceryItem> GroceryItems => Set<GroceryItem>();
     public DbSet<UserFavorite> UserFavorites => Set<UserFavorite>();
     public DbSet<OtpVerification> OtpVerifications => Set<OtpVerification>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
+    public DbSet<AiUsageLog> AiUsageLogs => Set<AiUsageLog>();
+    public DbSet<IngredientAllergy> IngredientAllergies => Set<IngredientAllergy>();
+    public DbSet<XpEvent> XpEvents => Set<XpEvent>();
+    public DbSet<UserBadge> UserBadges => Set<UserBadge>();
+    public DbSet<FoodServing> FoodServings => Set<FoodServing>();
+    public DbSet<UserFavoriteFood> UserFavoriteFoods => Set<UserFavoriteFood>();
     public DbSet<WaterLog> WaterLogs => Set<WaterLog>();
     public DbSet<HealthSyncLog> HealthSyncLogs => Set<HealthSyncLog>();
     public DbSet<HealthPet> HealthPets => Set<HealthPet>();
@@ -57,6 +66,98 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Email)
             .IsUnique();
+
+        // NutritionDiary: mỗi (người dùng, ngày, bữa) chỉ có đúng một dòng nhóm. Ràng buộc này chặn việc
+        // các request song song tạo dòng trùng làm món "biến mất" khỏi /daily (P1-BE-12).
+        modelBuilder.Entity<NutritionDiary>()
+            .HasIndex(d => new { d.UserId, d.LogDate, d.MealType })
+            .IsUnique();
+
+        // Thực đơn: mỗi (người dùng, ngày, bữa) chỉ có một món — chặn việc các request song song xếp trùng ô.
+        modelBuilder.Entity<MealPlan>()
+            .HasIndex(m => new { m.UserId, m.PlanDate, m.MealType })
+            .IsUnique();
+
+        // Gamification: mỗi người một pet; một người tham gia một thử thách một lần; sổ XP không cộng trùng một sự kiện (BR-202).
+        modelBuilder.Entity<HealthPet>()
+            .HasIndex(p => p.UserId)
+            .IsUnique();
+
+        modelBuilder.Entity<UserChallenge>()
+            .HasIndex(uc => new { uc.UserId, uc.ChallengeId })
+            .IsUnique();
+
+        modelBuilder.Entity<XpEvent>()
+            .HasIndex(e => new { e.UserId, e.EventKey })
+            .IsUnique();
+
+        modelBuilder.Entity<UserBadge>()
+            .HasKey(b => new { b.UserId, b.BadgeId });
+
+        modelBuilder.Entity<UserBadge>()
+            .HasOne(b => b.User)
+            .WithMany()
+            .HasForeignKey(b => b.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<XpEvent>()
+            .HasOne(e => e.User)
+            .WithMany()
+            .HasForeignKey(e => e.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<WaterLog>()
+            .HasIndex(w => new { w.UserId, w.LogDate });
+
+        // HealthSyncLog: mỗi (người dùng, ngày, nguồn) một bản ghi — gửi lại thì thay thế, không nhân đôi (P1-BE-09).
+        modelBuilder.Entity<HealthSyncLog>()
+            .HasIndex(l => new { l.UserId, l.SyncDate, l.Source })
+            .IsUnique();
+
+        // Một tài khoản Google chỉ liên kết với một tài khoản SmartMeal (BR-012); NULL được phép lặp.
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.GoogleId)
+            .IsUnique();
+
+        // Giao dịch thanh toán được giữ lại khi người dùng xóa tài khoản (BR-271): UserId về NULL, chỉ còn UserRef (băm).
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasIndex(t => t.SessionId)
+            .IsUnique();
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasIndex(t => t.UserId);
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasOne(t => t.User)
+            .WithMany()
+            .HasForeignKey(t => t.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<AiUsageLog>()
+            .HasIndex(l => new { l.UserId, l.CreatedAt });
+
+        modelBuilder.Entity<AiUsageLog>()
+            .HasOne(l => l.User)
+            .WithMany()
+            .HasForeignKey(l => l.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<OtpVerification>()
+            .HasIndex(o => new { o.Email, o.Purpose, o.CreatedAt });
+
+        // RefreshToken: tra theo bản băm; xóa người dùng thì xóa luôn các phiên.
+        modelBuilder.Entity<RefreshToken>()
+            .HasIndex(t => t.TokenHash)
+            .IsUnique();
+
+        modelBuilder.Entity<RefreshToken>()
+            .HasIndex(t => t.UserId);
+
+        modelBuilder.Entity<RefreshToken>()
+            .HasOne(t => t.User)
+            .WithMany(u => u.RefreshTokens)
+            .HasForeignKey(t => t.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // User - HealthProfile (1-1)
         modelBuilder.Entity<HealthProfile>()
@@ -107,6 +208,55 @@ public class ApplicationDbContext : DbContext
             .WithMany(i => i.RecipeIngredients)
             .HasForeignKey(ri => ri.IngredientId);
 
+        // IngredientAllergy (N-N): một nguyên liệu có thể chứa nhiều chất gây dị ứng.
+        modelBuilder.Entity<IngredientAllergy>()
+            .HasKey(ia => new { ia.IngredientId, ia.AllergyId });
+
+        modelBuilder.Entity<IngredientAllergy>()
+            .HasOne(ia => ia.Ingredient)
+            .WithMany(i => i.IngredientAllergies)
+            .HasForeignKey(ia => ia.IngredientId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<IngredientAllergy>()
+            .HasOne(ia => ia.Allergy)
+            .WithMany()
+            .HasForeignKey(ia => ia.AllergyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Thực phẩm: món do người dùng tự nhập thuộc về họ (xóa tài khoản thì xóa theo); khẩu phần và yêu thích đi theo thực phẩm.
+        modelBuilder.Entity<Ingredient>()
+            .HasOne(i => i.Owner)
+            .WithMany()
+            .HasForeignKey(i => i.OwnerUserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Ingredient>().HasIndex(i => i.OwnerUserId);
+        modelBuilder.Entity<Ingredient>().HasIndex(i => i.Barcode);
+
+        modelBuilder.Entity<FoodServing>()
+            .HasOne(s => s.Ingredient)
+            .WithMany(i => i.Servings)
+            .HasForeignKey(s => s.IngredientId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<FoodServing>().HasIndex(s => s.IngredientId);
+
+        modelBuilder.Entity<UserFavoriteFood>()
+            .HasKey(f => new { f.UserId, f.IngredientId });
+
+        modelBuilder.Entity<UserFavoriteFood>()
+            .HasOne(f => f.User)
+            .WithMany()
+            .HasForeignKey(f => f.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserFavoriteFood>()
+            .HasOne(f => f.Ingredient)
+            .WithMany()
+            .HasForeignKey(f => f.IngredientId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // RecipeTag (N-N)
         modelBuilder.Entity<RecipeTag>()
             .HasKey(rt => new { rt.RecipeId, rt.TagId });
@@ -135,30 +285,53 @@ public class ApplicationDbContext : DbContext
             .WithMany(r => r.Favorites)
             .HasForeignKey(uf => uf.RecipeId);
 
-        // Seed Allergies & Conditions & Tags
+        // UserDietaryPreference (N-N giữa hồ sơ và Tag)
+        modelBuilder.Entity<UserDietaryPreference>()
+            .HasKey(up => new { up.HealthProfileId, up.TagId });
+
+        modelBuilder.Entity<UserDietaryPreference>()
+            .HasOne(up => up.HealthProfile)
+            .WithMany(hp => hp.DietaryPreferences)
+            .HasForeignKey(up => up.HealthProfileId);
+
+        modelBuilder.Entity<UserDietaryPreference>()
+            .HasOne(up => up.Tag)
+            .WithMany()
+            .HasForeignKey(up => up.TagId);
+
+        // Mã (Code) ổn định, duy nhất cho từng danh mục: client dùng thay cho id/tên hiển thị.
+        modelBuilder.Entity<Allergy>().HasIndex(a => a.Code).IsUnique();
+        modelBuilder.Entity<MedicalCondition>().HasIndex(c => c.Code).IsUnique();
+        modelBuilder.Entity<Tag>().HasIndex(t => t.Code).IsUnique();
+
+        // Seed Allergies & Conditions & Tags. Id đã phát hành không được đổi (client lưu theo id/code).
         modelBuilder.Entity<Allergy>().HasData(
-            new Allergy { Id = 1, Name = "Hải sản (Seafood)", Description = "Tôm, cua, ốc, mực" },
-            new Allergy { Id = 2, Name = "Đậu phộng (Peanuts)", Description = "Lạc và chế phẩm từ lạc" },
-            new Allergy { Id = 3, Name = "Sữa động vật (Dairy)", Description = "Sữa bò, phô mai, bơ" },
-            new Allergy { Id = 4, Name = "Trứng (Eggs)", Description = "Trứng gà, trứng vịt" },
-            new Allergy { Id = 5, Name = "Gluten (Lúa mì)", Description = "Bánh mì, mì ý bột mì" },
-            new Allergy { Id = 6, Name = "Đậu nành (Soy)", Description = "Đậu phụ, sữa đậu nành" }
+            new Allergy { Id = 1, Code = "seafood", Name = "Hải sản (Seafood)", Description = "Tôm, cua, ốc, mực" },
+            new Allergy { Id = 2, Code = "peanut", Name = "Đậu phộng (Peanuts)", Description = "Lạc và chế phẩm từ lạc" },
+            new Allergy { Id = 3, Code = "dairy", Name = "Sữa động vật (Dairy)", Description = "Sữa bò, phô mai, bơ" },
+            new Allergy { Id = 4, Code = "egg", Name = "Trứng (Eggs)", Description = "Trứng gà, trứng vịt" },
+            new Allergy { Id = 5, Code = "gluten", Name = "Gluten (Lúa mì)", Description = "Bánh mì, mì ý bột mì" },
+            new Allergy { Id = 6, Code = "soy", Name = "Đậu nành (Soy)", Description = "Đậu phụ, sữa đậu nành" },
+            new Allergy { Id = 7, Code = "treeNut", Name = "Các loại hạt (Tree nuts)", Description = "Hạnh nhân, óc chó, hạt điều, hạt dẻ" },
+            new Allergy { Id = 8, Code = "sesame", Name = "Mè (Sesame)", Description = "Hạt mè, dầu mè, sốt mè" }
         );
 
         modelBuilder.Entity<MedicalCondition>().HasData(
-            new MedicalCondition { Id = 1, Name = "Tiểu đường (Diabetes)", Description = "Hạn chế đường và carbs hấp thu nhanh" },
-            new MedicalCondition { Id = 2, Name = "Gout (Axit Uric cao)", Description = "Hạn chế purin (nội tạng, thịt đỏ, hải sản)" },
-            new MedicalCondition { Id = 3, Name = "Cao huyết áp (Hypertension)", Description = "Chế độ ăn giảm muối Natri (DASH)" },
-            new MedicalCondition { Id = 4, Name = "Mỡ máu cao (Dyslipidemia)", Description = "Hạn chế mỡ bão hòa và cholesterol" }
+            new MedicalCondition { Id = 1, Code = "diabetes", Name = "Tiểu đường (Diabetes)", Description = "Hạn chế đường và carbs hấp thu nhanh" },
+            new MedicalCondition { Id = 2, Code = "gout", Name = "Gout (Axit Uric cao)", Description = "Hạn chế purin (nội tạng, thịt đỏ, hải sản)" },
+            new MedicalCondition { Id = 3, Code = "hypertension", Name = "Cao huyết áp (Hypertension)", Description = "Chế độ ăn giảm muối Natri (DASH)" },
+            new MedicalCondition { Id = 4, Code = "dyslipidemia", Name = "Mỡ máu cao (Dyslipidemia)", Description = "Hạn chế mỡ bão hòa và cholesterol" }
         );
 
         modelBuilder.Entity<Tag>().HasData(
-            new Tag { Id = 1, Name = "Eat Clean" },
-            new Tag { Id = 2, Name = "Keto" },
-            new Tag { Id = 3, Name = "Thuần Chay (Vegan)" },
-            new Tag { Id = 4, Name = "Tăng Cơ (High Protein)" },
-            new Tag { Id = 5, Name = "Nhanh Gọn (< 15 phút)" },
-            new Tag { Id = 6, Name = "Tiết Kiệm Ngân Sách" }
+            new Tag { Id = 1, Code = "eatClean", Name = "Eat Clean" },
+            new Tag { Id = 2, Code = "keto", Name = "Keto" },
+            new Tag { Id = 3, Code = "vegan", Name = "Thuần Chay (Vegan)" },
+            new Tag { Id = 4, Code = "highProtein", Name = "Tăng Cơ (High Protein)" },
+            new Tag { Id = 5, Code = "quick", Name = "Nhanh Gọn (< 15 phút)" },
+            new Tag { Id = 6, Code = "budget", Name = "Tiết Kiệm Ngân Sách" },
+            new Tag { Id = 7, Code = "lowCarb", Name = "Low-Carb" },
+            new Tag { Id = 8, Code = "vegetarian", Name = "Ăn Chay (Vegetarian)" }
         );
     }
 }

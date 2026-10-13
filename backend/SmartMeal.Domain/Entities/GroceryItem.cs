@@ -16,5 +16,11 @@ public class GroceryItem
     public Guid? RecipeId { get; set; }
     public Recipe? Recipe { get; set; }
 
+    /// <summary>
+    /// Số bữa trong thực đơn đã được gộp vào dòng này khi tạo từ thực đơn (≥ 1). 0 = người dùng tự thêm,
+    /// nên không bị xóa khi tạo lại danh sách từ thực đơn.
+    /// </summary>
+    public int MergedFromRecipeCount { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

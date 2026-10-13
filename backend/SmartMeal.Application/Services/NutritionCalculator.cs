@@ -2,6 +2,18 @@ namespace SmartMeal.Application.Services;
 
 public static class NutritionCalculator
 {
+    /// <summary>Tuổi tròn tại ngày <paramref name="today"/> tính từ ngày sinh.</summary>
+    public static int CalculateAge(DateOnly dateOfBirth, DateOnly today)
+    {
+        var age = today.Year - dateOfBirth.Year;
+        if (today < dateOfBirth.AddYears(age))
+        {
+            age--;
+        }
+
+        return age;
+    }
+
     // BMR using Mifflin-St Jeor Formula
     public static double CalculateBmr(string gender, double weightKg, double heightCm, int age)
     {
