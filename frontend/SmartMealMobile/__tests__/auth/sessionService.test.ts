@@ -77,6 +77,10 @@ function load(useMockApi = false) {
   const setUnauthorizedHandler = jest.fn();
   const navigationRefMock = { isReady: jest.fn().mockReturnValue(true), navigate: jest.fn() };
   const resetUserDataMock = jest.fn();
+  const remindersMock = {
+    resyncReminders: jest.fn().mockResolvedValue(undefined),
+    cancelReminders: jest.fn().mockResolvedValue(undefined),
+  };
 
   jest.resetModules();
   jest.doMock('@/config/env', () => ({ ENV: { useMockApi } }));
@@ -94,6 +98,7 @@ function load(useMockApi = false) {
     clearSessionTokens: tokenStorageMock.clear,
   }));
   jest.doMock('@/navigation/navigationRef', () => ({ navigationRef: navigationRefMock }));
+  jest.doMock('@/features/profile/services/reminderSync', () => remindersMock);
   jest.doMock('@/state/resetUserData', () => ({
     registerUserDataReset: jest.fn(),
     resetUserData: resetUserDataMock,
@@ -122,6 +127,7 @@ function load(useMockApi = false) {
     premiumMock,
     tokenStorageMock,
     queryClientMock,
+    remindersMock,
     setUnauthorizedHandler,
     navigationRefMock,
     resetUserDataMock,
@@ -139,11 +145,12 @@ describe('openSession', () => {
   });
 
   test('đã có hồ sơ → nạp vào userProfileStore trước khi vào Main', async () => {
-    const { session, healthMock, useUserProfileStore } = load();
+    const { session, healthMock, useUserProfileStore, remindersMock } = load();
     healthMock.getHealthProfile.mockResolvedValue(HYDRATED);
 
     const result = await session.openSession(USER);
 
+    expect(remindersMock.resyncReminders).toHaveBeenCalledTimes(1);
     expect(healthMock.getHealthProfile).toHaveBeenCalledWith('user-1');
     expect(result).toEqual({ user: USER, needsSurvey: false });
     expect(useUserProfileStore.getState()).toMatchObject({
@@ -415,6 +422,17 @@ describe('startSessionLifecycle', () => {
 
     expect(tokenStorageMock.clear).toHaveBeenCalledTimes(1);
     expect(authServiceMock.logout).toHaveBeenCalledWith('refresh-1');
+  });
+
+  test('đăng xuất → huỷ nhắc nhở cục bộ của tài khoản vừa thoát', async () => {
+    const { session, useAuthStore, remindersMock } = load();
+    session.startSessionLifecycle();
+    useAuthStore.getState().login(USER);
+
+    useAuthStore.getState().logout();
+    await flushPromises();
+
+    expect(remindersMock.cancelReminders).toHaveBeenCalledTimes(1);
   });
 
   test('không có refresh token (phiên cũ) → chỉ dọn cục bộ, không gọi máy chủ', async () => {
