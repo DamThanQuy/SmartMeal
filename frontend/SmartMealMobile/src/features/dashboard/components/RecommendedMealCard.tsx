@@ -9,10 +9,8 @@ export interface RecommendedMealCardProps {
   onPress?: () => void;
 }
 
-const MEAL_IMAGES = {
-  bowl: require('../../../../assets/images/meal-bowl.jpg'),
-  salad: require('../../../../assets/images/vegetable-salad.jpg'),
-};
+// Ảnh dự phòng khi công thức chưa có ảnh trên server.
+const FALLBACK_IMAGE = require('../../../../assets/images/meal-bowl.jpg');
 
 export function RecommendedMealCard({
   meal,
@@ -26,7 +24,7 @@ export function RecommendedMealCard({
       className="flex-1 overflow-hidden rounded-card border border-border bg-surface active:opacity-80"
     >
       <Image
-        source={MEAL_IMAGES[meal.imageKey ?? 'bowl']}
+        source={meal.imageUrl ? { uri: meal.imageUrl } : FALLBACK_IMAGE}
         accessibilityLabel={meal.name}
         contentFit="cover"
         style={{ width: '100%', height: 136 }}
@@ -38,7 +36,7 @@ export function RecommendedMealCard({
         <AppText variant="caption" color="secondary">
           {`${meal.durationMinutes} phút · ${meal.calories} kcal`}
         </AppText>
-        <AppBadge label={meal.tag} />
+        {meal.tag ? <AppBadge label={meal.tag} /> : null}
       </View>
     </Pressable>
   );

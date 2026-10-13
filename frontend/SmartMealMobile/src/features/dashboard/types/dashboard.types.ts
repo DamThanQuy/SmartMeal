@@ -23,8 +23,9 @@ export interface RecommendedMeal {
   name: string;
   durationMinutes: number;
   calories: number;
+  /** Nhãn tag đầu tiên của công thức (rỗng nếu không có). */
   tag: string;
-  imageKey?: 'bowl' | 'salad';
+  imageUrl?: string;
 }
 
 /**
@@ -35,6 +36,6 @@ export interface DashboardSummary {
   diary: DiaryDaySummary;
   activity: ActivitySummary | null;
   pet: PetSnippet | null;
-  recommendedMeal: RecommendedMeal;
-  recommendedMeals?: RecommendedMeal[];
+  /** Công thức gợi ý cho bữa sắp tới (đã lọc dị ứng); rỗng khi không tải được hoặc không có món phù hợp. */
+  recommendedMeals: RecommendedMeal[];
 }

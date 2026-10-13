@@ -120,7 +120,7 @@ export function DashboardScreen(_props: Props) {
     );
   }
 
-  const { diary, activity, pet, recommendedMeal, recommendedMeals } = data;
+  const { diary, activity, pet, recommendedMeals } = data;
   const mealsWithEntries = (['breakfast', 'lunch', 'dinner', 'snack'] as const)
     .map(mealType => ({ mealType, entries: diary.entriesByMeal[mealType] }))
     .filter(section => section.entries.length > 0);
@@ -238,8 +238,13 @@ export function DashboardScreen(_props: Props) {
               <ChevronRight size={16} color={colors.onPrimarySoft} />
             </Pressable>
           </View>
+          {recommendedMeals.length === 0 ? (
+            <AppText variant="caption" color="secondary">
+              Chưa có món phù hợp cho bữa sắp tới — xem thêm ở Khám phá.
+            </AppText>
+          ) : null}
           <View className="flex-row gap-sm">
-            {(recommendedMeals ?? [recommendedMeal]).slice(0, 2).map(meal => (
+            {recommendedMeals.map(meal => (
               <RecommendedMealCard
                 key={meal.recipeId}
                 meal={meal}
