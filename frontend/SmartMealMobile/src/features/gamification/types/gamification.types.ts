@@ -28,6 +28,7 @@ export interface PetState {
   /** 7 giá trị Thứ 2 → Chủ nhật — ngày đã hoàn thành mục tiêu (design/Pet.dc.html "Chuỗi ngày"). */
   weekCompletion: boolean[];
   tasks: PetTaskItem[];
-  challenge: PetChallenge;
+  /** Thử thách đang tham gia; null khi chưa tham gia thử thách nào. */
+  challenge: PetChallenge | null;
   message: string;
 }

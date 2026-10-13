@@ -34,8 +34,8 @@ function RewardTile({ icon, title, subtitle }: RewardTileProps) {
   );
 }
 
-// design/ChallengeComplete.dc.html (BR-212 — thưởng XP/huy hiệu/trang phục đúng 1 lần, đã cộng
-// ở challengeService.completeChallenge() trước khi điều hướng tới đây).
+// design/ChallengeComplete.dc.html (BR-212 — thưởng XP/huy hiệu/trang phục đúng 1 lần). Server tự hoàn
+// thành thử thách và cộng thưởng khi đủ số ngày; màn này chỉ hiển thị phần thưởng đã nhận.
 export function ChallengeCompleteScreen({ navigation, route }: Props) {
   const { challengeId } = route.params;
   const { colors } = useTheme();
@@ -80,6 +80,13 @@ export function ChallengeCompleteScreen({ navigation, route }: Props) {
               icon={<Award size={22} color={colors.onPrimary} />}
               title={badge.title}
               subtitle="Huy hiệu mới"
+            />
+          ) : null}
+          {!badge && challenge.rewardLabel ? (
+            <RewardTile
+              icon={<Award size={22} color={colors.onPrimary} />}
+              title={challenge.rewardLabel}
+              subtitle="Danh hiệu"
             />
           ) : null}
           {costume ? (

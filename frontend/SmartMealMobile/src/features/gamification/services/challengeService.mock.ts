@@ -8,7 +8,6 @@ import type {
   ChallengeWindowState,
   ChallengeWithWindow,
 } from '../types/challenge.types';
-import { awardXpOnce } from './xpLedger';
 
 let challenges: Challenge[] = createChallengesSeedMock();
 
@@ -28,7 +27,9 @@ function withWindow(challenge: Challenge): ChallengeWithWindow {
   const today = startOfDay(new Date());
   const dayTotal = differenceInCalendarDays(end, start) + 1;
   const dayCurrent = Math.min(dayTotal, Math.max(1, differenceInCalendarDays(today, start) + 1));
-  return { ...challenge, windowState, dayCurrent, dayTotal };
+  // Dữ liệu mẫu: coi như đã đạt mục tiêu mọi ngày trước hôm nay của khung.
+  const completedDays = challenge.completed ? dayTotal : challenge.joined ? dayCurrent - 1 : 0;
+  return { ...challenge, windowState, dayCurrent, dayTotal, completedDays };
 }
 
 export const challengeMockService = {
@@ -56,23 +57,9 @@ export const challengeMockService = {
     challenges = challenges.map(item => (item.id === challengeId ? { ...item, joined: true } : item));
   },
 
-  async completeChallenge(challengeId: string): Promise<Challenge> {
-    const scenario = getCurrentMockScenario();
-    await wait(getMockDelayMs(scenario));
-    if (scenario === 'error') {
-      throw new Error('Không thể hoàn thành thử thách, vui lòng thử lại.');
-    }
+  async getChallengeById(challengeId: string): Promise<ChallengeWithWindow | undefined> {
     const challenge = challenges.find(item => item.id === challengeId);
-    if (!challenge) throw new Error('Không tìm thấy thử thách.');
-
-    awardXpOnce(`challenge-${challengeId}`, challenge.xpReward);
-    const updated: Challenge = { ...challenge, joined: true, completed: true };
-    challenges = challenges.map(item => (item.id === challengeId ? updated : item));
-    return updated;
-  },
-
-  async getChallengeById(challengeId: string): Promise<Challenge | undefined> {
-    return challenges.find(item => item.id === challengeId);
+    return challenge ? withWindow(challenge) : undefined;
   },
 };
 
