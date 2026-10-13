@@ -25,4 +25,14 @@ export const ENV = {
    * giúp app chạy mượt mà ngay cả khi chưa khởi động server backend ASP.NET Core.
    */
   useMockApi: process.env.EXPO_PUBLIC_USE_MOCK_API !== 'false',
+  /**
+   * OAuth Client ID của Google (công khai, không phải secret) — mỗi nền tảng một ID tạo trên Google Cloud.
+   * Phải trùng `Google:ClientIds` của backend để server chấp nhận ID token. Thiếu ID của nền tảng đang
+   * chạy thì nút Google báo chưa cấu hình thay vì im lặng.
+   */
+  googleClientIds: {
+    web: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || undefined,
+    android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || undefined,
+    ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || undefined,
+  },
 } as const;

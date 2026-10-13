@@ -11,7 +11,7 @@ import { AUTH_ROUTES } from '@/constants/routes';
 import type { AuthStackParamList } from '@/navigation/types';
 import { useAuthStore } from '@/state/auth/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
-import { AuthGoogleButton } from '../components/AuthGoogleButton';
+import { GoogleSignInButton } from '../components/GoogleSignInButton';
 import { AuthSocialDivider } from '../components/AuthSocialDivider';
 import { useRegister } from '../hooks/useRegister';
 
@@ -206,7 +206,7 @@ export function RegisterScreen({ navigation }: Props) {
             loading={registerMutation.isPending}
           />
           <AuthSocialDivider />
-          <AuthGoogleButton label="Đăng ký với Google" onPress={() => {}} />
+          <GoogleSignInButton label="Đăng ký với Google" />
         </View>
 
         <View className="flex-row items-center justify-center gap-xs">

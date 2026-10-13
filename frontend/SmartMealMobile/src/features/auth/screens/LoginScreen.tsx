@@ -11,7 +11,7 @@ import { AUTH_ROUTES } from '@/constants/routes';
 import type { AuthStackParamList } from '@/navigation/types';
 import { useAuthStore } from '@/state/auth/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
-import { AuthGoogleButton } from '../components/AuthGoogleButton';
+import { GoogleSignInButton } from '../components/GoogleSignInButton';
 import { AuthSocialDivider } from '../components/AuthSocialDivider';
 import { useLogin } from '../hooks/useLogin';
 
@@ -146,7 +146,7 @@ export function LoginScreen({ navigation }: Props) {
         ) : null}
 
         <AuthSocialDivider />
-        <AuthGoogleButton label="Tiếp tục với Google" onPress={() => {}} />
+        <GoogleSignInButton label="Tiếp tục với Google" />
       </View>
 
       <View className="items-center gap-sm">

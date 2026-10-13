@@ -49,7 +49,8 @@
         {
           "microphonePermission": "SmartMeal cần quyền truy cập microphone để ghi âm và nhận diện món ăn bằng giọng nói."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "reactCompiler": true
