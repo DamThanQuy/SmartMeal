@@ -335,6 +335,8 @@ app.UseCors("Default");
 app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
+// Idempotency-Key cho request ghi dữ liệu (hàng đợi offline gửi lại không ghi trùng) — cần biết người dùng nên đặt sau xác thực.
+app.UseMiddleware<IdempotencyMiddleware>();
 app.MapControllers();
 
 // Tự áp migration + seed khi khởi động. Development vẫn chạy được khi chưa bật database (để xem Swagger);

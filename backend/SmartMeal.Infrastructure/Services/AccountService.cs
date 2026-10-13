@@ -182,6 +182,8 @@ public class AccountService : IAccountService
         deleted["badges"] = await _db.UserBadges.Where(b => b.UserId == userId).ExecuteDeleteAsync();
         deleted["challenges"] = await _db.UserChallenges.Where(c => c.UserId == userId).ExecuteDeleteAsync();
         deleted["aiUsage"] = await _db.AiUsageLogs.Where(l => l.UserId == userId).ExecuteDeleteAsync();
+        // Phản hồi lưu cho Idempotency-Key có thể chứa dữ liệu cá nhân (món đã ghi...) — xóa luôn.
+        await _db.IdempotencyRecords.Where(r => r.UserId == userId).ExecuteDeleteAsync();
 
         return deleted;
     }

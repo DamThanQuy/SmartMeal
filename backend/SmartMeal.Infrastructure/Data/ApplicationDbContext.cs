@@ -28,6 +28,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<GroceryItem> GroceryItems => Set<GroceryItem>();
     public DbSet<GroceryList> GroceryLists => Set<GroceryList>();
     public DbSet<GroceryTrip> GroceryTrips => Set<GroceryTrip>();
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
     public DbSet<UserFavorite> UserFavorites => Set<UserFavorite>();
     public DbSet<OtpVerification> OtpVerifications => Set<OtpVerification>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
@@ -116,6 +117,17 @@ public class ApplicationDbContext : DbContext
         {
             entity.HasKey(l => l.UserId);
             entity.HasOne(l => l.User).WithMany().HasForeignKey(l => l.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Idempotency-Key: mỗi (người dùng, khóa) một kết quả; index theo thời gian để dọn bản ghi quá 24 giờ.
+        modelBuilder.Entity<IdempotencyRecord>(entity =>
+        {
+            entity.HasKey(r => new { r.UserId, r.Key });
+            entity.Property(r => r.Key).HasMaxLength(100);
+            entity.Property(r => r.RequestHash).HasMaxLength(64);
+            entity.Property(r => r.ResponseContentType).HasMaxLength(100);
+            entity.HasIndex(r => r.CreatedAt);
+            entity.HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<GroceryTrip>(entity =>

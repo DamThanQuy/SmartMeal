@@ -543,6 +543,40 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.ToTable("HealthSyncLogs");
                 });
 
+            modelBuilder.Entity("SmartMeal.Domain.Entities.IdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ResponseBody")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ResponseContentType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("integer");
+
+                    b.HasKey("UserId", "Key");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.ToTable("IdempotencyRecords");
+                });
+
             modelBuilder.Entity("SmartMeal.Domain.Entities.Ingredient", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1483,6 +1517,17 @@ namespace SmartMeal.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("SmartMeal.Domain.Entities.HealthSyncLog", b =>
+                {
+                    b.HasOne("SmartMeal.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.IdempotencyRecord", b =>
                 {
                     b.HasOne("SmartMeal.Domain.Entities.User", "User")
                         .WithMany()
