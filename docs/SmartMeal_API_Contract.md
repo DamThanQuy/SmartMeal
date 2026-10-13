@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| Cập nhật | 2026-10-04 |
-| Nguồn | Swagger của backend (`/swagger/v1/swagger.json`, bật ở môi trường Development) + chú thích XML và thuộc tính trong `SmartMeal.API/Controllers` và `SmartMeal.Application/DTOs` @ `c63b283` |
+| Cập nhật | 2026-10-14 |
+| Nguồn | Swagger của backend (`/swagger/v1/swagger.json`, bật ở môi trường Development) + chú thích XML và thuộc tính trong `SmartMeal.API/Controllers` và `SmartMeal.Application/DTOs` @ `c477a29` (bổ sung: scan-label, voice-log/audio, grocery/complete, Idempotency-Key, tra mã vạch bằng CSDL, ngưỡng bệnh lý) |
 | Thay thế | Bản V2.0 (2026-09-26) đã cũ: nhiều endpoint ghi "chưa làm" nhưng đã có, đường dẫn và field khác |
 | Nguồn sự thật | **Code backend.** Tài liệu này được sinh lại từ code mỗi khi API đổi; nếu lệch thì code thắng |
 
@@ -14,12 +14,12 @@
 - **Ngày giờ**: `DateOnly` = `"yyyy-MM-dd"` (ngày theo giờ máy của người dùng); `DateTime` = ISO 8601 UTC. Ngày ghi/đọc nhật ký, nước, thực đơn không được quá `hôm nay (UTC) + 1 ngày`.
 - **Xác thực**: `Authorization: Bearer <accessToken>`. Access token sống `Jwt:AccessTokenMinutes` (mặc định 60 phút); `POST /auth/refresh` đổi refresh token (dùng một lần, xoay vòng) lấy cặp mới. Refresh token đã dùng bị dùng lại ngoài khoảng gia hạn song song (`Auth:RefreshReuseGraceSeconds`) → coi là bị đánh cắp, thu hồi cả phiên.
 - **Mã trạng thái**: `200` thành công · `400` dữ liệu sai/vi phạm nghiệp vụ (kèm `errors[]` khi là lỗi từng trường) · `401` thiếu/hết hạn token hoặc sai mật khẩu · `403` không có quyền (vd. sửa bộ sưu tập của người khác) · `404` không tồn tại/không thuộc về bạn · `409` xung đột (trùng dữ liệu, thực đơn đang được cập nhật ở nơi khác) · `423` tài khoản bị khóa tạm thời · `429` quá nhiều request hoặc hết hạn mức AI Free (`errors` có `ai_quota_exceeded`) · `502/503` dịch vụ phía sau (Gemini) lỗi/chưa cấu hình · `500` lỗi chưa bắt (không lộ stack trace).
-- **Giới hạn tần suất**: nhóm endpoint đăng nhập/OTP dùng policy `auth` (mặc định 30 request/phút/IP, đổi bằng `RateLimiting:AuthPermitsPerMinute`) → `429`. Đăng nhập sai liên tiếp `Auth:MaxFailedLoginAttempts` (5) lần khóa `Auth:LockoutMinutes` (15) phút → `423`.
+- **Giới hạn tần suất**: nhóm endpoint đăng nhập/OTP dùng policy `auth` (mặc định 30 request/phút/IP, đổi bằng `RateLimiting:AuthPermitsPerMinute`) → `429`. `POST /ai/check-safety` và `/ai/scan-label` (không tính hạn mức AI) dùng policy `scanner` (mặc định 20 request/phút/người dùng, `RateLimiting:ScannerPermitsPerMinute`). Đăng nhập sai liên tiếp `Auth:MaxFailedLoginAttempts` (5) lần khóa `Auth:LockoutMinutes` (15) phút → `423`.
 - **Phân trang**: `GET /foods` trả `data` là `PagedResult` (`items`, `page`, `pageSize`, `totalCount`, `totalPages`). `GET /recipes` trả `data` là **mảng**, thông tin phân trang nằm ở header `X-Total-Count`, `X-Page`, `X-Page-Size`, `X-Total-Pages` (không gửi `page`/`pageSize` = trả tất cả).
 - **Enum** là chuỗi, so khớp không phân biệt hoa/thường và lưu/trả dạng chuẩn: `mealType` `Breakfast|Lunch|Dinner|Snack`; `logMethod` `Manual|AiImage|Voice|Barcode|Ocr`; xem cột "Ghi chú" của từng DTO.
 - **Danh mục theo mã**: `/meta/allergies|medical-conditions|tags` trả `{ id, code, name, description }`. Client gửi/nhận **id** nhưng nên ánh xạ theo **`code`** ổn định (vd. `seafood`, `peanut`, `diabetes`, `keto`), không hard-code id.
-- **Idempotency**: chưa có `Idempotency-Key`. Gửi lại `POST` ghi dữ liệu có thể tạo bản ghi thứ hai, trừ các endpoint đã thiết kế idempotent (health-sync theo `(ngày, nguồn)`, ghi nhật ký cả bữa là một transaction, yêu thích thực phẩm, webhook thanh toán).
-- **Upload**: `POST /auth/avatar` (field `file`, jpg/png/webp ≤ `Storage:MaxAvatarBytes`, mặc định 2 MB), `POST /ai/snap-and-track` và `/ai/fridge-scanner` (field `image`, ≤ `Ai:MaxImageBytes`, mặc định 5 MB). Loại ảnh được nhận bằng nội dung file, không tin `Content-Type`.
+- **Idempotency**: mọi `POST/PUT/PATCH/DELETE` của người dùng đã đăng nhập nhận header tùy chọn `Idempotency-Key` (1–100 ký tự `A-Z a-z 0-9 . _ : -`). Lần đầu chạy bình thường và phản hồi được lưu 24 giờ; gửi lại **cùng khóa + cùng nội dung** nhận lại đúng phản hồi đó kèm header `Idempotency-Replayed: true`, không ghi thêm. Cùng khóa khác nội dung → `409` `idempotency_key_reused`; lần đầu chưa xong → `409` `idempotency_in_progress`; khóa sai định dạng → `400` `idempotency_key_invalid`. Lỗi 5xx và lỗi tạm thời (408/409/423/429) không được lưu. App dùng cho hàng đợi offline khi ghi nhật ký (BR-261). Không gửi header thì như cũ (health-sync theo `(ngày, nguồn)`, yêu thích thực phẩm và webhook vốn idempotent).
+- **Upload**: `POST /auth/avatar` (field `file`, jpg/png/webp ≤ `Storage:MaxAvatarBytes`, mặc định 2 MB), `POST /ai/snap-and-track`, `/ai/fridge-scanner` và `/ai/scan-label` (field `image`, ≤ `Ai:MaxImageBytes`, mặc định 5 MB), `POST /ai/voice-log/audio` (field `audio`, WAV/AAC/M4A/MP3/OGG/FLAC/WebM, ≤ `Ai:MaxAudioBytes`, mặc định 10 MB). Loại file được nhận bằng nội dung file, không tin `Content-Type`.
 
 ## 2. Danh sách endpoint
 
@@ -46,7 +46,7 @@
 | Hồ sơ sức khỏe | PUT | `/api/healthprofile` | Cần đăng nhập | Cập nhật từng phần hồ sơ đã có; tự tính lại BMI/BMR/TDEE/mục tiêu |
 | Hồ sơ sức khỏe | GET | `/api/healthprofile` | Cần đăng nhập | Hồ sơ sức khỏe hiện tại kèm chỉ số tính sẵn; 404 khi chưa làm khảo sát. |
 | Hồ sơ sức khỏe | POST | `/api/healthprofile/weight-log` | Cần đăng nhập | Ghi cân nặng mới (thêm một dòng lịch sử, cập nhật hồ sơ và tính lại chỉ số). |
-| Hồ sơ sức khỏe | GET | `/api/healthprofile/weight-history` | Cần đăng nhập | Lịch sử cân nặng, cũ → mới. |
+| Hồ sơ sức khỏe | GET | `/api/healthprofile/weight-history` | Cần đăng nhập | Lịch sử cân nặng, cũ → mới; `days` (1–3650, tùy chọn) chỉ lấy N ngày gần nhất. |
 | Danh mục (dị ứng, bệnh lý, chế độ ăn) | GET | `/api/meta/allergies` | Công khai | Danh mục chất gây dị ứng `{ id, code, name, description }`. |
 | Danh mục (dị ứng, bệnh lý, chế độ ăn) | GET | `/api/meta/medical-conditions` | Công khai | Danh mục bệnh lý nền `{ id, code, name, description }`. |
 | Danh mục (dị ứng, bệnh lý, chế độ ăn) | GET | `/api/meta/tags` | Công khai | Danh mục thẻ/chế độ ăn ưu tiên (Eat Clean, Keto…) `{ id, code, name, description }`. |
@@ -81,10 +81,10 @@
 | Công thức, yêu thích, bộ sưu tập | POST | `/api/recipes/collections/{collectionId}/items` | Cần đăng nhập | Thêm công thức vào bộ sưu tập — chỉ chủ sở hữu. |
 | Công thức, yêu thích, bộ sưu tập | DELETE | `/api/recipes/collections/{collectionId}/items/{recipeId}` | Cần đăng nhập | Bỏ công thức khỏi bộ sưu tập — chỉ chủ sở hữu. |
 | Thực đơn tuần | GET | `/api/mealplanner/week` | Cần đăng nhập | Lấy kế hoạch thực đơn 7 ngày trong tuần (kèm tổng Calo & Macros mỗi ngày). |
-| Thực đơn tuần | POST | `/api/mealplanner/assign` | Cần đăng nhập | Gán hoặc thay đổi một món ăn vào lịch tuần (Sáng, Trưa, Tối, Phụ) |
+| Thực đơn tuần | POST | `/api/mealplanner/assign` | Cần đăng nhập | Gán hoặc thay đổi một món ăn vào lịch tuần (Sáng, Trưa, Tối, Phụ); món chứa chất gây dị ứng của người dùng → `400` `allergen_conflict` |
 | Thực đơn tuần | PATCH | `/api/mealplanner/{id}/complete` | Cần đăng nhập | Đánh dấu một món trong thực đơn là đã nấu/ăn (hoặc bỏ đánh dấu) |
 | Thực đơn tuần | DELETE | `/api/mealplanner/{id}` | Cần đăng nhập | Xóa một món ăn khỏi thực đơn tuần. |
-| Thực đơn tuần | POST | `/api/mealplanner/auto-generate` | Cần đăng nhập | Tự động sinh thực đơn 7 ngày, loại hẳn món chứa chất gây dị ứng của người dùng |
+| Thực đơn tuần | POST | `/api/mealplanner/auto-generate` | Cần đăng nhập | Tự động sinh thực đơn 7 ngày: loại món chứa chất gây dị ứng và món vượt ngưỡng bệnh lý, chọn món gần mục tiêu calo; không đủ món phù hợp → `400` `no_suitable_recipes` |
 | Đi chợ | GET | `/api/grocery` | Cần đăng nhập | Lấy danh sách đi chợ hiện tại của người dùng (nhóm theo quầy siêu thị & tính tổng chi phí ước tính). |
 | Đi chợ | POST | `/api/grocery/generate-from-plan` | Cần đăng nhập | Tự động tổng hợp danh sách đi chợ từ thực đơn trong khoảng ngày (gộp nguyên liệu cùng tên/đơn vị, kèm số bữa đã gộp). |
 | Đi chợ | POST | `/api/grocery/items` | Cần đăng nhập | Thêm thủ công một món hàng cần mua vào danh sách đi chợ. |
@@ -92,11 +92,14 @@
 | Đi chợ | PATCH | `/api/grocery/items/{id}/check` | Cần đăng nhập | Đánh dấu đã mua hoặc bỏ đánh dấu cho một món đồ trong danh sách đi chợ. |
 | Đi chợ | DELETE | `/api/grocery/items/{id}` | Cần đăng nhập | Xóa một món đồ khỏi danh sách đi chợ. |
 | Đi chợ | DELETE | `/api/grocery/clear-checked` | Cần đăng nhập | Dọn dẹp toàn bộ các món đồ đã đánh dấu mua (Clear Checked Items). |
+| Đi chợ | POST | `/api/grocery/complete` | Cần đăng nhập | Hoàn tất mua sắm: lưu chi phí thực tế, bỏ món đã mua, giữ/bỏ món chưa mua và có thể cộng thực đơn kỳ kế tiếp — một transaction. |
 | AI | GET | `/api/ai/quota` | Cần đăng nhập | Hạn mức AI còn lại hôm nay. |
 | AI | POST | `/api/ai/snap-and-track` | Cần đăng nhập | AI Snap & Track: ảnh đĩa thức ăn (multipart, trường `image`; JPG/PNG/WebP, tối đa 5 MB). |
 | AI | POST | `/api/ai/fridge-scanner` | Cần đăng nhập | Fridge Scanner: ảnh nguyên liệu trong tủ lạnh (multipart, trường `image`). |
-| AI | POST | `/api/ai/voice-log` | Cần đăng nhập | Voice Log: văn bản (đã nhận dạng giọng nói trên máy) → món ăn kèm dinh dưỡng. |
-| AI | POST | `/api/ai/check-safety` | Cần đăng nhập | Kiểm tra an toàn sản phẩm theo dị ứng/bệnh lý của người dùng (BR-140) |
+| AI | POST | `/api/ai/voice-log` | Cần đăng nhập | Voice Log: văn bản (người dùng gõ hoặc đã nhận dạng trên máy) → món ăn kèm dinh dưỡng. |
+| AI | POST | `/api/ai/voice-log/audio` | Cần đăng nhập | Voice Log từ file ghi âm (multipart, trường `audio`, tối đa 10 MB): AI chép lời rồi bóc tách món; trả `transcript`. |
+| AI | POST | `/api/ai/check-safety` | Cần đăng nhập | Kiểm tra an toàn sản phẩm theo dị ứng/bệnh lý của người dùng (BR-140); `barcode` tra trong CSDL (`404` `product_not_found` khi chưa có) |
+| AI | POST | `/api/ai/scan-label` | Cần đăng nhập | Đọc nhãn dinh dưỡng từ ảnh (multipart, trường `image`) rồi kiểm tra an toàn; không tính hạn mức. |
 | Bé Mầm: XP, thử thách, huy hiệu | GET | `/api/gamification/pet` | Cần đăng nhập | Trạng thái pet: cấp độ, XP, nhiệm vụ hôm nay |
 | Bé Mầm: XP, thử thách, huy hiệu | GET | `/api/gamification/streak` | Cần đăng nhập | Chuỗi ngày hiện tại, dài nhất và 7 ngày của tuần. |
 | Bé Mầm: XP, thử thách, huy hiệu | GET | `/api/gamification/challenges` | Cần đăng nhập | Danh sách thử thách kèm tiến độ của người dùng. |
@@ -307,10 +310,14 @@ Ghi cân nặng mới (thêm một dòng lịch sử, cập nhật hồ sơ và 
 
 #### `GET /api/healthprofile/weight-history`
 
-Lịch sử cân nặng, cũ → mới.
+Lịch sử cân nặng, cũ → mới. `days` (1–3650, tùy chọn) chỉ trả các lần ghi trong N ngày gần nhất; ngoài khoảng → `400`.
 
 - **Quyền**: Cần đăng nhập
 - **Response `data`**: [WeightHistoryResponseDto](#schema-weighthistoryresponsedto)
+
+| Tham số | Vị trí | Kiểu | Bắt buộc | Ràng buộc |
+|---|---|---|---|---|
+| `days` | query | int |  | 1–3650 |
 
 ### Danh mục (dị ứng, bệnh lý, chế độ ăn)
 
@@ -694,6 +701,10 @@ Bỏ công thức khỏi bộ sưu tập — chỉ chủ sở hữu.
 
 > `auto-generate` loại hẳn món chứa chất gây dị ứng của người dùng và, với `keepExisting = true`, không ghi đè các ô người dùng đã chọn (BR-163). `PATCH /{id}/complete` đánh dấu đã nấu/ăn.
 
+> **Bệnh lý (BR-110/111)**: món vượt ngưỡng tham khảo cho một khẩu phần theo bệnh lý đã khai báo bị loại khỏi thực đơn tự tạo (tiểu đường: đường/carb; cao huyết áp: natri; mỡ máu: chất béo; gout: nhóm nguyên liệu nhiều purin) — ngưỡng ở mục `HealthConditionLimits`. Món người dùng tự chọn vẫn gán được; chi tiết công thức có `healthWarnings`. **Mục tiêu calo**: mỗi bữa có tỷ lệ của `targetDailyCalories` (mặc định lấy từ hồ sơ), ưu tiên món nằm trong ±15% (tối thiểu ±50 kcal); `dietTag` là ưu tiên mềm. Không còn món phù hợp → `400` `no_suitable_recipes`; `message` của kết quả thành công có thể kèm ghi chú (vd. phải dùng món ngoài chế độ ăn).
+
+> `assign` từ chối món chứa chất gây dị ứng của người dùng: `400` kèm `errors: ["allergen_conflict"]` (BR-102).
+
 #### `GET /api/mealplanner/week`
 
 Lấy kế hoạch thực đơn 7 ngày trong tuần (kèm tổng Calo & Macros mỗi ngày).
@@ -746,7 +757,7 @@ Tự động sinh thực đơn 7 ngày, loại hẳn món chứa chất gây d�
 
 ### Đi chợ
 
-> `generate-from-plan` gộp nguyên liệu cùng tên/đơn vị từ các món trong khoảng ngày, trả `mergedFromRecipeCount`; giá ước tính tính theo đơn vị (BR-174). `PATCH /items/check-all` đánh dấu/bỏ đánh dấu cả danh sách trong một lần.
+> `generate-from-plan` gộp nguyên liệu cùng tên/đơn vị từ các món trong khoảng ngày, trả `mergedFromRecipeCount`; giá ước tính tính theo đơn vị (BR-174). Món người dùng tự thêm (`isManual`) được giữ khi tạo lại. `GET /grocery` trả kèm `periodStart/periodEnd/generatedAt` (để app biết danh sách đã cũ so với thực đơn) và `lastTrip`. `PATCH /items/check-all` đánh dấu/bỏ đánh dấu cả danh sách trong một lần.
 
 #### `GET /api/grocery`
 
@@ -809,15 +820,25 @@ Dọn dẹp toàn bộ các món đồ đã đánh dấu mua (Clear Checked Item
 - **Quyền**: Cần đăng nhập
 - **Response `data`**: bool
 
+#### `POST /api/grocery/complete`
+
+Hoàn tất mua sắm: lưu chi phí thực tế (BR-174), bỏ các món đã mua, giữ hoặc bỏ các món chưa mua; khi giữ có thể cộng luôn thực đơn kỳ kế tiếp (gộp với món chưa mua). Tất cả trong một transaction; trả danh sách sau khi hoàn tất (kèm `lastTrip`).
+
+- **Quyền**: Cần đăng nhập
+- **Body (JSON)**: [CompleteGroceryRequestDto](#schema-completegroceryrequestdto)
+- **Response `data`**: [GrocerySummaryDto](#schema-grocerysummarydto)
+
 ### AI
 
 > Mọi endpoint AI cần đăng nhập. Tài khoản **Free có `Ai:FreeDailyLimit` (5) lượt/ngày**, Pro không giới hạn (BR-233); hết lượt → `429` kèm `errors: ["ai_quota_exceeded"]`. Ngày làm mới theo múi giờ `Ai:QuotaUtcOffsetHours` (mặc định +7).
 
-> Lượt chỉ bị trừ khi AI trả kết quả **thành công**. `check-safety` không tính vào hạn mức.
+> Lượt chỉ bị trừ khi AI trả kết quả **thành công**. `check-safety` và `scan-label` không tính vào hạn mức (tính năng an toàn) nhưng có giới hạn tần suất (policy `scanner`).
 
 > Chưa cấu hình `Gemini:ApiKey`: ở Development trả dữ liệu **mẫu** với `isDemo: true` (cờ `Ai:AllowDemoFallback`); nơi khác trả `503` (chưa cấu hình) hoặc `502` (Gemini lỗi) thay vì giả vờ thành công.
 
-> `voice-log` nhận **văn bản** (backend chưa có nhận dạng giọng nói); ảnh `snap-and-track`/`fridge-scanner` ≤ `Ai:MaxImageBytes` (5 MB), chỉ JPG/PNG/WebP.
+> `voice-log` nhận **văn bản**; `voice-log/audio` nhận **file ghi âm** (≤ `Ai:MaxAudioBytes`, 10 MB) và trả thêm `transcript` — đoạn ghi âm không nghe ra món nào → `400` `voice_unrecognized` (không trừ lượt). Ảnh `snap-and-track`/`fridge-scanner`/`scan-label` ≤ `Ai:MaxImageBytes` (5 MB), chỉ JPG/PNG/WebP.
+
+> `check-safety` với `barcode`: tra sản phẩm trong **CSDL** (món hệ thống hoặc món người dùng tự nhập kèm mã vạch), không để AI đoán; `source = "database"`, `product` có thông tin sản phẩm, dinh dưỡng tính trên 100 g (`basis = "per100g"`). Chưa có sản phẩm → `404` `product_not_found` (trừ khi gửi kèm `ocrRawText`, khi đó AI phân tích văn bản nhãn). Cảnh báo dị ứng theo hồ sơ (`DANGER`) và cảnh báo vượt ngưỡng trên 100 g ở mục `ProductSafety` (`WARNING`, hoặc `DANGER` nếu người dùng có bệnh lý liên quan) do server tính bằng code.
 
 #### `GET /api/ai/quota`
 
@@ -850,12 +871,28 @@ Voice Log: văn bản (đã nhận dạng giọng nói trên máy) → món ăn 
 - **Body (JSON)**: [VoiceLogRequestDto](#schema-voicelogrequestdto)
 - **Response `data`**: [VoiceLogResponseDto](#schema-voicelogresponsedto)
 
+#### `POST /api/ai/voice-log/audio`
+
+Voice Log từ file ghi âm (multipart, trường `audio`; WAV/AAC/M4A/MP3/OGG/WebM, tối đa 10 MB): AI chép lời rồi bóc tách món ăn. Kết quả có `transcript` để người dùng đối chiếu; vẫn phải qua bước xác nhận trước khi lưu (BR-054/070). Tính vào hạn mức như `voice-log`.
+
+- **Quyền**: Cần đăng nhập
+- **Body (multipart/form-data)**: field `audio` (file)
+- **Response `data`**: [VoiceLogResponseDto](#schema-voicelogresponsedto)
+
 #### `POST /api/ai/check-safety`
 
 Kiểm tra an toàn sản phẩm theo dị ứng/bệnh lý của người dùng (BR-140). Không tính vào hạn mức miễn phí vì đây là tính năng an toàn, nhưng vẫn cần đăng nhập.
 
 - **Quyền**: Cần đăng nhập
 - **Body (JSON)**: [CheckSafetyRequestDto](#schema-checksafetyrequestdto)
+- **Response `data`**: [CheckSafetyResponseDto](#schema-checksafetyresponsedto)
+
+#### `POST /api/ai/scan-label`
+
+Đọc nhãn dinh dưỡng từ ảnh (multipart, trường `image`) rồi kiểm tra an toàn (BR-130/140). Kết quả là ước tính của AI (`source = "ai"`, có `productName`, `ocrText`; trường nhãn không ghi để `null`), người dùng phải kiểm tra trước khi lưu. Không tính vào hạn mức miễn phí (tính năng an toàn), có giới hạn tần suất.
+
+- **Quyền**: Cần đăng nhập
+- **Body (multipart/form-data)**: field `image` (file)
 - **Response `data`**: [CheckSafetyResponseDto](#schema-checksafetyresponsedto)
 
 ### Bé Mầm: XP, thử thách, huy hiệu
@@ -1020,13 +1057,16 @@ Khóa bí mật chỉ đặt qua biến môi trường (`Muc__Khoa`, dùng `__` 
 | `Auth:RefreshReuseGraceSeconds` | 10 | Dùng lại refresh token vừa thu hồi trong khoảng này được coi là gọi trùng song song, không phải bị đánh cắp. |
 | `Auth:OtpMinutes` / `Auth:OtpMaxAttempts` / `Auth:OtpResendCooldownSeconds` / `Auth:ResetTokenMinutes` | 5 / 5 / 60 / 10 | Chính sách OTP và mã đặt lại mật khẩu. |
 | `RateLimiting:AuthPermitsPerMinute` | 30 | Số request/phút/IP cho nhóm endpoint đăng nhập/OTP (policy `auth`). |
+| `RateLimiting:ScannerPermitsPerMinute` | 20 | Số request/phút/người dùng cho `check-safety` và `scan-label` (policy `scanner`). |
 | `Google:ClientIds` | (trống) | Danh sách Google OAuth Client ID (web/Android/iOS), phân tách bằng dấu phẩy, để xác minh `aud` của ID token. Trống thì `POST /auth/google` trả 503. |
 | `Smtp:Host`, `Port`, `EnableSsl`, `User`, `Password`, `From`, `FromName` | (trống) | Gửi email OTP. `Host` trống = chỉ ghi log (Development in cả mã OTP). |
 | `Storage:Root` / `Storage:PublicBaseUrl` / `Storage:MaxAvatarBytes` | `uploads` cạnh ứng dụng / theo request / 2 MB | Nơi lưu và URL công khai của ảnh đại diện. Chạy Docker cần gắn volume vào `Storage:Root`. |
 | `Subscription:AllowMockActivation` | (trống = chỉ Development) | Cho phép `activate-mock`. Môi trường thật phải để tắt. |
 | `Subscription:WebhookSecret` | (trống = tắt webhook) | Khóa HMAC dùng chung với cổng thanh toán. |
 | `Gemini:ApiKey` / `Gemini:Model` | (trống) / `gemini-1.5-flash` | Khóa Gemini. Trống: AI trả dữ liệu mẫu ở Development, lỗi 503 ở nơi khác. |
-| `Ai:FreeDailyLimit` / `Ai:QuotaUtcOffsetHours` / `Ai:AllowDemoFallback` / `Ai:MaxImageBytes` | 5 / 7 / (trống = chỉ Development) / 5 MB | Hạn mức AI cho Free, múi giờ đổi ngày, cho phép dữ liệu mẫu, dung lượng ảnh tối đa. |
+| `Ai:FreeDailyLimit` / `Ai:QuotaUtcOffsetHours` / `Ai:AllowDemoFallback` / `Ai:MaxImageBytes` / `Ai:MaxAudioBytes` | 5 / 7 / (trống = chỉ Development) / 5 MB / 10 MB | Hạn mức AI cho Free, múi giờ đổi ngày, cho phép dữ liệu mẫu, dung lượng ảnh và file ghi âm tối đa. |
+| `HealthConditionLimits:DiabetesMaxSugarGrams` / `DiabetesMaxCarbsGrams` / `HypertensionMaxSodiumMg` / `DyslipidemiaMaxFatGrams` / `GoutAvoidCategories` | 15 / 60 / 800 / 20 / `Seafood`, `Organ` | Ngưỡng tham khảo cho **một khẩu phần** theo bệnh lý (BR-110/111): loại món khỏi thực đơn tự tạo và sinh `healthWarnings`. Không thay thế tư vấn y khoa (BR-112). |
+| `ProductSafety:HighSugarGramsPer100g` / `HighSodiumMgPer100g` / `HighFatGramsPer100g` / `HighCaloriesPer100g` | 22.5 / 600 / 17.5 / 400 | Ngưỡng "cao" trên 100 g để cảnh báo sản phẩm quét được (mức "high" của nhãn UK FSA; calo là mức tham khảo). |
 | `Swagger:Enabled` | false (luôn bật ở Development) | Bật Swagger ngoài Development. |
 | `Cors:AllowedOrigins` | (trống) | Origin được gọi từ trình duyệt, phân tách bằng dấu phẩy. App native không cần. |
 | `Seed:DevAccountPassword` | `Smartmeal@123` | Chỉ ở Development: tài khoản dev `smartmealuser@gmail.com` được tạo với mật khẩu này. Môi trường khác không tạo tài khoản mặc định. |
@@ -1173,11 +1213,15 @@ Cần ít nhất một trong `barcode` hoặc `ocrRawText`.
 
 | Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
 |---|---|---|---|---|
-| `isSafe` | bool |  |  |  |
+| `isSafe` | bool |  |  | Không có cảnh báo mức DANGER (dị ứng, hoặc vượt ngưỡng với bệnh lý đã khai báo). Không có nghĩa "an toàn tuyệt đối" (BR-112/291). |
 | `alerts` | [SafetyAlertDto](#schema-safetyalertdto)[]? |  |  |  |
 | `detectedIngredients` | string[]? |  |  |  |
 | `extractedNutrition` | [ExtractedNutritionFactsDto](#schema-extractednutritionfactsdto) |  |  |  |
 | `isDemo` | bool |  |  |  |
+| `source` | string? |  |  | Nguồn kết quả: `database` (tra mã vạch trong CSDL, không dùng AI) \| `ai` (AI đọc văn bản/ảnh nhãn) \| `demo` (dữ liệu mẫu). |
+| `product` | [ScannedProductDto](#schema-scannedproductdto) |  |  | Sản phẩm tìm thấy theo mã vạch; null khi phân tích văn bản hoặc ảnh nhãn. |
+| `productName` | string? |  |  | Tên sản phẩm AI đọc được trên nhãn (chỉ có ở `/ai/scan-label`). |
+| `ocrText` | string? |  |  | Văn bản AI đọc được trên nhãn (chỉ có ở `/ai/scan-label`), để người dùng đối chiếu. |
 
 <a id="schema-checkoutsessionresponsedto"></a>
 #### CheckoutSessionResponseDto
@@ -1189,6 +1233,16 @@ Cần ít nhất một trong `barcode` hoặc `ocrRawText`.
 | `qrCodeUrl` | string? |  |  |  |
 | `amountVnd` | number |  |  |  |
 | `message` | string? |  |  |  |
+
+<a id="schema-completegroceryrequestdto"></a>
+#### CompleteGroceryRequestDto
+
+| Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| `actualCostVnd` | number? |  | 0–1000000000 |  |
+| `keepPending` | bool |  |  | true (mặc định) = giữ các món chưa mua; false = bỏ toàn bộ danh sách còn lại. |
+| `nextStartDate` | date (yyyy-MM-dd)? |  |  | Khi giữ món chưa mua: ngày bắt đầu kỳ kế tiếp để cộng nguyên liệu từ thực đơn kỳ đó vào danh sách (gộp với món chưa mua cùng tên/đơn vị). Kỳ đó chưa có thực đơn thì chỉ giữ món chưa mua, không báo lỗi. |
+| `nextEndDate` | date (yyyy-MM-dd)? |  |  | Ngày kết thúc kỳ kế tiếp; bỏ trống = NextStartDate + 6 ngày. |
 
 <a id="schema-completemealplanrequestdto"></a>
 #### CompleteMealPlanRequestDto
@@ -1397,11 +1451,15 @@ Một món ăn cần ghi vào nhật ký (dùng chung cho ghi đơn lẻ và ghi
 
 | Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
 |---|---|---|---|---|
-| `caloriesPerServing` | number |  |  |  |
+| `caloriesPerServing` | number |  |  | Năng lượng theo `Basis` (giữ tên cũ để tương thích): mỗi khẩu phần, hoặc mỗi 100 g khi Basis = per100g. |
 | `servingSize` | string? |  |  |  |
 | `sugarGrams` | number |  |  |  |
 | `sodiumMg` | number |  |  |  |
 | `totalFatGrams` | number |  |  |  |
+| `proteinGrams` | number? |  |  | Protein theo `Basis`; null khi nhãn không ghi. |
+| `carbsGrams` | number? |  |  | Carbohydrate theo `Basis`; null khi nhãn không ghi. |
+| `servingGrams` | number? |  |  | Khối lượng một khẩu phần (g) nếu biết — để quy đổi về 100 g. |
+| `basis` | string? |  |  | `perServing` (số liệu cho một khẩu phần) hoặc `per100g`. |
 
 <a id="schema-favoritetoggleresponsedto"></a>
 #### FavoriteToggleResponseDto
@@ -1536,6 +1594,7 @@ Một món ăn cần ghi vào nhật ký (dùng chung cho ghi đơn lẻ và ghi
 | `isChecked` | bool |  |  |  |
 | `recipeTitle` | string? |  |  | Công thức đầu tiên cần nguyên liệu này (null với món tự thêm). |
 | `mergedFromRecipeCount` | int |  |  | Số bữa trong thực đơn được gộp vào dòng này ("Gộp từ N món"); 0 với món tự thêm. |
+| `isManual` | bool |  |  | Món người dùng tự thêm (không sinh từ thực đơn) — không bị xóa khi tạo lại danh sách. |
 
 <a id="schema-grocerysummarydto"></a>
 #### GrocerySummaryDto
@@ -1546,6 +1605,24 @@ Một món ăn cần ghi vào nhật ký (dùng chung cho ghi đơn lẻ và ghi
 | `checkedItems` | int |  |  |  |
 | `totalEstimatedCostVnd` | number |  |  |  |
 | `categories` | [GroceryCategoryDto](#schema-grocerycategorydto)[]? |  |  |  |
+| `periodStart` | date (yyyy-MM-dd)? |  |  | Khoảng ngày thực đơn của lần tạo danh sách gần nhất (null khi chưa tạo từ thực đơn). |
+| `periodEnd` | date (yyyy-MM-dd)? |  |  |  |
+| `generatedAt` | datetime (ISO 8601 UTC)? |  |  | Thời điểm tạo danh sách từ thực đơn gần nhất (UTC). |
+| `lastTrip` | [GroceryTripDto](#schema-grocerytripdto) |  |  | Lần "Hoàn tất mua sắm" gần nhất (kèm chi phí thực tế), null nếu chưa có. |
+
+<a id="schema-grocerytripdto"></a>
+#### GroceryTripDto
+
+| Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| `id` | uuid |  |  |  |
+| `periodStart` | date (yyyy-MM-dd)? |  |  |  |
+| `periodEnd` | date (yyyy-MM-dd)? |  |  |  |
+| `purchasedItems` | int |  |  |  |
+| `pendingItemsKept` | int |  |  |  |
+| `estimatedCostVnd` | number |  |  |  |
+| `actualCostVnd` | number? |  |  | Chi phí thực tế người dùng nhập; null nếu bỏ trống. |
+| `completedAt` | datetime (ISO 8601 UTC) |  |  |  |
 
 <a id="schema-healthpetstatusdto"></a>
 #### HealthPetStatusDto
@@ -1778,9 +1855,11 @@ Một mục danh mục (dị ứng, bệnh lý, chế độ ăn). `Code` là mã
 | `fatPerServing` | number |  |  |  |
 | `proteinPerServing` | number |  |  |  |
 | `tags` | string[]? |  |  |  |
+| `tagCodes` | string[]? |  |  | Mã ổn định của từng tag (cùng thứ tự với `Tags`), khớp `code` ở /meta/tags — client lọc theo mã, không theo tên hiển thị. |
 | `mealTypes` | string[]? |  |  | Các bữa phù hợp (Breakfast/Lunch/Dinner/Snack); rỗng = phù hợp mọi bữa. |
 | `allergyIds` | int[]? |  |  | Id (/meta/allergies) của MỌI chất gây dị ứng trong công thức (gộp từ các nguyên liệu) — dùng để lọc theo BR-101/102. |
 | `isFavorite` | bool |  |  | Công thức nằm trong danh sách yêu thích của người dùng đang đăng nhập (false nếu chưa đăng nhập). |
+| `healthWarnings` | string[]? |  |  | Cảnh báo theo bệnh lý của người dùng đang đăng nhập (BR-110/111), vd. "Nhiều carbohydrate… cần lưu ý với tiểu đường". Rỗng khi chưa đăng nhập, chưa khai báo bệnh lý hoặc món nằm trong ngưỡng tham khảo. Không thay thế tư vấn y khoa (BR-112). |
 | `ingredients` | [RecipeIngredientDto](#schema-recipeingredientdto)[]? |  |  |  |
 
 <a id="schema-recipeingredientdto"></a>
@@ -1836,6 +1915,19 @@ Một mục danh mục (dị ứng, bệnh lý, chế độ ăn). `Code` là mã
 | `type` | string? |  |  |  |
 | `message` | string? |  |  |  |
 | `severity` | string? |  |  |  |
+
+<a id="schema-scannedproductdto"></a>
+#### ScannedProductDto
+
+| Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| `foodId` | uuid |  |  |  |
+| `name` | string? |  |  |  |
+| `barcode` | string? |  |  |  |
+| `isVerified` | bool |  |  | Số liệu đã được kiểm chứng; false với món do người dùng nhập hoặc chưa rà soát (BR-120/121). |
+| `isUserCreated` | bool |  |  |  |
+| `allergyIds` | int[]? |  |  | Id (/meta/allergies) của mọi chất gây dị ứng trong sản phẩm. |
+| `matchedAllergyIds` | int[]? |  |  | Những chất gây dị ứng của sản phẩm trùng với hồ sơ người dùng. |
 
 <a id="schema-snapandtrackresponsedto"></a>
 #### SnapAndTrackResponseDto
@@ -2033,6 +2125,7 @@ Cập nhật từng phần hồ sơ đã có. Trường không gửi (null) gi�
 | Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
 |---|---|---|---|---|
 | `mealType` | string? |  |  |  |
+| `transcript` | string? |  |  | Câu người dùng đã nói: văn bản gửi lên (voice-log) hoặc bản chép lời AI nghe được từ file ghi âm (voice-log/audio). |
 | `extractedItems` | [ExtractedMealItemDto](#schema-extractedmealitemdto)[]? |  |  |  |
 | `totalCalories` | number |  |  |  |
 | `totalCarbs` | number |  |  |  |
