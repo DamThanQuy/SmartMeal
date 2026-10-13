@@ -24,4 +24,8 @@ public sealed class AiOptions
     /// <summary>Dung lượng ảnh tối đa cho một lần phân tích (byte).</summary>
     [Range(1024, 20 * 1024 * 1024)]
     public long MaxImageBytes { get; set; } = 5 * 1024 * 1024;
+
+    /// <summary>Dung lượng file ghi âm tối đa cho Voice Logging (byte) — khoảng 1–2 phút AAC.</summary>
+    [Range(1024, 20 * 1024 * 1024)]
+    public long MaxAudioBytes { get; set; } = 10 * 1024 * 1024;
 }

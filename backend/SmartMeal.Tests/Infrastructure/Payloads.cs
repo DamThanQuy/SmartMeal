@@ -57,6 +57,18 @@ public sealed record SafetyPayload(bool IsSafe, List<SafetyAlertPayload> Alerts,
 
 public sealed record VoicePayload(string MealType, double TotalCalories, bool IsDemo);
 
+public sealed record VoiceAudioPayload(string MealType, string Transcript, double TotalCalories, bool IsDemo);
+
+public sealed record ScannedProductPayload(Guid FoodId, string Name, string? Barcode, bool IsVerified, bool IsUserCreated, List<int> AllergyIds, List<int> MatchedAllergyIds);
+
+public sealed record NutritionFactsPayload(
+    double CaloriesPerServing, string ServingSize, double SugarGrams, double SodiumMg, double TotalFatGrams, double? ProteinGrams,
+    double? CarbsGrams, double? ServingGrams, string Basis);
+
+public sealed record LabelSafetyPayload(
+    bool IsSafe, List<SafetyAlertPayload> Alerts, List<string> DetectedIngredients, NutritionFactsPayload? ExtractedNutrition, bool IsDemo,
+    string Source, ScannedProductPayload? Product, string? ProductName, string? OcrText);
+
 public sealed record SyncResultPayload(DateOnly Date, int Steps, double BurnedCalories, double DistanceMeters, string Source, DateTime SyncedAt);
 
 public sealed record RecipeIngredientPayload(

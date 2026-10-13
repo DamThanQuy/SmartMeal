@@ -47,6 +47,10 @@ public class VoiceLogRequestDto
 public class VoiceLogResponseDto
 {
     public string MealType { get; set; } = "Breakfast"; // Breakfast, Lunch, Dinner, Snack
+
+    /// <summary>Câu người dùng đã nói: văn bản gửi lên (voice-log) hoặc bản chép lời AI nghe được từ file ghi âm (voice-log/audio).</summary>
+    public string Transcript { get; set; } = string.Empty;
+
     public List<ExtractedMealItemDto> ExtractedItems { get; set; } = new();
     public double TotalCalories { get; set; }
     public double TotalCarbs { get; set; }
@@ -86,27 +90,74 @@ public class CheckSafetyRequestDto : IValidatableObject
 
 public class CheckSafetyResponseDto
 {
+    /// <summary>Không có cảnh báo mức DANGER (dị ứng, hoặc vượt ngưỡng với bệnh lý đã khai báo). Không có nghĩa "an toàn tuyệt đối" (BR-112/291).</summary>
     public bool IsSafe { get; set; } = true;
+
     public List<SafetyAlertDto> Alerts { get; set; } = new();
     public List<string> DetectedIngredients { get; set; } = new();
     public ExtractedNutritionFactsDto? ExtractedNutrition { get; set; }
     public bool IsDemo { get; set; }
+
+    /// <summary>Nguồn kết quả: <c>database</c> (tra mã vạch trong CSDL, không dùng AI) | <c>ai</c> (AI đọc văn bản/ảnh nhãn) | <c>demo</c> (dữ liệu mẫu).</summary>
+    public string Source { get; set; } = "ai";
+
+    /// <summary>Sản phẩm tìm thấy theo mã vạch; null khi phân tích văn bản hoặc ảnh nhãn.</summary>
+    public ScannedProductDto? Product { get; set; }
+
+    /// <summary>Tên sản phẩm AI đọc được trên nhãn (chỉ có ở <c>/ai/scan-label</c>).</summary>
+    public string? ProductName { get; set; }
+
+    /// <summary>Văn bản AI đọc được trên nhãn (chỉ có ở <c>/ai/scan-label</c>), để người dùng đối chiếu.</summary>
+    public string? OcrText { get; set; }
+}
+
+/// <summary>Sản phẩm trong CSDL khớp mã vạch (BR-120).</summary>
+public class ScannedProductDto
+{
+    public Guid FoodId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Barcode { get; set; }
+
+    /// <summary>Số liệu đã được kiểm chứng; false với món do người dùng nhập hoặc chưa rà soát (BR-120/121).</summary>
+    public bool IsVerified { get; set; }
+
+    public bool IsUserCreated { get; set; }
+
+    /// <summary>Id (/meta/allergies) của mọi chất gây dị ứng trong sản phẩm.</summary>
+    public List<int> AllergyIds { get; set; } = new();
+
+    /// <summary>Những chất gây dị ứng của sản phẩm trùng với hồ sơ người dùng.</summary>
+    public List<int> MatchedAllergyIds { get; set; } = new();
 }
 
 public class SafetyAlertDto
 {
-    public string Type { get; set; } = "WARNING"; // ALLERGY, HIGH_SODIUM, HIGH_SUGAR, MEDICAL_WARNING
+    public string Type { get; set; } = "WARNING"; // ALLERGY, HIGH_SODIUM, HIGH_SUGAR, HIGH_FAT, HIGH_CALORIES, MEDICAL_WARNING, UNVERIFIED
     public string Message { get; set; } = string.Empty;
     public string Severity { get; set; } = "WARNING"; // INFO, WARNING, DANGER
 }
 
 public class ExtractedNutritionFactsDto
 {
+    /// <summary>Năng lượng theo <see cref="Basis"/> (giữ tên cũ để tương thích): mỗi khẩu phần, hoặc mỗi 100 g khi Basis = per100g.</summary>
     public double CaloriesPerServing { get; set; }
+
     public string ServingSize { get; set; } = string.Empty;
     public double SugarGrams { get; set; }
     public double SodiumMg { get; set; }
     public double TotalFatGrams { get; set; }
+
+    /// <summary>Protein theo <see cref="Basis"/>; null khi nhãn không ghi.</summary>
+    public double? ProteinGrams { get; set; }
+
+    /// <summary>Carbohydrate theo <see cref="Basis"/>; null khi nhãn không ghi.</summary>
+    public double? CarbsGrams { get; set; }
+
+    /// <summary>Khối lượng một khẩu phần (g) nếu biết — để quy đổi về 100 g.</summary>
+    public double? ServingGrams { get; set; }
+
+    /// <summary><c>perServing</c> (số liệu cho một khẩu phần) hoặc <c>per100g</c>.</summary>
+    public string Basis { get; set; } = "perServing";
 }
 
 /// <summary>Hạn mức AI trong ngày (BR-233). Tài khoản Pro không giới hạn.</summary>

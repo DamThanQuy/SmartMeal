@@ -167,7 +167,7 @@ public class AiTests : IClassFixture<ApiFactory>
         Assert.True(quota.ResetsAt > DateTime.UtcNow && quota.ResetsAt <= DateTime.UtcNow.AddDays(1));
 
         // check-safety là tính năng an toàn: không bị hạn mức chặn.
-        Assert.Equal(HttpStatusCode.OK, (await user.Client.PostJsonAsync("/api/ai/check-safety", new { barcode = "8934567890123" })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await user.Client.PostJsonAsync("/api/ai/check-safety", new { ocrRawText = "Thành phần: bột mì, đường" })).StatusCode);
 
         // Nâng cấp Pro → không giới hạn.
         (await user.Client.PostJsonAsync("/api/subscription/activate-mock", new { planId = "PRO_MONTHLY" })).EnsureSuccessStatusCode();
@@ -250,6 +250,151 @@ public class AiTests : IClassFixture<ApiFactory>
         Assert.DoesNotContain("test-gemini-key", call.Url.ToString());
         Assert.DoesNotContain("key=", call.Url.Query);
         Assert.Contains("image/jpeg", call.Body);   // mime lấy từ nội dung ảnh, không phải từ client
+    }
+
+    // ───────────────────────────── Mã vạch tra CSDL, đọc nhãn từ ảnh, voice từ file ghi âm (báo cáo gap B15, §6) ─────────────────────────────
+
+    private static readonly byte[] Wav =
+    {
+        0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x41, 0x56, 0x45, 0x66, 0x6D, 0x74, 0x20,
+        0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x80, 0x3E, 0x00, 0x00, 0x00, 0x7D, 0x00, 0x00,
+        0x02, 0x00, 0x10, 0x00, 0x64, 0x61, 0x74, 0x61, 0x00, 0x00, 0x00, 0x00
+    };
+
+    private static MultipartFormDataContent Audio(byte[] bytes) =>
+        new() { { new ByteArrayContent(bytes), "audio", "voice.wav" } };
+
+    private static async Task SetProfileAsync(HttpClient client, int[] allergyIds, int[] conditionIds) =>
+        (await client.PostJsonAsync("/api/healthprofile/survey", new
+        {
+            gender = "Male", age = 30, heightCm = 175, currentWeightKg = 70, targetWeightKg = 65, activityLevel = "Moderate",
+            goal = "Maintain", allergyIds, medicalConditionIds = conditionIds, dietaryPreferenceIds = new int[0]
+        })).EnsureSuccessStatusCode();
+
+    [DbFact]
+    public async Task A_barcode_is_checked_against_the_database_and_never_sent_to_the_ai()
+    {
+        var stub = new StubGeminiHandler();
+        using var factory = StubbedFactory(new ApiFactory().WithSetting("Gemini:ApiKey", "test-gemini-key"), stub);
+        var user = await factory.RegisterUserAsync();
+        await SetProfileAsync(user.Client, allergyIds: new[] { 2 }, conditionIds: new[] { 1 }); // đậu phộng, tiểu đường
+        (await user.Client.PostJsonAsync("/api/foods", new
+        {
+            name = "Bánh quy bơ đậu phộng", category = "Snack", barcode = "8934567000017", caloriesPer100g = 480,
+            carbsPer100g = 62, fatPer100g = 22, proteinPer100g = 8, sugarPer100g = 30, sodiumMgPer100g = 250, allergyIds = new[] { 2 }
+        })).EnsureSuccessStatusCode();
+
+        var response = await user.Client.PostJsonAsync("/api/ai/check-safety", new { barcode = "8934567000017" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = (await response.ReadEnvelopeAsync<LabelSafetyPayload>()).Data!;
+        Assert.Equal("database", result.Source);
+        Assert.False(result.IsDemo);
+        Assert.False(result.IsSafe);
+        Assert.Equal("Bánh quy bơ đậu phộng", result.Product!.Name);
+        Assert.Equal(new[] { 2 }, result.Product.MatchedAllergyIds);
+        Assert.Contains(result.Alerts, a => a.Type == "ALLERGY" && a.Severity == "DANGER");
+        Assert.Contains(result.Alerts, a => a.Type == "HIGH_SUGAR" && a.Severity == "DANGER" && a.Message.Contains("tiểu đường"));
+        Assert.Contains(result.Alerts, a => a.Type == "HIGH_FAT" && a.Severity == "WARNING");
+        Assert.Equal("per100g", result.ExtractedNutrition!.Basis);
+        Assert.Equal(8, result.ExtractedNutrition.ProteinGrams);
+        Assert.Empty(stub.Calls);
+
+        var unknown = await user.Client.PostJsonAsync("/api/ai/check-safety", new { barcode = "8930000000000" });
+        Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
+        Assert.Contains("product_not_found", (await unknown.ReadEnvelopeAsync<object>()).Errors!);
+        Assert.Empty(stub.Calls);
+
+        // Chưa có sản phẩm nhưng có văn bản nhãn: AI chỉ nhận văn bản, không nhận mã vạch.
+        stub.ModelText = """{"isSafe":true,"alerts":[],"detectedIngredients":["Bột mì"],"extractedNutrition":null}""";
+        var withText = await user.Client.PostJsonAsync("/api/ai/check-safety", new { barcode = "8930000000000", ocrRawText = "Thành phần: bột mì" });
+        Assert.Equal(HttpStatusCode.OK, withText.StatusCode);
+        Assert.DoesNotContain("8930000000000", Assert.Single(stub.Calls).Body);
+    }
+
+    [DbFact]
+    public async Task A_label_photo_is_read_by_the_ai_checked_by_code_and_does_not_use_quota()
+    {
+        var stub = new StubGeminiHandler
+        {
+            ModelText = """
+                {"ocrText":"Thành phần: bột mì, đường, đậu phộng. Khẩu phần 40 g: 200 kcal, natri 400 mg","productName":"Bánh quy",
+                 "isSafe":true,"alerts":[],"detectedIngredients":["Bột mì","Đường","Đậu phộng"],
+                 "extractedNutrition":{"basis":"perServing","servingSize":"40 g","servingGrams":40,"caloriesPerServing":200,
+                   "proteinGrams":3,"carbsGrams":25,"sugarGrams":8,"sodiumMg":400,"totalFatGrams":9}}
+                """
+        };
+        using var factory = StubbedFactory(new ApiFactory().WithSetting("Gemini:ApiKey", "test-gemini-key").WithSetting("Ai:FreeDailyLimit", "1"), stub);
+        var user = await factory.RegisterUserAsync();
+        await SetProfileAsync(user.Client, allergyIds: new[] { 2 }, conditionIds: new[] { 3 }); // đậu phộng, cao huyết áp
+
+        var response = await user.Client.PostAsync("/api/ai/scan-label", Image(Jpeg));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = (await response.ReadEnvelopeAsync<LabelSafetyPayload>()).Data!;
+        Assert.Equal("ai", result.Source);
+        Assert.Equal("Bánh quy", result.ProductName);
+        Assert.Contains("đậu phộng", result.OcrText);
+        Assert.False(result.IsSafe);
+        Assert.Contains(result.Alerts, a => a.Type == "ALLERGY" && a.Message.Contains("Đậu phộng"));
+        // 400 mg natri / 40 g = 1000 mg/100 g > 600 → cảnh báo, nặng hơn vì khai báo cao huyết áp.
+        Assert.Contains(result.Alerts, a => a.Type == "HIGH_SODIUM" && a.Severity == "DANGER");
+        Assert.Contains("image/jpeg", Assert.Single(stub.Calls).Body);
+        Assert.Equal(0, (await QuotaAsync(user.Client)).Used);
+
+        stub.ModelText = """{"ocrText":"","detectedIngredients":[],"extractedNutrition":null}""";
+        var unreadable = await user.Client.PostAsync("/api/ai/scan-label", Image(Jpeg));
+        Assert.Equal(HttpStatusCode.BadRequest, unreadable.StatusCode);
+        Assert.Contains("label_unreadable", (await unreadable.ReadEnvelopeAsync<object>()).Errors!);
+    }
+
+    [DbFact]
+    public async Task Scanning_endpoints_are_rate_limited_per_user()
+    {
+        using var factory = new ApiFactory().WithSetting("Ai:AllowDemoFallback", "true").WithSetting("RateLimiting:ScannerPermitsPerMinute", "2");
+        var user = await factory.RegisterUserAsync();
+        var other = await factory.RegisterUserAsync();
+
+        Assert.Equal(HttpStatusCode.OK, (await user.Client.PostAsync("/api/ai/scan-label", Image(Jpeg))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await user.Client.PostJsonAsync("/api/ai/check-safety", new { ocrRawText = "bột mì" })).StatusCode);
+        Assert.Equal((HttpStatusCode)429, (await user.Client.PostAsync("/api/ai/scan-label", Image(Jpeg))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await other.Client.PostAsync("/api/ai/scan-label", Image(Jpeg))).StatusCode);
+    }
+
+    [DbFact]
+    public async Task Voice_can_be_sent_as_a_recording_and_comes_back_with_its_transcript()
+    {
+        var stub = new StubGeminiHandler
+        {
+            ModelText = """
+                {"transcript":"trưa nay tôi ăn một đĩa cơm tấm","mealType":"lunch",
+                 "extractedItems":[{"foodName":"Cơm tấm sườn","portionDescription":"1 đĩa","portionGrams":400,"calories":650,"carbs":80,"protein":30,"fat":20}],
+                 "totalCalories":650,"totalCarbs":80,"totalProtein":30,"totalFat":20}
+                """
+        };
+        using var factory = StubbedFactory(new ApiFactory().WithSetting("Gemini:ApiKey", "test-gemini-key"), stub);
+        var user = await factory.RegisterUserAsync();
+
+        var response = await user.Client.PostAsync("/api/ai/voice-log/audio", Audio(Wav));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = (await response.ReadEnvelopeAsync<VoiceAudioPayload>()).Data!;
+        Assert.Equal("trưa nay tôi ăn một đĩa cơm tấm", result.Transcript);
+        Assert.Equal("Lunch", result.MealType);
+        Assert.False(result.IsDemo);
+        Assert.Contains("audio/wav", Assert.Single(stub.Calls).Body);
+        Assert.Equal(1, (await QuotaAsync(user.Client)).Used);
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await user.Client.PostAsync("/api/ai/voice-log/audio", Audio(Jpeg))).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await user.Client.PostAsync("/api/ai/voice-log/audio", new MultipartFormDataContent())).StatusCode);
+
+        stub.ModelText = """{"transcript":"ừm","mealType":"Snack","extractedItems":[]}""";
+        var silent = await user.Client.PostAsync("/api/ai/voice-log/audio", Audio(Wav));
+        Assert.Equal(HttpStatusCode.BadRequest, silent.StatusCode);
+        Assert.Contains("voice_unrecognized", (await silent.ReadEnvelopeAsync<object>()).Errors!);
+        Assert.Equal(1, (await QuotaAsync(user.Client)).Used); // thất bại không tốn lượt
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().PostAsync("/api/ai/voice-log/audio", Audio(Wav))).StatusCode);
     }
 
     /// <summary>Cho factory gọi "Gemini" giả thay vì Internet.</summary>

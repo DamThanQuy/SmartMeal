@@ -90,6 +90,13 @@ builder.Services.AddScoped<IGamificationService, GamificationService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddScoped<IFoodService, FoodService>();
 builder.Services.AddHttpClient<IAiVisionService, GeminiAiVisionService>(client => client.Timeout = TimeSpan.FromSeconds(45));
+// Tra mã vạch bằng CSDL (không dùng AI đoán) + ngưỡng cảnh báo đường/natri/chất béo/calo của sản phẩm (BR-120/140).
+builder.Services.AddScoped<IProductSafetyService, ProductSafetyService>();
+builder.Services
+    .AddOptions<ProductSafetyOptions>()
+    .Bind(builder.Configuration.GetSection(ProductSafetyOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 builder.Services.AddScoped<IAiQuotaService, AiQuotaService>();
 builder.Services
     .AddOptions<AiOptions>()
@@ -220,6 +227,23 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0
         });
     });
+
+    // Kiểm tra an toàn/đọc nhãn không tính hạn mức AI → giới hạn theo người dùng (chưa đăng nhập thì theo IP).
+    options.AddPolicy(RateLimitPolicies.Scanner, httpContext =>
+    {
+        var permitsPerMinute = httpContext.RequestServices.GetRequiredService<IConfiguration>()
+            .GetValue("RateLimiting:ScannerPermitsPerMinute", 20);
+        var key = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? httpContext.Connection.RemoteIpAddress?.ToString()
+            ?? "unknown";
+
+        return RateLimitPartition.GetFixedWindowLimiter("scanner:" + key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = permitsPerMinute,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
 });
 
 // 7. Swagger với JWT
@@ -307,8 +331,9 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.UseCors("Default");
-app.UseRateLimiter();
+// Xác thực trước rate limiter để policy "scanner" giới hạn theo từng người dùng (policy "auth" vẫn theo IP).
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 
