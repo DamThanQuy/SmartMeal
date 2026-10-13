@@ -1,5 +1,12 @@
 # SmartMeal Mobile — Nối API thật · Phần 1/2: Nền tảng & luồng cốt lõi
 
+> **⚠️ Bản ghi chép cũ (cập nhật 14/10/2026).** Tài liệu này là kế hoạch nối API viết khi BE còn thiếu nhiều endpoint, nên nhiều mục 🟡/🔴 bên dưới đã lỗi thời. Hiện tại:
+> - **Hợp đồng API:** đọc [`docs/SmartMeal_API_Contract.md`](../../../../docs/SmartMeal_API_Contract.md). Bản này đã cập nhật theo code; nếu lệch thì code BE vẫn là nguồn sự thật.
+> - **Trạng thái từng mục:** xem [`docs/SmartMeal_FE_API_Gap_Report.md`](../../../../docs/SmartMeal_FE_API_Gap_Report.md) §0.
+> - **Việc đã làm:** xem [`docs/implementation_report.md`](../../../../docs/implementation_report.md).
+>
+> Giữ file để tham khảo quy ước hạ tầng (envelope, lỗi, token, live test), không dùng để biết API nào đã có.
+
 | | |
 |---|---|
 | Đối tượng đọc | Dev FE (Expo/React Native) phụ trách Phần 1; người phụ trách BE đọc §12 |
