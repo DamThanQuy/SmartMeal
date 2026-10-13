@@ -222,6 +222,85 @@ public class PlannerTests : IClassFixture<ApiFactory>
         Assert.Single(Meals(await WeekAsync(other.Client)));
     }
 
+    // ───────────────────────────── An toàn & cá nhân hóa (báo cáo gap C02, C08) ─────────────────────────────
+
+    private const int SeafoodAllergyId = 1;
+    private const int GoutConditionId = 2;
+    private const int DyslipidemiaConditionId = 4;
+
+    private static async Task SetProfileAsync(HttpClient client, int[]? allergyIds = null, int[]? conditionIds = null, int[]? dietIds = null) =>
+        (await client.PostJsonAsync("/api/healthprofile/survey", new
+        {
+            gender = "Male", age = 30, heightCm = 175, currentWeightKg = 70, targetWeightKg = 65, activityLevel = "Moderate",
+            goal = "Maintain", allergyIds = allergyIds ?? new int[0], medicalConditionIds = conditionIds ?? new int[0],
+            dietaryPreferenceIds = dietIds ?? new int[0]
+        })).EnsureSuccessStatusCode();
+
+    [DbFact]
+    public async Task Assign_refuses_a_dish_that_contains_one_of_the_users_allergens()
+    {
+        var user = await _factory.RegisterUserAsync();
+        await SetProfileAsync(user.Client, allergyIds: new[] { SeafoodAllergyId });
+        var recipes = await RecipesAsync(user.Client);
+        var salmon = recipes.Single(r => r.Title.Contains("Cá hồi"));
+        var safe = recipes.First(r => !r.AllergyIds.Contains(SeafoodAllergyId));
+
+        var refused = await AssignAsync(user.Client, Monday, "Dinner", salmon.Id);
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        var envelope = await refused.ReadEnvelopeAsync<PlannedMealPayload>();
+        Assert.Contains("allergen_conflict", envelope.Errors!);
+        Assert.Contains("Hải sản", envelope.Message);
+
+        Assert.Equal(HttpStatusCode.OK, (await AssignAsync(user.Client, Monday, "Dinner", safe.Id)).StatusCode);
+        Assert.DoesNotContain(Meals(await WeekAsync(user.Client)), m => m.RecipeId == salmon.Id);
+    }
+
+    [DbFact]
+    public async Task Auto_generate_leaves_out_dishes_above_the_limits_of_the_users_conditions_and_says_so()
+    {
+        var user = await _factory.RegisterUserAsync();
+        await SetProfileAsync(user.Client, conditionIds: new[] { DyslipidemiaConditionId, GoutConditionId });
+        var recipes = await RecipesAsync(user.Client);
+        var tooFatty = recipes.Where(r => r.FatPerServing > 20).Select(r => r.Id).ToHashSet();
+        Assert.NotEmpty(tooFatty); // cá hồi 28 g chất béo: nếu seed đổi thì test này không còn chứng minh gì
+
+        var response = await user.Client.PostJsonAsync("/api/mealplanner/auto-generate", new { startDate = Monday });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var envelope = await response.ReadEnvelopeAsync<WeeklyPlanPayload>();
+
+        Assert.DoesNotContain(Meals(envelope.Data!), m => tooFatty.Contains(m.RecipeId));
+        Assert.Contains("Mỡ máu cao", envelope.Message);
+        Assert.Contains("không thay thế tư vấn", envelope.Message);
+    }
+
+    [DbFact]
+    public async Task Auto_generate_refuses_and_keeps_the_week_when_no_dish_fits_the_users_conditions()
+    {
+        await using var strict = new ApiFactory().WithSetting("HealthConditionLimits:DyslipidemiaMaxFatGrams", "0");
+        var user = await strict.RegisterUserAsync();
+        await SetProfileAsync(user.Client, conditionIds: new[] { DyslipidemiaConditionId });
+        var recipes = await RecipesAsync(user.Client);
+        var kept = (await (await AssignAsync(user.Client, Monday, "Lunch", recipes[0].Id)).ReadEnvelopeAsync<PlannedMealPayload>()).Data!;
+
+        var response = await user.Client.PostJsonAsync("/api/mealplanner/auto-generate", new { startDate = Monday });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("no_suitable_recipes", (await response.ReadEnvelopeAsync<WeeklyPlanPayload>()).Errors!);
+        Assert.Equal(kept.MealPlanId, Meals(await WeekAsync(user.Client)).Single().MealPlanId);
+    }
+
+    [DbFact]
+    public async Task Auto_generate_follows_the_daily_calorie_target()
+    {
+        var user = await _factory.RegisterUserAsync();
+
+        static double AverageDay(WeeklyPlanPayload week) => week.Days.Average(d => d.Meals.Sum(m => m.Calories));
+        var low = AverageDay(await GenerateAsync(user.Client, new { startDate = Monday, targetDailyCalories = 600 }));
+        var high = AverageDay(await GenerateAsync(user.Client, new { startDate = Monday, targetDailyCalories = 3000 }));
+
+        Assert.True(low < high, $"Mục tiêu 600 kcal cho trung bình {low:0} kcal/ngày, không thấp hơn mục tiêu 3000 kcal ({high:0}).");
+    }
+
     [DbFact]
     public async Task Planner_endpoints_require_a_login()
     {

@@ -24,6 +24,9 @@ public class RecipeDto
     public double ProteinPerServing { get; set; }
     public List<string> Tags { get; set; } = new();
 
+    /// <summary>Mã ổn định của từng tag (cùng thứ tự với <see cref="Tags"/>), khớp <c>code</c> ở /meta/tags — client lọc theo mã, không theo tên hiển thị.</summary>
+    public List<string> TagCodes { get; set; } = new();
+
     /// <summary>Các bữa phù hợp (Breakfast/Lunch/Dinner/Snack); rỗng = phù hợp mọi bữa.</summary>
     public List<string> MealTypes { get; set; } = new();
 
@@ -32,6 +35,12 @@ public class RecipeDto
 
     /// <summary>Công thức nằm trong danh sách yêu thích của người dùng đang đăng nhập (false nếu chưa đăng nhập).</summary>
     public bool IsFavorite { get; set; }
+
+    /// <summary>
+    /// Cảnh báo theo bệnh lý của người dùng đang đăng nhập (BR-110/111), vd. "Nhiều carbohydrate… cần lưu ý với tiểu đường".
+    /// Rỗng khi chưa đăng nhập, chưa khai báo bệnh lý hoặc món nằm trong ngưỡng tham khảo. Không thay thế tư vấn y khoa (BR-112).
+    /// </summary>
+    public List<string> HealthWarnings { get; set; } = new();
 
     public List<RecipeIngredientDto> Ingredients { get; set; } = new();
 }

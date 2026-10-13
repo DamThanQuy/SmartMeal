@@ -78,6 +78,12 @@ builder.Services.AddScoped<IHealthProfileService, HealthProfileService>();
 builder.Services.AddScoped<IRecipeService, RecipeService>();
 builder.Services.AddScoped<INutritionDiaryService, NutritionDiaryService>();
 builder.Services.AddScoped<IMealPlannerService, MealPlannerService>();
+// Ngưỡng tham khảo theo bệnh lý (BR-110/111) cho thực đơn tự động và cảnh báo ở chi tiết công thức.
+builder.Services
+    .AddOptions<HealthConditionLimitsOptions>()
+    .Bind(builder.Configuration.GetSection(HealthConditionLimitsOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 builder.Services.AddScoped<IGroceryService, GroceryService>();
 builder.Services.AddScoped<IHealthSyncService, HealthSyncService>();
 builder.Services.AddScoped<IGamificationService, GamificationService>();

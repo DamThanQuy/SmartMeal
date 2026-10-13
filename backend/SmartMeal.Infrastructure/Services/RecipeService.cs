@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using SmartMeal.Application.Common;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.Recipes;
 using SmartMeal.Application.Services;
 using SmartMeal.Domain.Entities;
 using SmartMeal.Infrastructure.Data;
+using SmartMeal.Infrastructure.Options;
 
 namespace SmartMeal.Infrastructure.Services;
 
@@ -14,10 +16,18 @@ public class RecipeService : IRecipeService
     private const int DefaultPageSize = 10;
 
     private readonly ApplicationDbContext _db;
+    private readonly HealthConditionLimitsOptions _limits;
 
-    public RecipeService(ApplicationDbContext db)
+    public RecipeService(ApplicationDbContext db, IOptions<HealthConditionLimitsOptions> limits)
     {
         _db = db;
+        _limits = limits.Value;
+    }
+
+    /// <summary>Thông tin về người đang xem để cá nhân hóa công thức: món yêu thích và bệnh lý (cho cảnh báo BR-110/111).</summary>
+    private sealed record Viewer(HashSet<Guid>? FavoriteIds, IReadOnlyCollection<string> ConditionCodes)
+    {
+        public static readonly Viewer Anonymous = new(null, Array.Empty<string>());
     }
 
     /// <summary>Công thức kèm tag, nguyên liệu và chất gây dị ứng của từng nguyên liệu.</summary>
@@ -105,7 +115,7 @@ public class RecipeService : IRecipeService
             ? await ordered.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync()
             : await ordered.ToListAsync();
 
-        var favorites = await GetFavoriteIdsAsync(userId);
+        var favorites = await GetViewerAsync(userId);
         return ApiResponse<PagedResult<RecipeDto>>.Ok(new PagedResult<RecipeDto>
         {
             Items = list.Select(r => ToDto(r, favorites)).ToList(),
@@ -120,7 +130,7 @@ public class RecipeService : IRecipeService
         var r = await RecipesWithDetails().FirstOrDefaultAsync(x => x.Id == id);
         if (r == null) return ApiResponse<RecipeDto>.Fail("Không tìm thấy công thức món ăn.", null, ApiErrorKind.NotFound);
 
-        return ApiResponse<RecipeDto>.Ok(ToDto(r, await GetFavoriteIdsAsync(userId)));
+        return ApiResponse<RecipeDto>.Ok(ToDto(r, await GetViewerAsync(userId)));
     }
 
     public async Task<ApiResponse<List<RecipeDto>>> SuggestByPantryAsync(PantrySuggestionRequestDto dto, Guid? userId)
@@ -162,7 +172,7 @@ public class RecipeService : IRecipeService
             .Select(x => x.Recipe)
             .ToList();
 
-        var favorites = await GetFavoriteIdsAsync(userId);
+        var favorites = await GetViewerAsync(userId);
         var message = ranked.Count > 0
             ? "Đề xuất món ăn dựa trên tủ lạnh thành công."
             : userAllergies.Count > 0
@@ -209,7 +219,7 @@ public class RecipeService : IRecipeService
             .OrderBy(r => r.Title)
             .ToListAsync();
 
-        var favorites = favRecipeIds.ToHashSet();
+        var favorites = await GetViewerAsync(userId);
         return ApiResponse<List<RecipeDto>>.Ok(recipes.Select(r => ToDto(r, favorites)).ToList(), "Lấy danh sách món ăn yêu thích thành công.");
     }
 
@@ -222,7 +232,7 @@ public class RecipeService : IRecipeService
             .OrderByDescending(c => c.CreatedAt)
             .ToListAsync();
 
-        var favorites = await GetFavoriteIdsAsync(userId);
+        var favorites = await GetViewerAsync(userId);
         return ApiResponse<List<RecipeCollectionDto>>.Ok(
             collections.Select(c => ToCollectionDto(c, userId, favorites)).ToList(),
             "Lấy danh sách bộ sưu tập thành công.");
@@ -236,7 +246,7 @@ public class RecipeService : IRecipeService
             return ApiResponse<RecipeCollectionDto>.Fail("Không tìm thấy bộ sưu tập.", null, ApiErrorKind.NotFound);
         }
 
-        return ApiResponse<RecipeCollectionDto>.Ok(ToCollectionDto(collection, userId, await GetFavoriteIdsAsync(userId)));
+        return ApiResponse<RecipeCollectionDto>.Ok(ToCollectionDto(collection, userId, await GetViewerAsync(userId)));
     }
 
     public async Task<ApiResponse<RecipeCollectionDto>> CreateCollectionAsync(Guid userId, CreateCollectionRequestDto dto)
@@ -366,16 +376,21 @@ public class RecipeService : IRecipeService
             .Select(ua => ua.AllergyId)
             .ToListAsync()).ToHashSet();
 
-    private async Task<HashSet<Guid>?> GetFavoriteIdsAsync(Guid? userId)
+    private async Task<Viewer> GetViewerAsync(Guid? userId)
     {
-        if (userId is not { } id) return null;
-        return (await _db.UserFavorites.Where(f => f.UserId == id).Select(f => f.RecipeId).ToListAsync()).ToHashSet();
+        if (userId is not { } id) return Viewer.Anonymous;
+        var favorites = (await _db.UserFavorites.Where(f => f.UserId == id).Select(f => f.RecipeId).ToListAsync()).ToHashSet();
+        var conditions = await _db.UserConditions.AsNoTracking()
+            .Where(uc => uc.HealthProfile.UserId == id)
+            .Select(uc => uc.MedicalCondition.Code)
+            .ToListAsync();
+        return new Viewer(favorites, conditions);
     }
 
     private static bool ContainsAnyAllergen(Recipe recipe, HashSet<int> allergyIds) =>
         recipe.RecipeIngredients.Any(ri => ri.Ingredient.IngredientAllergies.Any(a => allergyIds.Contains(a.AllergyId)));
 
-    private static RecipeDto ToDto(Recipe r, HashSet<Guid>? favoriteIds)
+    private RecipeDto ToDto(Recipe r, Viewer viewer)
     {
         var ingredients = r.RecipeIngredients.Select(ri => new RecipeIngredientDto
         {
@@ -404,15 +419,17 @@ public class RecipeService : IRecipeService
             CarbsPerServing = r.CarbsPerServing,
             FatPerServing = r.FatPerServing,
             ProteinPerServing = r.ProteinPerServing,
-            Tags = r.RecipeTags.Select(rt => rt.Tag.Name).ToList(),
+            Tags = r.RecipeTags.OrderBy(rt => rt.TagId).Select(rt => rt.Tag.Name).ToList(),
+            TagCodes = r.RecipeTags.OrderBy(rt => rt.TagId).Select(rt => rt.Tag.Code).ToList(),
             MealTypes = r.MealTypes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
             AllergyIds = ingredients.SelectMany(i => i.AllergyIds).Distinct().OrderBy(x => x).ToList(),
-            IsFavorite = favoriteIds?.Contains(r.Id) ?? false,
+            IsFavorite = viewer.FavoriteIds?.Contains(r.Id) ?? false,
+            HealthWarnings = HealthConditionRules.Evaluate(r, viewer.ConditionCodes, _limits).Select(v => v.Message).ToList(),
             Ingredients = ingredients
         };
     }
 
-    private static RecipeCollectionDto ToCollectionDto(RecipeCollection c, Guid userId, HashSet<Guid>? favorites) => new()
+    private RecipeCollectionDto ToCollectionDto(RecipeCollection c, Guid userId, Viewer favorites) => new()
     {
         Id = c.Id,
         Name = c.Name,

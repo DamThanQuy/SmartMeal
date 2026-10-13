@@ -363,9 +363,36 @@ public class RecipeTests : IClassFixture<ApiFactory>
 
         var response = await user.Client.PostJsonAsync("/api/mealplanner/auto-generate", new { startDate = "2026-07-01" });
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        // 400 + mã lỗi rõ ràng để client không nhầm "không tạo được" với "đã tạo xong" (báo cáo gap C02).
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var envelope = await response.ReadEnvelopeAsync<WeeklyPlanPayload>();
-        Assert.Empty(envelope.Data!.Days.SelectMany(d => d.Meals));
+        Assert.Contains("no_suitable_recipes", envelope.Errors!);
         Assert.Contains("dị ứng", envelope.Message);
+        var week = (await (await user.Client.GetAsync("/api/mealplanner/week?startDate=2026-07-01")).ReadEnvelopeAsync<WeeklyPlanPayload>()).Data!;
+        Assert.Empty(week.Days.SelectMany(d => d.Meals));
+    }
+
+    // ───────────────────────────── Bệnh lý & mã tag (báo cáo gap C08, B12) ─────────────────────────────
+
+    [DbFact]
+    public async Task Recipes_warn_about_the_viewers_conditions_and_expose_stable_tag_codes()
+    {
+        var user = await _factory.RegisterUserAsync();
+        (await user.Client.PostJsonAsync("/api/healthprofile/survey", new
+        {
+            gender = "Female", age = 40, heightCm = 160, currentWeightKg = 60, targetWeightKg = 58, activityLevel = "Light",
+            goal = "Maintain", allergyIds = new int[0], medicalConditionIds = new[] { 2, 4 }, dietaryPreferenceIds = new int[0]
+        })).EnsureSuccessStatusCode();
+
+        var mine = await ListAsync(user.Client);
+        var salmon = ByTitle(mine, "Cá hồi");
+        Assert.Contains(salmon.HealthWarnings, w => w.Contains("mỡ máu cao"));
+        Assert.Contains(salmon.HealthWarnings, w => w.Contains("gout"));
+        Assert.Empty(ByTitle(mine, "Cháo yến mạch").HealthWarnings);
+
+        var anonymous = await ListAsync(_factory.CreateClient());
+        Assert.All(anonymous, r => Assert.Empty(r.HealthWarnings));
+        Assert.All(anonymous, r => Assert.Equal(r.Tags.Count, r.TagCodes.Count));
+        Assert.Contains(anonymous, r => r.TagCodes.Contains("eatClean"));
     }
 }

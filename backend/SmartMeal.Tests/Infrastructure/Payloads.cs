@@ -66,7 +66,7 @@ public sealed record RecipePayload(
     Guid Id, string Title, string? Description, string? ImageUrl, string Instructions, int PrepTimeMinutes, int CookTimeMinutes,
     int TotalTimeMinutes, int Servings, string Difficulty, bool IsPremium, double CaloriesPerServing, double CarbsPerServing,
     double FatPerServing, double ProteinPerServing, List<string> Tags, List<string> MealTypes, List<int> AllergyIds,
-    bool IsFavorite, List<RecipeIngredientPayload> Ingredients);
+    bool IsFavorite, List<RecipeIngredientPayload> Ingredients, List<string> TagCodes, List<string> HealthWarnings);
 
 public sealed record CollectionPayload(
     Guid Id, string Name, string? Description, string? CoverImageUrl, int RecipeCount, bool IsPublic, Guid OwnerId,
