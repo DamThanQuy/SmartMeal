@@ -15,4 +15,7 @@ public interface IGroceryService
 
     Task<ApiResponse<bool>> DeleteItemAsync(Guid userId, Guid itemId);
     Task<ApiResponse<bool>> ClearCheckedItemsAsync(Guid userId);
+
+    /// <summary>"Hoàn tất mua sắm" trong một transaction: ghi lại lần mua, bỏ món đã mua, giữ/bỏ món chưa mua, tùy chọn cộng thực đơn kỳ sau.</summary>
+    Task<ApiResponse<GrocerySummaryDto>> CompleteShoppingAsync(Guid userId, CompleteGroceryRequestDto dto);
 }

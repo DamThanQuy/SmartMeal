@@ -8,6 +8,51 @@ public class GrocerySummaryDto
     public int CheckedItems { get; set; }
     public decimal TotalEstimatedCostVnd { get; set; }
     public List<GroceryCategoryDto> Categories { get; set; } = new();
+
+    /// <summary>Khoảng ngày thực đơn của lần tạo danh sách gần nhất (null khi chưa tạo từ thực đơn).</summary>
+    public DateOnly? PeriodStart { get; set; }
+
+    public DateOnly? PeriodEnd { get; set; }
+
+    /// <summary>Thời điểm tạo danh sách từ thực đơn gần nhất (UTC).</summary>
+    public DateTime? GeneratedAt { get; set; }
+
+    /// <summary>Lần "Hoàn tất mua sắm" gần nhất (kèm chi phí thực tế), null nếu chưa có.</summary>
+    public GroceryTripDto? LastTrip { get; set; }
+}
+
+public class GroceryTripDto
+{
+    public Guid Id { get; set; }
+    public DateOnly? PeriodStart { get; set; }
+    public DateOnly? PeriodEnd { get; set; }
+    public int PurchasedItems { get; set; }
+    public int PendingItemsKept { get; set; }
+    public decimal EstimatedCostVnd { get; set; }
+
+    /// <summary>Chi phí thực tế người dùng nhập; null nếu bỏ trống.</summary>
+    public decimal? ActualCostVnd { get; set; }
+
+    public DateTime CompletedAt { get; set; }
+}
+
+/// <summary>"Hoàn tất mua sắm": lưu chi phí thực tế, bỏ các món đã mua, giữ hoặc bỏ các món chưa mua — trong một transaction.</summary>
+public class CompleteGroceryRequestDto
+{
+    [Range(0, 1000000000, ErrorMessage = "Chi phí thực tế không hợp lệ.")]
+    public decimal? ActualCostVnd { get; set; }
+
+    /// <summary>true (mặc định) = giữ các món chưa mua; false = bỏ toàn bộ danh sách còn lại.</summary>
+    public bool KeepPending { get; set; } = true;
+
+    /// <summary>
+    /// Khi giữ món chưa mua: ngày bắt đầu kỳ kế tiếp để cộng nguyên liệu từ thực đơn kỳ đó vào danh sách (gộp với món chưa
+    /// mua cùng tên/đơn vị). Kỳ đó chưa có thực đơn thì chỉ giữ món chưa mua, không báo lỗi.
+    /// </summary>
+    public DateOnly? NextStartDate { get; set; }
+
+    /// <summary>Ngày kết thúc kỳ kế tiếp; bỏ trống = NextStartDate + 6 ngày.</summary>
+    public DateOnly? NextEndDate { get; set; }
 }
 
 public class GroceryCategoryDto
@@ -31,6 +76,9 @@ public class GroceryItemDto
 
     /// <summary>Số bữa trong thực đơn được gộp vào dòng này ("Gộp từ N món"); 0 với món tự thêm.</summary>
     public int MergedFromRecipeCount { get; set; }
+
+    /// <summary>Món người dùng tự thêm (không sinh từ thực đơn) — không bị xóa khi tạo lại danh sách.</summary>
+    public bool IsManual { get; set; }
 }
 
 public class GenerateGroceryRequestDto

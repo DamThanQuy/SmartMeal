@@ -324,6 +324,62 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.ToTable("GroceryItems");
                 });
 
+            modelBuilder.Entity("SmartMeal.Domain.Entities.GroceryList", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("GeneratedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("PeriodEnd")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("PeriodStart")
+                        .HasColumnType("date");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("GroceryLists");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.GroceryTrip", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("ActualCostVnd")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("EstimatedCostVnd")
+                        .HasColumnType("numeric");
+
+                    b.Property<int>("PendingItemsKept")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly?>("PeriodEnd")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("PeriodStart")
+                        .HasColumnType("date");
+
+                    b.Property<int>("PurchasedItems")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "CompletedAt");
+
+                    b.ToTable("GroceryTrips");
+                });
+
             modelBuilder.Entity("SmartMeal.Domain.Entities.HealthPet", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1378,6 +1434,28 @@ namespace SmartMeal.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Recipe");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.GroceryList", b =>
+                {
+                    b.HasOne("SmartMeal.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.GroceryTrip", b =>
+                {
+                    b.HasOne("SmartMeal.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });

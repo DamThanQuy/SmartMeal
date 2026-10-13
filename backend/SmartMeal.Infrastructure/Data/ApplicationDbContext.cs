@@ -26,6 +26,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<DiaryItem> DiaryItems => Set<DiaryItem>();
     public DbSet<MealPlan> MealPlans => Set<MealPlan>();
     public DbSet<GroceryItem> GroceryItems => Set<GroceryItem>();
+    public DbSet<GroceryList> GroceryLists => Set<GroceryList>();
+    public DbSet<GroceryTrip> GroceryTrips => Set<GroceryTrip>();
     public DbSet<UserFavorite> UserFavorites => Set<UserFavorite>();
     public DbSet<OtpVerification> OtpVerifications => Set<OtpVerification>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
@@ -108,6 +110,19 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<WaterLog>()
             .HasIndex(w => new { w.UserId, w.LogDate });
+
+        // Danh sách đi chợ: mỗi người dùng một dòng thông tin (khóa = UserId); lịch sử các lần hoàn tất mua sắm.
+        modelBuilder.Entity<GroceryList>(entity =>
+        {
+            entity.HasKey(l => l.UserId);
+            entity.HasOne(l => l.User).WithMany().HasForeignKey(l => l.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<GroceryTrip>(entity =>
+        {
+            entity.HasIndex(t => new { t.UserId, t.CompletedAt });
+            entity.HasOne(t => t.User).WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
 
         // HealthSyncLog: mỗi (người dùng, ngày, nguồn) một bản ghi — gửi lại thì thay thế, không nhân đôi (P1-BE-09).
         modelBuilder.Entity<HealthSyncLog>()

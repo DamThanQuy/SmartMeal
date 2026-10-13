@@ -388,7 +388,9 @@ public class GamificationService : IGamificationService
             Check(GamificationCatalog.EatClean7, await _db.UserChallenges.AnyAsync(uc => uc.UserId == userId && uc.IsCompleted && uc.Challenge.Category == "EatClean"));
 
         if (!have.Contains(GamificationCatalog.GroceryShopper))
-            Check(GamificationCatalog.GroceryShopper, await _db.GroceryItems.AnyAsync(g => g.UserId == userId && g.IsChecked));
+            Check(GamificationCatalog.GroceryShopper,
+                await _db.GroceryItems.AnyAsync(g => g.UserId == userId && g.IsChecked)
+                || await _db.GroceryTrips.AnyAsync(t => t.UserId == userId && t.PurchasedItems > 0));
 
         if (!have.Contains(GamificationCatalog.AiSnap10))
             Check(GamificationCatalog.AiSnap10, await _db.DiaryItems.CountAsync(i => i.NutritionDiary.UserId == userId && i.LogMethod == "AiImage") >= GamificationCatalog.AiSnapTarget);

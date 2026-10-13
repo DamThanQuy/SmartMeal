@@ -88,4 +88,15 @@ public class GroceryController : ControllerBase
         if (!this.TryGetUserId(out var userId)) return this.InvalidSession<bool>();
         return this.ToActionResult(await _groceryService.ClearCheckedItemsAsync(userId));
     }
+
+    /// <summary>
+    /// Hoàn tất mua sắm: lưu chi phí thực tế (BR-174), bỏ các món đã mua, giữ hoặc bỏ các món chưa mua; khi giữ có thể cộng
+    /// luôn thực đơn kỳ kế tiếp (gộp với món chưa mua). Tất cả trong một transaction; trả danh sách sau khi hoàn tất.
+    /// </summary>
+    [HttpPost("complete")]
+    public async Task<ActionResult<ApiResponse<GrocerySummaryDto>>> Complete([FromBody] CompleteGroceryRequestDto dto)
+    {
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<GrocerySummaryDto>();
+        return this.ToActionResult(await _groceryService.CompleteShoppingAsync(userId, dto));
+    }
 }

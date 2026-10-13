@@ -98,7 +98,15 @@ public sealed record WeeklyPlanPayload(DateOnly StartDate, DateOnly EndDate, dou
 
 public sealed record GroceryItemPayload(
     Guid Id, string IngredientName, double Amount, string Unit, string Category, decimal EstimatedPriceVnd, bool IsChecked,
-    string? RecipeTitle, int MergedFromRecipeCount);
+    string? RecipeTitle, int MergedFromRecipeCount, bool IsManual);
+
+public sealed record GroceryTripPayload(
+    Guid Id, DateOnly? PeriodStart, DateOnly? PeriodEnd, int PurchasedItems, int PendingItemsKept, decimal EstimatedCostVnd,
+    decimal? ActualCostVnd, DateTime CompletedAt);
+
+public sealed record GroceryListPayload(
+    int TotalItems, int CheckedItems, decimal TotalEstimatedCostVnd, List<GroceryCategoryPayload> Categories, DateOnly? PeriodStart,
+    DateOnly? PeriodEnd, DateTime? GeneratedAt, GroceryTripPayload? LastTrip);
 
 public sealed record GroceryCategoryPayload(string CategoryName, List<GroceryItemPayload> Items);
 

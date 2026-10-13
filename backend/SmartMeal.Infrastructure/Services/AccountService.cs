@@ -171,6 +171,8 @@ public class AccountService : IAccountService
         deleted["healthProfile"] = await _db.HealthProfiles.Where(hp => hp.UserId == userId).ExecuteDeleteAsync();
         deleted["mealPlans"] = await _db.MealPlans.Where(m => m.UserId == userId).ExecuteDeleteAsync();
         deleted["groceryItems"] = await _db.GroceryItems.Where(g => g.UserId == userId).ExecuteDeleteAsync();
+        deleted["groceryTrips"] = await _db.GroceryTrips.Where(t => t.UserId == userId).ExecuteDeleteAsync();
+        await _db.GroceryLists.Where(l => l.UserId == userId).ExecuteDeleteAsync();
         deleted["favorites"] = await _db.UserFavorites.Where(f => f.UserId == userId).ExecuteDeleteAsync();
         deleted["favoriteFoods"] = await _db.UserFavoriteFoods.Where(f => f.UserId == userId).ExecuteDeleteAsync();
         deleted["customFoods"] = await _db.Ingredients.Where(i => i.OwnerUserId == userId).ExecuteDeleteAsync();

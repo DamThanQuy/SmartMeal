@@ -35,6 +35,12 @@ public class GroceryService : IGroceryService
             .ThenBy(g => g.IngredientName)
             .ToListAsync();
 
+        var list = await _db.GroceryLists.AsNoTracking().FirstOrDefaultAsync(l => l.UserId == userId);
+        var lastTrip = await _db.GroceryTrips.AsNoTracking()
+            .Where(t => t.UserId == userId)
+            .OrderByDescending(t => t.CompletedAt)
+            .FirstOrDefaultAsync();
+
         var summary = new GrocerySummaryDto
         {
             TotalItems = items.Count,
@@ -43,7 +49,11 @@ public class GroceryService : IGroceryService
             Categories = items
                 .GroupBy(i => i.Category)
                 .Select(g => new GroceryCategoryDto { CategoryName = g.Key, Items = g.Select(ToDto).ToList() })
-                .ToList()
+                .ToList(),
+            PeriodStart = list?.PeriodStart,
+            PeriodEnd = list?.PeriodEnd,
+            GeneratedAt = list?.GeneratedAt,
+            LastTrip = lastTrip is null ? null : ToTripDto(lastTrip)
         };
 
         return ApiResponse<GrocerySummaryDto>.Ok(summary, "Lấy danh sách đi chợ thành công.");
@@ -51,20 +61,108 @@ public class GroceryService : IGroceryService
 
     public async Task<ApiResponse<GrocerySummaryDto>> GenerateFromMealPlanAsync(Guid userId, GenerateGroceryRequestDto dto)
     {
-        if (dto.StartDate == default || dto.EndDate == default)
+        var rangeError = ValidateRange(dto.StartDate, dto.EndDate);
+        if (rangeError is not null)
         {
-            return ApiResponse<GrocerySummaryDto>.Fail("Vui lòng chọn khoảng ngày để tạo danh sách đi chợ.");
+            return ApiResponse<GrocerySummaryDto>.Fail(rangeError);
         }
 
-        if (dto.EndDate < dto.StartDate)
+        if (!await ApplyMealPlanAsync(userId, dto.StartDate, dto.EndDate, dto.ClearExisting))
         {
-            return ApiResponse<GrocerySummaryDto>.Fail("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.");
+            return ApiResponse<GrocerySummaryDto>.Fail("Không tìm thấy thực đơn nào trong khoảng thời gian đã chọn để tạo danh sách đi chợ.");
         }
 
-        if (dto.EndDate.DayNumber - dto.StartDate.DayNumber >= MaxRangeDays)
+        await _db.SaveChangesAsync();
+        return await GetGroceryListAsync(userId);
+    }
+
+    public async Task<ApiResponse<GrocerySummaryDto>> CompleteShoppingAsync(Guid userId, CompleteGroceryRequestDto dto)
+    {
+        DateOnly? nextEnd = null;
+        if (dto.KeepPending && dto.NextStartDate is { } nextStart)
         {
-            return ApiResponse<GrocerySummaryDto>.Fail($"Khoảng ngày tối đa là {MaxRangeDays} ngày.");
+            nextEnd = dto.NextEndDate ?? nextStart.AddDays(6);
+            var rangeError = ValidateRange(nextStart, nextEnd.Value);
+            if (rangeError is not null)
+            {
+                return ApiResponse<GrocerySummaryDto>.Fail(rangeError);
+            }
         }
+
+        var items = await _db.GroceryItems.Where(g => g.UserId == userId).ToListAsync();
+        if (items.Count == 0)
+        {
+            return ApiResponse<GrocerySummaryDto>.Fail("Danh sách đi chợ đang trống.");
+        }
+
+        var purchased = items.Where(i => i.IsChecked).ToList();
+        var pending = items.Where(i => !i.IsChecked).ToList();
+        var list = await _db.GroceryLists.FirstOrDefaultAsync(l => l.UserId == userId);
+
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        _db.GroceryTrips.Add(new GroceryTrip
+        {
+            UserId = userId,
+            PeriodStart = list?.PeriodStart,
+            PeriodEnd = list?.PeriodEnd,
+            PurchasedItems = purchased.Count,
+            PendingItemsKept = dto.KeepPending ? pending.Count : 0,
+            EstimatedCostVnd = purchased.Sum(i => i.EstimatedPriceVnd),
+            ActualCostVnd = dto.ActualCostVnd
+        });
+        _db.GroceryItems.RemoveRange(purchased);
+        if (!dto.KeepPending)
+        {
+            _db.GroceryItems.RemoveRange(pending);
+            if (list is not null)
+            {
+                list.PeriodStart = null;
+                list.PeriodEnd = null;
+                list.GeneratedAt = null;
+            }
+        }
+
+        await _db.SaveChangesAsync();
+
+        var note = dto.KeepPending ? $"Đã giữ lại {pending.Count} món chưa mua." : "Đã làm trống danh sách.";
+        if (dto.KeepPending && dto.NextStartDate is { } start && nextEnd is { } end)
+        {
+            note += await ApplyMealPlanAsync(userId, start, end, clearExisting: false)
+                ? " Đã cộng nguyên liệu từ thực đơn kỳ tiếp theo."
+                : " Kỳ tiếp theo chưa có thực đơn.";
+            await _db.SaveChangesAsync();
+        }
+
+        await transaction.CommitAsync();
+        await NotifyGamificationAsync(userId);
+
+        var summary = await GetGroceryListAsync(userId);
+        summary.Message = $"Đã hoàn tất mua sắm: {purchased.Count} món đã mua. {note}";
+        return summary;
+    }
+
+    private static string? ValidateRange(DateOnly start, DateOnly end)
+    {
+        if (start == default || end == default)
+        {
+            return "Vui lòng chọn khoảng ngày để tạo danh sách đi chợ.";
+        }
+
+        if (end < start)
+        {
+            return "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.";
+        }
+
+        return end.DayNumber - start.DayNumber >= MaxRangeDays ? $"Khoảng ngày tối đa là {MaxRangeDays} ngày." : null;
+    }
+
+    /// <summary>
+    /// Cộng nguyên liệu từ thực đơn trong khoảng ngày vào danh sách (chưa lưu) và ghi lại khoảng ngày của danh sách.
+    /// Trả false khi khoảng đó không có thực đơn (không thay đổi gì).
+    /// </summary>
+    private async Task<bool> ApplyMealPlanAsync(Guid userId, DateOnly startDate, DateOnly endDate, bool clearExisting)
+    {
+        var dto = new GenerateGroceryRequestDto { StartDate = startDate, EndDate = endDate, ClearExisting = clearExisting };
 
         // 1. Thực đơn trong khoảng, kèm nguyên liệu
         var plans = await _db.MealPlans
@@ -76,7 +174,7 @@ public class GroceryService : IGroceryService
 
         if (!plans.Any())
         {
-            return ApiResponse<GrocerySummaryDto>.Fail("Không tìm thấy thực đơn nào trong khoảng thời gian đã chọn để tạo danh sách đi chợ.");
+            return false;
         }
 
         // 2. Gộp nguyên liệu cùng tên + đơn vị (kg → g, l → ml); đếm số bữa đóng góp cho mỗi dòng.
@@ -136,8 +234,17 @@ public class GroceryService : IGroceryService
             });
         }
 
-        await _db.SaveChangesAsync();
-        return await GetGroceryListAsync(userId);
+        var list = await _db.GroceryLists.FirstOrDefaultAsync(l => l.UserId == userId);
+        if (list is null)
+        {
+            list = new GroceryList { UserId = userId };
+            _db.GroceryLists.Add(list);
+        }
+
+        list.PeriodStart = startDate;
+        list.PeriodEnd = endDate;
+        list.GeneratedAt = DateTime.UtcNow;
+        return true;
     }
 
     public async Task<ApiResponse<GroceryItemDto>> AddCustomItemAsync(Guid userId, AddCustomGroceryItemDto dto)
@@ -286,7 +393,20 @@ public class GroceryService : IGroceryService
         EstimatedPriceVnd = item.EstimatedPriceVnd,
         IsChecked = item.IsChecked,
         RecipeTitle = item.Recipe?.Title,
-        MergedFromRecipeCount = item.MergedFromRecipeCount
+        MergedFromRecipeCount = item.MergedFromRecipeCount,
+        IsManual = item.MergedFromRecipeCount == 0
+    };
+
+    private static GroceryTripDto ToTripDto(GroceryTrip trip) => new()
+    {
+        Id = trip.Id,
+        PeriodStart = trip.PeriodStart,
+        PeriodEnd = trip.PeriodEnd,
+        PurchasedItems = trip.PurchasedItems,
+        PendingItemsKept = trip.PendingItemsKept,
+        EstimatedCostVnd = trip.EstimatedCostVnd,
+        ActualCostVnd = trip.ActualCostVnd,
+        CompletedAt = trip.CompletedAt
     };
 
     private static string MapIngredientCategory(string rawCategory) => rawCategory.ToLowerInvariant() switch

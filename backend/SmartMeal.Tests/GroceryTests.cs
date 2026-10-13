@@ -266,5 +266,100 @@ public class GroceryTests : IClassFixture<ApiFactory>
         var anonymous = _factory.CreateClient();
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/grocery")).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.PatchAsync("/api/grocery/items/check-all", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.PostJsonAsync("/api/grocery/complete", new { })).StatusCode);
+    }
+
+    // ───────────────────────────── Kỳ của danh sách & hoàn tất mua sắm (báo cáo gap B14, C07) ─────────────────────────────
+
+    private static async Task<GroceryListPayload> DetailsAsync(HttpClient client) =>
+        (await (await client.GetAsync("/api/grocery")).ReadEnvelopeAsync<GroceryListPayload>()).Data!;
+
+    private static Task<HttpResponseMessage> CompleteAsync(HttpClient client, object body) =>
+        client.PostJsonAsync("/api/grocery/complete", body);
+
+    [DbFact]
+    public async Task The_list_knows_which_week_it_was_made_for_and_which_items_were_added_by_hand()
+    {
+        var user = await _factory.RegisterUserAsync();
+        var recipes = await RecipesAsync(user.Client);
+        await PlanAsync(user.Client, WeekA, "Lunch", recipes[0].Id);
+        Assert.Null((await DetailsAsync(user.Client)).PeriodStart);
+
+        await GenerateAsync(user.Client, WeekA, "2026-09-13");
+        await AddCustomAsync(user.Client, "Giấy bạc");
+
+        var list = await DetailsAsync(user.Client);
+        Assert.Equal(DateOnly.Parse(WeekA), list.PeriodStart);
+        Assert.Equal(DateOnly.Parse("2026-09-13"), list.PeriodEnd);
+        Assert.NotNull(list.GeneratedAt);
+        var items = list.Categories.SelectMany(c => c.Items).ToList();
+        Assert.True(items.Single(i => i.IngredientName == "Giấy bạc").IsManual);
+        Assert.All(items.Where(i => i.IngredientName != "Giấy bạc"), i => Assert.False(i.IsManual));
+    }
+
+    [DbFact]
+    public async Task Completing_records_the_trip_with_its_real_cost_and_carries_pending_items_into_next_week()
+    {
+        var user = await _factory.RegisterUserAsync();
+        var recipes = await RecipesAsync(user.Client);
+        await PlanAsync(user.Client, WeekA, "Lunch", Recipe(recipes, "Salad ức gà").Id);
+        await PlanAsync(user.Client, WeekB, "Dinner", Recipe(recipes, "Cơm gạo lứt").Id);
+        var generated = await GenerateAsync(user.Client, WeekA, "2026-09-13");
+        var all = generated.Categories.SelectMany(c => c.Items).ToList();
+        var bought = all.First();
+        await user.Client.PatchAsJsonAsync($"/api/grocery/items/{bought.Id}/check", new { isChecked = true }, ApiTestHelpers.Json);
+
+        var response = await CompleteAsync(user.Client, new { actualCostVnd = 55000, keepPending = true, nextStartDate = WeekB });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var envelope = await response.ReadEnvelopeAsync<GroceryListPayload>();
+        var after = envelope.Data!;
+        Assert.DoesNotContain(after.Categories.SelectMany(c => c.Items), i => i.Id == bought.Id);
+        Assert.Equal(1, after.LastTrip!.PurchasedItems);
+        Assert.Equal(all.Count - 1, after.LastTrip.PendingItemsKept);
+        Assert.Equal(55000, after.LastTrip.ActualCostVnd);
+        Assert.Equal(bought.EstimatedPriceVnd, after.LastTrip.EstimatedCostVnd);
+        Assert.Equal(DateOnly.Parse(WeekA), after.LastTrip.PeriodStart);
+        Assert.Equal(DateOnly.Parse(WeekB), after.PeriodStart); // danh sách giờ thuộc tuần kế tiếp
+        Assert.Contains("kỳ tiếp theo", envelope.Message);
+        Assert.Contains(after.Categories.SelectMany(c => c.Items), i => i.IngredientName.Contains("Thịt bò"));
+    }
+
+    [DbFact]
+    public async Task Completing_without_a_plan_for_next_week_keeps_pending_items_and_still_succeeds()
+    {
+        var user = await _factory.RegisterUserAsync();
+        await AddCustomAsync(user.Client, "Hành");
+        var pending = await AddCustomAsync(user.Client, "Tỏi");
+
+        var response = await CompleteAsync(user.Client, new { keepPending = true, nextStartDate = "2030-01-07" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var envelope = await response.ReadEnvelopeAsync<GroceryListPayload>();
+        Assert.Contains("chưa có thực đơn", envelope.Message);
+        Assert.Equal(2, envelope.Data!.TotalItems);
+        Assert.Null(envelope.Data.LastTrip!.ActualCostVnd);
+        Assert.Contains(envelope.Data.Categories.SelectMany(c => c.Items), i => i.Id == pending.Id);
+    }
+
+    [DbFact]
+    public async Task Completing_without_keeping_empties_the_list_and_an_empty_list_cannot_be_completed()
+    {
+        var user = await _factory.RegisterUserAsync();
+        Assert.Equal(HttpStatusCode.BadRequest, (await CompleteAsync(user.Client, new { })).StatusCode);
+
+        var recipes = await RecipesAsync(user.Client);
+        await PlanAsync(user.Client, WeekA, "Lunch", recipes[0].Id);
+        await GenerateAsync(user.Client, WeekA, "2026-09-13");
+        await AddCustomAsync(user.Client, "Giấy bạc");
+
+        var response = await CompleteAsync(user.Client, new { keepPending = false, actualCostVnd = 0 });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var list = (await response.ReadEnvelopeAsync<GroceryListPayload>()).Data!;
+        Assert.Equal(0, list.TotalItems);
+        Assert.Null(list.PeriodStart);
+        Assert.Equal(0, list.LastTrip!.PendingItemsKept);
+        Assert.Equal(HttpStatusCode.BadRequest, (await CompleteAsync(user.Client, new { actualCostVnd = -1 })).StatusCode);
     }
 }
