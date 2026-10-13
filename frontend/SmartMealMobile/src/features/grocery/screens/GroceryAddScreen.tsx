@@ -65,6 +65,8 @@ export function GroceryAddScreen({ navigation, route }: Props) {
         quantity: Number(values.quantity),
         unit: values.unit,
         category: values.category,
+        // Ước tính theo bảng giá trung bình (BR-174) — lưu cùng món để tổng chi phí ước tính khớp màn hình.
+        estimatedPriceVnd: previewCost > 0 ? previewCost : undefined,
       },
       { onSuccess: () => navigation.goBack() },
     );

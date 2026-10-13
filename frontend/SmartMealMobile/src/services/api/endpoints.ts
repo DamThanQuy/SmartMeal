@@ -81,6 +81,7 @@ export const ENDPOINTS = {
     delete: (id: string) => `/grocery/items/${id}`,
     item: (id: string) => `/grocery/items/${id}`,
     clearChecked: '/grocery/clear-checked',
+    complete: '/grocery/complete',
   },
   ai: {
     quota: '/ai/quota',

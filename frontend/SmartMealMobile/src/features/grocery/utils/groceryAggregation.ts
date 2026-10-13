@@ -11,12 +11,20 @@ export const GROCERY_CATEGORY_ORDER = [
 ] as const;
 export type GroceryCategory = (typeof GROCERY_CATEGORY_ORDER)[number];
 
+// Từ khóa gồm cả nguyên liệu seed của backend (cá hồi, ớt chuông, dưa leo, sốt mè…) để món sinh từ
+// thực đơn thật không rơi hết vào "Đồ khô".
 const CATEGORY_KEYWORDS: { category: GroceryCategory; keywords: string[] }[] = [
-  { category: 'Rau củ', keywords: ['cà chua', 'xà lách', 'bông cải', 'cà rốt', 'bí đỏ', 'hành tây'] },
-  { category: 'Thịt cá', keywords: ['ức gà', 'thịt bò', 'đậu hũ', 'trứng', 'cá basa'] },
-  { category: 'Sữa', keywords: ['sữa tươi', 'sữa chua', 'kem tươi', 'sữa'] },
-  { category: 'Ngũ cốc', keywords: ['yến mạch', 'gạo', 'bánh mì'] },
-  { category: 'Gia vị', keywords: ['tỏi', 'hành lá', 'muối', 'tiêu', 'dầu ô liu', 'dầu hào', 'chanh'] },
+  {
+    category: 'Rau củ',
+    keywords: ['cà chua', 'xà lách', 'bông cải', 'cà rốt', 'bí đỏ', 'hành tây', 'dưa leo', 'ớt chuông', 'măng tây', 'rau', 'nấm'],
+  },
+  { category: 'Thịt cá', keywords: ['ức gà', 'thịt', 'đậu hũ', 'trứng', 'cá hồi', 'cá basa', 'cá thu', 'cá ngừ', 'cá lóc', 'tôm', 'mực'] },
+  { category: 'Sữa', keywords: ['sữa tươi', 'sữa chua', 'kem tươi', 'phô mai', 'sữa'] },
+  { category: 'Ngũ cốc', keywords: ['yến mạch', 'gạo', 'bánh mì', 'bún', 'mì'] },
+  {
+    category: 'Gia vị',
+    keywords: ['tỏi', 'hành lá', 'hành tím', 'muối', 'tiêu', 'dầu ô liu', 'dầu hào', 'chanh', 'sốt', 'mè', 'nước mắm', 'nước tương'],
+  },
   { category: 'Đồ khô', keywords: ['mật ong'] },
 ];
 

@@ -10,7 +10,7 @@ import type { MainStackParamList } from '@/navigation/types';
 import { shadows } from '@/theme/shadows';
 import { spacing } from '@/theme/spacing';
 import { useTheme } from '@/theme/ThemeProvider';
-import { useCarryOverPendingItems, useGroceryList, useMarkAllGroceryPurchased } from '../hooks/useGrocery';
+import { useCompleteShopping, useGroceryList } from '../hooks/useGrocery';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'GroceryDone'>;
 
@@ -52,31 +52,36 @@ function CompletionOption({ title, description, selected, onPress }: CompletionO
 }
 
 // design/GroceryDone.dc.html (BR-171, BR-173, BR-174, BR-271). Bottom sheet mở từ GroceryScreen
-// "Hoàn tất mua sắm". "Giữ lại N món chưa mua" (mặc định) cộng dồn các món Pending sang danh sách
-// tuần sau (`carryOverPendingItems`, dùng đúng logic gộp BR-171) — không âm thầm làm mất dữ liệu
-// user. "Đánh dấu tất cả đã mua" kết thúc danh sách tuần này, không carry-over.
+// "Hoàn tất mua sắm". Một thao tác phía server (POST /grocery/complete, một transaction): lưu chi phí
+// thực tế, bỏ món đã mua, và "Giữ lại N món chưa mua" (mặc định) cộng các món chưa mua vào danh sách
+// tuần sau — không âm thầm làm mất dữ liệu. "Đánh dấu tất cả đã mua" kết thúc danh sách tuần này.
 export function GroceryDoneScreen({ navigation, route }: Props) {
   const { weekStartIso } = route.params;
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { data } = useGroceryList(weekStartIso);
-  const markAllPurchased = useMarkAllGroceryPurchased(weekStartIso);
-  const carryOverPendingItems = useCarryOverPendingItems(weekStartIso);
+  const completeShopping = useCompleteShopping(weekStartIso);
   const [choice, setChoice] = useState<CompletionChoice>('keep');
   const [actualCost, setActualCost] = useState('');
+  const [resultNote, setResultNote] = useState<string | null>(null);
 
   const pendingCount = data ? data.totalItems - data.purchasedItems : 0;
   const weekEndLabel = format(addDays(new Date(weekStartIso), 6), 'dd/MM');
   const weekStartLabel = format(new Date(weekStartIso), 'dd/MM');
-  const isPending = markAllPurchased.isPending || carryOverPendingItems.isPending;
-  const errorMessage = markAllPurchased.error?.message ?? carryOverPendingItems.error?.message;
+  const parsedCost = Number(actualCost.replace(/[.,\s]/g, ''));
+  const costError = actualCost.trim() && (!Number.isFinite(parsedCost) || parsedCost < 0) ? 'Chi phí không hợp lệ.' : null;
+  const errorMessage = costError ?? completeShopping.error?.message;
 
   const handleComplete = () => {
-    if (choice === 'markAll') {
-      markAllPurchased.mutate(undefined, { onSuccess: () => navigation.goBack() });
-      return;
-    }
-    carryOverPendingItems.mutate(undefined, { onSuccess: () => navigation.goBack() });
+    if (costError) return;
+    completeShopping.mutate(
+      {
+        markAllPurchased: choice === 'markAll',
+        keepPending: choice === 'keep',
+        actualCostVnd: actualCost.trim() ? parsedCost : undefined,
+      },
+      { onSuccess: result => (result.note ? setResultNote(result.note) : navigation.goBack()) },
+    );
   };
 
   return (
@@ -141,20 +146,29 @@ export function GroceryDoneScreen({ navigation, route }: Props) {
             </AppText>
 
             {errorMessage ? (
-              <AppText variant="caption" color="error">
+              <AppText variant="caption" color="error" accessibilityRole="alert">
                 {errorMessage}
               </AppText>
             ) : null}
 
-            <View className="flex-row gap-sm">
-              <AppButton label="Hủy" variant="outline" onPress={() => navigation.goBack()} className="flex-shrink" />
-              <AppButton
-                label="Hoàn tất"
-                onPress={handleComplete}
-                loading={isPending}
-                className="flex-1"
-              />
-            </View>
+            {resultNote ? (
+              <>
+                <AppText variant="body" accessibilityRole="alert">
+                  {resultNote}
+                </AppText>
+                <AppButton label="Xong" onPress={() => navigation.goBack()} />
+              </>
+            ) : (
+              <View className="flex-row gap-sm">
+                <AppButton label="Hủy" variant="outline" onPress={() => navigation.goBack()} className="flex-shrink" />
+                <AppButton
+                  label="Hoàn tất"
+                  onPress={handleComplete}
+                  loading={completeShopping.isPending}
+                  className="flex-1"
+                />
+              </View>
+            )}
           </>
         )}
       </View>
