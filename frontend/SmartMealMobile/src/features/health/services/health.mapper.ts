@@ -188,6 +188,11 @@ export function toHealthProfileResult(dto: HealthProfileDto): HealthProfileResul
 }
 
 export function fromHealthProfileDto(dto: HealthProfileDto, catalog: MetaCatalog): HealthProfileSnapshot {
+  // Fail-closed (BR-101/102): hồ sơ thiếu danh sách dị ứng/bệnh lý thì báo lỗi, không coi là "không có".
+  if (!Array.isArray(dto.allergyIds) || !Array.isArray(dto.medicalConditionIds) || !Array.isArray(dto.dietaryPreferenceIds)) {
+    throw new Error('Hồ sơ sức khỏe từ máy chủ thiếu danh sách dị ứng/bệnh lý — vui lòng thử lại.');
+  }
+
   return {
     gender: genderFromApi(dto.gender),
     age: dto.age,

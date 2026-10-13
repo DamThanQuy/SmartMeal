@@ -81,6 +81,9 @@ const PROFILE_DTO: HealthProfileDto = {
   allergyIds: [1, 3],
   medicalConditionIds: [1, 4],
   dietaryPreferenceIds: [2, 7],
+  allergies: ['Hải sản (Seafood)', 'Sữa động vật (Dairy)'],
+  medicalConditions: ['Tiểu đường (Diabetes)', 'Mỡ máu cao (Dyslipidemia)'],
+  dietaryPreferences: ['Keto', 'Low-Carb'],
 };
 
 describe('profileInputFromForm / selectionFromForm', () => {
@@ -296,6 +299,12 @@ describe('toHealthProfileResult / fromHealthProfileDto', () => {
 
     expect(snapshot.allergyIds).toEqual([]);
     expect(snapshot.healthConditionIds).toEqual([]);
+  });
+
+  test('thiếu danh sách dị ứng → báo lỗi, không coi là "không dị ứng" (fail-closed, BR-101/102)', () => {
+    const broken = { ...PROFILE_DTO, allergyIds: undefined } as unknown as HealthProfileDto;
+
+    expect(() => fromHealthProfileDto(broken, catalog)).toThrow('thiếu danh sách dị ứng');
   });
 });
 

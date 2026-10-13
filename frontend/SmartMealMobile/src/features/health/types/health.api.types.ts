@@ -63,12 +63,14 @@ export interface HealthProfileDto {
   dailyCarbsTargetGrams: number;
   dailyFatTargetGrams: number;
   dailyProteinTargetGrams: number;
-  /** id trong /meta/allergies, /meta/medical-conditions, /meta/tags — dùng id, không dùng tên. */
-  allergyIds?: number[];
-  medicalConditionIds?: number[];
-  dietaryPreferenceIds?: number[];
-  allergies?: string[];
-  medicalConditions?: string[];
+  /** id trong /meta/allergies, /meta/medical-conditions, /meta/tags — dùng id, không dùng tên. BE luôn trả. */
+  allergyIds: number[];
+  medicalConditionIds: number[];
+  dietaryPreferenceIds: number[];
+  /** Tên hiển thị tương ứng (chỉ để đọc; FE ánh xạ bằng id → code). */
+  allergies: string[];
+  medicalConditions: string[];
+  dietaryPreferences: string[];
 }
 
 export interface WeightLogRequest {

@@ -36,6 +36,9 @@ const PROFILE_DTO: HealthProfileDto = {
   allergyIds: [2, 8],
   medicalConditionIds: [],
   dietaryPreferenceIds: [3],
+  allergies: ['Đậu phộng (Peanuts)', 'Mè (Sesame)'],
+  medicalConditions: [],
+  dietaryPreferences: ['Thuần Chay (Vegan)'],
 };
 
 const PENDING_USER: AuthUser = {
