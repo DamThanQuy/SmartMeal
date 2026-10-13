@@ -21,7 +21,6 @@ import {
 } from '@/components/ui';
 import { MOCK_SCENARIOS, type MockScenario } from '@/config/mock';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
-import { useOfflineSyncStore } from '@/features/nutrition';
 import type { MainStackParamList } from '@/navigation/types';
 import { useAppStore } from '@/state/app/appStore';
 import { usePremiumStore } from '@/state/premium/premiumStore';
@@ -53,7 +52,6 @@ export function ThemePreviewScreen() {
   const setMockScenario = useAppStore(state => state.setMockScenario);
   const isOffline = useAppStore(state => state.isOfflineDevOverride);
   const setOfflineDevOverride = useAppStore(state => state.setOfflineDevOverride);
-  const clearOfflineQueue = useOfflineSyncStore(state => state.clear);
   const premiumStatus = usePremiumStore(state => state.status);
   const activatePremium = usePremiumStore(state => state.activatePremium);
   const resetToFree = usePremiumStore(state => state.resetToFree);
@@ -138,16 +136,14 @@ export function ThemePreviewScreen() {
       <View className="gap-sm">
         <SectionHeader title="Offline (Đợt 11)" />
         <AppText variant="caption" color="muted">
-          Mô phỏng StateOffline.dc.html ở Diary — không dùng NetInfo thật (BR-261/262).
+          Ép app coi như mất mạng (cộng với NetInfo thật): ghi món sẽ vào hàng đợi, tắt đi thì tự gửi lại
+          bằng Idempotency-Key (BR-261/262).
         </AppText>
         <View className="flex-row items-center gap-sm">
           <AppSwitch
             accessibilityLabel="Mô phỏng offline"
             checked={isOffline}
-            onChange={value => {
-              setOfflineDevOverride(value);
-              if (!value) clearOfflineQueue();
-            }}
+            onChange={setOfflineDevOverride}
           />
           <AppText variant="body" color="secondary">
             {isOffline ? 'Đang offline (mô phỏng)' : 'Đang online'}

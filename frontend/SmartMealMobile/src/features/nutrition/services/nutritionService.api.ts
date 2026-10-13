@@ -63,12 +63,15 @@ export const nutritionApiService: Partial<typeof nutritionMockService> = {
 
   // POST /nutritiondiary/log/batch — cả bữa trong MỘT request: BE lưu hết hoặc không lưu món nào
   // (một transaction), nên không còn trạng thái "lưu được một phần" cần xử lý ở FE.
-  async addLogEntries(dateIso, mealType, inputs) {
+  // `idempotencyKey` → header Idempotency-Key: gửi lại cùng khóa (hàng đợi offline) thì máy chủ trả lại
+  // kết quả lần đầu, không ghi trùng (F12). Payload phải giống hệt lần đầu — mapper không chứa giờ gửi.
+  async addLogEntries(dateIso, mealType, inputs, options) {
     if (inputs.length === 0) return [];
 
     const created = await api.post<DiaryItemDto[], LogMealBatchRequestDto>(
       ENDPOINTS.nutritionDiary.logBatch,
       toLogMealBatchRequest(dateIso, mealType, inputs),
+      options?.idempotencyKey ? { headers: { 'Idempotency-Key': options.idempotencyKey } } : undefined,
     );
     return created.map(dto => fromDiaryItemDto(dto, mealType));
   },

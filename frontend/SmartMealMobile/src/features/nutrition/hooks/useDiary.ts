@@ -1,9 +1,9 @@
-import { format } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { isOfflineDevOverrideActive } from '@/state/app/appStore';
+import { isOnlineNow } from '@/services/network/connectivity';
 import { useUserProfileStore } from '@/state/user/userProfileStore';
-import { MEAL_TYPE_TITLES, type MealType } from '@/types/meal.types';
+import type { MealType } from '@/types/meal.types';
 import { nutritionService } from '../services/nutritionService';
+import { buildPendingMealLog, isRetryableSyncError } from '../services/offlineQueue';
 import { useOfflineSyncStore } from '../state/offlineSyncStore';
 import type { NewMealLogInput } from '../types/nutrition.types';
 import { findEntryById } from '../utils/diary';
@@ -32,20 +32,22 @@ function useInvalidateDiary(dateIso: string) {
 export function useAddMealLogEntries(dateIso: string) {
   const invalidate = useInvalidateDiary(dateIso);
   return useMutation({
-    mutationFn: ({ mealType, entries }: { mealType: MealType; entries: NewMealLogInput[] }) =>
-      nutritionService.addLogEntries(dateIso, mealType, entries),
-    onSuccess: (created, variables) => {
-      // BR-261/262 — mock luôn áp dụng ngay (không có network layer thật); khi đang mô phỏng
-      // offline (màn Dev), chỉ thêm badge "Chờ đồng bộ" vào hàng đợi, không đổi hành vi lưu.
-      if (isOfflineDevOverrideActive()) {
-        const mealTitle = MEAL_TYPE_TITLES[variables.mealType];
-        created.forEach(entry => {
-          useOfflineSyncStore.getState().enqueue({
-            id: entry.id,
-            label: `Thêm ${entry.foodName} · ${mealTitle}`,
-            timeLabel: format(new Date(entry.loggedAt ?? Date.now()), 'HH:mm'),
-          });
+    // F12 — mỗi lần ghi có Idempotency-Key. Đang mất mạng, hoặc mạng rớt giữa chừng, thì cất vào hàng
+    // đợi offline (trả [] — món hiện ở mục "Chờ đồng bộ" của Diary) để gửi lại sau mà không ghi trùng.
+    mutationFn: async ({ mealType, entries }: { mealType: MealType; entries: NewMealLogInput[] }) => {
+      const pending = buildPendingMealLog(dateIso, mealType, entries);
+      const queue = () => {
+        useOfflineSyncStore.getState().enqueue(pending);
+        return [];
+      };
+      if (!(await isOnlineNow())) return queue();
+      try {
+        return await nutritionService.addLogEntries(dateIso, mealType, entries, {
+          idempotencyKey: pending.idempotencyKey,
         });
+      } catch (error) {
+        if (isRetryableSyncError(error)) return queue();
+        throw error;
       }
     },
     // Cả khi lỗi: không biết request đã tới BE hay chưa (mất mạng sau khi gửi) nên làm mới để nhật

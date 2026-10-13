@@ -108,6 +108,7 @@ export const nutritionMockService = {
     dateIso: string,
     mealType: MealType,
     inputs: NewMealLogInput[],
+    _options?: { idempotencyKey?: string },
   ): Promise<MealLogEntry[]> {
     const scenario = getCurrentMockScenario();
     await wait(getMockDelayMs(scenario));

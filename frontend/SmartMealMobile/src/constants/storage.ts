@@ -8,6 +8,8 @@ export const STORAGE_KEYS = {
   HEALTH_CONNECT_PREFIX: 'user.healthConnect.',
   /** + userId — bật/tắt nhắc nhở cục bộ (bữa ăn, nước, chuỗi ngày). */
   REMINDERS_PREFIX: 'user.reminders.',
+  /** + userId — các lần ghi món chưa gửi được (hàng đợi offline, kèm Idempotency-Key). */
+  OFFLINE_QUEUE_PREFIX: 'user.offlineQueue.',
 } as const;
 
 /**

@@ -6,6 +6,7 @@ import { ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppBadge, AppButton, AppCard, AppCheckbox, AppText } from '@/components/ui';
 import type { MainStackParamList } from '@/navigation/types';
 import { useDeleteMyData } from '@/features/auth';
+import { useOfflineSyncStore } from '@/features/nutrition';
 import { useAuthStore } from '@/state/auth/authStore';
 import { resetUserData } from '@/state/resetUserData';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -39,7 +40,9 @@ export function DeleteDataScreen({ navigation }: Props) {
 
   const handleDelete = () => {
     deleteMyData.mutate(undefined, {
-      onSuccess: () => {
+      onSuccess: async () => {
+        // Hàng đợi offline đã lưu ở máy cũng là dữ liệu cá nhân — không để nó ghi lại sau khi xoá.
+        await useOfflineSyncStore.getState().discardAll();
         resetUserData();
         logout();
       },

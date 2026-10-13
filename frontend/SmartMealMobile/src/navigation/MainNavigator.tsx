@@ -74,6 +74,7 @@ import {
   StatePermissionScreen,
 } from '@/features/scanner';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
+import { useOfflineReplay } from '@/features/nutrition/hooks/useOfflineReplay';
 import { MainTabNavigator } from './MainTabNavigator';
 import type { MainStackParamList } from './types';
 
@@ -83,6 +84,8 @@ const Stack = createNativeStackNavigator<MainStackParamList>();
 // Dashboard lẫn Diary) nên đặt làm sibling của MainTabs trong Stack này thay vì lồng theo tab
 // (xem src/navigation/types.ts). Toàn bộ header dùng ScreenHeader tự dựng trong từng Screen.
 export function MainNavigator() {
+  // F12 — gửi lại các lần ghi món đang chờ khi có mạng.
+  useOfflineReplay();
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name={MAIN_STACK_ROUTES.MAIN_TABS} component={MainTabNavigator} />
