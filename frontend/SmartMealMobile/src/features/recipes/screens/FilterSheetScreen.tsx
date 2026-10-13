@@ -9,6 +9,7 @@ import type { MainStackParamList } from '@/navigation/types';
 import { shadows } from '@/theme/shadows';
 import { spacing } from '@/theme/spacing';
 import { useTheme } from '@/theme/ThemeProvider';
+import { MEAL_TYPE_OPTIONS, type MealType } from '@/types/meal.types';
 import { useRecommendedRecipes } from '../hooks/useRecipes';
 import {
   RECIPE_TAG_OPTIONS,
@@ -31,8 +32,6 @@ const CALORIE_OPTIONS: { id: CalorieFilter; label: string }[] = [
   { id: '300to500', label: '300–500' },
   { id: 'over500', label: '> 500' },
 ];
-// design/FilterSheet.dc.html — chỉ hiển thị, chưa lọc thật (Recipe chưa gắn mealType).
-const MEAL_CHIP_LABELS = ['Sáng', 'Trưa', 'Tối', 'Phụ'];
 
 // design/FilterSheet.dc.html (BR-100, BR-101/102). presentation:'transparentModal'.
 export function FilterSheetScreen({ navigation, route }: Props) {
@@ -54,6 +53,11 @@ export function FilterSheetScreen({ navigation, route }: Props) {
     setDraftFilters(current => ({
       ...current,
       calorie: current.calorie === value ? undefined : value,
+    }));
+  const toggleMealType = (value: MealType) =>
+    setDraftFilters(current => ({
+      ...current,
+      mealType: current.mealType === value ? undefined : value,
     }));
 
   const applyAndClose = () => {
@@ -130,8 +134,13 @@ export function FilterSheetScreen({ navigation, route }: Props) {
         <View className="gap-sm">
           <AppText variant="bodyMedium">Bữa</AppText>
           <View className="flex-row flex-wrap gap-xs">
-            {MEAL_CHIP_LABELS.map(label => (
-              <AppChip key={label} label={label} selected={false} disabled />
+            {MEAL_TYPE_OPTIONS.map(option => (
+              <AppChip
+                key={option.id}
+                label={option.label}
+                selected={draftFilters.mealType === option.id}
+                onPress={() => toggleMealType(option.id)}
+              />
             ))}
           </View>
         </View>

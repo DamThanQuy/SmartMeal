@@ -14,6 +14,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { bootstrapSession, startSessionLifecycle } from '@/features/auth';
 import { AppNavigator } from '@/navigation/AppNavigator';
+import { linking } from '@/navigation/linking';
 import { navigationRef } from '@/navigation/navigationRef';
 import { getNavigationTheme } from '@/navigation/navigationTheme';
 import { queryClient } from '@/services/api';
@@ -39,7 +40,11 @@ function AppContent() {
   }, [bootstrapStatus]);
 
   return (
-    <NavigationContainer ref={navigationRef} theme={getNavigationTheme(colors, resolvedScheme)}>
+    <NavigationContainer
+      ref={navigationRef}
+      linking={linking}
+      theme={getNavigationTheme(colors, resolvedScheme)}
+    >
       {/* Android không còn hỗ trợ StatusBar.backgroundColor (edge-to-edge bắt buộc từ RN gần đây). */}
       <StatusBar
         barStyle={resolvedScheme === 'dark' ? 'light-content' : 'dark-content'}

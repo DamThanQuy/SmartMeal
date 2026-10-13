@@ -9,27 +9,39 @@ import type { MainStackParamList } from '@/navigation/types';
 import { shadows } from '@/theme/shadows';
 import { spacing } from '@/theme/spacing';
 import { useTheme } from '@/theme/ThemeProvider';
-import { useFavoritesStore } from '../state/favoritesStore';
+import { useAddRecipeToCollection, useCreateCollection } from '../hooks/useFavorites';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CreateCollection'>;
 
 const NAME_SUGGESTIONS = ['Bữa sáng nhanh', 'Món giảm cân', 'Món cuối tuần', 'Ăn chay'];
 
-// design/CreateCollection.dc.html (BR-150). Bottom sheet mở từ FavoritesScreen "Tạo bộ sưu tập".
-// "Cho phép chia sẻ bằng liên kết" chỉ là lựa chọn hiển thị (CollectionDetailScreen "Chia sẻ"
-// luôn tạo liên kết xem giả lập bất kể công tắc này, chưa có backend chia sẻ thật).
-export function CreateCollectionScreen({ navigation }: Props) {
+// design/CreateCollection.dc.html (BR-150). Bottom sheet mở từ FavoritesScreen "Tạo bộ sưu tập" hoặc từ
+// AddToCollectionScreen (có `recipeId` → thêm luôn món đang xem vào bộ sưu tập mới). "Cho phép chia sẻ
+// bằng liên kết" = tạo bộ sưu tập công khai (isPublic) trên server.
+export function CreateCollectionScreen({ navigation, route }: Props) {
+  const recipeId = route.params?.recipeId;
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
-  const createCollection = useFavoritesStore(state => state.createCollection);
+  const createCollection = useCreateCollection();
+  const addRecipe = useAddRecipeToCollection();
   const [name, setName] = useState('');
   const [shareable, setShareable] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const saving = createCollection.isPending || addRecipe.isPending;
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    const id = createCollection(trimmed);
-    navigation.replace(MAIN_STACK_ROUTES.COLLECTION_DETAIL, { collectionId: id });
+    setError(null);
+    try {
+      const collection = await createCollection.mutateAsync({ name: trimmed, isPublic: shareable });
+      if (recipeId) {
+        await addRecipe.mutateAsync({ collectionId: collection.id, recipeId });
+      }
+      navigation.replace(MAIN_STACK_ROUTES.COLLECTION_DETAIL, { collectionId: collection.id });
+    } catch (createError) {
+      setError(createError instanceof Error ? createError.message : 'Không tạo được bộ sưu tập, vui lòng thử lại.');
+    }
   };
 
   return (
@@ -54,12 +66,7 @@ export function CreateCollectionScreen({ navigation }: Props) {
           />
         </View>
 
-        <AppInput
-          label="Tên bộ sưu tập"
-          placeholder="VD: Món cuối tuần"
-          value={name}
-          onChangeText={setName}
-        />
+        <AppInput label="Tên bộ sưu tập" placeholder="VD: Món cuối tuần" value={name} onChangeText={setName} />
 
         <View className="gap-sm">
           <AppText variant="bodyMedium">Gợi ý tên</AppText>
@@ -85,12 +92,19 @@ export function CreateCollectionScreen({ navigation }: Props) {
           <AppSwitch accessibilityLabel="Chia sẻ bằng liên kết" checked={shareable} onChange={setShareable} />
         </View>
 
+        {error ? (
+          <AppText variant="caption" color="error" accessibilityRole="alert">
+            {error}
+          </AppText>
+        ) : null}
+
         <View className="flex-row gap-sm">
           <AppButton label="Hủy" variant="outline" onPress={() => navigation.goBack()} className="flex-shrink" />
           <AppButton
             label="Tạo bộ sưu tập"
-            onPress={handleCreate}
+            onPress={() => void handleCreate()}
             disabled={!name.trim()}
+            loading={saving}
             className="flex-1"
           />
         </View>

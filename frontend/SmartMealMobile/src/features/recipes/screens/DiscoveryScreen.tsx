@@ -152,7 +152,7 @@ export function DiscoveryScreen({ route }: Props) {
           <AppText variant="h2">Gợi ý cho bạn</AppText>
           {excludedAllergenLabels ? (
             <AppText variant="caption" color="secondary">
-              {`Đã loại món chứa ${excludedAllergenLabels}`}
+              {`Đã ẩn món chứa dị ứng của bạn: ${excludedAllergenLabels}`}
             </AppText>
           ) : null}
           {visibleRecipes.length === 0 ? (

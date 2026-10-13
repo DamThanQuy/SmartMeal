@@ -139,7 +139,9 @@ export type MainStackParamList = {
   ChallengeComplete: { challengeId: string };
   Badges: undefined;
   CollectionDetail: { collectionId: string };
-  CreateCollection: undefined;
+  /** `recipeId` khi mở từ AddToCollection — tạo xong thêm luôn món đang xem. */
+  CreateCollection: { recipeId?: string } | undefined;
+  AddToCollection: { recipeId: string };
 
   // Đợt 13 — premium (design v2, BR-230→233, BR-240→242).
   Subscription: undefined;

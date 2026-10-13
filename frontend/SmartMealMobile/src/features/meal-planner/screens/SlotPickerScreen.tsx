@@ -5,7 +5,12 @@ import { ScrollView, View } from 'react-native';
 import { EmptyState, ErrorState, LoadingState, ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppButton, AppCard, AppChip, AppText } from '@/components/ui';
 import { ALLERGY_OPTIONS, DIETARY_PREFERENCE_OPTIONS } from '@/features/health';
-import { RECIPE_DATABASE_MOCK, useFavoritesStore } from '@/features/recipes';
+import {
+  filterOutUserAllergens,
+  useCollections,
+  useFavoriteRecipes,
+  type Recipe,
+} from '@/features/recipes';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useUserProfileStore } from '@/state/user/userProfileStore';
@@ -21,6 +26,22 @@ type SuggestionTab = 'suggested' | 'favorite' | 'collection';
 
 const WEEKDAY_SHORT_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
+/** Món đã lưu cũng phải qua bộ lọc dị ứng trước khi xếp vào thực đơn (BR-101/102/162). */
+function toSafeOptions(recipes: Recipe[], reasonOf: (recipe: Recipe) => string): SlotSuggestionOption[] {
+  const unique = new Map<string, Recipe>();
+  recipes.forEach(recipe => {
+    if (!unique.has(recipe.id)) unique.set(recipe.id, recipe);
+  });
+  return filterOutUserAllergens(Array.from(unique.values()))
+    .allowed.map(recipe => ({
+      recipeId: recipe.id,
+      recipeName: recipe.name,
+      durationMinutes: recipe.durationMinutes,
+      calories: recipe.nutritionPerServing.calories,
+      reasonLabel: reasonOf(recipe),
+    }));
+}
+
 // design/SlotPicker.dc.html (BR-160, BR-101/102). Chọn 1 công thức cho 1 slot (ngày + bữa) —
 // không có bottom nav, sibling của MainTabs (xem src/navigation/types.ts).
 export function SlotPickerScreen({ navigation, route }: Props) {
@@ -31,7 +52,8 @@ export function SlotPickerScreen({ navigation, route }: Props) {
   const weekPlan = useWeekPlan(weekStartIso);
   const suggestions = useSlotSuggestions(tab === 'suggested');
   const setSlot = useSetMealSlot(weekStartIso);
-  const favoriteIds = useFavoritesStore(state => state.favoriteIds);
+  const favoritesQuery = useFavoriteRecipes(tab === 'favorite');
+  const collectionsQuery = useCollections(tab === 'collection');
 
   const currentSlotRecipeId = weekPlan.data?.days.find(day => day.dateIso === dateIso)?.meals[
     mealType
@@ -41,19 +63,23 @@ export function SlotPickerScreen({ navigation, route }: Props) {
   );
 
   const favoriteOptions = useMemo<SlotSuggestionOption[]>(
-    () =>
-      favoriteIds
-        .map(id => RECIPE_DATABASE_MOCK.find(recipe => recipe.id === id))
-        .filter((recipe): recipe is (typeof RECIPE_DATABASE_MOCK)[number] => Boolean(recipe))
-        .map(recipe => ({
-          recipeId: recipe.id,
-          recipeName: recipe.name,
-          durationMinutes: recipe.durationMinutes,
-          calories: recipe.nutritionPerServing.calories,
-          reasonLabel: 'Đã yêu thích',
-        })),
-    [favoriteIds],
+    () => toSafeOptions(favoritesQuery.data ?? [], () => 'Đã yêu thích'),
+    [favoritesQuery.data],
   );
+
+  const collectionOptions = useMemo<SlotSuggestionOption[]>(() => {
+    const mine = (collectionsQuery.data ?? []).filter(collection => collection.isOwner);
+    const collectionNameOf = new Map<string, string>();
+    mine.forEach(collection =>
+      collection.recipes.forEach(recipe => {
+        if (!collectionNameOf.has(recipe.id)) collectionNameOf.set(recipe.id, collection.name);
+      }),
+    );
+    return toSafeOptions(
+      mine.flatMap(collection => collection.recipes),
+      recipe => collectionNameOf.get(recipe.id) ?? 'Bộ sưu tập',
+    );
+  }, [collectionsQuery.data]);
 
   const dayIndex = weekPlan.data?.days.findIndex(day => day.dateIso === dateIso) ?? 0;
   const dateLabel = `${WEEKDAY_SHORT_LABELS[dayIndex] ?? ''} ${dateIso.slice(8, 10)}/${dateIso.slice(5, 7)}`;
@@ -70,11 +96,12 @@ export function SlotPickerScreen({ navigation, route }: Props) {
     option => option.id === dietaryPreferenceIds[0],
   )?.label;
 
+  const activeQuery = tab === 'suggested' ? suggestions : tab === 'favorite' ? favoritesQuery : collectionsQuery;
   const options: SlotSuggestionOption[] =
-    tab === 'suggested' ? suggestions.data?.options ?? [] : tab === 'favorite' ? favoriteOptions : [];
+    tab === 'suggested' ? suggestions.data?.options ?? [] : tab === 'favorite' ? favoriteOptions : collectionOptions;
 
-  const isLoadingOptions = tab === 'suggested' && suggestions.isLoading;
-  const isErrorOptions = tab === 'suggested' && suggestions.isError;
+  const isLoadingOptions = activeQuery.isLoading;
+  const isErrorOptions = activeQuery.isError;
 
   const handleConfirm = () => {
     if (!selectedRecipeId) return;
@@ -129,17 +156,17 @@ export function SlotPickerScreen({ navigation, route }: Props) {
 
         {isLoadingOptions ? <LoadingState lines={4} /> : null}
         {isErrorOptions ? (
-          <ErrorState description={suggestions.error?.message} onRetry={() => suggestions.refetch()} />
+          <ErrorState description={activeQuery.error?.message} onRetry={() => void activeQuery.refetch()} />
         ) : null}
 
         {!isLoadingOptions && !isErrorOptions ? (
           <View className="gap-sm">
             {options.length === 0 ? (
               <EmptyState
-                title={tab === 'collection' ? 'Chưa có bộ sưu tập' : 'Chưa có món phù hợp'}
+                title={tab === 'collection' ? 'Chưa có món trong bộ sưu tập' : 'Chưa có món phù hợp'}
                 description={
                   tab === 'collection'
-                    ? 'Bộ sưu tập cho bữa này sẽ có ở bản cập nhật sau.'
+                    ? 'Lưu món vào bộ sưu tập ở màn chi tiết công thức để chọn nhanh ở đây.'
                     : 'Thử lại với tab khác hoặc quay lại sau.'
                 }
               />
@@ -160,6 +187,11 @@ export function SlotPickerScreen({ navigation, route }: Props) {
         ) : null}
       </ScrollView>
 
+      {setSlot.isError ? (
+        <AppText variant="caption" color="error" accessibilityRole="alert" className="pt-sm">
+          {setSlot.error.message}
+        </AppText>
+      ) : null}
       <View className="flex-row gap-sm py-md">
         <AppButton
           label="Xem công thức"

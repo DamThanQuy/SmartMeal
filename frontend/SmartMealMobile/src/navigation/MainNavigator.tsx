@@ -57,6 +57,7 @@ import {
   SubscriptionScreen,
 } from '@/features/premium';
 import {
+  AddToCollectionScreen,
   CollectionDetailScreen,
   CreateCollectionScreen,
   FavoritesScreen,
@@ -174,6 +175,7 @@ export function MainNavigator() {
           name={MAIN_STACK_ROUTES.CREATE_COLLECTION}
           component={CreateCollectionScreen}
         />
+        <Stack.Screen name={MAIN_STACK_ROUTES.ADD_TO_COLLECTION} component={AddToCollectionScreen} />
       </Stack.Group>
     </Stack.Navigator>
   );

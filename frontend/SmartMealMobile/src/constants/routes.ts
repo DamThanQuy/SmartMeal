@@ -107,6 +107,8 @@ export const MAIN_STACK_ROUTES = {
   BADGES: 'Badges',
   COLLECTION_DETAIL: 'CollectionDetail',
   CREATE_COLLECTION: 'CreateCollection',
+  /** Sheet "Lưu vào bộ sưu tập" mở từ RecipeDetail (không có artboard riêng). */
+  ADD_TO_COLLECTION: 'AddToCollection',
   // Đợt 13 — premium (design v2, BR-230→233, BR-240→242).
   SUBSCRIPTION: 'Subscription',
   PAYMENT_METHOD: 'PaymentMethod',

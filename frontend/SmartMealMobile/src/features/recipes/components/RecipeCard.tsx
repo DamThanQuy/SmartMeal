@@ -1,10 +1,11 @@
-import { Heart, UtensilsCrossed } from 'lucide-react-native';
+import { Heart } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { AppBadge, AppText } from '@/components/ui';
 import { shadows } from '@/theme/shadows';
 import { useTheme } from '@/theme/ThemeProvider';
 import { RECIPE_TAG_OPTIONS, type Recipe } from '../types/recipe.types';
+import { RecipeImage } from './RecipeImage';
 
 export interface RecipeCardProps {
   recipe: Recipe;
@@ -33,9 +34,7 @@ export function RecipeCard({
   return (
     <View style={shadows.card} className={`overflow-hidden rounded-card bg-surface ${className}`}>
       <View className="relative">
-        <View className="h-[120px] w-full items-center justify-center bg-primary-soft">
-          <UtensilsCrossed size={28} color={colors.primary} />
-        </View>
+        <RecipeImage imageUrl={recipe.imageUrl} className="h-[120px] w-full" accessibilityLabel={recipe.name} />
         {showFavorite ? (
           <Pressable
             accessibilityRole="button"
