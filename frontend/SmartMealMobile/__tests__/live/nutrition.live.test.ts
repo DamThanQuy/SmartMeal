@@ -1,7 +1,8 @@
 /**
  * Live: nhật ký dinh dưỡng và thực phẩm với backend thật — ghi cả bữa trong MỘT request (nguyên tử),
  * sửa bằng PUT (giữ id, không tạo món trùng), xóa, tiến độ tuần kèm macro, tìm món theo scope
- * (tất cả/gần đây/yêu thích/của tôi), yêu thích, món tự nhập và cảnh báo dị ứng theo code của /meta.
+ * (tất cả/gần đây/yêu thích/của tôi), yêu thích, món tự nhập và cảnh báo dị ứng theo code của /meta;
+ * gửi lại bằng Idempotency-Key không ghi trùng (hàng đợi offline).
  * Chỉ chạy khi có LIVE_API_URL (xem test-utils/live.ts).
  */
 import { describeLive, installLiveBackend, uniqueEmail } from '../../test-utils/live';
@@ -120,6 +121,27 @@ describeLive('nhật ký dinh dưỡng và thực phẩm (backend thật)', () =
         grams: 100,
         nutrition: { calories: 150 },
       });
+    });
+
+    test('hàng đợi offline gửi lại cùng Idempotency-Key → máy chủ trả lại kết quả cũ, không ghi trùng (F12)', async () => {
+      await newUser();
+      const today = todayIso();
+      const key = `meal-live-${Date.now().toString(36)}`;
+
+      const first = await nutritionService.addLogEntries(today, 'lunch', [entry('Bún chả', 300, 450)], {
+        idempotencyKey: key,
+      });
+      const replay = await nutritionService.addLogEntries(today, 'lunch', [entry('Bún chả', 300, 450)], {
+        idempotencyKey: key,
+      });
+
+      expect(replay.map(item => item.id)).toEqual(first.map(item => item.id));
+      expect((await nutritionService.getDiaryDay(today)).entriesByMeal.lunch).toHaveLength(1);
+      // Cùng khóa nhưng khác nội dung → bị từ chối, không ghi.
+      await expect(
+        nutritionService.addLogEntries(today, 'lunch', [entry('Bún chả', 150, 225)], { idempotencyKey: key }),
+      ).rejects.toBeDefined();
+      expect((await nutritionService.getDiaryDay(today)).entriesByMeal.lunch).toHaveLength(1);
     });
 
     test('sửa món không tồn tại → lỗi, nhật ký không đổi', async () => {

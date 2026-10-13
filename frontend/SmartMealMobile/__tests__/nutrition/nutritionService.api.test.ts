@@ -181,10 +181,19 @@ describe('addLogEntries', () => {
         expect.objectContaining({ foodName: 'Gà kho', servingSize: 120 }),
         expect.objectContaining({ foodName: 'Canh', servingSize: 200 }),
       ],
-    });
+    }, undefined);
     expect(created?.map(entry => entry.id)).toEqual(['a', 'b', 'c']);
     expect(created?.every(entry => entry.mealType === 'lunch')).toBe(true);
     expect(created?.every(entry => typeof entry.loggedAt === 'string')).toBe(true);
+  });
+
+  test('có idempotencyKey → gửi header Idempotency-Key để gửi lại không ghi trùng (F12)', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue([item()]);
+
+    await service.addLogEntries?.('2026-10-02', 'lunch', [input('Cơm', 150)], { idempotencyKey: 'meal-abc' });
+
+    expect(apiMock.post.mock.calls[0][2]).toEqual({ headers: { 'Idempotency-Key': 'meal-abc' } });
   });
 
   test('món lấy từ danh mục mang theo id thực phẩm', async () => {
