@@ -6,6 +6,57 @@ Phạm vi: frontend React Native/Expo tại `frontend/SmartMealMobile` và backe
 
 Đã đọc tài liệu tổng quan V1/V2, API Contract, business rules, kiến trúc, tech stack, thiết kế và kế hoạch nối API Phần 1/2. Khi tài liệu và code khác nhau, báo cáo dùng code hiện tại để xác định trạng thái triển khai. Các endpoint/field ghi **đề xuất** là yêu cầu bổ sung cho nghiệp vụ hoặc UI, chưa phải hợp đồng backend đã triển khai.
 
+## 0. Trạng thái xử lý — cập nhật 14/10/2026
+
+Toàn bộ phần dưới (mục 1–10) giữ nguyên như bản rà soát ngày 13/10 để đối chiếu. Mục này ghi lại những gì đã được sửa trên nhánh `main` cục bộ (commit `c477a29`, **chưa push**).
+
+Tất cả đã được kiểm chứng như sau:
+
+- **BE:** 224 test xUnit qua, chạy trên PostgreSQL thật.
+- **FE:** 494 test Jest qua.
+- **Test live (79 test):** FE gọi BE thật qua HTTP với DB thật. Gồm auth, hồ sơ sức khỏe, nhật ký, nước, AI, scanner, công thức/bộ sưu tập, thực đơn/đi chợ, gamification, premium và health sync.
+
+**Ký hiệu:** ✅ đã xong · ➖ không làm, kèm lý do · ⏳ chưa làm.
+
+| Mục | Trạng thái | Ghi chú / commit |
+|---|---|---|
+| A01–A20 | ✅ | Đã có ở BE (đợt merge `c899714`) và FE đã gọi thật. `/auth/refresh` do interceptor gọi khi gặp 401. |
+| B01–B13, B17 | ✅ | Field đã thống nhất. Mapper FE đọc theo hợp đồng BE; dị ứng thiếu dữ liệu thì chặn chứ không coi là "không dị ứng" (`ce2e822`). |
+| B14 | ✅ | `GrocerySummaryDto` có thêm:<ul><li>`periodStart`/`periodEnd`, `generatedAt`</li><li>`lastTrip`</li><li>`isManual` cho từng món</li></ul>BE `4b38519`, FE `13a1e07`. |
+| B15 | ✅ | `extractedNutrition` có thêm protein/carbs/`servingGrams`/`basis`, và `null` khi nhãn không ghi. Có thêm `source`/`product`/`productName`/`ocrText`. BE `67d8e01`, FE `9f926f9`. |
+| B16 | ➖ | Fridge dùng `POST /recipes/suggest-by-pantry` sau khi người dùng xác nhận nguyên liệu. Không cần field gợi ý riêng. |
+| B18 | ➖ | Chưa có dữ liệu đánh giá thật nên FE ẩn sao, không hiển thị điểm 0 giả. |
+| C01 | ✅ | Bỏ fallback ghi từng món; cả bữa ghi trong một transaction `log/batch` (`ce2e822`). |
+| C02 | ✅ | Lọc dị ứng ở BE (recipes, pantry, auto-generate). `assign` từ chối món gây dị ứng: `400 allergen_conflict` (`1f584d5`). |
+| C03 | ✅ | BE xác minh Google ID token (`Google:ClientIds`). FE lấy ID token bằng `expo-auth-session` (`de9fc1c`), xem F03. |
+| C04 | ✅ | Pro chỉ kích hoạt khi webhook có chữ ký xác nhận; `activate-mock` chỉ chạy ở Development. Lưu ý: **chưa tích hợp cổng thanh toán thật**, URL thanh toán là sandbox. |
+| C05, C06 | ✅ | Health-sync thay thế theo `(ngày, nguồn)`, không cộng dồn. AI gắn cờ `isDemo` cho dữ liệu mẫu; khi lỗi trả `502/503`. |
+| C07 | ✅ | Danh sách đi chợ theo kỳ và trạng thái "đã cũ". `POST /grocery/complete` chạy trong một transaction: lưu chi phí thật, giữ món chưa mua, cộng thực đơn kỳ sau (`4b38519`). |
+| C08 | ✅ | Auto-generate:<ul><li>áp ngưỡng bệnh lý (`HealthConditionLimits`)</li><li>chọn món theo mục tiêu calo</li><li>`dietTag` là ưu tiên mềm</li><li>`keepExisting` giữ ô người dùng đã chọn</li><li>trả `no_suitable_recipes` khi không đủ món</li></ul>`RecipeDto.healthWarnings` (`1f584d5`). |
+| C09 | ✅ | XP/thử thách/huy hiệu do server tính từ dữ liệu thật, mỗi sự kiện chỉ cộng một lần; streak = 0 khi chưa hoạt động. FE đọc một nguồn và gửi `?date=` (`9916999`). |
+| C10 | ✅ | `GET /foods?scope=`, tìm không dấu (foods và recipes), phân trang và lọc `/recipes`, `weight-history?days=` (`0952465`). |
+| F01, F02 | ✅ | Yêu thích và bộ sưu tập đọc/ghi server (tạo, đổi tên, thêm/bớt món, công khai, xóa); deep link `collections/:id` (`2ac7b37`). |
+| F03 | ✅ | Nút Google ở Welcome/Login/Register (`de9fc1c`). Chưa có Client ID thì nút báo "chưa cấu hình". Android/iOS cần Dev Client. |
+| F04, F05 | ✅ | Thực đơn giữ `mealPlanId`, đánh dấu đã nấu, xóa món; đi chợ tự sinh khi rỗng, có banner "đã cũ" và hoàn tất mua sắm (`64c9060`, `13a1e07`). |
+| F06 | ✅ | Scanner dùng dữ liệu thật:<ul><li>mã vạch quét bằng `expo-camera` hoặc nhập tay, tra CSDL</li><li>nhãn đọc từ ảnh chụp</li><li>tủ lạnh nhận diện từ ảnh thật</li><li>cảnh báo lấy từ server</li></ul>Bỏ mã, số liệu và ảnh mẫu cố định (`9f926f9`). |
+| F07 | ✅ | SlotPicker tab Yêu thích/Bộ sưu tập dùng dữ liệu server (`2ac7b37`). |
+| F08 | ✅ | Gợi ý ở Dashboard lấy từ công thức thật, đã lọc dị ứng (`deed5f9`). |
+| F09 | ✅ | Bỏ `completeChallenge` cục bộ. Huy hiệu/trang phục đọc và mặc qua server (`9916999`). |
+| F10, F11 | ✅ | Recipe mapper giữ `imageUrl`/`isPremium`/`description`. Recipes/planner/grocery có cặp service mock/api, chọn theo `EXPO_PUBLIC_USE_MOCK_API`. |
+| F12 | ✅ | Hàng đợi offline lưu bền, giữ payload và gửi lại bằng `Idempotency-Key`; BE không ghi trùng (BE `e25f41f`, FE `f22c22c`). |
+| F13 | ⏳ | Cần module native Health Connect/HealthKit trong Dev Client; Expo Go không làm được. API `health-sync` đã sẵn sàng. |
+| §6 Collections, chia sẻ | ✅ | Đủ CRUD. Chia sẻ dùng `isPublic` + deep link; chưa có token thu hồi riêng. |
+| §6 Planner, Grocery, Barcode | ✅ | Xem C07, C08, F04–F06. |
+| §6 Voice | ✅ | `POST /ai/voice-log/audio`: FE ghi âm bằng `expo-av`, server chép lời và trả `transcript`; câu không nhận ra trả `voice_unrecognized` (`67d8e01`, `7a771ea`). |
+| §6 OCR | ✅ | `POST /ai/scan-label` nhận ảnh nhãn (`67d8e01`). |
+| §6 Gamification | ✅ | Xem C09. |
+| §6 Reminders | ✅ | Nhắc cục bộ bằng `expo-notifications`, cài đặt lưu theo tài khoản; không cần BE (`9915e80`). |
+| §6 Notifications | ⏳ | BE chưa có API thông báo; danh sách ở chế độ API vẫn rỗng. |
+| §6 Account/password | ➖ | BE đã có `change-password` và `DELETE /auth/account`. FE đổi mật khẩu qua luồng OTP và chỉ có "Xóa dữ liệu cá nhân"; chưa có màn xóa tài khoản. |
+| §7 Tài liệu cũ | ✅ | Đã cập nhật API Contract. Phần 1/2 nối API được đánh dấu là bản ghi chép cũ. Đã sửa README/Overview. |
+
+Chi tiết từng việc và cách kiểm chứng: [`docs/implementation_report.md`](implementation_report.md).
+
 ## 1. Kết quả chính
 
 **Có 20 thao tác HTTP mà code gọi API của FE đã sử dụng nhưng controller BE chưa khai báo.** Một thao tác được tính theo cặp `method + path`, nên `POST` và `DELETE` cùng một đường dẫn là hai thao tác. Đây là các lời gọi có trong code FE; khả năng chạy tới chúng còn phụ thuộc màn hình, chế độ mock và trạng thái phiên.

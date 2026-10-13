@@ -2,8 +2,25 @@
 
 - **Gửi:** DamThanQuy
 - **Phạm vi:** commit `d3b8980` (merge `c69fc09`, 10/10/2026) — 28 file, FE là chính.
-- **Chuẩn đối chiếu:** backend nhánh `feat/be-api-gaps` (205 test tích hợp đạt). Hợp đồng API mới nằm ở `docs/SmartMeal_API_Contract.md` **trên nhánh đó** — bản trên `main` là bản cũ, đừng dùng.
+- **Chuẩn đối chiếu:** backend nhánh `feat/be-api-gaps` (205 test tích hợp đạt). Hợp đồng API mới nằm ở `docs/SmartMeal_API_Contract.md` **trên nhánh đó**. *(Cập nhật 14/10: BE đã vào `main`, bản trên `main` giờ là bản đúng.)*
 - **Cách đọc:** mục 🔴 là dữ liệu bịa hoặc sai an toàn, cần sửa trước khi coi PR xong. 🟠 là lệch so với BE. 🟡 là việc nhỏ.
+
+## Trạng thái — cập nhật 14/10/2026
+
+Mọi mục dưới đây đã được sửa trên `main` (cục bộ, chưa push). BE đã merge vào `main`, nên hợp đồng API trên `main` giờ là bản đúng. Phần review gốc bên dưới giữ nguyên để đối chiếu.
+
+| # | Trạng thái | Cách sửa | Commit |
+|---|---|---|---|
+| S1 | ✅ | Barcode: quét bằng `expo-camera` hoặc nhập tay. Tra qua `check-safety {barcode}`; BE tra trong CSDL, không cho AI đoán. 404 thì sang ProductNotFound với đúng mã vừa quét. Không còn hằng số. | FE `9f926f9`, BE `67d8e01` |
+| S2 | ✅ | OCR: gửi ảnh nhãn thật tới `POST /ai/scan-label`. Trường nhãn không ghi thì để trống và đánh dấu "không rõ". | FE `9f926f9`, BE `67d8e01` |
+| S3 | ✅ | Fridge: chỉ dùng tối đa 4 ảnh thật; huỷ chụp không tính ảnh; không có ảnh mẫu. Mọi nguyên liệu chờ người dùng xác nhận. | `9f926f9` |
+| S4 | ✅ | `allergyIds` là trường bắt buộc; thiếu thì báo lỗi, không coi là "không dị ứng". | `ce2e822` |
+| S5 | ✅ | Có banner demo ở OCR và Fridge; AI Snap/Voice vẫn dùng `AiDemoNotice`. | `9f926f9` |
+| G1–G5 | ✅ | Pet đọc `tasks/totalXp` của BE và truyền `?date=` theo ngày máy. Chuỗi ngày gắn nhãn theo `date`. Thử thách dùng `startDate/endDate/currentDay/isExpired`. Bỏ `completeChallenge`. Huy hiệu/trang phục nối `/badges`, `/costumes/*`. | `9916999` |
+| N1, M1 | ✅ | Xoá fallback `/log/batch` và mã debug `navigationRef`. | `ce2e822` |
+| M2 | ✅ | Viết lại test theo hợp đồng BE. Thêm test live (`gamification.live`, `scanner.live`), gồm cả gửi ảnh/ghi âm qua multipart thật. | `890b783`, `2bdd244`, `7bcbaa5` |
+| M3 | ✅ | Đã tự mất khi merge BE (`c63b283`). | — |
+| Phía BE | ✅ | `check-safety` với mã vạch tra CSDL, không cho AI đoán. | `67d8e01` |
 
 ## Tóm tắt
 
@@ -138,12 +155,12 @@ PR sửa khối seed hồ sơ sức khỏe để build được với entity cũ
 
 ## Checklist trước khi đóng
 
-- [ ] S1–S4: không còn hằng số dinh dưỡng, mã vạch, văn bản OCR, ảnh mẫu trong đường API; thiếu dữ liệu thì báo thiếu.
-- [ ] S5: có thông báo khi `isDemo: true`.
-- [ ] G1–G5: Pet dùng `tasks/totalXp` của BE và truyền `?date=` theo ngày máy, nhãn chuỗi ngày theo `date`, thử thách dùng `startDate/endDate/currentDay/isExpired`, không cộng XP cục bộ khi `EXPO_PUBLIC_USE_MOCK_API=false`, huy hiệu nối BE.
-- [ ] N1, M1: xoá fallback `/log/batch` và mã debug.
-- [ ] `npx tsc --noEmit`, `npx expo lint`, `npx jest` sạch; thêm test live (M2).
-- [ ] Cập nhật `docs/ui-progress.md` (Definition of Done) cho các màn bị chạm.
+- [x] S1–S4: không còn hằng số dinh dưỡng, mã vạch, văn bản OCR, ảnh mẫu trong đường API; thiếu dữ liệu thì báo thiếu.
+- [x] S5: có thông báo khi `isDemo: true`.
+- [x] G1–G5: Pet dùng `tasks/totalXp` của BE và truyền `?date=` theo ngày máy, nhãn chuỗi ngày theo `date`, thử thách dùng `startDate/endDate/currentDay/isExpired`, không cộng XP cục bộ khi `EXPO_PUBLIC_USE_MOCK_API=false`, huy hiệu nối BE.
+- [x] N1, M1: xoá fallback `/log/batch` và mã debug.
+- [x] `npx tsc --noEmit`, `npx expo lint`, `npx jest` sạch; thêm test live (M2).
+- [x] Cập nhật `docs/ui-progress.md` (Definition of Done) cho các màn bị chạm.
 
 ## Phía BE (tôi xử lý, không cần bạn làm)
 
