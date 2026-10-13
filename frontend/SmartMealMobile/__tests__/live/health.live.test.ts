@@ -3,6 +3,7 @@
  * code của /meta, sửa từng phần bằng PUT (không thêm dòng cân nặng), mục "Khác" giữ cục bộ.
  * Chỉ chạy khi có LIVE_API_URL (xem test-utils/live.ts).
  */
+import { formatDateIso } from '@/utils/date';
 import { describeLive, installLiveBackend, uniqueEmail } from '../../test-utils/live';
 
 type AuthModule = typeof import('@/features/auth/services/authService');
@@ -156,7 +157,8 @@ describeLive('health profile (backend thật)', () => {
     const profileBefore = (await healthProfileService.getHealthProfile(user.id))!;
 
     const after = await healthProfileService.recordWeight(
-      { weightKg: 68, dateIso: new Date().toISOString().slice(0, 10) },
+      // Ngày theo giờ máy như app (todayIso) — ngày UTC lệch một ngày sau 0h giờ VN.
+      { weightKg: 68, dateIso: formatDateIso(new Date()) },
       {
         gender: 'male',
         dateOfBirth: new Date(1995, 5, 15),
