@@ -1,8 +1,15 @@
+using System.ComponentModel.DataAnnotations;
+using SmartMeal.Application.Common.Validation;
+
 namespace SmartMeal.Application.DTOs.Health;
 
 public class WeightLogRequestDto
 {
+    [Range(30, 300, ErrorMessage = "Cân nặng phải từ 30 đến 300 kg.")]
     public double WeightKg { get; set; }
+
+    /// <summary>Thời điểm đo (ISO 8601). Bỏ trống = bây giờ. Không được ở tương lai.</summary>
+    [DateNotAfterToday(1)]
     public DateTime? RecordedAt { get; set; }
 }
 

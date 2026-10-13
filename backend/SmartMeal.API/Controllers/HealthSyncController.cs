@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SmartMeal.API.Infrastructure;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.HealthSync;
 using SmartMeal.Application.Services;
-using System.Security.Claims;
 
 namespace SmartMeal.API.Controllers;
 
@@ -19,26 +19,21 @@ public class HealthSyncController : ControllerBase
         _healthSyncService = healthSyncService;
     }
 
+    /// <summary>Gửi tổng của một ngày từ một nguồn. Gửi lại cùng (ngày, nguồn) thay thế giá trị cũ, không cộng dồn.</summary>
     [HttpPost("steps-and-calories")]
     public async Task<ActionResult<ApiResponse<SyncHealthMetricsResponseDto>>> SyncStepsAndCalories([FromBody] SyncHealthMetricsRequestDto dto)
     {
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdStr, out var userId))
-            return Unauthorized(ApiResponse<SyncHealthMetricsResponseDto>.Fail("Phiên đăng nhập không hợp lệ."));
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<SyncHealthMetricsResponseDto>();
 
-        var result = await _healthSyncService.SyncStepsAndCaloriesAsync(userId, dto);
-        return Ok(result);
+        return this.ToActionResult(await _healthSyncService.SyncStepsAndCaloriesAsync(userId, dto));
     }
 
     [HttpGet("daily-summary")]
     public async Task<ActionResult<ApiResponse<DailyHealthSyncSummaryDto>>> GetDailySummary([FromQuery] DateOnly? date)
     {
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdStr, out var userId))
-            return Unauthorized(ApiResponse<DailyHealthSyncSummaryDto>.Fail("Phiên đăng nhập không hợp lệ."));
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<DailyHealthSyncSummaryDto>();
 
         var targetDate = date ?? DateOnly.FromDateTime(DateTime.UtcNow);
-        var result = await _healthSyncService.GetDailySummaryAsync(userId, targetDate);
-        return Ok(result);
+        return this.ToActionResult(await _healthSyncService.GetDailySummaryAsync(userId, targetDate));
     }
 }

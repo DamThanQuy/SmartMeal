@@ -1,5 +1,8 @@
+# Chạy:  docker compose up -d postgres pgadmin     (chỉ DB)   |   docker compose up --build -d   (cả hệ thống)
+# Biến ${...} lấy từ file `.env` ở thư mục gốc (xem .env.example). Jwt__Key là BẮT BUỘC và phải tự sinh.
+
 services:
-  # 1. PostgreSQL Database
+  # 1. PostgreSQL Database (chỉ mở cổng trên localhost)
   postgres:
     image: postgres:16-alpine
     container_name: smartmeal_postgres
@@ -9,7 +12,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
       POSTGRES_DB: ${POSTGRES_DB:-SmartMealDb}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,16 +22,16 @@ services:
       retries: 10
       start_period: 5s
 
-  # 2. pgAdmin (Web GUI for Database)
+  # 2. pgAdmin (Web GUI for Database) — chỉ dùng khi phát triển, chỉ mở cổng trên localhost
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: smartmeal_pgadmin
     restart: always
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@smartmeal.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
     ports:
-      - "${PGADMIN_PORT:-5050}:80"
+      - "127.0.0.1:${PGADMIN_PORT:-5050}:80"
     depends_on:
       postgres:
         condition: service_healthy
@@ -43,7 +46,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-SmartMealDb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgrespassword}
-      - Jwt__Key=${Jwt__Key:-SmartMeal_SuperSecret_Jwt_Security_Key_2026_FPT_PRM393_VeryLongAndSecureKey!}
+      - Jwt__Key=${Jwt__Key:?Hãy đặt Jwt__Key trong file .env (xem .env.example)}
       - Jwt__Issuer=${Jwt__Issuer:-SmartMealBackend}
       - Jwt__Audience=${Jwt__Audience:-SmartMealMobile}
       - Gemini__ApiKey=${Gemini__ApiKey:-}

@@ -9,6 +9,10 @@ public interface IGroceryService
     Task<ApiResponse<GrocerySummaryDto>> GenerateFromMealPlanAsync(Guid userId, GenerateGroceryRequestDto dto);
     Task<ApiResponse<GroceryItemDto>> AddCustomItemAsync(Guid userId, AddCustomGroceryItemDto dto);
     Task<ApiResponse<GroceryItemDto>> ToggleItemCheckedAsync(Guid userId, Guid itemId, bool isChecked);
+
+    /// <summary>Đánh dấu/bỏ đánh dấu mua toàn bộ danh sách trong một lần; trả danh sách mới.</summary>
+    Task<ApiResponse<GrocerySummaryDto>> SetAllCheckedAsync(Guid userId, bool isChecked);
+
     Task<ApiResponse<bool>> DeleteItemAsync(Guid userId, Guid itemId);
     Task<ApiResponse<bool>> ClearCheckedItemsAsync(Guid userId);
 }

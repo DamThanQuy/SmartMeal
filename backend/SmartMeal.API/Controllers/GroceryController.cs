@@ -1,6 +1,6 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SmartMeal.API.Infrastructure;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.Grocery;
 using SmartMeal.Application.Services;
@@ -19,34 +19,24 @@ public class GroceryController : ControllerBase
         _groceryService = groceryService;
     }
 
-    private Guid GetUserId()
-    {
-        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return Guid.TryParse(claim, out var id) ? id : Guid.Empty;
-    }
-
     /// <summary>
     /// Lấy danh sách đi chợ hiện tại của người dùng (nhóm theo quầy siêu thị & tính tổng chi phí ước tính).
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<ApiResponse<GrocerySummaryDto>>> GetGroceryList()
     {
-        var result = await _groceryService.GetGroceryListAsync(GetUserId());
-        return Ok(result);
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<GrocerySummaryDto>();
+        return this.ToActionResult(await _groceryService.GetGroceryListAsync(userId));
     }
 
     /// <summary>
-    /// Tự động tổng hợp và sinh danh sách đi chợ thông minh từ thực đơn tuần đã lên kế hoạch.
+    /// Tự động tổng hợp danh sách đi chợ từ thực đơn trong khoảng ngày (gộp nguyên liệu cùng tên/đơn vị, kèm số bữa đã gộp).
     /// </summary>
     [HttpPost("generate-from-plan")]
     public async Task<ActionResult<ApiResponse<GrocerySummaryDto>>> GenerateFromPlan([FromBody] GenerateGroceryRequestDto dto)
     {
-        var result = await _groceryService.GenerateFromMealPlanAsync(GetUserId(), dto);
-        if (!result.Success)
-        {
-            return BadRequest(result);
-        }
-        return Ok(result);
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<GrocerySummaryDto>();
+        return this.ToActionResult(await _groceryService.GenerateFromMealPlanAsync(userId, dto));
     }
 
     /// <summary>
@@ -55,12 +45,18 @@ public class GroceryController : ControllerBase
     [HttpPost("items")]
     public async Task<ActionResult<ApiResponse<GroceryItemDto>>> AddCustomItem([FromBody] AddCustomGroceryItemDto dto)
     {
-        var result = await _groceryService.AddCustomItemAsync(GetUserId(), dto);
-        if (!result.Success)
-        {
-            return BadRequest(result);
-        }
-        return Ok(result);
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<GroceryItemDto>();
+        return this.ToActionResult(await _groceryService.AddCustomItemAsync(userId, dto));
+    }
+
+    /// <summary>
+    /// Đánh dấu đã mua (hoặc bỏ đánh dấu) toàn bộ danh sách trong một lần. Body bỏ trống = đã mua tất cả. Trả danh sách mới.
+    /// </summary>
+    [HttpPatch("items/check-all")]
+    public async Task<ActionResult<ApiResponse<GrocerySummaryDto>>> CheckAll([FromBody] CheckAllGroceryItemsRequestDto? dto)
+    {
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<GrocerySummaryDto>();
+        return this.ToActionResult(await _groceryService.SetAllCheckedAsync(userId, dto?.IsChecked ?? true));
     }
 
     /// <summary>
@@ -69,12 +65,8 @@ public class GroceryController : ControllerBase
     [HttpPatch("items/{id:guid}/check")]
     public async Task<ActionResult<ApiResponse<GroceryItemDto>>> ToggleCheck(Guid id, [FromBody] ToggleGroceryItemRequestDto dto)
     {
-        var result = await _groceryService.ToggleItemCheckedAsync(GetUserId(), id, dto.IsChecked);
-        if (!result.Success)
-        {
-            return NotFound(result);
-        }
-        return Ok(result);
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<GroceryItemDto>();
+        return this.ToActionResult(await _groceryService.ToggleItemCheckedAsync(userId, id, dto.IsChecked));
     }
 
     /// <summary>
@@ -83,12 +75,8 @@ public class GroceryController : ControllerBase
     [HttpDelete("items/{id:guid}")]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteItem(Guid id)
     {
-        var result = await _groceryService.DeleteItemAsync(GetUserId(), id);
-        if (!result.Success)
-        {
-            return NotFound(result);
-        }
-        return Ok(result);
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<bool>();
+        return this.ToActionResult(await _groceryService.DeleteItemAsync(userId, id));
     }
 
     /// <summary>
@@ -97,7 +85,7 @@ public class GroceryController : ControllerBase
     [HttpDelete("clear-checked")]
     public async Task<ActionResult<ApiResponse<bool>>> ClearChecked()
     {
-        var result = await _groceryService.ClearCheckedItemsAsync(GetUserId());
-        return Ok(result);
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<bool>();
+        return this.ToActionResult(await _groceryService.ClearCheckedItemsAsync(userId));
     }
 }
