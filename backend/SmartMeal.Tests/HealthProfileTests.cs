@@ -1,4 +1,6 @@
 using System.Net;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using SmartMeal.Tests.Infrastructure;
 using Xunit;
 
@@ -391,5 +393,34 @@ public class HealthProfileTests : IClassFixture<ApiFactory>
         // Id đã phát hành không đổi.
         Assert.Equal("seafood", allergies.Single(a => a.Id == 1).Code);
         Assert.Equal("keto", tags.Single(t => t.Id == 2).Code);
+    }
+
+    [DbFact]
+    public async Task Weight_history_can_be_limited_to_the_last_days_without_changing_the_starting_weight()
+    {
+        var user = await _factory.RegisterUserAsync();
+        await ExpectProfileAsync(await user.Client.PostJsonAsync("/api/healthprofile/survey", Survey(weight: 72)));
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SmartMeal.Infrastructure.Data.ApplicationDbContext>();
+            var profile = await db.HealthProfiles.Include(p => p.WeightHistories).SingleAsync(p => p.UserId == user.Id);
+            foreach (var entry in profile.WeightHistories)
+            {
+                entry.RecordedAt = DateTime.UtcNow.AddDays(-60); // lần ghi khi làm khảo sát nằm ngoài 30 ngày
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        (await user.Client.PostJsonAsync("/api/healthprofile/weight-log", new { weightKg = 70 })).EnsureSuccessStatusCode();
+
+        var all = await GetWeightHistoryAsync(user.Client);
+        var recent = (await (await user.Client.GetAsync("/api/healthprofile/weight-history?days=30")).ReadEnvelopeAsync<WeightHistoryPayload>()).Data!;
+
+        Assert.True(all.History.Count > recent.History.Count);
+        Assert.All(recent.History, p => Assert.True(p.RecordedAt >= DateTime.UtcNow.AddDays(-30)));
+        Assert.Equal(all.InitialWeightKg, recent.InitialWeightKg);
+        Assert.Equal(72, recent.InitialWeightKg);
+        Assert.Equal(HttpStatusCode.BadRequest, (await user.Client.GetAsync("/api/healthprofile/weight-history?days=0")).StatusCode);
     }
 }

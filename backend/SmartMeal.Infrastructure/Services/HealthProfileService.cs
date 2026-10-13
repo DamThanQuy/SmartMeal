@@ -239,7 +239,7 @@ public class HealthProfileService : IHealthProfileService
         return ApiResponse<WeightPointDto>.Ok(pointDto, "Ghi nhận cân nặng thành công.");
     }
 
-    public async Task<ApiResponse<WeightHistoryResponseDto>> GetWeightHistoryAsync(Guid userId)
+    public async Task<ApiResponse<WeightHistoryResponseDto>> GetWeightHistoryAsync(Guid userId, int? days = null)
     {
         var profile = await _db.HealthProfiles
             .Include(hp => hp.WeightHistories)
@@ -253,8 +253,9 @@ public class HealthProfileService : IHealthProfileService
 
         var histories = profile.WeightHistories.OrderBy(w => w.RecordedAt).ToList();
         var initialWeight = histories.FirstOrDefault()?.WeightKg ?? profile.CurrentWeightKg;
+        var since = days is { } d ? DateTime.UtcNow.AddDays(-d) : DateTime.MinValue;
 
-        var historyDtos = histories.Select(w => new WeightPointDto
+        var historyDtos = histories.Where(w => w.RecordedAt >= since).Select(w => new WeightPointDto
         {
             Id = w.Id,
             WeightKg = w.WeightKg,

@@ -55,11 +55,16 @@ public class HealthProfileController : ControllerBase
         return this.ToActionResult(await _healthProfileService.LogWeightAsync(userId, dto));
     }
 
+    /// <summary>Lịch sử cân nặng, cũ → mới. <c>days</c> (1–3650, tùy chọn) chỉ trả các lần ghi trong N ngày gần nhất.</summary>
     [HttpGet("weight-history")]
-    public async Task<ActionResult<ApiResponse<WeightHistoryResponseDto>>> GetWeightHistory()
+    public async Task<ActionResult<ApiResponse<WeightHistoryResponseDto>>> GetWeightHistory([FromQuery] int? days)
     {
         if (!this.TryGetUserId(out var userId)) return this.InvalidSession<WeightHistoryResponseDto>();
+        if (days is < 1 or > 3650)
+        {
+            return BadRequest(ApiResponse<WeightHistoryResponseDto>.Fail("days phải từ 1 đến 3650."));
+        }
 
-        return this.ToActionResult(await _healthProfileService.GetWeightHistoryAsync(userId));
+        return this.ToActionResult(await _healthProfileService.GetWeightHistoryAsync(userId, days));
     }
 }

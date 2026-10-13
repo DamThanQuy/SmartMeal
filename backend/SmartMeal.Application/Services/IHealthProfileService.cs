@@ -9,5 +9,6 @@ public interface IHealthProfileService
     Task<ApiResponse<HealthProfileDto>> UpdateProfileAsync(Guid userId, UpdateHealthProfileRequestDto dto);
     Task<ApiResponse<HealthProfileDto>> GetProfileAsync(Guid userId);
     Task<ApiResponse<WeightPointDto>> LogWeightAsync(Guid userId, WeightLogRequestDto dto);
-    Task<ApiResponse<WeightHistoryResponseDto>> GetWeightHistoryAsync(Guid userId);
+    /// <summary><paramref name="days"/>: chỉ lấy các lần ghi trong N ngày gần nhất (null = tất cả). Cân nặng ban đầu vẫn tính trên toàn bộ lịch sử.</summary>
+    Task<ApiResponse<WeightHistoryResponseDto>> GetWeightHistoryAsync(Guid userId, int? days = null);
 }
