@@ -45,7 +45,7 @@ type CreateFoodFormValues = z.infer<typeof createFoodSchema>;
 // tạm FoodSearch). Món tạo ra gắn "Do bạn nhập" — không tính là dữ liệu đã xác minh, không tự
 // bịa số liệu thay Backend (chỉ ghi đúng số user nhập).
 export function CreateFoodScreen({ navigation, route }: Props) {
-  const { mealType } = route.params;
+  const { mealType, barcode } = route.params;
   const { colors } = useTheme();
   const createFood = useCreateFood();
   const addMealLogEntries = useAddMealLogEntries(todayIso());
@@ -81,7 +81,7 @@ export function CreateFoodScreen({ navigation, route }: Props) {
       sodiumMg: values.sodiumMg ? Number(values.sodiumMg) : undefined,
     };
     createFood.mutate(
-      { name: values.name, amount, unit: values.unit, nutrition },
+      { name: values.name, amount, unit: values.unit, nutrition, barcode },
       {
         onSuccess: food => {
           // Ghi đúng khẩu phần của món vừa tạo: với đơn vị "phần" BE quy ra khối lượng (g) thật, và
@@ -128,6 +128,11 @@ export function CreateFoodScreen({ navigation, route }: Props) {
         <AppText variant="body" color="secondary">
           Nhập giá trị dinh dưỡng từ bao bì. Bạn có thể sửa lại sau trong nhật ký.
         </AppText>
+        {barcode ? (
+          <AppText variant="caption" color="secondary">
+            {`Mã vạch ${barcode} sẽ được lưu cùng món này — lần quét sau sẽ nhận ra ngay.`}
+          </AppText>
+        ) : null}
 
         <Controller
           control={control}

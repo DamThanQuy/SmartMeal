@@ -19,7 +19,7 @@ export type FoodLogSource = 'database' | 'ai' | 'manual';
  * Cách ghi món mà backend lưu (`logMethod`). FoodLogSource không phân biệt ảnh/giọng nói/mã vạch,
  * nên luồng AI/Scanner truyền thêm giá trị này khi cần.
  */
-export type MealLogMethod = 'Manual' | 'AiImage' | 'Voice' | 'Barcode';
+export type MealLogMethod = 'Manual' | 'AiImage' | 'Voice' | 'Barcode' | 'Ocr';
 
 export type FoodSearchFilter = 'all' | 'recent' | 'favorite' | 'mine';
 
@@ -53,6 +53,8 @@ export interface NewFoodInput {
   amount: number;
   unit: 'g' | 'ml' | 'phần';
   nutrition: NutritionInfo;
+  /** Mã vạch khi nhập từ màn "Không tìm thấy sản phẩm" — lần quét sau tìm thấy món này (BR-120). */
+  barcode?: string;
 }
 
 export interface MealLogEntry {

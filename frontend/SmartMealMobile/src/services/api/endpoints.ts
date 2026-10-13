@@ -88,7 +88,11 @@ export const ENDPOINTS = {
     snapAndTrack: '/ai/snap-and-track',
     fridgeScanner: '/ai/fridge-scanner',
     voiceLog: '/ai/voice-log',
+    /** Voice Logging từ file ghi âm (multipart, trường `audio`). */
+    voiceLogAudio: '/ai/voice-log/audio',
     checkSafety: '/ai/check-safety',
+    /** Đọc nhãn dinh dưỡng từ ảnh (multipart, trường `image`). */
+    scanLabel: '/ai/scan-label',
   },
   gamification: {
     pet: '/gamification/pet',

@@ -15,7 +15,14 @@ export const SCANNED_PRODUCT_MOCK: ScannedProduct = {
     sodiumMg: 320,
   },
   allergenIds: ['peanut'],
-  sugarWarningThreshold: 20,
+  alerts: [
+    {
+      type: 'HIGH_SUGAR',
+      message: 'Hàm lượng đường cao (≈28 g/100 g, ngưỡng tham khảo 22.5 g).',
+      severity: 'warning',
+    },
+  ],
+  isVerified: true,
 };
 
 /** Mã vạch dùng để minh hoạ ProductNotFound.dc.html — chưa có trong "database". */

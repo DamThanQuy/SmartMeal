@@ -16,7 +16,7 @@ export function StatePermissionScreen({ navigation, route }: Props) {
 
   const handleAllow = () => {
     if (returnTo === 'Fridge') {
-      navigation.replace(MAIN_STACK_ROUTES.FRIDGE);
+      navigation.replace(MAIN_STACK_ROUTES.FRIDGE_CAMERA);
     } else if (returnTo === 'AICamera') {
       navigation.replace(MAIN_STACK_ROUTES.AI_CAMERA, { mealType: mealType ?? 'dinner' });
     } else {

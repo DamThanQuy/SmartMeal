@@ -3,12 +3,14 @@ import { getCurrentMockScenario } from '@/state/app/appStore';
 import { FRIDGE_INGREDIENTS_MOCK } from '../mocks/fridge.mock';
 import { OCR_REVIEW_RESULT_MOCK } from '../mocks/ocr.mock';
 import { SCANNED_PRODUCT_MOCK } from '../mocks/products.mock';
-import type { FridgeIngredient, OcrReviewResult, ScannedProduct } from '../types/scanner.types';
+import type { FridgeScanResult, OcrReviewResult, ScannedProduct } from '../types/scanner.types';
 
 export class CameraPermissionDeniedError extends Error {}
 
+// Bản giả lập (EXPO_PUBLIC_USE_MOCK_API) — cùng chữ ký với scannerService.api.ts; mã vạch/ảnh thật
+// được nhận nhưng kết quả lấy từ dữ liệu mẫu, MOCK_SCENARIO 'empty' = không tìm thấy sản phẩm.
 export const scannerMockService = {
-  async scanBarcode(): Promise<ScannedProduct | null> {
+  async scanBarcode(_code: string): Promise<ScannedProduct | null> {
     const scenario = getCurrentMockScenario();
     await wait(getMockDelayMs(scenario));
     if (scenario === 'error') {
@@ -20,7 +22,7 @@ export const scannerMockService = {
     return SCANNED_PRODUCT_MOCK;
   },
 
-  async analyzeOcrLabel(): Promise<OcrReviewResult> {
+  async analyzeOcrLabel(_imageUri: string): Promise<OcrReviewResult> {
     const scenario = getCurrentMockScenario();
     await wait(getMockDelayMs(scenario));
     if (scenario === 'error') {
@@ -29,15 +31,15 @@ export const scannerMockService = {
     return OCR_REVIEW_RESULT_MOCK;
   },
 
-  async scanFridge(_imageUri?: string): Promise<FridgeIngredient[]> {
+  async scanFridge(_imageUris: string[]): Promise<FridgeScanResult> {
     const scenario = getCurrentMockScenario();
     await wait(getMockDelayMs(scenario));
     if (scenario === 'error') {
       throw new CameraPermissionDeniedError('SmartMeal cần quyền dùng camera.');
     }
     if (scenario === 'empty') {
-      return [];
+      return { ingredients: [], isDemo: false };
     }
-    return FRIDGE_INGREDIENTS_MOCK;
+    return { ingredients: FRIDGE_INGREDIENTS_MOCK, isDemo: false };
   },
 };

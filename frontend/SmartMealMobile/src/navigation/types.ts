@@ -79,8 +79,10 @@ export type MainStackParamList = {
   // Đợt 4 — Scanner (BR-080, BR-120, BR-130, BR-140).
   Barcode: { mealType: MealType };
   ProductNotFound: { barcode: string; mealType: MealType };
-  OCRReview: { mealType: MealType };
-  Fridge: { imageUri?: string } | undefined;
+  /** `imageUri` — ảnh nhãn vừa chụp/chọn ở OCRCamera (bắt buộc với bản gọi API). */
+  OCRReview: { mealType: MealType; imageUri: string };
+  /** Ảnh tủ lạnh vừa chụp ở FridgeCamera (1–4 ảnh). */
+  Fridge: { imageUris: string[] };
   /** `returnTo` — biết quay lại camera nào sau khi "Cho phép camera". */
   StatePermission: { mealType?: MealType; returnTo: 'Barcode' | 'Fridge' | 'AICamera' };
 
@@ -124,7 +126,8 @@ export type MainStackParamList = {
   FridgeCamera: undefined;
   OCRCamera: { mealType: MealType };
   VoicePermission: { mealType: MealType };
-  CreateFood: { mealType: MealType };
+  /** `barcode` khi đến từ ProductNotFound — món tạo ra gắn với mã vạch đó. */
+  CreateFood: { mealType: MealType; barcode?: string };
   AddToMealPlan: { recipeId: string };
 
   // Đợt 11 — planner/grocery (design v2, BR-040→042, BR-160→174, BR-260→262).

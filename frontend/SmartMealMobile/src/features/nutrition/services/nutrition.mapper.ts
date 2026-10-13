@@ -373,5 +373,6 @@ export function toCreateFoodRequest(input: NewFoodInput): CreateFoodRequestDto {
     servings: [
       { label: `${formatAmount(input.amount)} ${input.unit}`, grams: weight, isDefault: true },
     ],
+    barcode: input.barcode,
   };
 }
