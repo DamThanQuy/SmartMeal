@@ -26,17 +26,20 @@ public class AuthService : IAuthService
     private readonly ILoginAttemptTracker _attempts;
     private readonly JwtOptions _jwt;
     private readonly AuthOptions _auth;
+    private readonly IGoogleIdTokenValidator _googleTokenValidator;
 
     public AuthService(
         ApplicationDbContext db,
         IJwtTokenService jwtService,
         ILoginAttemptTracker attempts,
+        IGoogleIdTokenValidator googleTokenValidator,
         IOptions<JwtOptions> jwt,
         IOptions<AuthOptions> auth)
     {
         _db = db;
         _jwtService = jwtService;
         _attempts = attempts;
+        _googleTokenValidator = googleTokenValidator;
         _jwt = jwt.Value;
         _auth = auth.Value;
     }
@@ -105,6 +108,71 @@ public class AuthService : IAuthService
 
         var hasSurvey = await _db.HealthProfiles.AnyAsync(hp => hp.UserId == user.Id);
         return ApiResponse<AuthResponseDto>.Ok(await IssueTokensAsync(user, hasSurvey), "Đăng nhập thành công.");
+    }
+
+    public async Task<ApiResponse<AuthResponseDto>> GoogleLoginAsync(GoogleAuthRequestDto dto)
+    {
+        GoogleIdentity identity;
+        try
+        {
+            identity = await _googleTokenValidator.ValidateAsync(dto.IdToken);
+        }
+        catch (GoogleAuthException ex)
+        {
+            var kind = ex.StatusCode switch
+            {
+                401 => ApiErrorKind.Unauthorized,
+                503 => ApiErrorKind.Unavailable,
+                _ => ApiErrorKind.BadRequest
+            };
+            return ApiResponse<AuthResponseDto>.Fail(ex.Message, null, kind);
+        }
+
+        var email = NormalizeEmail(identity.Email);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.GoogleId == identity.Subject);
+        if (user is null)
+        {
+            user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email);
+            if (user is not null && !user.IsEmailVerified)
+            {
+                return ApiResponse<AuthResponseDto>.Fail("Email tài khoản hiện tại chưa được xác minh.", null, ApiErrorKind.Conflict);
+            }
+
+            if (user is null)
+            {
+                user = new User
+                {
+                    Email = email,
+                    FullName = identity.FullName.Trim(),
+                    AvatarUrl = identity.AvatarUrl,
+                    GoogleId = identity.Subject,
+                    IsEmailVerified = true,
+                    PasswordHash = null,
+                    Role = "User"
+                };
+                _db.Users.Add(user);
+            }
+            else
+            {
+                // Liên kết tài khoản theo email đã được Google xác minh.
+                user.GoogleId = identity.Subject;
+                if (string.IsNullOrWhiteSpace(user.AvatarUrl) && !string.IsNullOrWhiteSpace(identity.AvatarUrl))
+                    user.AvatarUrl = identity.AvatarUrl;
+                user.UpdatedAt = DateTime.UtcNow;
+            }
+
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+            {
+                return ApiResponse<AuthResponseDto>.Fail("Tài khoản Google hoặc email đã được liên kết với tài khoản khác.", null, ApiErrorKind.Conflict);
+            }
+        }
+
+        var hasSurvey = await _db.HealthProfiles.AnyAsync(hp => hp.UserId == user.Id);
+        return ApiResponse<AuthResponseDto>.Ok(await IssueTokensAsync(user, hasSurvey), "Đăng nhập Google thành công.");
     }
 
     // ───────────────────────────── Phiên: refresh / đăng xuất ─────────────────────────────

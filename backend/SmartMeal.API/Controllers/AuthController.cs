@@ -36,6 +36,12 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Login([FromBody] LoginRequestDto dto) =>
         this.ToActionResult(await _authService.LoginAsync(dto));
 
+    /// <summary>Đăng nhập hoặc tạo tài khoản bằng Google ID token đã xác minh phía máy chủ.</summary>
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    [HttpPost("google")]
+    public async Task<ActionResult<ApiResponse<AuthResponseDto>>> GoogleLogin([FromBody] GoogleAuthRequestDto dto) =>
+        this.ToActionResult(await _authService.GoogleLoginAsync(dto));
+
     /// <summary>Đổi refresh token (dùng một lần) lấy cặp access + refresh token mới. 401 nếu token sai/đã dùng/hết hạn.</summary>
     [EnableRateLimiting(RateLimitPolicies.Auth)]
     [HttpPost("refresh")]

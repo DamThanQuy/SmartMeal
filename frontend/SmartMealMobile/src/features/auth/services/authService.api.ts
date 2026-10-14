@@ -6,6 +6,7 @@ import type {
   DeleteAccountRequestDto,
   ForgotPasswordRequestDto,
   LoginRequestDto,
+  GoogleAuthRequestDto,
   OtpPurposeDto,
   RegisterRequestDto,
   ResendOtpRequestDto,
@@ -35,6 +36,12 @@ export const authApiService: Partial<typeof authMockService> = {
       email: payload.email.trim(),
       password: payload.password,
     });
+    await saveSessionTokens(dto);
+    return { user: fromUserDto(dto.user) };
+  },
+
+  async loginWithGoogle(payload: GoogleAuthRequestDto) {
+    const dto = await api.post<AuthResponseDto, GoogleAuthRequestDto>(ENDPOINTS.auth.google, payload);
     await saveSessionTokens(dto);
     return { user: fromUserDto(dto.user) };
   },
