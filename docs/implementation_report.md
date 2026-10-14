@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Phạm vi | Toàn bộ mục trong [`SmartMeal_FE_API_Gap_Report.md`](SmartMeal_FE_API_Gap_Report.md) và các lỗi của PR #9 ([review](reviews/pr9-gamification-scanner-review.md)) |
-| Nhánh | `main`, từ `1bb95ae`. Đợt 1 đến `c477a29`; đợt 2 (thông báo, chia sẻ bộ sưu tập, xóa tài khoản, chạy BE local) đến commit cuối của `main` |
+| Nhánh | `main`, từ `1bb95ae`. Đợt 1 đến `c477a29`; đợt 2 (thông báo, chia sẻ bộ sưu tập, xóa tài khoản, chạy BE local); đợt 3 bỏ đăng nhập Google (`4778a35`, `4996f3e`) |
 | Hợp đồng API | [`SmartMeal_API_Contract.md`](SmartMeal_API_Contract.md) — đã cập nhật theo code |
 | Trạng thái từng mục | Báo cáo gap, §0 |
 
@@ -11,9 +11,9 @@
 
 | Kiểm tra | Kết quả |
 |---|---|
-| BE — xUnit tích hợp (API thật trên PostgreSQL) | 235/235 qua |
-| FE — `npx jest` | 505 qua (83 test live tự bỏ qua khi không có `LIVE_API_URL`) |
-| FE — test live, gọi BE thật qua HTTP | 83/83 qua |
+| BE — xUnit tích hợp (API thật trên PostgreSQL) | 231/231 qua (sau khi bỏ test Google) |
+| FE — `npx jest` | 501 qua (82 test live tự bỏ qua khi không có `LIVE_API_URL`) |
+| FE — test live, gọi BE thật qua HTTP | 82/82 qua |
 | FE — `npx tsc --noEmit` / `npx expo lint` | Sạch / 0 lỗi (16 cảnh báo cũ, không phát sinh mới) |
 
 Mọi mục P0, P1 và gần hết P2 của báo cáo gap đã xong; đợt 2 làm thêm thông báo trong app, chia sẻ bộ sưu tập bằng liên kết thu hồi được và màn xóa tài khoản. Còn lại (xem §6):
@@ -28,7 +28,7 @@ Mọi mục P0, P1 và gần hết P2 của báo cáo gap đã xong; đợt 2 l�
 Gồm các commit từ `173d948` đến `5479400`, merge vào `main` ở `c899714`:
 
 - Envelope lỗi thống nhất, cấu hình bắt buộc và bí mật không nằm trong git.
-- Auth đầy đủ: refresh token xoay vòng, OTP quên/đổi mật khẩu, khoá đăng nhập, rate limit, Google ID token được xác minh.
+- Auth đầy đủ: refresh token xoay vòng, OTP quên/đổi mật khẩu, khoá đăng nhập, rate limit. Đăng nhập Google từng có (đã sửa để xác minh ID token), sau đó bị bỏ ở đợt 3.
 - Nhật ký ghi cả bữa trong một transaction, có sửa/xoá; nước uống.
 - Hồ sơ sức khỏe lưu ngày sinh và chế độ ăn, sửa được từng phần.
 - Health-sync idempotent.
@@ -75,15 +75,14 @@ Cấu hình mới (đều có giá trị mặc định): `HealthConditionLimits:
 | `9916999`, `890b783` | Bé Mầm, thử thách, huy hiệu, trang phục đọc từ server và gửi `?date=` theo ngày máy. Bỏ `completeChallenge` cục bộ. | C09, F09, PR #9 G1–G5 |
 | `9f926f9`, `2bdd244` | Scanner:<ul><li>mã vạch quét bằng `expo-camera` hoặc nhập tay</li><li>nhãn đọc từ ảnh thật</li><li>tủ lạnh dùng 1–4 ảnh thật, nguyên liệu chờ xác nhận</li><li>cảnh báo lấy từ server; banner demo</li><li>món tạo từ ProductNotFound gắn mã vạch</li></ul> | F06, PR #9 S1–S3, S5 |
 | `7a771ea` | Voice gửi file ghi âm `.m4a` (đã thu bằng `expo-av`). Không nghe ra món thì mở màn "AI chưa nhận diện được". Ghi với `logMethod: 'Voice'`. | §6 Voice |
-| `de9fc1c` | Đăng nhập Google bằng `expo-auth-session`: lấy ID token rồi gửi `/auth/google`. Client ID lấy từ `EXPO_PUBLIC_GOOGLE_{WEB,ANDROID,IOS}_CLIENT_ID`. | C03, F03 |
+| `de9fc1c` | Đăng nhập Google bằng `expo-auth-session`: lấy ID token rồi gửi `/auth/google`. Client ID lấy từ `EXPO_PUBLIC_GOOGLE_{WEB,ANDROID,IOS}_CLIENT_ID`. **Đã bỏ ở đợt 3.** | C03, F03 |
 | `9915e80`, `1b87ae9` | Nhắc nhở cục bộ bằng `expo-notifications`: bữa ăn, nước mỗi 2 giờ, chuỗi ngày. Cài đặt lưu theo tài khoản; lịch được lên lại khi đăng nhập và huỷ khi đăng xuất. | §6 Reminders |
 | `f22c22c`, `c477a29` | Hàng đợi offline:<ul><li>mỗi lần ghi món gửi kèm `Idempotency-Key`</li><li>mất mạng hoặc rớt mạng giữa chừng thì vào hàng đợi lưu bền (AsyncStorage)</li><li>có mạng lại thì gửi lại đúng request cũ, không ghi trùng</li><li>thẻ "Chờ đồng bộ" ở Diary</li></ul>Dùng `@react-native-community/netinfo`. | F12 |
 | `7bcbaa5`, `78c6223` | Hạ tầng test live gửi được multipart thật (ảnh, ghi âm). Sửa test cân nặng phụ thuộc giờ chạy. | — |
 
 Gói mới, đều cài bằng `npx expo install` và tương thích Expo SDK 57:
 
-- `expo-auth-session`
-- `expo-crypto`
+- `expo-auth-session`, `expo-crypto` — đã gỡ ở đợt 3 cùng đăng nhập Google
 - `@react-native-community/netinfo`
 
 ### Đợt 2 (14/10)
@@ -92,8 +91,17 @@ Gói mới, đều cài bằng `npx expo install` và tương thích Expo SDK 57
 |---|---|---|
 | `f64ceb9` | "Chia sẻ" tạo liên kết chỉ đọc có mã `smartmealmobile://shared/collections/<mã>`; bộ sưu tập vẫn riêng tư, "Tắt liên kết" làm liên kết cũ hết hiệu lực. Màn SharedCollection mở từ deep link. | §6 Chia sẻ |
 | `a58312b` | Thông báo đọc từ server:<ul><li>bấm thì đánh dấu đã đọc rồi mở màn liên quan (Pet, Thử thách, Huy hiệu, Đi chợ, Gói của tôi);</li><li>"Đọc hết";</li><li>chấm đỏ ở chuông Dashboard khi có thông báo chưa đọc.</li></ul> | §6 Notifications |
-| `8cf63ac` | Cài đặt → "Xóa tài khoản": xác nhận bằng mật khẩu, hoặc bằng email với tài khoản Google. Thành công thì xóa dữ liệu cục bộ, hàng đợi offline và đăng xuất. | §6 Account |
+| `8cf63ac` | Cài đặt → "Xóa tài khoản": xác nhận bằng mật khẩu, hoặc bằng email với tài khoản không có mật khẩu (tạo bằng Google trước đây). Thành công thì xóa dữ liệu cục bộ, hàng đợi offline và đăng xuất. | §6 Account |
 | `81579b9` | Test unit và live cho ba phần trên. | — |
+
+### Đợt 3 (14/10): bỏ đăng nhập Google
+
+Theo quyết định của nhóm, app chỉ đăng nhập bằng email + mật khẩu.
+
+| Commit | Nội dung |
+|---|---|
+| `4778a35` (BE) | Bỏ phần BE:<ul><li>`POST /auth/google` (giờ trả 404) và bộ xác minh ID token;</li><li>gói `Google.Apis.Auth`, cấu hình `Google:ClientIds`.</li></ul>Giữ cột `Users.GoogleId` để không mất dữ liệu cũ. Tài khoản tạo bằng Google trước đây (`hasPassword = false`) đặt mật khẩu qua "Quên mật khẩu" và xóa tài khoản bằng email. |
+| `4996f3e` (FE) | Bỏ nút Google và đường kẻ "hoặc" ở Welcome/Login/Register, cùng service, hook và cấu hình `EXPO_PUBLIC_GOOGLE_*`. Gỡ `expo-auth-session`, `expo-crypto`. |
 
 ## 4. Cách kiểm chứng lại
 
@@ -126,44 +134,12 @@ npx jest __tests__/live
 
 | Việc | Ở đâu |
 |---|---|
-| Google Sign-In | Xem §5.1. |
 | AI thật | `Gemini:ApiKey`. Khi thiếu, ở Development mọi kết quả AI là dữ liệu mẫu có `isDemo: true` (app hiện banner demo); ở môi trường khác trả `503`. |
 | Thanh toán | Chưa tích hợp cổng thật: URL thanh toán là sandbox. Cần đặt `Subscription:WebhookSecret` và nối cổng thanh toán. |
 | Nhắc nhở | Không cần BE. Trên Android 13 trở lên, lần đầu bật nhắc nhở app sẽ xin quyền thông báo. |
-
-### 5.1 Bật đăng nhập Google
-
-Client ID phải do chủ dự án tạo bằng tài khoản Google của mình trên [Google Cloud Console](https://console.cloud.google.com/apis/credentials). Client ID là thông tin công khai (không phải secret), nhưng **không commit file `.env`**.
-
-1. **Màn hình xin quyền:** tạo project, rồi vào *OAuth consent screen*.
-   - Chọn *External*, điền tên app và email hỗ trợ.
-   - Scope chỉ cần `openid`, `email`, `profile`.
-   - Khi app còn ở chế độ *Testing*, thêm các email sẽ thử vào *Test users*.
-2. **Web client** — dùng được ngay, không cần Dev Client:
-   - *Credentials → Create credentials → OAuth client ID → Web application*.
-   - *Authorized JavaScript origins*: `http://localhost:8081`.
-   - *Authorized redirect URIs*: `http://localhost:8081` và `http://localhost:8081/`.
-   - Thử bằng `npx expo start --web` rồi mở `http://localhost:8081`.
-3. **Android/iOS client:** cần `android.package` và `ios.bundleIdentifier` trong `app.json`, hiện chưa khai báo. Android còn cần SHA-1 của khóa ký bản build, nên chỉ làm được khi chuyển sang Dev Client hoặc EAS Build. Expo Go không đăng ký được redirect riêng cho Google.
-4. **Khai báo ID cho FE**, trong `frontend/SmartMealMobile/.env`, rồi chạy lại `npx expo start --clear`:
-
-   ```
-   EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=<web-client-id>.apps.googleusercontent.com
-   EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=     # khi có bản build Android
-   EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=         # khi có bản build iOS
-   ```
-
-5. **Khai báo ID cho BE:** đặt **cùng các ID đó** để server chấp nhận ID token, phân tách bằng dấu phẩy, trong `backend/.env`:
-
-   ```
-   Google__ClientIds=<web-client-id>.apps.googleusercontent.com
-   ```
-
-   Thiếu ID thì `POST /auth/google` trả 503. Sai audience thì trả 401.
 
 ## 6. Còn lại
 
 - **F13 — Health Connect/HealthKit:** cần thư viện native, tức phải chuyển từ Expo Go sang Dev Client. `structure_system.md` §2/§11 yêu cầu nhóm quyết định trước. API `POST /health-sync/steps-and-calories` đã sẵn sàng.
 - **Push từ server:** Expo Go trên Android không nhận push từ xa. Thông báo hiện xem trong app; nhắc nhở dùng thông báo cục bộ.
 - **Cổng thanh toán thật (VNPay/MoMo):** cần mã merchant và secret của nhóm. Hiện Pro kích hoạt qua webhook có chữ ký hoặc `activate-mock` ở Development.
-- **Google Sign-In trên Android/iOS:** xem §5.1, cần bản build.

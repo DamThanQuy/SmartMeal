@@ -63,9 +63,9 @@ Người dùng đang có gói Premium còn hiệu lực.
 
 ## 4. Authentication
 
-* **BR-010 — Đăng ký:** Hỗ trợ Email/Password + OTP Verification hoặc Google Sign-In.
+* **BR-010 — Đăng ký:** Hỗ trợ Email/Password + OTP Verification. *(Đã bỏ đăng nhập Google ngày 14/10/2026 theo quyết định của nhóm — chỉ đăng nhập bằng email + mật khẩu.)*
 * **BR-011 — Email duy nhất:** Một email chỉ liên kết với một tài khoản SmartMeal.
-* **BR-012 — Google Account:** Một Google Account chỉ liên kết với một tài khoản SmartMeal.
+* ~~**BR-012 — Google Account:** Một Google Account chỉ liên kết với một tài khoản SmartMeal.~~ *(Không còn áp dụng: đã bỏ đăng nhập Google.)*
 * **BR-013 — Đăng nhập:** Yêu cầu tài khoản tồn tại, đúng thông tin xác thực và không bị khóa.
 * **BR-014 — Session Management:** Cấp Access/Refresh Token sau khi đăng nhập thành công.
 
@@ -152,7 +152,7 @@ $$\text{Safety / Allergy} \longrightarrow \text{Health Restrictions} \longrighta
 ## 13. Phân chia phạm vi (MVP Scope)
 
 ### 🔹 Core MVP (Bắt buộc phải hoàn thành)
-* **Auth:** Register, Login, OTP, Google Sign-In.
+* **Auth:** Register, Login, OTP.
 * **Profile & Health:** User Profile, Health Profile, Tính BMI/BMR/TDEE & Nutrition Target.
 * **Diary:** Dashboard tổng quan, Ghi nhật ký bữa ăn thủ công (Manual Food Logging).
 * **Recipe & Meal Plan:** Tìm kiếm công thức, Favorites, Lên thực đơn tuần, Tạo danh sách mua sắm (Grocery List).

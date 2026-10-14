@@ -21,7 +21,6 @@ SmartMeal là một ứng dụng di động toàn diện giúp người dùng qu
 #### 1. Đăng nhập & Đăng ký
 - Đăng nhập bằng tài khoản (username/password)
 - Đăng ký tài khoản mới với xác thực OTP
-- Đăng nhập bằng Google
 - Quản lý avatar và thông tin cá nhân
 
 #### 2. Dashboard
@@ -93,7 +92,7 @@ SmartMeal được xây dựng trên nền tảng công nghệ hiện đại và
 | Database | PostgreSQL |
 | State Management | Zustand + TanStack Query |
 | HTTP Client | Axios |
-| Authentication | JWT + Google Sign-In |
+| Authentication | JWT, đăng nhập email + mật khẩu |
 | Navigation | React Navigation |
 | Form | React Hook Form | Zod |
 | Charts | react-native-gifted-charts |

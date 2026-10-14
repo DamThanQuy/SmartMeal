@@ -45,7 +45,7 @@
 | **Mobile App** | React Native 0.86 + Expo SDK 57 (TypeScript), TanStack Query, Zustand, Axios, NativeWind, React Hook Form + Zod, AsyncStorage / expo-secure-store |
 | **Backend API** | ASP.NET Core (.NET 9), Entity Framework Core 9, RESTful Architecture |
 | **Database** | PostgreSQL 16 |
-| **Authentication** | JWT (JSON Web Token), Google Sign-In, Email/SMS OTP |
+| **Authentication** | JWT + refresh token, đăng nhập email + mật khẩu, OTP qua email (quên mật khẩu) |
 | **AI & Machine Learning** | Google Gemini (ảnh món ăn, nhãn dinh dưỡng, tủ lạnh, giọng nói) qua backend; quét mã vạch bằng `expo-camera` |
 | **Health Integration** | Google Health Connect / Apple HealthKit |
 | **DevOps / Containers** | Docker & Docker Compose |

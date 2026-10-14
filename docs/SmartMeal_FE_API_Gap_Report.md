@@ -12,9 +12,9 @@ Toàn bộ phần dưới (mục 1–10) giữ nguyên như bản rà soát ngà
 
 Tất cả đã được kiểm chứng như sau:
 
-- **BE:** 235 test xUnit qua, chạy trên PostgreSQL thật.
-- **FE:** 505 test Jest qua.
-- **Test live (83 test):** FE gọi BE thật qua HTTP với DB thật. Gồm auth (cả xóa tài khoản), hồ sơ sức khỏe, nhật ký, nước, AI, scanner, công thức/bộ sưu tập (cả liên kết chia sẻ), thực đơn/đi chợ, gamification, thông báo, premium và health sync.
+- **BE:** 231 test xUnit qua, chạy trên PostgreSQL thật.
+- **FE:** 501 test Jest qua.
+- **Test live (82 test):** FE gọi BE thật qua HTTP với DB thật. Gồm auth (cả xóa tài khoản), hồ sơ sức khỏe, nhật ký, nước, AI, scanner, công thức/bộ sưu tập (cả liên kết chia sẻ), thực đơn/đi chợ, gamification, thông báo, premium và health sync.
 
 **Ký hiệu:** ✅ đã xong · ➖ không làm, kèm lý do · ⏳ chưa làm.
 
@@ -28,7 +28,7 @@ Tất cả đã được kiểm chứng như sau:
 | B18 | ➖ | Chưa có dữ liệu đánh giá thật nên FE ẩn sao, không hiển thị điểm 0 giả. |
 | C01 | ✅ | Bỏ fallback ghi từng món; cả bữa ghi trong một transaction `log/batch` (`ce2e822`). |
 | C02 | ✅ | Lọc dị ứng ở BE (recipes, pantry, auto-generate). `assign` từ chối món gây dị ứng: `400 allergen_conflict` (`1f584d5`). |
-| C03 | ✅ | BE xác minh Google ID token (`Google:ClientIds`). FE lấy ID token bằng `expo-auth-session` (`de9fc1c`), xem F03. |
+| C03 | ➖ | Đã bỏ đăng nhập Google (quyết định ngày 14/10/2026). BE bỏ `POST /auth/google` (`4778a35`). Trước đó BE đã được sửa để xác minh ID token. |
 | C04 | ✅ | Pro chỉ kích hoạt khi webhook có chữ ký xác nhận; `activate-mock` chỉ chạy ở Development. Lưu ý: **chưa tích hợp cổng thanh toán thật**, URL thanh toán là sandbox. |
 | C05, C06 | ✅ | Health-sync thay thế theo `(ngày, nguồn)`, không cộng dồn. AI gắn cờ `isDemo` cho dữ liệu mẫu; khi lỗi trả `502/503`. |
 | C07 | ✅ | Danh sách đi chợ theo kỳ và trạng thái "đã cũ". `POST /grocery/complete` chạy trong một transaction: lưu chi phí thật, giữ món chưa mua, cộng thực đơn kỳ sau (`4b38519`). |
@@ -36,7 +36,7 @@ Tất cả đã được kiểm chứng như sau:
 | C09 | ✅ | XP/thử thách/huy hiệu do server tính từ dữ liệu thật, mỗi sự kiện chỉ cộng một lần; streak = 0 khi chưa hoạt động. FE đọc một nguồn và gửi `?date=` (`9916999`). |
 | C10 | ✅ | `GET /foods?scope=`, tìm không dấu (foods và recipes), phân trang và lọc `/recipes`, `weight-history?days=` (`0952465`). |
 | F01, F02 | ✅ | Yêu thích và bộ sưu tập đọc/ghi server (tạo, đổi tên, thêm/bớt món, công khai, xóa); deep link `collections/:id` (`2ac7b37`). |
-| F03 | ✅ | Nút Google ở Welcome/Login/Register (`de9fc1c`). Chưa có Client ID thì nút báo "chưa cấu hình". Android/iOS cần Dev Client. |
+| F03 | ➖ | Đã bỏ nút Google ở Welcome/Login/Register (`4996f3e`). Chỉ còn đăng nhập/đăng ký bằng email + mật khẩu. |
 | F04, F05 | ✅ | Thực đơn giữ `mealPlanId`, đánh dấu đã nấu, xóa món; đi chợ tự sinh khi rỗng, có banner "đã cũ" và hoàn tất mua sắm (`64c9060`, `13a1e07`). |
 | F06 | ✅ | Scanner dùng dữ liệu thật:<ul><li>mã vạch quét bằng `expo-camera` hoặc nhập tay, tra CSDL</li><li>nhãn đọc từ ảnh chụp</li><li>tủ lạnh nhận diện từ ảnh thật</li><li>cảnh báo lấy từ server</li></ul>Bỏ mã, số liệu và ảnh mẫu cố định (`9f926f9`). |
 | F07 | ✅ | SlotPicker tab Yêu thích/Bộ sưu tập dùng dữ liệu server (`2ac7b37`). |

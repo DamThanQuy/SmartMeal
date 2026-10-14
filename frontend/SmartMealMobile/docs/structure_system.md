@@ -153,7 +153,7 @@ Mỗi nghiệp vụ chính là một feature:
 
 | Feature | Trách nhiệm |
 |---|---|
-| `auth` | Đăng nhập, đăng ký, OTP, Google Sign-In, session |
+| `auth` | Đăng nhập, đăng ký (email + mật khẩu), OTP, session |
 | `health` | Health Profile, BMI, BMR, TDEE, dị ứng, bệnh lý, cân nặng |
 | `dashboard` | Tổng quan sức khỏe, calories, macros, quick actions |
 | `nutrition` | Nhật ký ăn uống, calories, macros, biểu đồ |

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Cập nhật | 2026-10-14 (bổ sung thông báo, chia sẻ bộ sưu tập, `hasPassword`) |
+| Cập nhật | 2026-10-14 (bổ sung thông báo, chia sẻ bộ sưu tập, `hasPassword`; **bỏ đăng nhập Google** — chỉ còn email + mật khẩu) |
 | Nguồn | Swagger của backend (`/swagger/v1/swagger.json`, bật ở môi trường Development) + chú thích XML và thuộc tính trong `SmartMeal.API/Controllers` và `SmartMeal.Application/DTOs` @ `cc98da0` (bổ sung: thông báo trong app, liên kết chia sẻ bộ sưu tập, `UserDto.hasPassword`; scan-label, voice-log/audio, grocery/complete, Idempotency-Key, tra mã vạch bằng CSDL, ngưỡng bệnh lý) |
 | Thay thế | Bản V2.0 (2026-09-26) đã cũ: nhiều endpoint ghi "chưa làm" nhưng đã có, đường dẫn và field khác |
 | Nguồn sự thật | **Code backend.** Tài liệu này được sinh lại từ code mỗi khi API đổi; nếu lệch thì code thắng |
@@ -27,7 +27,6 @@
 |---|---|---|---|---|
 | Xác thực & tài khoản | POST | `/api/auth/register` | Công khai | Đăng ký bằng email + mật khẩu; trả cặp access/refresh token. |
 | Xác thực & tài khoản | POST | `/api/auth/login` | Công khai | Đăng nhập |
-| Xác thực & tài khoản | POST | `/api/auth/google` | Công khai | Đăng nhập Google bằng Google ID token (server tự xác minh chữ ký và audience). |
 | Xác thực & tài khoản | POST | `/api/auth/refresh` | Công khai | Đổi refresh token (dùng một lần) lấy cặp access + refresh token mới |
 | Xác thực & tài khoản | POST | `/api/auth/logout` | Công khai | Đăng xuất: thu hồi refresh token |
 | Xác thực & tài khoản | POST | `/api/auth/forgot-password` | Công khai | Gửi OTP đặt lại mật khẩu tới email |
@@ -133,9 +132,9 @@
 
 > Chưa cấu hình `Smtp:Host` thì không gửi email thật: backend chỉ ghi log, và ở Development ghi cả nội dung có mã OTP (`[DEV EMAIL …]`) để dev thử.
 
-> `POST /auth/google` nhận **Google ID token**; server xác minh chữ ký, `aud` thuộc `Google:ClientIds` (phân tách bằng dấu phẩy), `exp` và `email_verified`. Chưa cấu hình client id thì endpoint trả `503`.
+> Đăng nhập chỉ bằng **email + mật khẩu**. Đăng nhập Google đã bỏ ngày 14/10/2026 (`POST /auth/google` không còn, trả 404); tài khoản tạo bằng Google trước đó không có mật khẩu (`hasPassword = false`) và đặt mật khẩu qua "Quên mật khẩu".
 
-> `DELETE /auth/account` cần `password` hiện tại; tài khoản không có mật khẩu (chỉ đăng nhập Google) phải gửi `confirmEmail` đúng bằng email của chính mình. Sai mật khẩu nhiều lần cũng bị khóa tạm thời (trả 400 chứ không phải 401, để app không hiểu nhầm là phiên hết hạn). Giao dịch thanh toán được giữ lại ở dạng ẩn danh (BR-271).
+> `DELETE /auth/account` cần `password` hiện tại; tài khoản không có mật khẩu (tạo bằng đăng nhập Google trước đây) phải gửi `confirmEmail` đúng bằng email của chính mình. Sai mật khẩu nhiều lần cũng bị khóa tạm thời (trả 400 chứ không phải 401, để app không hiểu nhầm là phiên hết hạn). Giao dịch thanh toán được giữ lại ở dạng ẩn danh (BR-271).
 
 #### `POST /api/auth/register`
 
@@ -151,14 +150,6 @@
 
 - **Quyền**: Công khai · giới hạn tần suất (policy `auth`)
 - **Body (JSON)**: [LoginRequestDto](#schema-loginrequestdto)
-- **Response `data`**: [AuthResponseDto](#schema-authresponsedto)
-
-#### `POST /api/auth/google`
-
-Đăng nhập Google bằng Google ID token (server tự xác minh chữ ký và audience).
-
-- **Quyền**: Công khai · giới hạn tần suất (policy `auth`)
-- **Body (JSON)**: [GoogleLoginRequestDto](#schema-googleloginrequestdto)
 - **Response `data`**: [AuthResponseDto](#schema-authresponsedto)
 
 #### `POST /api/auth/refresh`
@@ -242,7 +233,7 @@ Tải ảnh đại diện (multipart, trường `file`; JPG/PNG/WebP, tối đa 
 
 #### `DELETE /api/auth/account`
 
-Xóa vĩnh viễn tài khoản và dữ liệu (BR-271). Cần `password` (hoặc `confirmEmail` với tài khoản Google).
+Xóa vĩnh viễn tài khoản và dữ liệu (BR-271). Cần `password`; tài khoản không có mật khẩu (tạo bằng đăng nhập Google trước đây) gửi `confirmEmail`.
 
 - **Quyền**: Cần đăng nhập
 - **Body (JSON)**: [DeleteAccountRequestDto](#schema-deleteaccountrequestdto)
@@ -1136,7 +1127,6 @@ Khóa bí mật chỉ đặt qua biến môi trường (`Muc__Khoa`, dùng `__` 
 | `Auth:OtpMinutes` / `Auth:OtpMaxAttempts` / `Auth:OtpResendCooldownSeconds` / `Auth:ResetTokenMinutes` | 5 / 5 / 60 / 10 | Chính sách OTP và mã đặt lại mật khẩu. |
 | `RateLimiting:AuthPermitsPerMinute` | 30 | Số request/phút/IP cho nhóm endpoint đăng nhập/OTP (policy `auth`). |
 | `RateLimiting:ScannerPermitsPerMinute` | 20 | Số request/phút/người dùng cho `check-safety` và `scan-label` (policy `scanner`). |
-| `Google:ClientIds` | (trống) | Danh sách Google OAuth Client ID (web/Android/iOS), phân tách bằng dấu phẩy, để xác minh `aud` của ID token. Trống thì `POST /auth/google` trả 503. |
 | `Smtp:Host`, `Port`, `EnableSsl`, `User`, `Password`, `From`, `FromName` | (trống) | Gửi email OTP. `Host` trống = chỉ ghi log (Development in cả mã OTP). |
 | `Storage:Root` / `Storage:PublicBaseUrl` / `Storage:MaxAvatarBytes` | `uploads` cạnh ứng dụng / theo request / 2 MB | Nơi lưu và URL công khai của ảnh đại diện. Chạy Docker cần gắn volume vào `Storage:Root`. |
 | `Subscription:AllowMockActivation` | (trống = chỉ Development) | Cho phép `activate-mock`. Môi trường thật phải để tắt. |
@@ -1463,7 +1453,7 @@ Người dùng tự nhập một món khi không tìm thấy. Mọi số liệu 
 <a id="schema-deleteaccountrequestdto"></a>
 #### DeleteAccountRequestDto
 
-Xóa tài khoản: tài khoản có mật khẩu gửi `password`; tài khoản chỉ đăng nhập Google gửi `confirmEmail` (đúng email của mình).
+Xóa tài khoản: tài khoản có mật khẩu gửi `password`; tài khoản không có mật khẩu (tạo bằng đăng nhập Google trước đây) gửi `confirmEmail` (đúng email của mình).
 
 | Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
 |---|---|---|---|---|
@@ -1648,15 +1638,6 @@ Một món ăn cần ghi vào nhật ký (dùng chung cho ghi đơn lẻ và ghi
 | `startDate` | date (yyyy-MM-dd) | có |  |  |
 | `endDate` | date (yyyy-MM-dd) | có |  |  |
 | `clearExisting` | bool |  |  | true (mặc định) = thay danh sách đã tạo từ thực đơn trước đó bằng danh sách mới; các món người dùng tự thêm được giữ. false = giữ mọi dòng hiện có và cộng dồn vào dòng chưa mua cùng tên/đơn vị (chuyển phần còn lại sang tuần mới) — chỉ nên dùng khi tạo cho một khoảng ngày khác, vì tạo lại cùng khoảng sẽ cộng đôi. |
-
-<a id="schema-googleloginrequestdto"></a>
-#### GoogleLoginRequestDto
-
-Đăng nhập Google: gửi Google ID token để server tự xác minh (không tin email/id do client gửi).
-
-| Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
-|---|---|---|---|---|
-| `idToken` | string | có | ≤8192 ký tự |  |
 
 <a id="schema-grocerycategorydto"></a>
 #### GroceryCategoryDto
@@ -2207,7 +2188,7 @@ Cập nhật từng phần hồ sơ đã có. Trường không gửi (null) gi�
 | `proExpiresAt` | datetime (ISO 8601 UTC)? |  |  | Hạn dùng gói Pro (UTC); null nếu chưa có hoặc không có hạn. |
 | `role` | string? |  |  |  |
 | `hasCompletedSurvey` | bool |  |  |  |
-| `hasPassword` | bool |  |  | Tài khoản có mật khẩu (đăng ký bằng email). false = chỉ đăng nhập Google: xóa tài khoản xác nhận bằng email thay vì mật khẩu, và không có "đổi mật khẩu". |
+| `hasPassword` | bool |  |  | Tài khoản có mật khẩu. false = tài khoản tạo bằng đăng nhập Google trước đây (app đã bỏ đăng nhập Google): đặt mật khẩu qua "Quên mật khẩu"; xóa tài khoản xác nhận bằng email thay vì mật khẩu. |
 
 <a id="schema-verifyotprequestdto"></a>
 #### VerifyOtpRequestDto

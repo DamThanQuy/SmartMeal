@@ -228,7 +228,7 @@ Sau khi BE đã vào `main`, mọi màn dưới đây gọi API thật khi `EXPO
 
 | Màn | Hành vi hiện tại |
 |---|---|
-| `WelcomeScreen`, `LoginScreen`, `RegisterScreen` | Nút Google lấy ID token qua `expo-auth-session` rồi gửi `POST /auth/google` (server xác minh token). Nếu thiếu `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID` của nền tảng đang chạy, nút báo "chưa cấu hình". Android/iOS cần Dev Client. |
+| `WelcomeScreen`, `LoginScreen`, `RegisterScreen` | **Cập nhật 14/10: đã bỏ đăng nhập Google** — chỉ còn email + mật khẩu (bỏ nút Google và đường kẻ "hoặc"). Ghi chú cũ: Nút Google lấy ID token qua `expo-auth-session` rồi gửi `POST /auth/google` (server xác minh token). Nếu thiếu `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID` của nền tảng đang chạy, nút báo "chưa cấu hình". Android/iOS cần Dev Client. |
 | `BarcodeScreen` | Quét EAN/UPC bằng `expo-camera` (chạy trên Expo Go) hoặc nhập mã tay. Mã được tra qua `check-safety {barcode}` trong CSDL. Không có sản phẩm thì sang `ProductNotFound` với đúng mã vừa quét. Cảnh báo dị ứng và vượt ngưỡng lấy từ server (`SafetyAlertList`). Món được ghi với `logMethod: 'Barcode'`. |
 | `ProductNotFoundScreen` → `CreateFoodScreen` | Món tự tạo được gắn mã vạch, nên lần quét sau sẽ tìm thấy. |
 | `OCRCameraScreen`, `OCRReviewScreen` | Chụp hoặc chọn ảnh nhãn rồi gửi `POST /ai/scan-label`. Trường nhãn không ghi để trống và đánh dấu "không rõ"; có banner demo. Chỉ lưu được khi đã có khẩu phần và calo; ghi với `logMethod: 'Ocr'`. |
