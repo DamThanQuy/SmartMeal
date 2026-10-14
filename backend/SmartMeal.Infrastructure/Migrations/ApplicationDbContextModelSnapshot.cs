@@ -953,10 +953,20 @@ namespace SmartMeal.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("ShareToken")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("SharedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ShareToken")
+                        .IsUnique();
 
                     b.HasIndex("UserId");
 
@@ -1311,6 +1321,51 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.HasIndex("IngredientId");
 
                     b.ToTable("UserFavoriteFoods");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.UserNotification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DedupKey")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.HasIndex("UserId", "DedupKey")
+                        .IsUnique();
+
+                    b.ToTable("UserNotifications");
                 });
 
             modelBuilder.Entity("SmartMeal.Domain.Entities.WaterLog", b =>
@@ -1794,6 +1849,17 @@ namespace SmartMeal.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Ingredient");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.UserNotification", b =>
+                {
+                    b.HasOne("SmartMeal.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });

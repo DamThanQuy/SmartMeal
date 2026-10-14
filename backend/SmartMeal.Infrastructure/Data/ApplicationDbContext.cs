@@ -46,6 +46,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<UserChallenge> UserChallenges => Set<UserChallenge>();
     public DbSet<RecipeCollection> RecipeCollections => Set<RecipeCollection>();
     public DbSet<CollectionRecipe> CollectionRecipes => Set<CollectionRecipe>();
+    public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -128,6 +129,25 @@ public class ApplicationDbContext : DbContext
             entity.Property(r => r.ResponseContentType).HasMaxLength(100);
             entity.HasIndex(r => r.CreatedAt);
             entity.HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Thông báo: mỗi (người dùng, sự kiện) một dòng; index theo thời gian để liệt kê mới → cũ và dọn bản ghi cũ.
+        modelBuilder.Entity<UserNotification>(entity =>
+        {
+            entity.Property(n => n.Category).HasMaxLength(30);
+            entity.Property(n => n.Title).HasMaxLength(200);
+            entity.Property(n => n.Body).HasMaxLength(500);
+            entity.Property(n => n.DedupKey).HasMaxLength(120);
+            entity.HasIndex(n => new { n.UserId, n.DedupKey }).IsUnique();
+            entity.HasIndex(n => new { n.UserId, n.CreatedAt });
+            entity.HasOne(n => n.User).WithMany().HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Liên kết chia sẻ bộ sưu tập: mã ngẫu nhiên, duy nhất (NULL = chưa chia sẻ).
+        modelBuilder.Entity<RecipeCollection>(entity =>
+        {
+            entity.Property(c => c.ShareToken).HasMaxLength(64);
+            entity.HasIndex(c => c.ShareToken).IsUnique();
         });
 
         modelBuilder.Entity<GroceryTrip>(entity =>

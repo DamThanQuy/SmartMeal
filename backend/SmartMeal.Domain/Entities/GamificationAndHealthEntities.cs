@@ -114,6 +114,13 @@ public class RecipeCollection
     public bool IsPublic { get; set; } = false;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Mã của liên kết chia sẻ (chỉ đọc, xem được cả khi bộ sưu tập riêng tư). Null = chưa chia sẻ hoặc đã thu hồi; tạo
+    /// mã mới thì liên kết cũ hết hiệu lực.
+    /// </summary>
+    public string? ShareToken { get; set; }
+    public DateTime? SharedAt { get; set; }
+
     public ICollection<CollectionRecipe> CollectionRecipes { get; set; } = new List<CollectionRecipe>();
 }
 
