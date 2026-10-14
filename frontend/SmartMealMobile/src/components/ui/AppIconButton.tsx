@@ -1,6 +1,7 @@
 import React from 'react';
-import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import { shadows } from '@/theme/shadows';
+import { AnimatedPressable } from './AnimatedPressable';
 
 export type AppIconButtonVariant = 'default' | 'soft' | 'elevated';
 export type AppIconButtonShape = 'circle' | 'square';
@@ -40,17 +41,19 @@ export function AppIconButton({
   ...rest
 }: AppIconButtonProps) {
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled }}
       disabled={disabled}
+      pressScale={0.9}
+      pressStiffness={380}
       // 44x44 — touch target tối thiểu (docs/.claude/rules/typescript-mobile.md, Accessibility).
       className={`min-h-[44px] min-w-[44px] items-center justify-center ${SHAPE_CLASSNAME[shape]} ${VARIANT_CLASSNAME[variant]} ${className}`}
       style={[variant === 'elevated' ? shadows.card : undefined, style]}
       {...rest}
     >
       {icon}
-    </Pressable>
+    </AnimatedPressable>
   );
 }

@@ -26,10 +26,10 @@ export interface UserDto {
   avatarUrl: string | null;
   /** Quyền Pro còn hiệu lực — nguồn đáng tin duy nhất (claim trong token sẽ cũ sau khi nâng cấp). */
   isPro: boolean;
-  /** Free | Premium | Expired | Cancelled. */
-  subscriptionStatus: string;
-  /** Hạn dùng gói Pro (ISO 8601 UTC); null nếu chưa có. */
-  proExpiresAt: string | null;
+  /** Free | Premium | Expired | Cancelled; không có trong UserDto backend hiện tại. */
+  subscriptionStatus?: string;
+  /** Hạn dùng gói Pro (ISO 8601 UTC); chưa có trong UserDto backend hiện tại. */
+  proExpiresAt?: string | null;
   role: string;
   /** BE tính bằng `user.HealthProfile != null`. */
   hasCompletedSurvey: boolean;
@@ -40,9 +40,10 @@ export interface AuthResponseDto {
   token: string;
   /** ISO 8601 UTC. */
   expiresAt: string;
-  /** Dùng một lần ở POST /auth/refresh để lấy cặp token mới. */
-  refreshToken: string;
-  refreshTokenExpiresAt: string;
+  /** Chỉ có khi backend cấp refresh token; backend hiện tại chưa trả trường này. */
+  refreshToken?: string | null;
+  /** Có khi backend cấp refresh token; chưa được backend hiện tại trả về. */
+  refreshTokenExpiresAt?: string | null;
   user: UserDto;
 }
 

@@ -1,6 +1,12 @@
-import React from 'react';
-import { Pressable, View, type PressableProps } from 'react-native';
+import React, { useEffect } from 'react';
+import { Pressable, type PressableProps } from 'react-native';
 import { shadows } from '@/theme/shadows';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
 export interface AppSwitchProps extends Omit<PressableProps, 'children' | 'onPress' | 'disabled'> {
   checked: boolean;
@@ -23,6 +29,22 @@ export function AppSwitch({
   className = '',
   ...rest
 }: AppSwitchProps) {
+  const thumbTranslateX = useSharedValue(0);
+  const thumbScale = useSharedValue(1);
+
+  // Animate thumb translate and scale based on checked state.
+  useEffect(() => {
+    thumbTranslateX.value = withTiming(checked ? 22 : 0, { duration: 140 });
+    thumbScale.value = withSpring(checked ? 1.05 : 1, { damping: 12 });
+  }, [checked, thumbTranslateX, thumbScale]);
+
+  const animatedThumbStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: thumbTranslateX.value },
+      { scale: thumbScale.value },
+    ],
+  }));
+
   return (
     <Pressable
       accessibilityRole="switch"
@@ -34,10 +56,13 @@ export function AppSwitch({
       className={`h-[28px] w-[48px] flex-row rounded-full p-[3px] ${
         checked ? 'bg-primary' : 'bg-border'
       } ${disabled ? 'opacity-40' : ''} ${className}`}
-      style={{ alignItems: 'center', justifyContent: checked ? 'flex-end' : 'flex-start' }}
+      style={{ alignItems: 'center' }}
       {...rest}
     >
-      <View className="h-[22px] w-[22px] rounded-full bg-surface" style={shadows.card} />
+      <Animated.View
+        className="h-[22px] w-[22px] rounded-full bg-surface"
+        style={[shadows.card, animatedThumbStyle]}
+      />
     </Pressable>
   );
 }

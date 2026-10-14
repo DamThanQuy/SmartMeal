@@ -13,6 +13,7 @@ import { useAuthStore } from '@/state/auth/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { AuthGoogleButton } from '../components/AuthGoogleButton';
 import { AuthSocialDivider } from '../components/AuthSocialDivider';
+import { useGoogleLogin } from '../hooks/useGoogleLogin';
 import { useRegister } from '../hooks/useRegister';
 
 const registerSchema = z
@@ -43,6 +44,21 @@ export function RegisterScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const registerMutation = useRegister();
   const setPendingUser = useAuthStore(state => state.setPendingUser);
+  const login = useAuthStore(state => state.login);
+
+  const handleSessionOpen = ({ user, needsSurvey }: { user: import('@/state/auth/authStore').AuthUser; needsSurvey: boolean }) => {
+    if (!needsSurvey) {
+      login(user);
+      return;
+    }
+    setPendingUser(user);
+    navigation.reset({
+      index: 0,
+      routes: [{ name: AUTH_ROUTES.HEALTH_PROFILE_BASIC_INFO }],
+    });
+  };
+
+  const googleLogin = useGoogleLogin({ onSuccess: handleSessionOpen });
   const {
     control,
     handleSubmit,
@@ -206,7 +222,21 @@ export function RegisterScreen({ navigation }: Props) {
             loading={registerMutation.isPending}
           />
           <AuthSocialDivider />
-          <AuthGoogleButton label="Đăng ký với Google" onPress={() => {}} />
+          <AuthGoogleButton
+            label="Đăng ký với Google"
+            onPress={googleLogin.start}
+            disabled={googleLogin.isLoading || googleLogin.isPrompting}
+          />
+          {googleLogin.isLoading ? (
+            <AppText variant="caption" color="secondary" className="text-center">
+              Đang kết nối Google…
+            </AppText>
+          ) : null}
+          {googleLogin.error ? (
+            <AppText variant="caption" color="error" className="text-center">
+              {googleLogin.error.message}
+            </AppText>
+          ) : null}
         </View>
 
         <View className="flex-row items-center justify-center gap-xs">

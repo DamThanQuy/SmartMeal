@@ -3,6 +3,12 @@ import React from 'react';
 import { Pressable, View, type PressableProps } from 'react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { AppText } from './AppText';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
 export interface AppCheckboxProps
   extends Omit<PressableProps, 'children' | 'onPress'> {
@@ -28,6 +34,18 @@ export function AppCheckbox({
   ...rest
 }: AppCheckboxProps) {
   const { colors } = useTheme();
+  const checkScale = useSharedValue(0.8);
+
+  // Animate check scale based on checked state.
+  if (checked && checkScale.value < 1) {
+    checkScale.value = withSpring(1, { damping: 12 });
+  } else if (!checked && checkScale.value > 0.8) {
+    checkScale.value = withTiming(0.8, { duration: 100 });
+  }
+
+  const animatedCheckStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: checkScale.value }],
+  }));
 
   return (
     <Pressable
@@ -44,7 +62,11 @@ export function AppCheckbox({
           checked ? 'border-primary bg-primary' : 'border-border bg-surface'
         }`}
       >
-        {checked ? <Check size={14} color={colors.onPrimary} strokeWidth={3} /> : null}
+        {checked ? (
+          <Animated.View style={animatedCheckStyle} className="items-center justify-center">
+            <Check size={14} color={colors.onPrimary} strokeWidth={3} />
+          </Animated.View>
+        ) : null}
       </View>
       {label ? (
         <AppText variant="body" color="secondary" className="flex-1">

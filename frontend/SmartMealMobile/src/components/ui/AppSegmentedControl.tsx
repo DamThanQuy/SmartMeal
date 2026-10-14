@@ -1,7 +1,8 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { shadows } from '@/theme/shadows';
 import { AppText } from './AppText';
+import { AnimatedPressable } from './AnimatedPressable';
 
 export interface AppSegmentedControlOption<T extends string> {
   id: T;
@@ -30,13 +31,14 @@ export function AppSegmentedControl<T extends string>({
       {options.map(option => {
         const selected = option.id === value;
         return (
-          <Pressable
+          <AnimatedPressable
             key={option.id}
             accessibilityRole="button"
             accessibilityLabel={option.label}
             accessibilityState={{ selected }}
             onPress={() => onChange(option.id)}
             style={selected ? shadows.card : undefined}
+            pressScale={0.96}
             className={`h-[40px] flex-1 items-center justify-center rounded-md ${
               selected ? 'bg-surface' : 'bg-transparent'
             }`}
@@ -44,7 +46,7 @@ export function AppSegmentedControl<T extends string>({
             <AppText variant="bodyMedium" color={selected ? 'primary' : 'secondary'}>
               {option.label}
             </AppText>
-          </Pressable>
+          </AnimatedPressable>
         );
       })}
     </View>

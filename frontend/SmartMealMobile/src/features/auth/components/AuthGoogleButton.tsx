@@ -15,8 +15,9 @@ export function AuthGoogleButton({ label, ...rest }: AuthGoogleButtonProps) {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      className="h-[48px] flex-row items-center justify-center gap-sm rounded-md border border-border bg-surface active:opacity-70"
+      android_ripple={{ radius: 24, color: 'rgba(0,0,0,0.08)' }}
       {...rest}
+      className="h-[48px] flex-row items-center justify-center gap-sm rounded-md border border-border bg-surface active:opacity-70"
     >
       <View className="h-[24px] w-[24px] items-center justify-center rounded-pill border border-border">
         <AppText variant="bodyMedium">G</AppText>

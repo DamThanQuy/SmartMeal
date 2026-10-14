@@ -6,10 +6,12 @@ import { ScreenContainer } from '@/components/common';
 import { AppBadge, AppButton, AppText } from '@/components/ui';
 import { AUTH_ROUTES } from '@/constants/routes';
 import type { AuthStackParamList } from '@/navigation/types';
+import type { AuthUser } from '@/state/auth/authStore';
 import { useAuthStore } from '@/state/auth/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { AuthGoogleButton } from '../components/AuthGoogleButton';
 import { AuthSocialDivider } from '../components/AuthSocialDivider';
+import { useGoogleLogin } from '../hooks/useGoogleLogin';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Welcome'>;
 
@@ -38,6 +40,22 @@ const FEATURE_ROWS = [
 export function WelcomeScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const continueAsGuest = useAuthStore(state => state.continueAsGuest);
+  const login = useAuthStore(state => state.login);
+  const setPendingUser = useAuthStore(state => state.setPendingUser);
+
+  const handleSessionOpen = ({ user, needsSurvey }: { user: AuthUser; needsSurvey: boolean }) => {
+    if (!needsSurvey) {
+      login(user);
+      return;
+    }
+    setPendingUser(user);
+    navigation.reset({
+      index: 0,
+      routes: [{ name: AUTH_ROUTES.HEALTH_PROFILE_BASIC_INFO }],
+    });
+  };
+
+  const googleLogin = useGoogleLogin({ onSuccess: handleSessionOpen });
 
   // AppNavigator render Main khi isGuest=true (xem AppNavigator.tsx) — MainTabNavigator tự chọn
   // initialRouteName=Discover cho Guest, không cần tự navigate() sang đây.
@@ -101,7 +119,21 @@ export function WelcomeScreen({ navigation }: Props) {
           onPress={() => navigation.navigate(AUTH_ROUTES.LOGIN)}
         />
         <AuthSocialDivider />
-        <AuthGoogleButton label="Tiếp tục với Google" onPress={() => {}} />
+        <AuthGoogleButton
+          label="Tiếp tục với Google"
+          onPress={googleLogin.start}
+          disabled={googleLogin.isLoading || googleLogin.isPrompting}
+        />
+        {googleLogin.isLoading ? (
+          <AppText variant="caption" color="secondary" className="text-center">
+            Đang kết nối Google…
+          </AppText>
+        ) : null}
+        {googleLogin.error ? (
+          <AppText variant="caption" color="error" className="text-center">
+            {googleLogin.error.message}
+          </AppText>
+        ) : null}
       </View>
 
       <Pressable

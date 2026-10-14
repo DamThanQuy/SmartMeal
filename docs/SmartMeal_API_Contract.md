@@ -131,16 +131,38 @@ Mọi API đều trả về định dạng wrapper thống nhất:
   ```
 * **Response (200 OK)**: Tương tự `register`.
 
-#### 1.3. Đăng nhập Google (Google Sign-In) — `[TRẠNG THÁI: ✅ ĐÃ HOÀN THÀNH]`
+#### 1.3. Đăng nhập Google (Google Sign-In) — `[TRẠNG THÁI: ⚠️ CONTRACT ĐÃ CHỐT, BACKEND CẦN CẬP NHẬT]`
 * **Endpoint**: `POST /api/auth/google`
 * **Auth**: ❌ Public
-* **Request Body**:
+* **Request Body (contract mục tiêu)** — chỉ nhận Google ID token do Google Identity Services cấp; backend phải xác minh chữ ký, issuer, audience và thời hạn trước khi dùng danh tính:
   ```json
   {
     "idToken": "google_oauth_id_token_string"
   }
   ```
-* **Response (200 OK)**: Trả về Token và User info.
+  Không chấp nhận `googleId`, `email`, `fullName` hoặc `avatarUrl` do client tự khai làm bằng chứng danh tính.
+* **Response (200 OK)** — chuẩn `ApiResponse<AuthResponseDto>`; `data` chứa `token`, `expiresAt` và `user`. Backend hiện tại **chưa cấp refresh token**, vì vậy FE không được giả định `refreshToken` hoặc `refreshTokenExpiresAt` luôn tồn tại.
+  ```json
+  {
+    "success": true,
+    "message": "Đăng nhập Google thành công.",
+    "data": {
+      "token": "smartmeal_jwt",
+      "expiresAt": "2026-10-14T12:00:00Z",
+      "user": {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "email": "user@example.com",
+        "fullName": "Nguyen Van A",
+        "avatarUrl": null,
+        "isPro": false,
+        "role": "User",
+        "hasCompletedSurvey": false
+      }
+    }
+  }
+  ```
+* **Lỗi theo contract mục tiêu:** `400` request thiếu/không hợp lệ; `401` ID token không hợp lệ, hết hạn hoặc sai audience; `409` email đã thuộc tài khoản hiện hữu cần liên kết có xác thực; `503` Google token verification chưa được cấu hình. Lỗi phải dùng envelope chuẩn `success=false`, `data=null`, `errors` an toàn.
+* **Trạng thái triển khai hiện tại:** frontend đã gửi `{ idToken }` và unwrap envelope chuẩn. DTO/service backend hiện tại vẫn nhận danh tính do client gửi và controller luôn trả `200` cho kết quả Google; chưa đáp ứng contract mục tiêu. Sẽ hoàn thiện phần thực thi trong P2, không coi endpoint này đã an toàn/hoàn thành.
 
 #### 1.4. Lấy thông tin tài khoản hiện tại (Get Me) — `[TRẠNG THÁI: ✅ ĐÃ HOÀN THÀNH]`
 * **Endpoint**: `GET /api/auth/me`

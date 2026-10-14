@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, type PressableProps } from 'react-native';
 import { AppText } from './AppText';
+import { AnimatedPressable } from './AnimatedPressable';
 
 export interface AppChipProps extends Omit<PressableProps, 'children'> {
   label: string;
@@ -17,10 +18,12 @@ export function AppChip({
   ...rest
 }: AppChipProps) {
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ selected }}
+      pressScale={0.94}
+      pressStiffness={360}
       className={`h-[36px] items-center justify-center rounded-pill border px-md active:opacity-70 disabled:opacity-40 ${
         selected ? 'border-primary bg-primary-soft' : 'border-border bg-surface'
       } ${className}`}
@@ -32,6 +35,6 @@ export function AppChip({
       >
         {label}
       </AppText>
-    </Pressable>
+    </AnimatedPressable>
   );
 }

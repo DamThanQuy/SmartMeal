@@ -1,11 +1,11 @@
 import React from 'react';
 import {
   ActivityIndicator,
-  Pressable,
   type PressableProps,
 } from 'react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { AppText, type AppTextColor } from './AppText';
+import { AnimatedPressable } from './AnimatedPressable';
 
 export type AppButtonVariant = 'primary' | 'secondary' | 'outline' | 'text';
 
@@ -66,11 +66,13 @@ export function AppButton({
   const spinnerColor = colors[styleForVariant.spinnerColorToken];
 
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
+      pressScale={0.98}
+      pressStiffness={340}
       className={`h-[48px] flex-row items-center justify-center rounded-md px-lg ${styleForVariant.className} ${className}`}
       {...rest}
     >
@@ -81,6 +83,6 @@ export function AppButton({
           {label}
         </AppText>
       )}
-    </Pressable>
+    </AnimatedPressable>
   );
 }
