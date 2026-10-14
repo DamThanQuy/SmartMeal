@@ -4,14 +4,15 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { InlineBanner, ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppButton, AppText } from '@/components/ui';
+import { AUTH_RULES } from '@/constants/auth';
 import { AUTH_ROUTES, MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { ForgotPasswordReturnTo, OtpPurpose } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { OtpCodeInput } from '../components/OtpCodeInput';
 import { useResendOtp, useVerifyOtp } from '../hooks/useOtp';
 
-const CODE_LENGTH = 6;
-const RESEND_COOLDOWN_SECONDS = 45;
+const CODE_LENGTH = AUTH_RULES.OTP_LENGTH;
+const RESEND_COOLDOWN_SECONDS = AUTH_RULES.OTP_RESEND_COOLDOWN_SECONDS;
 
 function maskEmail(email: string): string {
   const [local, domain] = email.split('@');
@@ -42,7 +43,7 @@ export function OtpScreen({ navigation, route }: OtpScreenProps) {
   const { email, purpose, returnTo } = route.params;
   const { colors } = useTheme();
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(''));
-  const [secondsLeft, setSecondsLeft] = useState(RESEND_COOLDOWN_SECONDS);
+  const [secondsLeft, setSecondsLeft] = useState<number>(RESEND_COOLDOWN_SECONDS);
   const verifyOtp = useVerifyOtp();
   const resendOtp = useResendOtp();
 
@@ -59,24 +60,26 @@ export function OtpScreen({ navigation, route }: OtpScreenProps) {
 
   const handleConfirm = () => {
     verifyOtp.mutate(
-      { email, code },
+      { email, code, purpose },
       {
-        onSuccess: () => {
+        onSuccess: ({ resetToken }) => {
           if (purpose === 'register') {
             navigation.navigate(AUTH_ROUTES.HEALTH_PROFILE_BASIC_INFO);
-          } else if (returnTo === 'Settings') {
-            // Đổi mật khẩu từ Settings (đã đăng nhập) — quay lại Settings thay vì Login.
-            navigation.navigate(MAIN_STACK_ROUTES.SETTINGS);
-          } else {
-            navigation.navigate(AUTH_ROUTES.LOGIN);
+            return;
           }
+          // Quên/đổi mật khẩu: OTP đúng → sang bước đặt mật khẩu mới với resetToken (dùng một lần).
+          if (!resetToken) return;
+          navigation.navigate(
+            returnTo === 'Settings' ? MAIN_STACK_ROUTES.RESET_PASSWORD : AUTH_ROUTES.RESET_PASSWORD,
+            { email, resetToken, returnTo },
+          );
         },
       },
     );
   };
 
   const handleResend = () => {
-    resendOtp.mutate(email, {
+    resendOtp.mutate({ email, purpose }, {
       onSuccess: () => setSecondsLeft(RESEND_COOLDOWN_SECONDS),
     });
   };
@@ -127,7 +130,11 @@ export function OtpScreen({ navigation, route }: OtpScreenProps) {
 
           <InlineBanner
             icon={<Info size={20} color={colors.info} />}
-            description="Tài khoản chỉ được kích hoạt sau khi xác thực. Kiểm tra cả hộp thư Spam nếu chưa thấy mã."
+            description={
+              purpose === 'register'
+                ? 'Tài khoản chỉ được kích hoạt sau khi xác thực. Kiểm tra cả hộp thư Spam nếu chưa thấy mã.'
+                : `Mã có hiệu lực trong ${AUTH_RULES.OTP_VALIDITY_MINUTES} phút. Kiểm tra cả hộp thư Spam nếu chưa thấy mã.`
+            }
           />
 
           {verifyOtp.isError ? (

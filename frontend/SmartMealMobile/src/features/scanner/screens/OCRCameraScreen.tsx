@@ -1,22 +1,39 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CheckCircle2, Image as ImageIcon, X, Zap } from 'lucide-react-native';
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { AppChip, AppIconButton, AppText } from '@/components/ui';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
+import { pickPhoto, takePhoto, type PhotoResult } from '../services/photoService';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'OCRCamera'>;
 
 const TIPS = ['Chụp thẳng', 'Đủ sáng', 'Giữ chắc tay'];
 
-// design/OCRCamera.dc.html (BR-130→132). Đích mới cho ProductNotFound "Quét nhãn dinh dưỡng"
-// (trước trỏ thẳng OCRReview). Tab "Mã vạch" quay lại BarcodeScreen (trạng thái Đợt 4 giữ
-// nguyên). Nhánh feat/mock-ui: chưa gọi expo-camera thật — nút chụp điều hướng thẳng OCRReview.
+// design/OCRCamera.dc.html (BR-130→132). Chụp (hoặc chọn từ thư viện) ảnh nhãn thật bằng
+// expo-image-picker rồi sang OCRReview — ảnh được AI phía server đọc (POST /ai/scan-label). Huỷ chụp
+// thì ở lại màn này; từ chối quyền thì mở StatePermission.
 export function OCRCameraScreen({ navigation, route }: Props) {
   const { mealType } = route.params;
   const { colors } = useTheme();
+  const [busy, setBusy] = useState(false);
+
+  const handlePhoto = async (source: () => Promise<PhotoResult>) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const result = await source();
+      if (result === 'denied') {
+        navigation.replace(MAIN_STACK_ROUTES.STATE_PERMISSION, { mealType, returnTo: 'Barcode' });
+      } else if (result) {
+        navigation.replace(MAIN_STACK_ROUTES.OCR_REVIEW, { mealType, imageUri: result.uri });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <View className="flex-1 bg-overlay">
@@ -67,12 +84,15 @@ export function OCRCameraScreen({ navigation, route }: Props) {
           accessibilityLabel="Chọn từ thư viện ảnh"
           icon={<ImageIcon size={22} color={colors.onPrimary} />}
           className="bg-on-primary/15"
-          disabled
+          disabled={busy}
+          onPress={() => void handlePhoto(pickPhoto)}
         />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Chụp"
-          onPress={() => navigation.navigate(MAIN_STACK_ROUTES.OCR_REVIEW, { mealType })}
+          accessibilityState={{ busy }}
+          disabled={busy}
+          onPress={() => void handlePhoto(takePhoto)}
           className="h-[76px] w-[76px] items-center justify-center rounded-full border-4 border-on-primary"
         >
           <View className="h-[60px] w-[60px] rounded-full bg-on-primary" />

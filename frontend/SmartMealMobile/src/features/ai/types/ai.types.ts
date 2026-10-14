@@ -43,6 +43,8 @@ export interface AIAnalysisResult {
   allergyWarnings?: string[];
   healthTips?: string;
   detectedIngredients?: string[];
+  /** true khi backend trả dữ liệu MẪU (chưa cấu hình AI) — phải báo rõ để không lưu nhầm thành bữa ăn thật. */
+  isDemo?: boolean;
 }
 
 export interface VoicePortionOption {
@@ -63,4 +65,18 @@ export interface VoiceLogResult {
   transcript: string;
   items: AIRecognizedItem[];
   portionQuestion?: VoicePortionQuestion;
+  /** true khi backend trả dữ liệu MẪU (chưa cấu hình AI). */
+  isDemo?: boolean;
+}
+
+/** Hạn mức AI trong ngày (BR-233): Free có số lượt cố định, Pro không giới hạn. */
+export interface AiQuota {
+  isUnlimited: boolean;
+  /** Số lượt miễn phí mỗi ngày; null khi không giới hạn. */
+  limit: number | null;
+  used: number;
+  /** Số lượt còn lại hôm nay; null khi không giới hạn. */
+  remaining: number | null;
+  /** Thời điểm làm mới hạn mức (ISO UTC). */
+  resetsAtIso: string;
 }

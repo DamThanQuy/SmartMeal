@@ -2,13 +2,18 @@ import { getCurrentMockScenario } from '@/state/app/appStore';
 import { getMockDelayMs, wait } from '@/config/mock';
 import type {
   AuthUser,
+  DeleteAccountConfirmation,
   ForgotPasswordPayload,
   LoginPayload,
   LoginResult,
   RegisterPayload,
   RegisterResult,
+  ResendOtpPayload,
+  ResetPasswordPayload,
   UpdateProfilePayload,
+  UploadAvatarPayload,
   VerifyOtpPayload,
+  VerifyOtpResult,
 } from '../types/auth.types';
 
 // Bản giả lập (EXPO_PUBLIC_USE_MOCK_API=true, hoặc hàm BE chưa hỗ trợ — OTP, quên mật khẩu) — bản
@@ -51,6 +56,10 @@ export const authMockService = {
     return { user: buildMockUser(fullName, payload.email, true) };
   },
 
+  async loginWithGoogle(_payload: { idToken: string }): Promise<LoginResult> {
+    throw new Error('Đăng nhập Google yêu cầu EXPO_PUBLIC_USE_MOCK_API=false để gọi backend thật.');
+  },
+
   // BR-010, BR-011 — Đăng ký Email/Password. Scenario 'error' mô phỏng đúng trạng thái
   // "Email đã được đăng ký" hiển thị trong design/Register.dc.html.
   async register(payload: RegisterPayload): Promise<RegisterResult> {
@@ -65,6 +74,9 @@ export const authMockService = {
       requiresOtp: true,
     };
   },
+
+  // Mock không có phiên phía máy chủ để thu hồi.
+  async logout(_refreshToken: string): Promise<void> {},
 
   // Chỉ dùng khi khôi phục phiên lúc khởi động — chế độ mock không có phiên để khôi phục
   // (sessionService.bootstrapSession bỏ qua bước này).
@@ -83,15 +95,55 @@ export const authMockService = {
     return { fullName: payload.fullName };
   },
 
-  async verifyOtp(_payload: VerifyOtpPayload): Promise<void> {
+  // Mock không có kho ảnh: dùng luôn đường dẫn cục bộ để màn hình thấy ảnh vừa chọn.
+  async uploadAvatar(payload: UploadAvatarPayload): Promise<{ avatarUrl: string | null }> {
+    const scenario = getCurrentMockScenario();
+    await wait(getMockDelayMs(scenario));
+    if (scenario === 'error') {
+      throw new Error('Không thể tải ảnh lên, vui lòng thử lại.');
+    }
+    return { avatarUrl: payload.uri };
+  },
+
+  // Mock không có dữ liệu phía máy chủ; DeleteDataScreen vẫn tự xóa dữ liệu cục bộ (resetUserData).
+  async deleteAccount(confirmation: DeleteAccountConfirmation): Promise<void> {
+    const scenario = getCurrentMockScenario();
+    await wait(getMockDelayMs(scenario));
+    if (scenario === 'error') {
+      throw new Error('Không thể xóa tài khoản, vui lòng thử lại.');
+    }
+    if (!confirmation.password?.trim() && !confirmation.confirmEmail?.trim()) {
+      throw new Error('Cần nhập mật khẩu để xóa tài khoản.');
+    }
+  },
+
+  async deleteMyData(): Promise<void> {
+    const scenario = getCurrentMockScenario();
+    await wait(getMockDelayMs(scenario));
+    if (scenario === 'error') {
+      throw new Error('Không thể xóa dữ liệu, vui lòng thử lại.');
+    }
+  },
+
+  async verifyOtp(_payload: VerifyOtpPayload): Promise<VerifyOtpResult> {
     const scenario = getCurrentMockScenario();
     await wait(getMockDelayMs(scenario));
     if (scenario === 'error') {
       throw new Error('Mã xác thực không đúng hoặc đã hết hạn.');
     }
+    return { resetToken: 'mock-reset-token' };
   },
 
-  async resendOtp(_email: string): Promise<void> {
+  // Đặt mật khẩu mới sau khi xác thực OTP — mock không đổi mật khẩu thật.
+  async resetPassword(_payload: ResetPasswordPayload): Promise<void> {
+    const scenario = getCurrentMockScenario();
+    await wait(getMockDelayMs(scenario));
+    if (scenario === 'error') {
+      throw new Error('Không thể đặt lại mật khẩu, vui lòng thử lại.');
+    }
+  },
+
+  async resendOtp(_payload: ResendOtpPayload): Promise<void> {
     const scenario = getCurrentMockScenario();
     await wait(getMockDelayMs(scenario));
     if (scenario === 'error') {

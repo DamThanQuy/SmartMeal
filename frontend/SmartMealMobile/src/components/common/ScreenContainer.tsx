@@ -8,6 +8,7 @@ export interface ScreenContainerProps {
   className?: string;
   contentContainerClassName?: string;
   style?: StyleProp<ViewStyle>;
+  header?: React.ReactNode;
   children?: React.ReactNode;
 }
 
@@ -18,11 +19,13 @@ export function ScreenContainer({
   className = '',
   contentContainerClassName = '',
   style,
+  header,
   children,
 }: ScreenContainerProps) {
   if (scroll) {
     return (
       <SafeAreaView edges={edges} className="flex-1 bg-background">
+        {header}
         <ScrollView
           className="flex-1"
           style={style}
@@ -36,6 +39,7 @@ export function ScreenContainer({
 
   return (
     <SafeAreaView edges={edges} className="flex-1 bg-background">
+      {header}
       <View className={`flex-1 px-md ${className}`} style={style}>
         {children}
       </View>

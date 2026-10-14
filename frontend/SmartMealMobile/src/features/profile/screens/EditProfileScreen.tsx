@@ -1,18 +1,21 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Camera, CircleUser, Info } from 'lucide-react-native';
-import React from 'react';
+import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Pressable, View } from 'react-native';
 import { z } from 'zod';
-import { InlineBanner, ScreenContainer, ScreenHeader } from '@/components/common';
+import { InlineBanner, ScreenContainer, ScreenHeader, UserAvatar } from '@/components/common';
 import { AppButton, AppChip, AppInput, AppText } from '@/components/ui';
+import { AUTH_RULES } from '@/constants/auth';
+import { useUploadAvatar } from '@/features/auth';
 import { GENDER_OPTIONS } from '@/features/health';
 import type { MainStackParamList } from '@/navigation/types';
 import { useAuthStore } from '@/state/auth/authStore';
 import { useUserProfileStore } from '@/state/user/userProfileStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useEditProfile } from '../hooks/useEditProfile';
+import { pickAvatar } from '../services/avatarPickerService';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'EditProfile'>;
 
@@ -49,15 +52,31 @@ const editProfileSchema = z.object({
 
 type EditProfileFormValues = z.infer<typeof editProfileSchema>;
 
-// design/EditProfile.dc.html (design v2, Đợt 9, BR-003). Đổi avatar chỉ UI + nút giả lập, chưa
-// gọi expo-image-picker thật (CLAUDE.md mục 9; backend cũng chưa có upload ảnh). Email chỉ đọc
-// (BR-011 — email gắn 1 tài khoản). Họ tên lưu ở tài khoản, giới tính/năm sinh/chiều cao lưu ở hồ
+// design/EditProfile.dc.html (design v2, Đợt 9, BR-003). Đổi avatar mở thư viện ảnh (expo-image-picker)
+// rồi tải lên POST /auth/avatar (jpg/png/webp ≤ 2 MB). Email chỉ đọc (BR-011 — email gắn 1 tài khoản). Họ tên lưu ở tài khoản, giới tính/năm sinh/chiều cao lưu ở hồ
 // sơ sức khỏe (backend chỉ lưu tuổi nên năm sinh là ước lượng) — xem useEditProfile.
 export function EditProfileScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const user = useAuthStore(state => state.user);
   const profile = useUserProfileStore();
   const editProfile = useEditProfile();
+  const uploadAvatar = useUploadAvatar();
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  const handleChangeAvatar = async () => {
+    setAvatarError(null);
+    try {
+      const picked = await pickAvatar();
+      if (!picked) return;
+      if (picked.fileSize !== undefined && picked.fileSize > AUTH_RULES.AVATAR_MAX_BYTES) {
+        setAvatarError(`Ảnh quá lớn, tối đa ${AUTH_RULES.AVATAR_MAX_BYTES / (1024 * 1024)} MB.`);
+        return;
+      }
+      uploadAvatar.mutate({ uri: picked.uri, mimeType: picked.mimeType, fileName: picked.fileName });
+    } catch {
+      setAvatarError('Không mở được thư viện ảnh.');
+    }
+  };
 
   const {
     control,
@@ -113,15 +132,12 @@ export function EditProfileScreen({ navigation }: Props) {
       <View className="gap-xl py-sm">
         <View className="items-center gap-sm">
           <View className="relative h-[96px] w-[96px]">
-            <View className="h-[96px] w-[96px] items-center justify-center rounded-full bg-primary-soft">
-              <AppText variant="display" color="onPrimarySoft">
-                {(user?.fullName ?? 'U').charAt(0).toUpperCase()}
-              </AppText>
-            </View>
+            <UserAvatar name={user?.fullName} uri={user?.avatarUrl} size={96} textVariant="display" />
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Đổi ảnh đại diện"
-              onPress={() => {}}
+              disabled={uploadAvatar.isPending}
+              onPress={handleChangeAvatar}
               className="absolute bottom-[-6px] right-[-6px] h-[44px] w-[44px] items-center justify-center rounded-full border-[3px] border-background bg-primary"
             >
               <Camera size={20} color={colors.onPrimary} />
@@ -130,13 +146,19 @@ export function EditProfileScreen({ navigation }: Props) {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Đổi ảnh đại diện"
-            onPress={() => {}}
+            disabled={uploadAvatar.isPending}
+            onPress={handleChangeAvatar}
             className="min-h-[44px] items-center justify-center"
           >
             <AppText variant="bodyMedium" color="onPrimarySoft">
-              Đổi ảnh đại diện
+              {uploadAvatar.isPending ? 'Đang tải ảnh lên...' : 'Đổi ảnh đại diện'}
             </AppText>
           </Pressable>
+          {avatarError || uploadAvatar.isError ? (
+            <AppText variant="caption" color="error" className="text-center">
+              {avatarError ?? uploadAvatar.error?.message}
+            </AppText>
+          ) : null}
         </View>
 
         <View className="gap-md">

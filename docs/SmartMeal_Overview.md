@@ -6,7 +6,7 @@
 ---
 
 ### 1. Giới thiệu tổng quan
-SmartMeal là một ứng dụng di động toàn diện giúp người dùng quản lý dinh dưỡng, theo dõi sức khỏe và tìm kiếm công thức nấu ăn phù hợp với nhu cầu cá nhân. Với nền tảng Flutter hiện đại, ứng dụng cung cấp trải nghiệm người dùng mượt mà trên cả Android và iOS, tích hợp chặt chẽ với backend API để cung cấp dữ liệu dinh dưỡng chính xác và cập nhật.
+SmartMeal là một ứng dụng di động toàn diện giúp người dùng quản lý dinh dưỡng, theo dõi sức khỏe và tìm kiếm công thức nấu ăn phù hợp với nhu cầu cá nhân. Xây dựng bằng React Native / Expo, ứng dụng cung cấp trải nghiệm người dùng mượt mà trên cả Android và iOS, tích hợp chặt chẽ với backend API để cung cấp dữ liệu dinh dưỡng chính xác và cập nhật.
 
 Ứng dụng được thiết kế với tư duy người dùng, tập trung vào việc giúp người dùng đạt được mục tiêu sức khỏe thông qua:
 - Theo dõi nhật ký dinh dưỡng hàng ngày
@@ -21,7 +21,6 @@ SmartMeal là một ứng dụng di động toàn diện giúp người dùng qu
 #### 1. Đăng nhập & Đăng ký
 - Đăng nhập bằng tài khoản (username/password)
 - Đăng ký tài khoản mới với xác thực OTP
-- Đăng nhập bằng Google
 - Quản lý avatar và thông tin cá nhân
 
 #### 2. Dashboard
@@ -93,7 +92,7 @@ SmartMeal được xây dựng trên nền tảng công nghệ hiện đại và
 | Database | PostgreSQL |
 | State Management | Zustand + TanStack Query |
 | HTTP Client | Axios |
-| Authentication | JWT + Google Sign-In |
+| Authentication | JWT, đăng nhập email + mật khẩu |
 | Navigation | React Navigation |
 | Form | React Hook Form | Zod |
 | Charts | react-native-gifted-charts |

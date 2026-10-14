@@ -19,14 +19,3 @@ export interface PagedResult<T> {
   totalPages: number;
 }
 
-/**
- * ASP.NET `ValidationProblemDetails` — lỗi binding/validate (vd. `?date=abc`, JSON hỏng) KHÔNG
- * bọc trong ApiEnvelope.
- */
-export interface ApiProblemDetails {
-  type?: string;
-  title?: string;
-  status?: number;
-  errors?: Record<string, string[]>;
-  traceId?: string;
-}

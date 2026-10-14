@@ -4,10 +4,21 @@ import type { MealType } from '@/types/meal.types';
 // toàn (dị ứng/bệnh lý). design/MealPlanner.dc.html, SlotPicker.dc.html.
 
 export interface PlannedMealSlot {
+  /** Id của ô thực đơn trên server — cần để xóa món/đánh dấu đã nấu. */
+  mealPlanId: string;
   recipeId: string;
   recipeName: string;
+  imageUrl?: string;
   durationMinutes: number;
   calories: number;
+  /** Đã nấu/ăn món này (PATCH /mealplanner/{id}/complete). */
+  isCompleted: boolean;
+}
+
+/** Kết quả tạo thực đơn tự động — `note` là ghi chú của server (đã bỏ món theo bệnh lý, thiếu món đúng chế độ…). */
+export interface WeekPlanGeneration {
+  plan: WeekPlan;
+  note?: string;
 }
 
 export type DayMealPlan = Record<MealType, PlannedMealSlot | null>;

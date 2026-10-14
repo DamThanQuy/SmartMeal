@@ -1,16 +1,17 @@
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { addDays, format } from 'date-fns';
-import { ShoppingBasket } from 'lucide-react-native';
+import { RefreshCw, ShoppingBasket } from 'lucide-react-native';
 import React from 'react';
 import { ScrollView, View } from 'react-native';
-import { EmptyState, ErrorState, LoadingState, ScreenContainer } from '@/components/common';
+import { EmptyState, ErrorState, InlineBanner, LoadingState, ScreenContainer } from '@/components/common';
 import { AppButton, AppCard, AppSegmentedControl, AppText } from '@/components/ui';
 import { currentWeekStartIso } from '@/features/meal-planner';
 import { MAIN_STACK_ROUTES, PLANNER_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList, PlannerStackParamList } from '@/navigation/types';
+import { usePlanChangeStore } from '@/state/planner/planChangeStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { GroceryItemRow } from '../components/GroceryItemRow';
-import { useGroceryList, useToggleGroceryItem } from '../hooks/useGrocery';
+import { useGroceryList, useRegenerateGroceryList, useToggleGroceryItem } from '../hooks/useGrocery';
 
 type Props = NativeStackScreenProps<PlannerStackParamList, 'Grocery'>;
 
@@ -26,6 +27,8 @@ export function GroceryScreen({ navigation, route }: Props) {
   const weekStartIso = route.params?.weekStartIso ?? currentWeekStartIso();
   const { data, isLoading, isError, error, refetch } = useGroceryList(weekStartIso);
   const toggleItem = useToggleGroceryItem(weekStartIso);
+  const regenerate = useRegenerateGroceryList(weekStartIso);
+  const planChangedAt = usePlanChangeStore(state => state.changedAt[weekStartIso]);
 
   const openMealPlanner = () =>
     navigation.navigate(PLANNER_STACK_ROUTES.MEAL_PLANNER, { weekStartIso });
@@ -64,8 +67,15 @@ export function GroceryScreen({ navigation, route }: Props) {
     );
   }
 
-  const weekEndLabel = format(addDays(new Date(weekStartIso), 6), 'dd/MM');
-  const weekStartLabel = format(new Date(weekStartIso), 'dd/MM');
+  // Danh sách là của kỳ thực đơn đã dùng để tạo (BE giữ một danh sách/người dùng) — có thể khác tuần đang xem.
+  const periodStartIso = data.periodStartIso ?? weekStartIso;
+  const periodEndIso = data.periodEndIso ?? format(addDays(new Date(weekStartIso), 6), 'yyyy-MM-dd');
+  const weekEndLabel = format(new Date(periodEndIso), 'dd/MM');
+  const weekStartLabel = format(new Date(periodStartIso), 'dd/MM');
+  const isOtherWeek = data.periodStartIso !== null && data.periodStartIso !== weekStartIso;
+  const planChangedSinceGenerated =
+    planChangedAt !== undefined && data.generatedAtIso !== null && planChangedAt > Date.parse(data.generatedAtIso);
+  const lastTrip = data.lastTrip;
   const progressPercent =
     data.totalItems > 0 ? Math.round((data.purchasedItems / data.totalItems) * 100) : 0;
 
@@ -85,7 +95,7 @@ export function GroceryScreen({ navigation, route }: Props) {
             </AppText>
           </View>
           <AppText variant="body" color="secondary">
-            {`Tổng hợp từ thực đơn ${weekStartLabel} — ${weekEndLabel}`}
+            {data.periodStartIso ? `Tổng hợp từ thực đơn ${weekStartLabel} — ${weekEndLabel}` : 'Chưa tạo từ thực đơn'}
           </AppText>
           <View className="h-[8px] overflow-hidden rounded-pill bg-primary-soft">
             <View
@@ -94,6 +104,32 @@ export function GroceryScreen({ navigation, route }: Props) {
             />
           </View>
         </View>
+
+        {isOtherWeek || planChangedSinceGenerated ? (
+          <InlineBanner
+            icon={<RefreshCw size={20} color={colors.warning} />}
+            title={isOtherWeek ? 'Danh sách đang theo tuần khác' : 'Thực đơn đã đổi'}
+            description="Tạo lại để cập nhật nguyên liệu theo thực đơn tuần này. Món bạn tự thêm vẫn được giữ."
+          />
+        ) : null}
+        {regenerate.isError ? (
+          <AppText variant="caption" color="error" accessibilityRole="alert">
+            {regenerate.error.message}
+          </AppText>
+        ) : null}
+        {data.periodStartIso || data.groups.length > 0 ? (
+          <AppButton
+            label="Tạo lại theo thực đơn tuần này"
+            variant="outline"
+            loading={regenerate.isPending}
+            onPress={() => regenerate.mutate()}
+          />
+        ) : null}
+        {toggleItem.isError ? (
+          <AppText variant="caption" color="error" accessibilityRole="alert">
+            {toggleItem.error.message}
+          </AppText>
+        ) : null}
 
         {data.groups.length === 0 ? (
           <EmptyState
@@ -115,7 +151,12 @@ export function GroceryScreen({ navigation, route }: Props) {
                 <GroceryItemRow
                   key={item.id}
                   item={item}
-                  onToggle={() => toggleItem.mutate(item.id)}
+                  onToggle={() =>
+                    toggleItem.mutate({
+                      itemId: item.id,
+                      nextStatus: item.status === 'purchased' ? 'pending' : 'purchased',
+                    })
+                  }
                 />
               ))}
             </AppCard>
@@ -130,6 +171,11 @@ export function GroceryScreen({ navigation, route }: Props) {
               Ước tính
             </AppText>
             <AppText variant="h2">{formatVnd(data.estimatedTotalCostVnd)}</AppText>
+            {lastTrip?.actualCostVnd !== undefined ? (
+              <AppText variant="caption" color="secondary">
+                {`Lần trước: ${formatVnd(lastTrip.actualCostVnd)}`}
+              </AppText>
+            ) : null}
           </View>
           <AppButton
             label="Hoàn tất mua sắm"

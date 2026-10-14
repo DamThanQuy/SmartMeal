@@ -4,17 +4,17 @@
 export type GroceryItemStatus = 'pending' | 'purchased';
 
 export interface GroceryItem {
-  /** Khoá ổn định = tên nguyên liệu chuẩn hoá — giữ nguyên qua các lần tính lại danh sách để
-   * không mất trạng thái Pending/Purchased đã đánh dấu (BR-173) khi Meal Plan đổi. */
   id: string;
   name: string;
   /** Nhãn khối lượng đã cộng dồn, vd. "500 g", "2 cây" (BR-171). */
   amountLabel: string;
   category: string;
   status: GroceryItemStatus;
-  /** ≥ 2 khi nguyên liệu này được gộp từ nhiều món trong thực đơn — design "Gộp từ 2 món". */
+  /** ≥ 2 khi nguyên liệu này được gộp từ nhiều bữa trong thực đơn — design "Gộp từ 2 món". */
   mergedFromRecipeCount: number;
   estimatedCostVnd: number;
+  /** Người dùng tự thêm (không sinh từ thực đơn) — không bị xóa khi tạo lại danh sách. */
+  isManual: boolean;
 }
 
 export interface GroceryCategoryGroup {
@@ -22,11 +22,41 @@ export interface GroceryCategoryGroup {
   items: GroceryItem[];
 }
 
+/** Một lần "Hoàn tất mua sắm" đã lưu trên server (BR-174 — chi phí thực tế). */
+export interface GroceryTrip {
+  completedAtIso: string;
+  purchasedItems: number;
+  pendingItemsKept: number;
+  estimatedCostVnd: number;
+  actualCostVnd?: number;
+}
+
 export interface GroceryList {
+  /** Tuần đang xem (Thứ Hai, yyyy-MM-dd). */
   weekStartIso: string;
+  /** Khoảng ngày thực đơn mà danh sách hiện tại được tạo từ (null khi chưa tạo từ thực đơn). */
+  periodStartIso: string | null;
+  periodEndIso: string | null;
+  /** Thời điểm tạo danh sách từ thực đơn gần nhất (ISO, UTC). */
+  generatedAtIso: string | null;
   groups: GroceryCategoryGroup[];
   totalItems: number;
   purchasedItems: number;
   /** BR-174 — chỉ mang tính ước tính, không phải giá thị trường thật. */
   estimatedTotalCostVnd: number;
+  lastTrip: GroceryTrip | null;
+}
+
+export interface CompleteShoppingInput {
+  /** true = "Đánh dấu tất cả đã mua" trước khi hoàn tất. */
+  markAllPurchased: boolean;
+  /** Giữ các món chưa mua (cộng vào danh sách tuần sau). */
+  keepPending: boolean;
+  actualCostVnd?: number;
+}
+
+export interface CompleteShoppingResult {
+  list: GroceryList;
+  /** Câu tóm tắt của server, vd. "Đã giữ lại 3 món chưa mua. Kỳ tiếp theo chưa có thực đơn." */
+  note?: string;
 }

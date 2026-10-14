@@ -1,4 +1,5 @@
 import { useColorScheme as useNativeWindColorScheme } from 'nativewind';
+import { useFonts } from 'expo-font';
 import React, {
   createContext,
   useContext,
@@ -42,6 +43,11 @@ export interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children, onReady }: ThemeProviderProps) {
+  const [fontsLoaded, fontError] = useFonts({
+    'Inter-Regular': require('../../assets/fonts/Inter-Regular.ttf'),
+    'Inter-SemiBold': require('../../assets/fonts/Inter-SemiBold.ttf'),
+    'Inter-Bold': require('../../assets/fonts/Inter-Bold.ttf'),
+  });
   const systemScheme = useSystemColorScheme();
   const { setColorScheme } = useNativeWindColorScheme();
 
@@ -90,7 +96,7 @@ export function ThemeProvider({ children, onReady }: ThemeProviderProps) {
 
   // Chưa đọc xong theme mode lưu trước đó → không render children (App.tsx giữ splash screen
   // hiển thị cho tới khi onReady() được gọi ở trên), tránh hiển thị theme sai rồi lại đổi.
-  if (!isHydrated) {
+  if (!isHydrated || (!fontsLoaded && !fontError)) {
     return null;
   }
 

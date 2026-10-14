@@ -8,9 +8,9 @@ import { AppButton, AppCard, AppInput, AppText } from '@/components/ui';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
-import { useAiQuota } from '../hooks/useAiQuota';
+import { useAiQuota, useRefreshAiQuota } from '../hooks/useAiQuota';
 import { useTranscribeVoice } from '../hooks/useAiAnalysis';
-import { AiRecognitionFailedError } from '../services/aiService';
+import { AiRecognitionFailedError, isAiQuotaExceededError } from '../services/aiService';
 import { useAiQuotaStore } from '../state/aiQuotaStore';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'VoicePermission'>;
@@ -20,6 +20,7 @@ export function VoicePermissionScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
   const grantMicPermission = useAiQuotaStore(state => state.grantMicPermission);
   const { consumeQuota } = useAiQuota();
+  const refreshQuota = useRefreshAiQuota();
   const transcribeVoice = useTranscribeVoice();
   const [manualText, setManualText] = useState('');
   const [isRequesting, setIsRequesting] = useState(false);
@@ -63,17 +64,32 @@ export function VoicePermissionScreen({ navigation, route }: Props) {
 
   const handleAnalyzeText = () => {
     if (!manualText.trim()) return;
-    transcribeVoice.mutate(mealType, {
-      onSuccess: result => {
-        consumeQuota();
-        navigation.replace(MAIN_STACK_ROUTES.VOICE_LOG, { mealType, initialResult: result });
+    // Văn bản người dùng gõ chính là thứ BE phân tích (POST /ai/voice-log nhận văn bản).
+    transcribeVoice.mutate(
+      { mealType, transcript: manualText },
+      {
+        onSuccess: result => {
+          consumeQuota();
+          navigation.replace(MAIN_STACK_ROUTES.VOICE_LOG, { mealType, initialResult: result });
+        },
+        onError: error => {
+          if (error instanceof AiRecognitionFailedError) {
+            navigation.replace(MAIN_STACK_ROUTES.STATE_AI_FAILED, { mealType, source: 'voice' });
+            return;
+          }
+          if (isAiQuotaExceededError(error)) {
+            refreshQuota();
+            navigation.replace(MAIN_STACK_ROUTES.STATE_AI_LIMIT, { mealType });
+            return;
+          }
+          navigation.replace(MAIN_STACK_ROUTES.STATE_AI_FAILED, {
+            mealType,
+            source: 'voice',
+            message: error.message,
+          });
+        },
       },
-      onError: error => {
-        if (error instanceof AiRecognitionFailedError) {
-          navigation.replace(MAIN_STACK_ROUTES.STATE_AI_FAILED, { mealType, source: 'voice' });
-        }
-      },
-    });
+    );
   };
 
   return (

@@ -4,6 +4,7 @@
  * navigation, QueryClient) đều được mock.
  */
 import type { AuthUser } from '@/state/auth/authStore';
+import type { MembershipSnapshot } from '@/state/premium/premiumStore';
 import type {
   HealthProfileExtras,
   HealthProfileSnapshot,
@@ -30,6 +31,7 @@ const SNAPSHOT: HealthProfileSnapshot = {
   goal: 'lose',
   allergyIds: ['peanut'],
   healthConditionIds: [],
+  dietaryPreferenceIds: ['vegan'],
   result: {
     bmi: 21.5,
     bmr: 1283,
@@ -41,23 +43,32 @@ const SNAPSHOT: HealthProfileSnapshot = {
 };
 
 const EXTRAS: HealthProfileExtras = {
-  dietaryPreferenceIds: ['vegan'],
   localAllergyIds: [],
   localHealthConditionIds: [],
 };
 
 const HYDRATED: HydratedHealthProfile = { snapshot: SNAPSHOT, extras: EXTRAS };
 
+const FREE_MEMBERSHIP: MembershipSnapshot = { status: 'free', planId: null, expiresAtIso: null };
+const PRO_MEMBERSHIP: MembershipSnapshot = {
+  status: 'premium',
+  planId: 'yearly',
+  expiresAtIso: '2027-10-02',
+};
+
 function flushPromises(): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, 0));
 }
 
 function load(useMockApi = false) {
-  const authServiceMock = { getMe: jest.fn() };
+  const authServiceMock = { getMe: jest.fn(), logout: jest.fn().mockResolvedValue(undefined) };
   const healthMock = { getHealthProfile: jest.fn() };
+  const premiumMock = { getStatus: jest.fn().mockResolvedValue(FREE_MEMBERSHIP) };
+  // `clear` là clearSessionTokens (xóa cả access lẫn refresh token); `refreshGet` đọc refresh token.
   const tokenStorageMock = {
     get: jest.fn(),
     clear: jest.fn().mockResolvedValue(undefined),
+    refreshGet: jest.fn().mockResolvedValue(null),
   };
   const queryClientMock = {
     cancelQueries: jest.fn().mockResolvedValue(undefined),
@@ -66,18 +77,28 @@ function load(useMockApi = false) {
   const setUnauthorizedHandler = jest.fn();
   const navigationRefMock = { isReady: jest.fn().mockReturnValue(true), navigate: jest.fn() };
   const resetUserDataMock = jest.fn();
+  const remindersMock = {
+    resyncReminders: jest.fn().mockResolvedValue(undefined),
+    cancelReminders: jest.fn().mockResolvedValue(undefined),
+  };
 
   jest.resetModules();
   jest.doMock('@/config/env', () => ({ ENV: { useMockApi } }));
   jest.doMock('@/features/health', () => ({ healthProfileService: healthMock }));
+  jest.doMock('@/features/premium', () => ({ premiumService: premiumMock }));
   jest.doMock('@/features/auth/services/authService', () => ({ authService: authServiceMock }));
   jest.doMock('@/services/api', () => ({
     isApiError: jest.requireActual('@/services/api/errors').isApiError,
     queryClient: queryClientMock,
     setUnauthorizedHandler,
   }));
-  jest.doMock('@/services/storage/secureStorage', () => ({ tokenStorage: tokenStorageMock }));
+  jest.doMock('@/services/storage/secureStorage', () => ({
+    tokenStorage: tokenStorageMock,
+    refreshTokenStorage: { get: tokenStorageMock.refreshGet },
+    clearSessionTokens: tokenStorageMock.clear,
+  }));
   jest.doMock('@/navigation/navigationRef', () => ({ navigationRef: navigationRefMock }));
+  jest.doMock('@/features/profile/services/reminderSync', () => remindersMock);
   jest.doMock('@/state/resetUserData', () => ({
     registerUserDataReset: jest.fn(),
     resetUserData: resetUserDataMock,
@@ -89,6 +110,8 @@ function load(useMockApi = false) {
     require('@/state/auth/authStore') as typeof import('@/state/auth/authStore');
   const { useUserProfileStore } =
     require('@/state/user/userProfileStore') as typeof import('@/state/user/userProfileStore');
+  const { usePremiumStore } =
+    require('@/state/premium/premiumStore') as typeof import('@/state/premium/premiumStore');
   // Cùng registry với isApiError của sessionService để instanceof đúng sau jest.resetModules().
   const { ApiError } =
     jest.requireActual('@/services/api/errors') as typeof import('@/services/api/errors');
@@ -97,11 +120,14 @@ function load(useMockApi = false) {
     session,
     useAuthStore,
     useUserProfileStore,
+    usePremiumStore,
     ApiError,
     authServiceMock,
     healthMock,
+    premiumMock,
     tokenStorageMock,
     queryClientMock,
+    remindersMock,
     setUnauthorizedHandler,
     navigationRefMock,
     resetUserDataMock,
@@ -119,11 +145,12 @@ describe('openSession', () => {
   });
 
   test('đã có hồ sơ → nạp vào userProfileStore trước khi vào Main', async () => {
-    const { session, healthMock, useUserProfileStore } = load();
+    const { session, healthMock, useUserProfileStore, remindersMock } = load();
     healthMock.getHealthProfile.mockResolvedValue(HYDRATED);
 
     const result = await session.openSession(USER);
 
+    expect(remindersMock.resyncReminders).toHaveBeenCalledTimes(1);
     expect(healthMock.getHealthProfile).toHaveBeenCalledWith('user-1');
     expect(result).toEqual({ user: USER, needsSurvey: false });
     expect(useUserProfileStore.getState()).toMatchObject({
@@ -150,6 +177,28 @@ describe('openSession', () => {
     healthMock.getHealthProfile.mockRejectedValue(error);
 
     await expect(session.openSession(USER)).rejects.toBe(error);
+  });
+
+  test('nạp gói thành viên do server báo vào premiumStore (cả khi chưa làm khảo sát)', async () => {
+    const { session, premiumMock, usePremiumStore } = load();
+    premiumMock.getStatus.mockResolvedValue(PRO_MEMBERSHIP);
+
+    await session.openSession({ ...USER, hasCompletedSurvey: false });
+
+    expect(usePremiumStore.getState()).toMatchObject(PRO_MEMBERSHIP);
+  });
+
+  test('đọc gói lỗi → không chặn đăng nhập, dùng cờ isPro của đăng nhập làm dự phòng', async () => {
+    const { session, healthMock, premiumMock, usePremiumStore } = load();
+    healthMock.getHealthProfile.mockResolvedValue(HYDRATED);
+    premiumMock.getStatus.mockRejectedValue(new Error('máy chủ lỗi'));
+
+    const asPro = await session.openSession({ ...USER, isPro: true });
+    expect(asPro.needsSurvey).toBe(false);
+    expect(usePremiumStore.getState().status).toBe('premium');
+
+    await session.openSession({ ...USER, isPro: false });
+    expect(usePremiumStore.getState().status).toBe('free');
   });
 });
 
@@ -362,6 +411,56 @@ describe('startSessionLifecycle', () => {
     expect(setUnauthorizedHandler).toHaveBeenCalledTimes(2);
   });
 
+  test('đăng xuất chủ động → thu hồi refresh token ở máy chủ bằng bản đã đọc trước khi xóa', async () => {
+    const { session, useAuthStore, tokenStorageMock, authServiceMock } = load();
+    tokenStorageMock.refreshGet.mockResolvedValue('refresh-1');
+    session.startSessionLifecycle();
+    useAuthStore.getState().login(USER);
+
+    useAuthStore.getState().logout();
+    await flushPromises();
+
+    expect(tokenStorageMock.clear).toHaveBeenCalledTimes(1);
+    expect(authServiceMock.logout).toHaveBeenCalledWith('refresh-1');
+  });
+
+  test('đăng xuất → huỷ nhắc nhở cục bộ của tài khoản vừa thoát', async () => {
+    const { session, useAuthStore, remindersMock } = load();
+    session.startSessionLifecycle();
+    useAuthStore.getState().login(USER);
+
+    useAuthStore.getState().logout();
+    await flushPromises();
+
+    expect(remindersMock.cancelReminders).toHaveBeenCalledTimes(1);
+  });
+
+  test('không có refresh token (phiên cũ) → chỉ dọn cục bộ, không gọi máy chủ', async () => {
+    const { session, useAuthStore, authServiceMock } = load();
+    session.startSessionLifecycle();
+    useAuthStore.getState().login(USER);
+
+    useAuthStore.getState().logout();
+    await flushPromises();
+
+    expect(authServiceMock.logout).not.toHaveBeenCalled();
+  });
+
+  test('thu hồi ở máy chủ lỗi (mất mạng) → vẫn đăng xuất và dọn dữ liệu cục bộ', async () => {
+    const { session, useAuthStore, tokenStorageMock, authServiceMock, resetUserDataMock } = load();
+    tokenStorageMock.refreshGet.mockResolvedValue('refresh-1');
+    authServiceMock.logout.mockRejectedValue(new Error('mất mạng'));
+    session.startSessionLifecycle();
+    useAuthStore.getState().login(USER);
+
+    useAuthStore.getState().logout();
+    await flushPromises();
+
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(tokenStorageMock.clear).toHaveBeenCalledTimes(1);
+    expect(resetUserDataMock).toHaveBeenCalledTimes(1);
+  });
+
   test('đăng xuất → xóa token, cache và dữ liệu người dùng cục bộ', async () => {
     const { session, useAuthStore, tokenStorageMock, queryClientMock, resetUserDataMock } = load();
     session.startSessionLifecycle();
@@ -375,6 +474,18 @@ describe('startSessionLifecycle', () => {
     expect(queryClientMock.cancelQueries).toHaveBeenCalledTimes(1);
     expect(queryClientMock.clear).toHaveBeenCalledTimes(1);
     expect(resetUserDataMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('đăng xuất → gói thành viên về Free (không để tài khoản sau thừa hưởng Pro của người trước)', async () => {
+    const { session, useAuthStore, usePremiumStore } = load();
+    session.startSessionLifecycle();
+    useAuthStore.getState().login(USER);
+    usePremiumStore.getState().hydrateMembership(PRO_MEMBERSHIP);
+
+    useAuthStore.getState().logout();
+    await flushPromises();
+
+    expect(usePremiumStore.getState()).toMatchObject(FREE_MEMBERSHIP);
   });
 
   test('"Đăng nhập lại" sau khi hết hạn cũng dọn dữ liệu của phiên cũ', async () => {

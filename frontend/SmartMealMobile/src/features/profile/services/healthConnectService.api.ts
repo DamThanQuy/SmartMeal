@@ -5,12 +5,14 @@ import { toHealthConnectState } from './healthConnect.mapper';
 import { healthConnectPreferences } from './healthConnectPreferences';
 import type { healthConnectMockService } from './healthConnectService.mock';
 
-// Số liệu mẫu cho nút "Đồng bộ ngay" ở DEV — khớp design/HealthConnect.dc.html.
+// Số liệu mẫu cho nút "Đồng bộ ngay" ở DEV — khớp design/HealthConnect.dc.html. Nguồn "Manual" (nhập
+// tay, ưu tiên thấp nhất) vì đây không phải số liệu đọc từ Health Connect thật: nếu sau này có nguồn
+// thật cho cùng ngày thì số liệu thật được ưu tiên (BR-042).
 const DEV_SAMPLE_METRICS = {
   steps: 6240,
   burnedCalories: 180,
   distanceMeters: 4300,
-  source: 'DevSample',
+  source: 'Manual',
 } as const;
 
 // Bản gọi backend thật (docs/fetch-api/part1 §9). Health Connect/HealthKit thật cần Expo Dev Client
@@ -48,18 +50,14 @@ export const healthConnectApiService: Partial<typeof healthConnectMockService> =
   },
 
   // POST /health-sync/steps-and-calories chỉ gửi được khi có nguồn đọc thật — chưa có ở Expo Go.
-  // Ở DEV tạo số liệu mẫu để thử luồng Dashboard/CalorieBudget với BE thật; ngoài DEV báo rõ thay
-  // vì im lặng không làm gì.
+  // Ở DEV gửi số liệu mẫu để thử luồng Dashboard/CalorieBudget với BE thật; ngoài DEV báo rõ thay
+  // vì im lặng không làm gì. BE thay thế số liệu của (ngày, nguồn) nên bấm lặp chỉ làm mới mốc giờ
+  // đồng bộ, không nhân đôi số bước.
   async syncNow() {
     if (!__DEV__) {
       throw new Error('Đồng bộ Health Connect cần bản Dev Client — chưa hỗ trợ trên bản này.');
     }
 
-    const dateIso = todayIso();
-    const summary = await healthSyncService.getDailySummary(dateIso);
-    // BE cộng dồn MỌI lần gọi trong ngày (P1-BE-09) nên gửi lặp sẽ nhân đôi số bước → chỉ tạo số
-    // liệu mẫu khi hôm nay chưa có gì.
-    if (summary.hasSyncedData) return;
-    await healthSyncService.syncMetrics({ dateIso, ...DEV_SAMPLE_METRICS });
+    await healthSyncService.syncMetrics({ dateIso: todayIso(), ...DEV_SAMPLE_METRICS });
   },
 };

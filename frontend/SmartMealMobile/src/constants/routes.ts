@@ -12,6 +12,7 @@ export const AUTH_ROUTES = {
   REGISTER: 'Register',
   OTP: 'Otp',
   FORGOT_PASSWORD: 'ForgotPassword',
+  RESET_PASSWORD: 'ResetPassword',
   HEALTH_PROFILE_BASIC_INFO: 'HealthProfileBasicInfo',
   HEALTH_PROFILE_BODY: 'HealthProfileBody',
   HEALTH_PROFILE_GOAL: 'HealthProfileGoal',
@@ -79,10 +80,13 @@ export const MAIN_STACK_ROUTES = {
   SETTINGS: 'Settings',
   EDIT_PROFILE: 'EditProfile',
   DELETE_DATA: 'DeleteData',
+  /** Xóa vĩnh viễn tài khoản (BR-271) — khác DeleteData (giữ tài khoản). */
+  DELETE_ACCOUNT: 'DeleteAccount',
   /** SettingsScreen "Đổi mật khẩu" (sửa lệch sau Đợt 9) — ForgotPasswordScreen/OtpScreen dùng
    * chung với AuthNavigator, đăng ký thêm ở đây để mở được từ Main (xem MainNavigator.tsx). */
   FORGOT_PASSWORD: 'ForgotPassword',
   OTP: 'Otp',
+  RESET_PASSWORD: 'ResetPassword',
   // Đợt 10 — ai/scanner (design v2).
   FRIDGE_CAMERA: 'FridgeCamera',
   OCR_CAMERA: 'OCRCamera',
@@ -104,7 +108,11 @@ export const MAIN_STACK_ROUTES = {
   CHALLENGE_COMPLETE: 'ChallengeComplete',
   BADGES: 'Badges',
   COLLECTION_DETAIL: 'CollectionDetail',
+  /** Bộ sưu tập mở từ liên kết chia sẻ (chỉ xem). */
+  SHARED_COLLECTION: 'SharedCollection',
   CREATE_COLLECTION: 'CreateCollection',
+  /** Sheet "Lưu vào bộ sưu tập" mở từ RecipeDetail (không có artboard riêng). */
+  ADD_TO_COLLECTION: 'AddToCollection',
   // Đợt 13 — premium (design v2, BR-230→233, BR-240→242).
   SUBSCRIPTION: 'Subscription',
   PAYMENT_METHOD: 'PaymentMethod',

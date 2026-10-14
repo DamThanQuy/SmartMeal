@@ -22,6 +22,29 @@ namespace SmartMeal.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("SmartMeal.Domain.Entities.AiUsageLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.ToTable("AiUsageLogs");
+                });
+
             modelBuilder.Entity("SmartMeal.Domain.Entities.Allergy", b =>
                 {
                     b.Property<int>("Id")
@@ -29,6 +52,10 @@ namespace SmartMeal.Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Description")
                         .HasColumnType("text");
@@ -39,44 +66,67 @@ namespace SmartMeal.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Code")
+                        .IsUnique();
+
                     b.ToTable("Allergies");
 
                     b.HasData(
                         new
                         {
                             Id = 1,
+                            Code = "seafood",
                             Description = "Tôm, cua, ốc, mực",
                             Name = "Hải sản (Seafood)"
                         },
                         new
                         {
                             Id = 2,
+                            Code = "peanut",
                             Description = "Lạc và chế phẩm từ lạc",
                             Name = "Đậu phộng (Peanuts)"
                         },
                         new
                         {
                             Id = 3,
+                            Code = "dairy",
                             Description = "Sữa bò, phô mai, bơ",
                             Name = "Sữa động vật (Dairy)"
                         },
                         new
                         {
                             Id = 4,
+                            Code = "egg",
                             Description = "Trứng gà, trứng vịt",
                             Name = "Trứng (Eggs)"
                         },
                         new
                         {
                             Id = 5,
+                            Code = "gluten",
                             Description = "Bánh mì, mì ý bột mì",
                             Name = "Gluten (Lúa mì)"
                         },
                         new
                         {
                             Id = 6,
+                            Code = "soy",
                             Description = "Đậu phụ, sữa đậu nành",
                             Name = "Đậu nành (Soy)"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Code = "treeNut",
+                            Description = "Hạnh nhân, óc chó, hạt điều, hạt dẻ",
+                            Name = "Các loại hạt (Tree nuts)"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Code = "sesame",
+                            Description = "Hạt mè, dầu mè, sốt mè",
+                            Name = "Mè (Sesame)"
                         });
                 });
 
@@ -153,6 +203,9 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.Property<double>("CarbsGrams")
                         .HasColumnType("double precision");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<double>("FatGrams")
                         .HasColumnType("double precision");
 
@@ -197,6 +250,32 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.ToTable("DiaryItems");
                 });
 
+            modelBuilder.Entity("SmartMeal.Domain.Entities.FoodServing", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("Grams")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("IngredientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IngredientId");
+
+                    b.ToTable("FoodServings");
+                });
+
             modelBuilder.Entity("SmartMeal.Domain.Entities.GroceryItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -223,6 +302,9 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.Property<bool>("IsChecked")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("MergedFromRecipeCount")
+                        .HasColumnType("integer");
+
                     b.Property<Guid?>("RecipeId")
                         .HasColumnType("uuid");
 
@@ -240,6 +322,62 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("GroceryItems");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.GroceryList", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("GeneratedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("PeriodEnd")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("PeriodStart")
+                        .HasColumnType("date");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("GroceryLists");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.GroceryTrip", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("ActualCostVnd")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("EstimatedCostVnd")
+                        .HasColumnType("numeric");
+
+                    b.Property<int>("PendingItemsKept")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly?>("PeriodEnd")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("PeriodStart")
+                        .HasColumnType("date");
+
+                    b.Property<int>("PurchasedItems")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "CompletedAt");
+
+                    b.ToTable("GroceryTrips");
                 });
 
             modelBuilder.Entity("SmartMeal.Domain.Entities.HealthPet", b =>
@@ -284,12 +422,16 @@ namespace SmartMeal.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("TotalXp")
+                        .HasColumnType("integer");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId")
+                        .IsUnique();
 
                     b.ToTable("HealthPets");
                 });
@@ -328,6 +470,9 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.Property<double>("DailyProteinTargetGrams")
                         .HasColumnType("double precision");
 
+                    b.Property<DateOnly?>("DateOfBirth")
+                        .HasColumnType("date");
+
                     b.Property<string>("Gender")
                         .IsRequired()
                         .HasColumnType("text");
@@ -350,6 +495,9 @@ namespace SmartMeal.Infrastructure.Migrations
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("WaterGoalMl")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -389,9 +537,44 @@ namespace SmartMeal.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "SyncDate", "Source")
+                        .IsUnique();
 
                     b.ToTable("HealthSyncLogs");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.IdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ResponseBody")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ResponseContentType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("integer");
+
+                    b.HasKey("UserId", "Key");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.ToTable("IdempotencyRecords");
                 });
 
             modelBuilder.Entity("SmartMeal.Domain.Entities.Ingredient", b =>
@@ -402,6 +585,9 @@ namespace SmartMeal.Infrastructure.Migrations
 
                     b.Property<int?>("AllergyId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("Barcode")
+                        .HasColumnType("text");
 
                     b.Property<double>("CaloriesPer100g")
                         .HasColumnType("double precision");
@@ -432,12 +618,22 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.Property<string>("ImageUrl")
                         .HasColumnType("text");
 
+                    b.Property<bool>("IsVerified")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("OwnerUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<double>("ProteinPer100g")
                         .HasColumnType("double precision");
+
+                    b.Property<string>("SearchText")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<double>("SodiumMgPer100g")
                         .HasColumnType("double precision");
@@ -449,7 +645,26 @@ namespace SmartMeal.Infrastructure.Migrations
 
                     b.HasIndex("AllergyId");
 
+                    b.HasIndex("Barcode");
+
+                    b.HasIndex("OwnerUserId");
+
                     b.ToTable("Ingredients");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.IngredientAllergy", b =>
+                {
+                    b.Property<Guid>("IngredientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AllergyId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("IngredientId", "AllergyId");
+
+                    b.HasIndex("AllergyId");
+
+                    b.ToTable("IngredientAllergies");
                 });
 
             modelBuilder.Entity("SmartMeal.Domain.Entities.MealPlan", b =>
@@ -478,7 +693,8 @@ namespace SmartMeal.Infrastructure.Migrations
 
                     b.HasIndex("RecipeId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "PlanDate", "MealType")
+                        .IsUnique();
 
                     b.ToTable("MealPlans");
                 });
@@ -491,6 +707,10 @@ namespace SmartMeal.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
@@ -500,30 +720,37 @@ namespace SmartMeal.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Code")
+                        .IsUnique();
+
                     b.ToTable("MedicalConditions");
 
                     b.HasData(
                         new
                         {
                             Id = 1,
+                            Code = "diabetes",
                             Description = "Hạn chế đường và carbs hấp thu nhanh",
                             Name = "Tiểu đường (Diabetes)"
                         },
                         new
                         {
                             Id = 2,
+                            Code = "gout",
                             Description = "Hạn chế purin (nội tạng, thịt đỏ, hải sản)",
                             Name = "Gout (Axit Uric cao)"
                         },
                         new
                         {
                             Id = 3,
+                            Code = "hypertension",
                             Description = "Chế độ ăn giảm muối Natri (DASH)",
                             Name = "Cao huyết áp (Hypertension)"
                         },
                         new
                         {
                             Id = 4,
+                            Code = "dyslipidemia",
                             Description = "Hạn chế mỡ bão hòa và cholesterol",
                             Name = "Mỡ máu cao (Dyslipidemia)"
                         });
@@ -550,7 +777,8 @@ namespace SmartMeal.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "LogDate", "MealType")
+                        .IsUnique();
 
                     b.ToTable("NutritionDiaries");
                 });
@@ -560,6 +788,16 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -571,13 +809,66 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.Property<bool>("IsUsed")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("OtpCode")
+                    b.Property<string>("Purpose")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Email", "Purpose", "CreatedAt");
+
                     b.ToTable("OtpVerifications");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.PaymentTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("AmountVnd")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PlanId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProviderTransactionId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SessionId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("UserRef")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PaymentTransactions");
                 });
 
             modelBuilder.Entity("SmartMeal.Domain.Entities.Recipe", b =>
@@ -617,6 +908,10 @@ namespace SmartMeal.Infrastructure.Migrations
 
                     b.Property<bool>("IsPremium")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("MealTypes")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<int>("PrepTimeMinutes")
                         .HasColumnType("integer");
@@ -658,10 +953,20 @@ namespace SmartMeal.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("ShareToken")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("SharedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ShareToken")
+                        .IsUnique();
 
                     b.HasIndex("UserId");
 
@@ -705,6 +1010,41 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.ToTable("RecipeTags");
                 });
 
+            modelBuilder.Entity("SmartMeal.Domain.Entities.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReplacedByTokenId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
+                });
+
             modelBuilder.Entity("SmartMeal.Domain.Entities.Tag", b =>
                 {
                     b.Property<int>("Id")
@@ -713,11 +1053,18 @@ namespace SmartMeal.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
 
                     b.ToTable("Tags");
 
@@ -725,32 +1072,50 @@ namespace SmartMeal.Infrastructure.Migrations
                         new
                         {
                             Id = 1,
+                            Code = "eatClean",
                             Name = "Eat Clean"
                         },
                         new
                         {
                             Id = 2,
+                            Code = "keto",
                             Name = "Keto"
                         },
                         new
                         {
                             Id = 3,
+                            Code = "vegan",
                             Name = "Thuần Chay (Vegan)"
                         },
                         new
                         {
                             Id = 4,
+                            Code = "highProtein",
                             Name = "Tăng Cơ (High Protein)"
                         },
                         new
                         {
                             Id = 5,
+                            Code = "quick",
                             Name = "Nhanh Gọn (< 15 phút)"
                         },
                         new
                         {
                             Id = 6,
+                            Code = "budget",
                             Name = "Tiết Kiệm Ngân Sách"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Code = "lowCarb",
+                            Name = "Low-Carb"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Code = "vegetarian",
+                            Name = "Ăn Chay (Vegetarian)"
                         });
                 });
 
@@ -770,6 +1135,9 @@ namespace SmartMeal.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("FailedLoginCount")
+                        .HasColumnType("integer");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnType("text");
@@ -783,10 +1151,23 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.Property<bool>("IsPro")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("LockoutEnd")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("ProExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProPlanId")
+                        .HasColumnType("text");
+
                     b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SubscriptionStatus")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -796,6 +1177,9 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("GoogleId")
                         .IsUnique();
 
                     b.ToTable("Users");
@@ -814,6 +1198,22 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.HasIndex("AllergyId");
 
                     b.ToTable("UserAllergies");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.UserBadge", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BadgeId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UnlockedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId", "BadgeId");
+
+                    b.ToTable("UserBadges");
                 });
 
             modelBuilder.Entity("SmartMeal.Domain.Entities.UserChallenge", b =>
@@ -847,7 +1247,8 @@ namespace SmartMeal.Infrastructure.Migrations
 
                     b.HasIndex("ChallengeId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "ChallengeId")
+                        .IsUnique();
 
                     b.ToTable("UserChallenges");
                 });
@@ -865,6 +1266,21 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.HasIndex("MedicalConditionId");
 
                     b.ToTable("UserConditions");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.UserDietaryPreference", b =>
+                {
+                    b.Property<Guid>("HealthProfileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TagId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("HealthProfileId", "TagId");
+
+                    b.HasIndex("TagId");
+
+                    b.ToTable("UserDietaryPreferences");
                 });
 
             modelBuilder.Entity("SmartMeal.Domain.Entities.UserFavorite", b =>
@@ -889,6 +1305,69 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.ToTable("UserFavorites");
                 });
 
+            modelBuilder.Entity("SmartMeal.Domain.Entities.UserFavoriteFood", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("IngredientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId", "IngredientId");
+
+                    b.HasIndex("IngredientId");
+
+                    b.ToTable("UserFavoriteFoods");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.UserNotification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DedupKey")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.HasIndex("UserId", "DedupKey")
+                        .IsUnique();
+
+                    b.ToTable("UserNotifications");
+                });
+
             modelBuilder.Entity("SmartMeal.Domain.Entities.WaterLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -909,7 +1388,7 @@ namespace SmartMeal.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "LogDate");
 
                     b.ToTable("WaterLogs");
                 });
@@ -934,6 +1413,48 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.HasIndex("HealthProfileId");
 
                     b.ToTable("WeightHistories");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.XpEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EventKey")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Xp")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "EventKey")
+                        .IsUnique();
+
+                    b.ToTable("XpEvents");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.AiUsageLog", b =>
+                {
+                    b.HasOne("SmartMeal.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("SmartMeal.Domain.Entities.CollectionRecipe", b =>
@@ -978,6 +1499,17 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.Navigation("Recipe");
                 });
 
+            modelBuilder.Entity("SmartMeal.Domain.Entities.FoodServing", b =>
+                {
+                    b.HasOne("SmartMeal.Domain.Entities.Ingredient", "Ingredient")
+                        .WithMany("Servings")
+                        .HasForeignKey("IngredientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Ingredient");
+                });
+
             modelBuilder.Entity("SmartMeal.Domain.Entities.GroceryItem", b =>
                 {
                     b.HasOne("SmartMeal.Domain.Entities.Recipe", "Recipe")
@@ -991,6 +1523,28 @@ namespace SmartMeal.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Recipe");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.GroceryList", b =>
+                {
+                    b.HasOne("SmartMeal.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.GroceryTrip", b =>
+                {
+                    b.HasOne("SmartMeal.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -1028,13 +1582,50 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("SmartMeal.Domain.Entities.IdempotencyRecord", b =>
+                {
+                    b.HasOne("SmartMeal.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("SmartMeal.Domain.Entities.Ingredient", b =>
                 {
                     b.HasOne("SmartMeal.Domain.Entities.Allergy", "Allergy")
                         .WithMany()
                         .HasForeignKey("AllergyId");
 
+                    b.HasOne("SmartMeal.Domain.Entities.User", "Owner")
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.Navigation("Allergy");
+
+                    b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.IngredientAllergy", b =>
+                {
+                    b.HasOne("SmartMeal.Domain.Entities.Allergy", "Allergy")
+                        .WithMany()
+                        .HasForeignKey("AllergyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SmartMeal.Domain.Entities.Ingredient", "Ingredient")
+                        .WithMany("IngredientAllergies")
+                        .HasForeignKey("IngredientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Allergy");
+
+                    b.Navigation("Ingredient");
                 });
 
             modelBuilder.Entity("SmartMeal.Domain.Entities.MealPlan", b =>
@@ -1063,6 +1654,16 @@ namespace SmartMeal.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.PaymentTransaction", b =>
+                {
+                    b.HasOne("SmartMeal.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("User");
                 });
@@ -1116,6 +1717,17 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.Navigation("Tag");
                 });
 
+            modelBuilder.Entity("SmartMeal.Domain.Entities.RefreshToken", b =>
+                {
+                    b.HasOne("SmartMeal.Domain.Entities.User", "User")
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("SmartMeal.Domain.Entities.UserAllergy", b =>
                 {
                     b.HasOne("SmartMeal.Domain.Entities.Allergy", "Allergy")
@@ -1133,6 +1745,17 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.Navigation("Allergy");
 
                     b.Navigation("HealthProfile");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.UserBadge", b =>
+                {
+                    b.HasOne("SmartMeal.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("SmartMeal.Domain.Entities.UserChallenge", b =>
@@ -1173,6 +1796,25 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.Navigation("MedicalCondition");
                 });
 
+            modelBuilder.Entity("SmartMeal.Domain.Entities.UserDietaryPreference", b =>
+                {
+                    b.HasOne("SmartMeal.Domain.Entities.HealthProfile", "HealthProfile")
+                        .WithMany("DietaryPreferences")
+                        .HasForeignKey("HealthProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SmartMeal.Domain.Entities.Tag", "Tag")
+                        .WithMany()
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("HealthProfile");
+
+                    b.Navigation("Tag");
+                });
+
             modelBuilder.Entity("SmartMeal.Domain.Entities.UserFavorite", b =>
                 {
                     b.HasOne("SmartMeal.Domain.Entities.Recipe", "Recipe")
@@ -1188,6 +1830,36 @@ namespace SmartMeal.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Recipe");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.UserFavoriteFood", b =>
+                {
+                    b.HasOne("SmartMeal.Domain.Entities.Ingredient", "Ingredient")
+                        .WithMany()
+                        .HasForeignKey("IngredientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SmartMeal.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Ingredient");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SmartMeal.Domain.Entities.UserNotification", b =>
+                {
+                    b.HasOne("SmartMeal.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -1214,6 +1886,17 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.Navigation("HealthProfile");
                 });
 
+            modelBuilder.Entity("SmartMeal.Domain.Entities.XpEvent", b =>
+                {
+                    b.HasOne("SmartMeal.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("SmartMeal.Domain.Entities.Allergy", b =>
                 {
                     b.Navigation("UserAllergies");
@@ -1226,6 +1909,8 @@ namespace SmartMeal.Infrastructure.Migrations
 
             modelBuilder.Entity("SmartMeal.Domain.Entities.HealthProfile", b =>
                 {
+                    b.Navigation("DietaryPreferences");
+
                     b.Navigation("UserAllergies");
 
                     b.Navigation("UserConditions");
@@ -1235,7 +1920,11 @@ namespace SmartMeal.Infrastructure.Migrations
 
             modelBuilder.Entity("SmartMeal.Domain.Entities.Ingredient", b =>
                 {
+                    b.Navigation("IngredientAllergies");
+
                     b.Navigation("RecipeIngredients");
+
+                    b.Navigation("Servings");
                 });
 
             modelBuilder.Entity("SmartMeal.Domain.Entities.MedicalCondition", b =>
@@ -1276,6 +1965,8 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.Navigation("MealPlans");
 
                     b.Navigation("NutritionDiaries");
+
+                    b.Navigation("RefreshTokens");
                 });
 #pragma warning restore 612, 618
         }

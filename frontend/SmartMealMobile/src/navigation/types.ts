@@ -1,11 +1,12 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { AIAnalysisResult, VoiceLogResult } from '@/features/ai';
-import type { CheckoutResult, PaymentMethodId } from '@/features/premium';
+import type { OtpPurpose } from '@/features/auth';
+import type { CheckoutResult, SelectablePaymentMethodId } from '@/features/premium';
 import type { RecipeFilters } from '@/features/recipes';
 import type { BillingPlanId } from '@/state/premium/premiumStore';
 import type { MealType } from '@/types/meal.types';
 
-export type OtpPurpose = 'register' | 'reset-password';
+export type { OtpPurpose };
 
 /**
  * ForgotPasswordScreen/OtpScreen được đăng ký ở cả AuthNavigator (quên mật khẩu trước đăng nhập)
@@ -21,6 +22,7 @@ export type AuthStackParamList = {
   Register: undefined;
   Otp: { email: string; purpose: OtpPurpose; returnTo?: ForgotPasswordReturnTo };
   ForgotPassword: { returnTo?: ForgotPasswordReturnTo } | undefined;
+  ResetPassword: { email: string; resetToken: string; returnTo?: ForgotPasswordReturnTo };
   HealthProfileBasicInfo: undefined;
   HealthProfileBody: undefined;
   HealthProfileGoal: undefined;
@@ -65,7 +67,7 @@ export type MainStackParamList = {
    * bước ghi âm, vào thẳng phase reviewing với kết quả đã có. */
   VoiceLog: { mealType: MealType; initialResult?: VoiceLogResult };
   /** `source` đổi copy/CTA cho đúng luồng thất bại (Chụp lại vs Nói lại). */
-  StateAIFailed: { mealType: MealType; source: 'photo' | 'voice' };
+  StateAIFailed: { mealType: MealType; source: 'photo' | 'voice'; message?: string };
   StateAILimit: { mealType?: MealType } | undefined;
   FoodSearch: { mealType: MealType };
   FoodDetail: { foodId: string; mealType: MealType };
@@ -77,8 +79,10 @@ export type MainStackParamList = {
   // Đợt 4 — Scanner (BR-080, BR-120, BR-130, BR-140).
   Barcode: { mealType: MealType };
   ProductNotFound: { barcode: string; mealType: MealType };
-  OCRReview: { mealType: MealType };
-  Fridge: undefined;
+  /** `imageUri` — ảnh nhãn vừa chụp/chọn ở OCRCamera (bắt buộc với bản gọi API). */
+  OCRReview: { mealType: MealType; imageUri: string };
+  /** Ảnh tủ lạnh vừa chụp ở FridgeCamera (1–4 ảnh). */
+  Fridge: { imageUris: string[] };
   /** `returnTo` — biết quay lại camera nào sau khi "Cho phép camera". */
   StatePermission: { mealType?: MealType; returnTo: 'Barcode' | 'Fridge' | 'AICamera' };
 
@@ -102,7 +106,7 @@ export type MainStackParamList = {
   // Đợt 8 — Gamification + Premium (BR-200→BR-242). Không có bottom nav, sibling của MainTabs.
   Pet: undefined;
   Premium: undefined;
-  PaymentPending: { planId: BillingPlanId; paymentMethodId: PaymentMethodId };
+  PaymentPending: { planId: BillingPlanId; paymentMethodId: SelectablePaymentMethodId };
   PaymentSuccess: { result: CheckoutResult };
 
   // Đợt 9 — auth/profile (design v2, BR-001→003, BR-010→014, BR-270/271).
@@ -111,9 +115,11 @@ export type MainStackParamList = {
   Settings: undefined;
   EditProfile: undefined;
   DeleteData: undefined;
+  DeleteAccount: undefined;
   /** "Đổi mật khẩu" ở Settings (sửa lệch sau Đợt 9) — cùng shape với AuthStackParamList. */
   ForgotPassword: { returnTo?: ForgotPasswordReturnTo } | undefined;
   Otp: { email: string; purpose: OtpPurpose; returnTo?: ForgotPasswordReturnTo };
+  ResetPassword: { email: string; resetToken: string; returnTo?: ForgotPasswordReturnTo };
 
   // Đợt 10 — ai/scanner (design v2, BR-072, BR-080→083, BR-121, BR-130→132, BR-162, BR-252,
   // BR-290/291). Không có bottom nav, sibling của MainTabs.
@@ -121,7 +127,8 @@ export type MainStackParamList = {
   FridgeCamera: undefined;
   OCRCamera: { mealType: MealType };
   VoicePermission: { mealType: MealType };
-  CreateFood: { mealType: MealType };
+  /** `barcode` khi đến từ ProductNotFound — món tạo ra gắn với mã vạch đó. */
+  CreateFood: { mealType: MealType; barcode?: string };
   AddToMealPlan: { recipeId: string };
 
   // Đợt 11 — planner/grocery (design v2, BR-040→042, BR-160→174, BR-260→262).
@@ -136,7 +143,11 @@ export type MainStackParamList = {
   ChallengeComplete: { challengeId: string };
   Badges: undefined;
   CollectionDetail: { collectionId: string };
-  CreateCollection: undefined;
+  /** `token` — mã trong liên kết chia sẻ (deep link shared/collections/:token). */
+  SharedCollection: { token: string };
+  /** `recipeId` khi mở từ AddToCollection — tạo xong thêm luôn món đang xem. */
+  CreateCollection: { recipeId?: string } | undefined;
+  AddToCollection: { recipeId: string };
 
   // Đợt 13 — premium (design v2, BR-230→233, BR-240→242).
   Subscription: undefined;

@@ -1,30 +1,67 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace SmartMeal.Application.DTOs.Auth;
 
 public class RegisterRequestDto
 {
+    [Required(ErrorMessage = "Email là bắt buộc.")]
+    [EmailAddress(ErrorMessage = "Email không đúng định dạng.")]
+    [StringLength(254, ErrorMessage = "Email tối đa 254 ký tự.")]
     public string Email { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Mật khẩu là bắt buộc.")]
+    [StringLength(128, MinimumLength = 8, ErrorMessage = "Mật khẩu phải từ 8 đến 128 ký tự.")]
     public string Password { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Họ tên là bắt buộc.")]
+    [StringLength(100, MinimumLength = 2, ErrorMessage = "Họ tên phải từ 2 đến 100 ký tự.")]
     public string FullName { get; set; } = string.Empty;
 }
 
 public class LoginRequestDto
 {
+    [Required(ErrorMessage = "Email là bắt buộc.")]
+    [EmailAddress(ErrorMessage = "Email không đúng định dạng.")]
     public string Email { get; set; } = string.Empty;
+
+    // Không kiểm độ dài: mật khẩu sai/ngắn vẫn phải trả 401 "sai thông tin" thay vì 400.
+    [Required(ErrorMessage = "Mật khẩu là bắt buộc.")]
     public string Password { get; set; } = string.Empty;
 }
 
 public class GoogleAuthRequestDto
 {
-    public string GoogleId { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string FullName { get; set; } = string.Empty;
-    public string? AvatarUrl { get; set; }
+    [Required(ErrorMessage = "Google ID token là bắt buộc.")]
+    [StringLength(8192, MinimumLength = 20, ErrorMessage = "Google ID token không hợp lệ.")]
+    public string IdToken { get; set; } = string.Empty;
+}
+
+public class RefreshTokenRequestDto
+{
+    [Required(ErrorMessage = "refreshToken là bắt buộc.")]
+    [StringLength(512, ErrorMessage = "refreshToken không hợp lệ.")]
+    public string RefreshToken { get; set; } = string.Empty;
+}
+
+public class LogoutRequestDto
+{
+    [StringLength(512, ErrorMessage = "refreshToken không hợp lệ.")]
+    public string? RefreshToken { get; set; }
 }
 
 public class AuthResponseDto
 {
+    /// <summary>Access token (JWT) — gửi trong header Authorization: Bearer.</summary>
     public string Token { get; set; } = string.Empty;
+
+    /// <summary>Thời điểm access token hết hạn (UTC).</summary>
     public DateTime ExpiresAt { get; set; }
+
+    /// <summary>Refresh token dùng một lần để lấy cặp token mới ở POST /auth/refresh.</summary>
+    public string RefreshToken { get; set; } = string.Empty;
+
+    public DateTime RefreshTokenExpiresAt { get; set; }
+
     public UserDto User { get; set; } = null!;
 }
 
@@ -34,7 +71,21 @@ public class UserDto
     public string Email { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public string? AvatarUrl { get; set; }
+    /// <summary>Quyền Pro còn hiệu lực. Nguồn đáng tin duy nhất — đừng đọc claim "isPro" trong token vì sẽ cũ sau khi nâng cấp.</summary>
     public bool IsPro { get; set; }
+
+    /// <summary>Free | Premium | Expired | Cancelled.</summary>
+    public string SubscriptionStatus { get; set; } = "Free";
+
+    /// <summary>Hạn dùng gói Pro (UTC); null nếu chưa có hoặc không có hạn.</summary>
+    public DateTime? ProExpiresAt { get; set; }
+
     public string Role { get; set; } = "User";
     public bool HasCompletedSurvey { get; set; }
+
+    /// <summary>
+    /// Tài khoản có mật khẩu. false = tài khoản tạo bằng đăng nhập Google trước đây (app đã bỏ đăng nhập Google): đặt mật khẩu
+    /// qua "Quên mật khẩu"; xóa tài khoản xác nhận bằng email thay vì mật khẩu.
+    /// </summary>
+    public bool HasPassword { get; set; }
 }

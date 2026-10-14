@@ -19,7 +19,7 @@ export type FoodLogSource = 'database' | 'ai' | 'manual';
  * Cách ghi món mà backend lưu (`logMethod`). FoodLogSource không phân biệt ảnh/giọng nói/mã vạch,
  * nên luồng AI/Scanner truyền thêm giá trị này khi cần.
  */
-export type MealLogMethod = 'Manual' | 'AiImage' | 'Voice' | 'Barcode';
+export type MealLogMethod = 'Manual' | 'AiImage' | 'Voice' | 'Barcode' | 'Ocr';
 
 export type FoodSearchFilter = 'all' | 'recent' | 'favorite' | 'mine';
 
@@ -44,6 +44,8 @@ export interface FoodItem {
   /** true khi món do chính user nhập tay (CreateFoodScreen, BR-121) — hiển thị nhãn "Do bạn
    * nhập", không tính là dữ liệu đã xác minh (verified luôn false với món này). */
   isUserCreated?: boolean;
+  /** Món nằm trong danh sách yêu thích của người dùng (chỉ có khi nguồn là backend). */
+  isFavorite?: boolean;
 }
 
 export interface NewFoodInput {
@@ -51,6 +53,8 @@ export interface NewFoodInput {
   amount: number;
   unit: 'g' | 'ml' | 'phần';
   nutrition: NutritionInfo;
+  /** Mã vạch khi nhập từ màn "Không tìm thấy sản phẩm" — lần quét sau tìm thấy món này (BR-120). */
+  barcode?: string;
 }
 
 export interface MealLogEntry {
@@ -71,8 +75,7 @@ export interface MealLogEntry {
   source: FoodLogSource;
   /** true khi bản ghi đến từ luồng AI Analysis → User Review → User Confirm (BR-054). */
   aiConfirmed?: boolean;
-  /** Giờ ghi (ISO). Bản ghi tải về từ backend không có (BE không lưu/không trả giờ ghi) → UI ẩn
-   * giờ khi thiếu. */
+  /** Giờ ghi (ISO) — backend lưu và trả `createdAt` của món. */
   loggedAt?: string;
 }
 
@@ -86,6 +89,10 @@ export interface NewMealLogInput {
   aiConfirmed?: boolean;
   /** Mặc định: 'AiImage' khi source = 'ai', ngược lại 'Manual'. Barcode/Voice truyền rõ. */
   logMethod?: MealLogMethod;
+  /** id thực phẩm trong /foods khi món lấy từ danh mục — để tab "Gần đây" nhớ món đã ghi. */
+  ingredientId?: string;
+  /** id công thức khi ghi từ một công thức. */
+  recipeId?: string;
 }
 
 export interface MacroTargetProgress {
@@ -122,6 +129,6 @@ export interface WeeklyProgressSummary {
   days: WeeklyProgressDay[];
   averageCalories: number;
   daysOnTarget: number;
-  /** Rỗng khi backend chưa có số liệu macro theo ngày (P1-BE-07) — UI ẩn khối này. */
+  /** Trung bình macro các ngày đã ghi (rỗng nếu tuần chưa ghi gì — UI ẩn khối này). */
   averageMacros: MacroTargetProgress[];
 }

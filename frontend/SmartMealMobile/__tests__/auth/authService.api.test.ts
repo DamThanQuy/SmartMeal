@@ -10,30 +10,32 @@ const USER_DTO: UserDto = {
   fullName: 'Nguyễn An',
   avatarUrl: null,
   isPro: false,
+  subscriptionStatus: 'Free',
+  proExpiresAt: null,
   role: 'User',
   hasCompletedSurvey: false,
+  hasPassword: true,
 };
 
 const AUTH_RESPONSE: AuthResponseDto = {
   token: 'jwt-token',
   expiresAt: '2026-11-01T08:00:00Z',
+  refreshToken: 'refresh-token',
+  refreshTokenExpiresAt: '2026-12-01T08:00:00Z',
   user: USER_DTO,
 };
 
 function loadService() {
-  const apiMock = { get: jest.fn(), post: jest.fn(), put: jest.fn() };
-  const tokenStorageMock = {
-    get: jest.fn(),
-    set: jest.fn().mockResolvedValue(undefined),
-    clear: jest.fn().mockResolvedValue(undefined),
-  };
+  const apiMock = { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() };
+  // saveSessionTokens lưu cả access lẫn refresh token (một lần gọi).
+  const tokenStorageMock = { set: jest.fn().mockResolvedValue(undefined) };
 
   jest.resetModules();
   jest.doMock('@/services/api', () => ({
     api: apiMock,
     ENDPOINTS: jest.requireActual('@/services/api/endpoints').ENDPOINTS,
   }));
-  jest.doMock('@/services/storage/secureStorage', () => ({ tokenStorage: tokenStorageMock }));
+  jest.doMock('@/services/storage/secureStorage', () => ({ saveSessionTokens: tokenStorageMock.set }));
 
   const { authApiService } =
     require('@/features/auth/services/authService.api') as typeof import('@/features/auth/services/authService.api');
@@ -54,7 +56,9 @@ describe('login', () => {
       email: 'an@smartmeal.vn',
       password: 'matkhau123',
     });
-    expect(tokenStorageMock.set).toHaveBeenCalledWith('jwt-token');
+    expect(tokenStorageMock.set).toHaveBeenCalledWith(
+      expect.objectContaining({ token: 'jwt-token', refreshToken: 'refresh-token' }),
+    );
     expect(result).toEqual({
       user: {
         id: USER_DTO.id,
@@ -64,6 +68,7 @@ describe('login', () => {
         isPro: true,
         role: 'User',
         hasCompletedSurvey: true,
+        hasPassword: true,
       },
     });
   });
@@ -94,7 +99,9 @@ describe('register', () => {
       password: 'matkhau123',
       fullName: 'Nguyễn An',
     });
-    expect(tokenStorageMock.set).toHaveBeenCalledWith('jwt-token');
+    expect(tokenStorageMock.set).toHaveBeenCalledWith(
+      expect.objectContaining({ token: 'jwt-token', refreshToken: 'refresh-token' }),
+    );
     expect(result?.requiresOtp).toBe(false);
     expect(result?.email).toBe('an@smartmeal.vn');
     expect(result?.user).toMatchObject({ id: USER_DTO.id, hasCompletedSurvey: false });
@@ -154,12 +161,150 @@ describe('updateProfile', () => {
   });
 });
 
-describe('hàm BE chưa có', () => {
-  test('OTP và quên mật khẩu không có trong bản API (tự rơi về mock)', () => {
-    const { service } = loadService();
+describe('logout', () => {
+  test('POST /auth/logout với refresh token đã đọc từ trước, không gắn Bearer', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue(true);
 
-    expect(service.verifyOtp).toBeUndefined();
-    expect(service.resendOtp).toBeUndefined();
-    expect(service.requestPasswordReset).toBeUndefined();
+    await service.logout?.('refresh-1');
+
+    expect(apiMock.post).toHaveBeenCalledWith(
+      '/auth/logout',
+      { refreshToken: 'refresh-1' },
+      { skipAuth: true },
+    );
+  });
+});
+
+describe('quên / xác thực OTP / đặt lại mật khẩu', () => {
+  test('requestPasswordReset: POST /auth/forgot-password với email đã cắt khoảng trắng', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue(true);
+
+    await service.requestPasswordReset?.({ email: '  an@smartmeal.vn ' });
+
+    expect(apiMock.post).toHaveBeenCalledWith('/auth/forgot-password', { email: 'an@smartmeal.vn' });
+  });
+
+  test.each([
+    ['reset-password', 'reset-password'],
+    ['register', 'verify-email'],
+  ] as const)('resendOtp: mục đích %s gửi slug %s', async (purpose, slug) => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue(true);
+
+    await service.resendOtp?.({ email: 'an@smartmeal.vn', purpose });
+
+    expect(apiMock.post).toHaveBeenCalledWith('/auth/resend-otp', { email: 'an@smartmeal.vn', purpose: slug });
+  });
+
+  test('verifyOtp: gửi mã 6 số và trả resetToken của BE', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue({ verified: true, resetToken: 'reset-abc', resetTokenExpiresAt: '2026-10-03T10:10:00Z' });
+
+    const result = await service.verifyOtp?.({ email: 'an@smartmeal.vn', code: '123456', purpose: 'reset-password' });
+
+    expect(apiMock.post).toHaveBeenCalledWith('/auth/verify-otp', {
+      email: 'an@smartmeal.vn',
+      code: '123456',
+      purpose: 'reset-password',
+    });
+    expect(result).toEqual({ resetToken: 'reset-abc' });
+  });
+
+  test('verifyOtp: xác thực email (không có resetToken) → resetToken undefined', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue({ verified: true, resetToken: null, resetTokenExpiresAt: null });
+
+    const result = await service.verifyOtp?.({ email: 'an@smartmeal.vn', code: '123456', purpose: 'register' });
+
+    expect(result).toEqual({ resetToken: undefined });
+  });
+
+  test('verifyOtp: mã sai → ném lỗi của BE', async () => {
+    const { service, apiMock } = loadService();
+    const error = new Error('Mã xác thực không đúng hoặc đã hết hạn.');
+    apiMock.post.mockRejectedValue(error);
+
+    await expect(
+      service.verifyOtp?.({ email: 'an@smartmeal.vn', code: '000000', purpose: 'reset-password' }),
+    ).rejects.toBe(error);
+  });
+
+  test('resetPassword: POST /auth/reset-password kèm resetToken', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue(true);
+
+    await service.resetPassword?.({ email: 'an@smartmeal.vn', resetToken: 'reset-abc', newPassword: 'MatKhauMoi1!' });
+
+    expect(apiMock.post).toHaveBeenCalledWith('/auth/reset-password', {
+      email: 'an@smartmeal.vn',
+      resetToken: 'reset-abc',
+      newPassword: 'MatKhauMoi1!',
+    });
+  });
+});
+
+describe('ảnh đại diện và xóa dữ liệu', () => {
+  test('uploadAvatar: POST /auth/avatar dạng multipart với trường file, trả avatarUrl mới', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue({ ...USER_DTO, avatarUrl: 'https://cdn.smartmeal.vn/a.jpg' });
+
+    const result = await service.uploadAvatar?.({ uri: 'file:///a.jpg', mimeType: 'image/jpeg', fileName: 'a.jpg' });
+
+    const [url, body, config] = apiMock.post.mock.calls[0];
+    expect(url).toBe('/auth/avatar');
+    expect(body).toBeInstanceOf(FormData);
+    expect(config.headers['Content-Type']).toBe('multipart/form-data');
+    expect(config.timeout).toBeGreaterThan(15000);
+    expect(result).toEqual({ avatarUrl: 'https://cdn.smartmeal.vn/a.jpg' });
+  });
+
+  test('uploadAvatar: BE từ chối ảnh (sai loại/quá lớn) → ném lỗi của BE', async () => {
+    const { service, apiMock } = loadService();
+    const error = new Error('Ảnh tối đa 2 MB.');
+    apiMock.post.mockRejectedValue(error);
+
+    await expect(service.uploadAvatar?.({ uri: 'file:///a.jpg', mimeType: 'image/jpeg', fileName: 'a.jpg' })).rejects.toBe(error);
+  });
+
+  test('deleteMyData: DELETE /me/data', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.delete.mockResolvedValue({ deleted: { diaryItems: 3 } });
+
+    await service.deleteMyData?.();
+
+    expect(apiMock.delete).toHaveBeenCalledWith('/me/data');
+  });
+});
+
+describe('deleteAccount', () => {
+  test('tài khoản có mật khẩu → DELETE /auth/account kèm mật khẩu trong body', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.delete.mockResolvedValue(true);
+
+    await service.deleteAccount?.({ password: 'matkhau123' });
+
+    expect(apiMock.delete).toHaveBeenCalledWith('/auth/account', {
+      data: { password: 'matkhau123', confirmEmail: undefined },
+    });
+  });
+
+  test('tài khoản chỉ có Google → xác nhận bằng email (đã cắt khoảng trắng)', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.delete.mockResolvedValue(true);
+
+    await service.deleteAccount?.({ confirmEmail: '  an@smartmeal.vn ' });
+
+    expect(apiMock.delete).toHaveBeenCalledWith('/auth/account', {
+      data: { password: undefined, confirmEmail: 'an@smartmeal.vn' },
+    });
+  });
+
+  test('UserDto.hasPassword=false (chỉ Google) được giữ khi quy đổi', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.get.mockResolvedValue({ ...USER_DTO, hasPassword: false });
+
+    expect((await service.getMe?.())?.hasPassword).toBe(false);
   });
 });

@@ -8,11 +8,11 @@ import { AppBadge, AppButton, AppCard, AppSegmentedControl, AppText } from '@/co
 import { todayIso } from '@/features/nutrition';
 import { MAIN_STACK_ROUTES, PLANNER_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList, PlannerStackParamList } from '@/navigation/types';
-import { usePremiumStore } from '@/state/premium/premiumStore';
+import { useIsPro } from '@/state/premium/premiumStore';
 import { MEAL_TYPE_TITLES, MEAL_TYPES, type MealType } from '@/types/meal.types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { MealSlotSection } from '../components/MealSlotSection';
-import { useWeekPlan } from '../hooks/useMealPlanner';
+import { useClearMealSlot, useSetMealCompleted, useWeekPlan } from '../hooks/useMealPlanner';
 import { currentWeekStartIso, shiftWeek } from '../services/mealPlannerService';
 
 const WEEKDAY_SHORT_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -38,7 +38,11 @@ export function MealPlannerScreen({ navigation, route }: Props) {
   const weekStartIso = route.params?.weekStartIso ?? currentWeekStartIso();
   const [selectedDateIso, setSelectedDateIso] = useState(todayIso());
   const { data, isLoading, isError, error, refetch } = useWeekPlan(weekStartIso);
-  const isPremium = usePremiumStore(state => state.status === 'premium');
+  const clearSlot = useClearMealSlot(weekStartIso);
+  const setCompleted = useSetMealCompleted(weekStartIso);
+  const isPremium = useIsPro();
+  const slotBusyId = clearSlot.isPending ? clearSlot.variables : setCompleted.isPending ? setCompleted.variables?.mealPlanId : undefined;
+  const slotError = clearSlot.error?.message ?? setCompleted.error?.message;
 
   const handleShiftWeek = (direction: 1 | -1) => {
     const nextWeek = shiftWeek(weekStartIso, direction);
@@ -167,19 +171,34 @@ export function MealPlannerScreen({ navigation, route }: Props) {
         </View>
       </AppCard>
 
-      {MEAL_TYPES.map(mealType => (
-        <AppCard key={mealType}>
-          <MealSlotSection
-            mealTitle={MEAL_TYPE_TITLES[mealType]}
-            slot={selectedDay.meals[mealType]}
-            onPressChange={() => openSlotPicker(selectedDay.dateIso, mealType)}
-            onPressDetail={() => {
-              const recipeId = selectedDay.meals[mealType]?.recipeId;
-              if (recipeId) outerNavigation?.navigate(MAIN_STACK_ROUTES.RECIPE_DETAIL, { recipeId });
-            }}
-          />
-        </AppCard>
-      ))}
+      {slotError ? (
+        <AppText variant="caption" color="error" accessibilityRole="alert">
+          {slotError}
+        </AppText>
+      ) : null}
+
+      {MEAL_TYPES.map(mealType => {
+        const slot = selectedDay.meals[mealType];
+        return (
+          <AppCard key={mealType}>
+            <MealSlotSection
+              mealTitle={MEAL_TYPE_TITLES[mealType]}
+              slot={slot}
+              busy={Boolean(slot && slotBusyId === slot.mealPlanId)}
+              onPressChange={() => openSlotPicker(selectedDay.dateIso, mealType)}
+              onPressDetail={() => {
+                if (slot) outerNavigation?.navigate(MAIN_STACK_ROUTES.RECIPE_DETAIL, { recipeId: slot.recipeId });
+              }}
+              onToggleCompleted={
+                slot
+                  ? () => setCompleted.mutate({ mealPlanId: slot.mealPlanId, isCompleted: !slot.isCompleted })
+                  : undefined
+              }
+              onRemove={slot ? () => clearSlot.mutate(slot.mealPlanId) : undefined}
+            />
+          </AppCard>
+        );
+      })}
 
       <View className="gap-md">
         <View className="gap-xxs">

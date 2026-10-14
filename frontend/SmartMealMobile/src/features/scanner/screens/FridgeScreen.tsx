@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Check, Pencil, Refrigerator, ShieldCheck, Sparkles } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Image, Pressable, ScrollView, View } from 'react-native';
 import { EmptyState, ErrorState, LoadingState, ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppBadge, AppButton, AppCard, AppText } from '@/components/ui';
 import { RecipeCard, useFridgeRecipes } from '@/features/recipes';
@@ -10,24 +10,27 @@ import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useScanFridge } from '../hooks/useScanner';
 import { CameraPermissionDeniedError } from '../services/scannerService';
-import type { FridgeIngredient } from '../types/scanner.types';
+import type { FridgeScanResult } from '../types/scanner.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'Fridge'>;
 
-// design/Fridge.dc.html (BR-080). Nguyên liệu phải qua bước xác nhận của user trước khi tính
-// vào gợi ý món — không tự lưu (docs/ui-mock-prompts.md Phase 4).
-export function FridgeScreen({ navigation }: Props) {
+// design/Fridge.dc.html (BR-080→083). Nhận diện từ ảnh thật người dùng vừa chụp (không ảnh mẫu — review
+// PR #9 S3). Mọi nguyên liệu AI trả về đều "chưa chắc chắn": user phải tự tick xác nhận trước khi tính
+// vào gợi ý món — không tự lưu (BR-054/BR-082).
+export function FridgeScreen({ route, navigation }: Props) {
   const { colors } = useTheme();
   const scanFridge = useScanFridge();
-  const [ingredients, setIngredients] = useState<FridgeIngredient[] | null>(null);
+  const { imageUris } = route.params;
+  const [result, setResult] = useState<FridgeScanResult | null>(null);
   const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set());
   const [hasConfirmedForRecipes, setHasConfirmedForRecipes] = useState(false);
 
-  useEffect(() => {
-    scanFridge.mutate(undefined, {
-      onSuccess: result => {
-        setIngredients(result);
-        setConfirmedIds(new Set(result.filter(item => item.status === 'confirmed').map(i => i.id)));
+  const runScan = () => {
+    scanFridge.mutate(imageUris, {
+      onSuccess: scanned => {
+        setResult(scanned);
+        setConfirmedIds(new Set(scanned.ingredients.filter(item => item.status === 'confirmed').map(i => i.id)));
+        setHasConfirmedForRecipes(false);
       },
       onError: error => {
         if (error instanceof CameraPermissionDeniedError) {
@@ -35,12 +38,15 @@ export function FridgeScreen({ navigation }: Props) {
         }
       },
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  };
 
-  const confirmedNames = (ingredients ?? [])
-    .filter(item => confirmedIds.has(item.id))
-    .map(item => item.name);
+  useEffect(() => {
+    runScan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageUris]);
+
+  const ingredients = result?.ingredients ?? [];
+  const confirmedNames = ingredients.filter(item => confirmedIds.has(item.id)).map(item => item.name);
 
   const { data: matches, isLoading: isLoadingRecipes } = useFridgeRecipes(
     confirmedNames,
@@ -57,20 +63,26 @@ export function FridgeScreen({ navigation }: Props) {
     setHasConfirmedForRecipes(false);
   };
 
-  if (scanFridge.isPending || !ingredients) {
-    return (
-      <ScreenContainer>
-        <ScreenHeader title="Quét tủ lạnh" onBack={() => navigation.goBack()} />
-        <LoadingState lines={6} />
-      </ScreenContainer>
-    );
-  }
-
+  // Lỗi kiểm tra trước loading: mutation lỗi thì `result` vẫn null (review PR #9 — kẹt skeleton).
   if (scanFridge.isError) {
     return (
       <ScreenContainer>
         <ScreenHeader title="Quét tủ lạnh" onBack={() => navigation.goBack()} />
-        <ErrorState description={scanFridge.error.message} onRetry={() => scanFridge.mutate(undefined)} />
+        <ErrorState description={scanFridge.error.message} onRetry={runScan} />
+        <AppButton
+          label="Chụp lại"
+          variant="outline"
+          onPress={() => navigation.replace(MAIN_STACK_ROUTES.FRIDGE_CAMERA)}
+        />
+      </ScreenContainer>
+    );
+  }
+
+  if (scanFridge.isPending || !result) {
+    return (
+      <ScreenContainer>
+        <ScreenHeader title="Quét tủ lạnh" onBack={() => navigation.goBack()} />
+        <LoadingState lines={6} />
       </ScreenContainer>
     );
   }
@@ -84,18 +96,41 @@ export function FridgeScreen({ navigation }: Props) {
       />
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerClassName="gap-lg py-xs">
         <View>
-          <View className="h-[170px] items-center justify-center gap-xxs rounded-lg bg-primary-soft">
-            <Refrigerator size={40} color={colors.primary} />
-            <AppText variant="caption" className="text-on-primary-soft">
-              Ảnh tủ lạnh của bạn
-            </AppText>
-          </View>
+          {imageUris.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-xs">
+              {imageUris.map((uri, index) => (
+                <Image
+                  key={uri}
+                  source={{ uri }}
+                  accessibilityLabel={`Ảnh tủ lạnh ${index + 1}`}
+                  style={{ height: 170, width: imageUris.length === 1 ? 340 : 240, borderRadius: 12 }}
+                  resizeMode="cover"
+                />
+              ))}
+            </ScrollView>
+          ) : (
+            <View className="h-[170px] items-center justify-center gap-xxs rounded-lg bg-primary-soft">
+              <Refrigerator size={40} color={colors.primary} />
+              <AppText variant="caption" className="text-on-primary-soft">
+                Ảnh tủ lạnh của bạn
+              </AppText>
+            </View>
+          )}
           <AppBadge
             label="AI nhận diện · hãy kiểm tra"
             tone="info"
             className="absolute left-sm top-sm bg-surface"
           />
         </View>
+
+        {result.isDemo ? (
+          <AppCard className="border border-warning">
+            <AppText variant="caption" className="text-warning-text">
+              Chế độ demo: máy chủ chưa bật AI nhận diện ảnh, danh sách dưới đây là dữ liệu mẫu — đừng dựa vào
+              nó để ra quyết định.
+            </AppText>
+          </AppCard>
+        ) : null}
 
         {ingredients.length === 0 ? (
           <EmptyState

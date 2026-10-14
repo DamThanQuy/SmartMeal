@@ -44,6 +44,10 @@ export function GroceryItemRow({ item, onToggle }: GroceryItemRowProps) {
           <AppText variant="caption" color="secondary">
             {`Gộp từ ${item.mergedFromRecipeCount} món`}
           </AppText>
+        ) : item.isManual ? (
+          <AppText variant="caption" color="secondary">
+            Tự thêm
+          </AppText>
         ) : null}
       </View>
       <AppText variant="body" color="secondary">

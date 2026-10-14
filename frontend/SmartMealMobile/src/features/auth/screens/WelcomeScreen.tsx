@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ArrowRight, CalendarCheck, Leaf, ShoppingBasket, Sparkles } from 'lucide-react-native';
+import { ArrowRight, CalendarCheck, ShoppingBasket, Sparkles } from 'lucide-react-native';
 import React from 'react';
 import { Image, Pressable, View } from 'react-native';
 import { ScreenContainer } from '@/components/common';
@@ -8,8 +8,6 @@ import { AUTH_ROUTES } from '@/constants/routes';
 import type { AuthStackParamList } from '@/navigation/types';
 import { useAuthStore } from '@/state/auth/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
-import { AuthGoogleButton } from '../components/AuthGoogleButton';
-import { AuthSocialDivider } from '../components/AuthSocialDivider';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Welcome'>;
 
@@ -100,8 +98,6 @@ export function WelcomeScreen({ navigation }: Props) {
           variant="outline"
           onPress={() => navigation.navigate(AUTH_ROUTES.LOGIN)}
         />
-        <AuthSocialDivider />
-        <AuthGoogleButton label="Tiếp tục với Google" onPress={() => {}} />
       </View>
 
       <Pressable

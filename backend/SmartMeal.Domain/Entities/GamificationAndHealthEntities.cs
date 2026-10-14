@@ -19,7 +19,7 @@ public class HealthSyncLog
     public int StepCount { get; set; }
     public double ActiveCaloriesBurned { get; set; }
     public double DistanceMeters { get; set; }
-    public string Source { get; set; } = "GoogleFit"; // GoogleFit, HealthConnect, AppleHealth
+    public string Source { get; set; } = "GoogleFit"; // HealthConnect, AppleHealth, GoogleFit, Manual
     public DateTime SyncedAt { get; set; } = DateTime.UtcNow;
 }
 
@@ -29,17 +29,46 @@ public class HealthPet
     public Guid UserId { get; set; }
     public User User { get; set; } = null!;
 
-    public string PetName { get; set; } = "Dino Healthy";
+    public string PetName { get; set; } = "Bé Mầm";
     public string PetType { get; set; } = "Dino"; // Dino, Cat, Shiba
+
+    /// <summary>Tổng XP đã nhận — nguồn sự thật. Level/Exp bên dưới luôn suy ra từ đây (500 XP mỗi cấp).</summary>
+    public int TotalXp { get; set; } = 0;
     public int Level { get; set; } = 1;
     public int Exp { get; set; } = 0;
-    public int NextLevelExp { get; set; } = 100;
+    public int NextLevelExp { get; set; } = 500;
     public string Stage { get; set; } = "Baby"; // Baby, Child, Teen, Adult
     public string Mood { get; set; } = "Happy"; // Happy, Hungry, Tired, Overfed
+
+    /// <summary>Id trang phục đang mặc ("Default" = không mặc gì).</summary>
     public string CurrentOutfit { get; set; } = "Default";
-    public string StatusMessage { get; set; } = "Dino đang rất vui vẻ và sẵn sàng cho bữa ăn lành mạnh!";
+    public string StatusMessage { get; set; } = "Bé Mầm đang rất vui vẻ và sẵn sàng cho bữa ăn lành mạnh!";
 
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
+/// Sổ XP (BR-202: không cộng trùng XP cho cùng một sự kiện). <see cref="EventKey"/> xác định sự kiện, vd.
+/// "breakfast-2026-08-03", "water-2026-08-03", "challenge-{id}"; (UserId, EventKey) là duy nhất.
+/// </summary>
+public class XpEvent
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid UserId { get; set; }
+    public User User { get; set; } = null!;
+    public string EventKey { get; set; } = string.Empty;
+    public string Kind { get; set; } = string.Empty; // Breakfast, Protein, Water, Challenge
+    public int Xp { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>Huy hiệu người dùng đã mở (mở rồi thì giữ, kể cả khi dữ liệu nguồn thay đổi sau đó).</summary>
+public class UserBadge
+{
+    public Guid UserId { get; set; }
+    public User User { get; set; } = null!;
+    public string BadgeId { get; set; } = string.Empty;
+    public DateTime UnlockedAt { get; set; } = DateTime.UtcNow;
 }
 
 public class Challenge
@@ -84,6 +113,13 @@ public class RecipeCollection
     public string? CoverImageUrl { get; set; }
     public bool IsPublic { get; set; } = false;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Mã của liên kết chia sẻ (chỉ đọc, xem được cả khi bộ sưu tập riêng tư). Null = chưa chia sẻ hoặc đã thu hồi; tạo
+    /// mã mới thì liên kết cũ hết hiệu lực.
+    /// </summary>
+    public string? ShareToken { get; set; }
+    public DateTime? SharedAt { get; set; }
 
     public ICollection<CollectionRecipe> CollectionRecipes { get; set; } = new List<CollectionRecipe>();
 }

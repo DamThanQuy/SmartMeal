@@ -32,9 +32,9 @@ function loadTokenStorage(os: 'ios' | 'web') {
   jest.doMock('react-native', () => ({ Platform: { OS: os } }));
   jest.doMock('@/services/storage/storage', () => ({ storageService: storage }));
 
-  const { tokenStorage } =
+  const secure =
     require('@/services/storage/secureStorage') as typeof import('@/services/storage/secureStorage');
-  return { tokenStorage, secureStore, storage };
+  return { ...secure, secureStore, storage };
 }
 
 describe('tokenStorage (native)', () => {
@@ -107,5 +107,46 @@ describe('tokenStorage (web)', () => {
     expect(secureStore.setItemAsync).not.toHaveBeenCalled();
     expect(storage.setString).toHaveBeenCalledWith('auth.accessToken', 'web-jwt-2');
     expect(storage.delete).toHaveBeenCalledWith('auth.accessToken');
+  });
+});
+
+describe('refresh token + cặp token phiên', () => {
+  test('refreshTokenStorage dùng khóa riêng và cache như access token', async () => {
+    const { refreshTokenStorage, secureStore } = loadTokenStorage('ios');
+    secureStore.getItemAsync.mockResolvedValue('refresh-1');
+
+    expect(await refreshTokenStorage.get()).toBe('refresh-1');
+    expect(await refreshTokenStorage.get()).toBe('refresh-1');
+
+    expect(secureStore.getItemAsync).toHaveBeenCalledTimes(1);
+    expect(secureStore.getItemAsync).toHaveBeenCalledWith('auth.refreshToken');
+  });
+
+  test('saveSessionTokens ghi cả hai token; thiếu refresh token thì chỉ ghi access token', async () => {
+    const { saveSessionTokens, tokenStorage, refreshTokenStorage, secureStore } = loadTokenStorage('ios');
+
+    await saveSessionTokens({ token: 'a1', refreshToken: 'r1' });
+    expect(secureStore.setItemAsync).toHaveBeenCalledWith('auth.accessToken', 'a1');
+    expect(secureStore.setItemAsync).toHaveBeenCalledWith('auth.refreshToken', 'r1');
+    expect(await tokenStorage.get()).toBe('a1');
+    expect(await refreshTokenStorage.get()).toBe('r1');
+
+    secureStore.setItemAsync.mockClear();
+    await saveSessionTokens({ token: 'a2' });
+    expect(secureStore.setItemAsync).toHaveBeenCalledTimes(1);
+    expect(await refreshTokenStorage.get()).toBe('r1');
+  });
+
+  test('clearSessionTokens xóa cả hai khỏi SecureStore và cache', async () => {
+    const { saveSessionTokens, clearSessionTokens, tokenStorage, refreshTokenStorage, secureStore } =
+      loadTokenStorage('ios');
+    await saveSessionTokens({ token: 'a1', refreshToken: 'r1' });
+
+    await clearSessionTokens();
+
+    expect(secureStore.deleteItemAsync).toHaveBeenCalledWith('auth.accessToken');
+    expect(secureStore.deleteItemAsync).toHaveBeenCalledWith('auth.refreshToken');
+    expect(await tokenStorage.get()).toBeNull();
+    expect(await refreshTokenStorage.get()).toBeNull();
   });
 });

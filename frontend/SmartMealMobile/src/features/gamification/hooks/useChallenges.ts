@@ -35,10 +35,3 @@ export function useJoinChallenge() {
   });
 }
 
-export function useCompleteChallenge() {
-  const invalidate = useInvalidateChallenges();
-  return useMutation({
-    mutationFn: (challengeId: string) => challengeService.completeChallenge(challengeId),
-    onSuccess: invalidate,
-  });
-}

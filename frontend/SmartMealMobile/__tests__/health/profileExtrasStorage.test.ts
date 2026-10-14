@@ -1,6 +1,6 @@
 /**
- * profileExtrasStorage (docs/fetch-api/part1 §6.5): phần hồ sơ BE không lưu (chế độ ăn, dị ứng/
- * bệnh lý không có id) được giữ ở AsyncStorage theo từng user và không được làm hỏng luồng chính.
+ * profileExtrasStorage (docs/fetch-api/part1 §6.5): phần hồ sơ BE không lưu (chỉ còn các lựa chọn
+ * "Khác") được giữ ở AsyncStorage theo từng user và không được làm hỏng luồng chính.
  */
 import type { HealthProfileExtras } from '@/features/health/types/health.types';
 
@@ -26,8 +26,7 @@ function loadModule() {
 }
 
 const EXTRAS: HealthProfileExtras = {
-  dietaryPreferenceIds: ['keto', 'lowCarb'],
-  localAllergyIds: ['treeNut'],
+  localAllergyIds: ['other'],
   localHealthConditionIds: ['other'],
 };
 
@@ -75,12 +74,19 @@ describe('profileExtrasStorage', () => {
     const { parseProfileExtras } = loadModule();
 
     expect(
-      parseProfileExtras(JSON.stringify({ dietaryPreferenceIds: ['keto', 5, null], localAllergyIds: 'x' })),
+      parseProfileExtras(JSON.stringify({ localAllergyIds: 'x', localHealthConditionIds: ['other', 5, null] })),
     ).toEqual({
-      dietaryPreferenceIds: ['keto'],
       localAllergyIds: [],
-      localHealthConditionIds: [],
+      localHealthConditionIds: ['other'],
     });
+  });
+
+  test('dữ liệu cũ còn trường dietaryPreferenceIds (nay do BE lưu) → bỏ qua', () => {
+    const { parseProfileExtras } = loadModule();
+
+    expect(
+      parseProfileExtras(JSON.stringify({ dietaryPreferenceIds: ['keto'], localAllergyIds: ['other'] })),
+    ).toEqual({ localAllergyIds: ['other'], localHealthConditionIds: [] });
   });
 
   test('storage lỗi khi đọc → rỗng; lỗi khi ghi → không ném (chỉ cảnh báo)', async () => {

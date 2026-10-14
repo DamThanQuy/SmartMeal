@@ -1,6 +1,6 @@
 /**
- * ApiError/toApiError/unwrap (docs/fetch-api/part1 §3.2–§3.3, §4.4): BE trả lỗi ở 3 dạng body
- * (envelope, ProblemDetails, rỗng) và có endpoint trả HTTP 200 kèm success:false.
+ * ApiError/toApiError/unwrap (docs/fetch-api/part1 §3.2–§3.3, §4.4): BE trả MỌI lỗi trong một
+ * envelope; chỉ khi không có envelope (mất mạng, proxy) mới dựa vào HTTP status.
  */
 import { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import { ApiError, isApiError, toApiError } from '@/services/api/errors';
@@ -77,28 +77,45 @@ describe('toApiError', () => {
     expect(error.code).toBe('NOT_FOUND');
   });
 
-  test('ProblemDetails 400 → VALIDATION, message thân thiện, details gom từ errors', () => {
+  test('envelope 400 do validate: message là lỗi đầu tiên, errors[] giữ đủ danh sách', () => {
     const error = toApiError(
       axiosErrorWithResponse(400, {
-        type: 'https://tools.ietf.org/html/rfc9110#section-15.5.1',
-        title: 'One or more validation errors occurred.',
-        status: 400,
-        errors: { date: ['The value is not valid.'], logDate: ['Required'] },
-        traceId: 'abc',
+        success: false,
+        message: 'Email không đúng định dạng.',
+        data: null,
+        errors: ['Email không đúng định dạng.', 'Mật khẩu phải từ 8 đến 128 ký tự.'],
       }),
     );
-    expect(error.code).toBe('VALIDATION');
-    expect(error.message).toBe('Dữ liệu gửi lên không hợp lệ.');
-    expect(error.details).toEqual(['The value is not valid.', 'Required']);
+    expect(error.code).toBe('BUSINESS');
+    expect(error.message).toBe('Email không đúng định dạng.');
+    expect(error.details).toHaveLength(2);
+  });
+
+  test.each([
+    [409, 'CONFLICT'],
+    [423, 'LOCKED'],
+    [429, 'RATE_LIMITED'],
+    [502, 'UNAVAILABLE'],
+    [503, 'UNAVAILABLE'],
+  ])('envelope %i → %s, dùng message của BE', (status, code) => {
+    const error = toApiError(
+      axiosErrorWithResponse(status, { success: false, message: 'Thông báo từ BE.', data: null, errors: null }),
+    );
+    expect(error.code).toBe(code);
+    expect(error.status).toBe(status);
+    expect(error.message).toBe('Thông báo từ BE.');
   });
 
   test.each([
     [401, 'UNAUTHORIZED', 'Phiên đăng nhập đã hết hạn.'],
     [403, 'FORBIDDEN', 'Bạn không có quyền thực hiện thao tác này.'],
     [404, 'NOT_FOUND', 'Không tìm thấy dữ liệu.'],
+    [409, 'CONFLICT', 'Dữ liệu vừa được thay đổi ở nơi khác, vui lòng thử lại.'],
+    [423, 'LOCKED', 'Tài khoản tạm thời bị khóa, vui lòng thử lại sau.'],
+    [429, 'RATE_LIMITED', 'Bạn thao tác quá nhanh, vui lòng thử lại sau ít phút.'],
     [500, 'SERVER', 'Máy chủ gặp sự cố, vui lòng thử lại sau.'],
-    [503, 'SERVER', 'Máy chủ gặp sự cố, vui lòng thử lại sau.'],
-  ])('body rỗng, status %i → %s', (status, code, message) => {
+    [503, 'UNAVAILABLE', 'Dịch vụ tạm thời không khả dụng, vui lòng thử lại sau.'],
+  ])('không có envelope, status %i → %s', (status, code, message) => {
     const error = toApiError(axiosErrorWithResponse(status, ''));
     expect(error.code).toBe(code);
     expect(error.message).toBe(message);

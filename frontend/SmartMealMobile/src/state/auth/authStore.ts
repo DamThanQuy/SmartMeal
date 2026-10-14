@@ -11,6 +11,12 @@ export interface AuthUser {
   role: string;
   /** false → tài khoản mới, phải làm Health Profile (wizard 7 bước) trước khi vào Main. */
   hasCompletedSurvey: boolean;
+  /**
+   * false → tài khoản không có mật khẩu (tạo bằng đăng nhập Google trước khi app bỏ tính năng này): xóa tài khoản
+   * xác nhận bằng email, đặt mật khẩu qua "Quên mật khẩu". Không có
+   * (BE cũ) thì coi như có mật khẩu.
+   */
+  hasPassword?: boolean;
 }
 
 /**
@@ -53,8 +59,8 @@ export interface AuthState {
   /** reason mặc định 'logout' (Đăng xuất chủ động) — StateSessionScreen truyền 'expired'/'locked',
    * GuestPromptScreen truyền 'guest' khi thoát Guest mode. */
   logout: (reason?: AuthExitReason) => void;
-  /** EditProfileScreen (Đợt 9) — chỉ sửa field cho phép đổi (họ tên); email chỉ đọc (BR-011). */
-  updateUser: (patch: Partial<Pick<AuthUser, 'fullName'>>) => void;
+  /** EditProfileScreen (Đợt 9) — chỉ sửa field cho phép đổi (họ tên, ảnh đại diện); email chỉ đọc (BR-011). */
+  updateUser: (patch: Partial<Pick<AuthUser, 'fullName' | 'avatarUrl'>>) => void;
 }
 
 // Global client state — trạng thái đăng nhập cần cho AppNavigator (Auth/Main switch) và

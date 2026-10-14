@@ -11,5 +11,6 @@ export function fromUserDto(dto: UserDto): AuthUser {
     isPro: dto.isPro,
     role: dto.role,
     hasCompletedSurvey: dto.hasCompletedSurvey,
+    hasPassword: dto.hasPassword ?? true,
   };
 }

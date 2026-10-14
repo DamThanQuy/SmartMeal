@@ -13,7 +13,7 @@ type Props = NativeStackScreenProps<MainStackParamList, 'StateAIFailed'>;
 // design/StateAIFailed.dc.html (BR-233 — lượt AI không bị trừ khi thất bại). Dùng chung cho cả
 // AI Snap và Voice Logging thất bại, đổi CTA chính theo `route.params.source`.
 export function StateAIFailedScreen({ navigation, route }: Props) {
-  const { mealType, source } = route.params;
+  const { mealType, source, message } = route.params;
   const { colors } = useTheme();
 
   const retryAction =
@@ -37,12 +37,15 @@ export function StateAIFailedScreen({ navigation, route }: Props) {
           <AlertTriangle size={34} color={colors.warningText} />
         </View>
         <AppText variant="h1" className="text-center">
-          Chưa nhận diện được món ăn
+          {message ? 'Chưa dùng được AI lúc này' : 'Chưa nhận diện được món ăn'}
         </AppText>
+        {/* `message` là lý do cụ thể do máy chủ/ứng dụng báo (mất mạng, AI chưa cấu hình, ảnh không hợp lệ…). */}
         <AppText variant="body" color="secondary" className="text-center">
-          {source === 'photo'
-            ? 'Ảnh có thể bị tối hoặc mờ. Bạn có thể chụp lại, hoặc ghi món thủ công ngay bây giờ.'
-            : 'Có thể do môi trường ồn hoặc câu nói chưa rõ. Bạn có thể nói lại, hoặc ghi món thủ công ngay bây giờ.'}
+          {message
+            ? `${message} Bạn vẫn có thể ghi món thủ công ngay bây giờ.`
+            : source === 'photo'
+              ? 'Ảnh có thể bị tối hoặc mờ. Bạn có thể chụp lại, hoặc ghi món thủ công ngay bây giờ.'
+              : 'Có thể do môi trường ồn hoặc câu nói chưa rõ. Bạn có thể nói lại, hoặc ghi món thủ công ngay bây giờ.'}
           {'\nLượt AI này không bị trừ.'}
         </AppText>
 

@@ -1,0 +1,9 @@
+# Ngữ cảnh build của image API (docker-compose.yml: build ./backend).
+# Không đưa bí mật và kết quả build trên máy vào image: obj/ của Windows còn làm hỏng `dotnet build` trong container.
+.env
+**/.env
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+**/TestResults/

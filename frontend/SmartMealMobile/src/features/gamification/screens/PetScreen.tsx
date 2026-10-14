@@ -9,7 +9,6 @@ import Animated, {
   useSharedValue,
   withSequence,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated';
 import { ErrorState, LoadingState, ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppBadge, AppCard, AppIconButton, AppText } from '@/components/ui';
@@ -109,9 +108,11 @@ export function PetScreen({ navigation }: Props) {
   const heroAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: heroScale.value }] }));
 
   const triggerHeroBounce = () => {
-    heroScale.value = withSequence(
-      withSpring(1.04, { stiffness: 300, damping: 10 }),
-      withSpring(1, { stiffness: 200, damping: 14 }),
+    heroScale.set(
+      withSequence(
+        withSpring(1.04, { stiffness: 300, damping: 10 }),
+        withSpring(1, { stiffness: 200, damping: 14 }),
+      ),
     );
   };
 
@@ -145,7 +146,9 @@ export function PetScreen({ navigation }: Props) {
   const xpRatio = pet.xpPerLevel > 0 ? pet.xpIntoLevel / pet.xpPerLevel : 0;
   const xpToNextLevel = pet.xpPerLevel - pet.xpIntoLevel;
   const xpPercent = Math.round(xpRatio * 100);
-  const challengePercent = Math.round((pet.challenge.dayCurrent / pet.challenge.dayTotal) * 100);
+  const challengePercent = pet.challenge
+    ? Math.round((pet.challenge.dayCurrent / pet.challenge.dayTotal) * 100)
+    : 0;
 
   return (
     <ScreenContainer>
@@ -336,25 +339,32 @@ export function PetScreen({ navigation }: Props) {
         </AppCard>
 
         {/* ── Thử thách hiện tại ── */}
-        <AppCard className="gap-sm">
-          <View className="flex-row items-center gap-sm">
-            <View className="h-[44px] w-[44px] items-center justify-center rounded-md bg-primary-soft">
-              <Trophy size={22} color={colors.primary} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={pet.challenge ? `Thử thách ${pet.challenge.title}` : 'Tham gia thử thách'}
+          onPress={() => navigation.navigate(MAIN_STACK_ROUTES.CHALLENGES)}
+        >
+          <AppCard className="gap-sm">
+            <View className="flex-row items-center gap-sm">
+              <View className="h-[44px] w-[44px] items-center justify-center rounded-md bg-primary-soft">
+                <Trophy size={22} color={colors.primary} />
+              </View>
+              <View className="flex-1 gap-xxs">
+                <AppText variant="bodyMedium">{pet.challenge ? pet.challenge.title : 'Chưa tham gia thử thách'}</AppText>
+                <AppText variant="caption" color="secondary">
+                  {pet.challenge
+                    ? `Ngày ${pet.challenge.dayCurrent} / ${pet.challenge.dayTotal} · Thưởng +${pet.challenge.xpReward} XP`
+                    : 'Chọn một thử thách để Bé Mầm nhận thêm XP'}
+                </AppText>
+              </View>
             </View>
-            <View className="flex-1 gap-xxs">
-              <AppText variant="bodyMedium">{pet.challenge.title}</AppText>
-              <AppText variant="caption" color="secondary">
-                {`Ngày ${pet.challenge.dayCurrent} / ${pet.challenge.dayTotal} · Thưởng +${pet.challenge.xpReward} XP`}
-              </AppText>
-            </View>
-          </View>
-          <View className="h-[8px] overflow-hidden rounded-pill bg-primary-soft">
-            <View
-              className="h-[8px] rounded-pill bg-primary"
-              style={{ width: `${challengePercent}%` }}
-            />
-          </View>
-        </AppCard>
+            {pet.challenge ? (
+              <View className="h-[8px] overflow-hidden rounded-pill bg-primary-soft">
+                <View className="h-[8px] rounded-pill bg-primary" style={{ width: `${challengePercent}%` }} />
+              </View>
+            ) : null}
+          </AppCard>
+        </Pressable>
       </ScrollView>
     </ScreenContainer>
   );

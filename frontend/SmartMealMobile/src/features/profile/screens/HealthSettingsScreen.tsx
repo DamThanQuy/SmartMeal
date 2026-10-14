@@ -8,7 +8,6 @@ import {
   ALLERGY_OPTIONS,
   DIETARY_PREFERENCE_OPTIONS,
   HEALTH_CONDITION_OPTIONS,
-  useMetaMappingCheck,
   useUpdateHealthSettings,
 } from '@/features/health';
 import type { MainStackParamList } from '@/navigation/types';
@@ -21,8 +20,6 @@ type Props = NativeStackScreenProps<MainStackParamList, 'HealthSettings'>;
 // chip chọn nhiều với HPAllergy/HealthProfileConditions/HealthProfileDietScreen (Đợt 1) để tái
 // dùng đúng ngôn ngữ UI, thay vì checkbox riêng như artboard gốc vẽ cho phần "Tình trạng sức khỏe".
 export function HealthSettingsScreen({ navigation }: Props) {
-  // Sắp gửi id dị ứng/bệnh lý lên BE — đối chiếu với /meta/* (chỉ cảnh báo ở dev).
-  useMetaMappingCheck();
   const { colors } = useTheme();
   const profile = useUserProfileStore();
   const updateSettings = useUpdateHealthSettings();

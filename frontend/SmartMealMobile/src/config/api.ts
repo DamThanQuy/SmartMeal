@@ -9,4 +9,6 @@ export const API_CONFIG = {
   timeout: ENV.apiTimeoutMs,
   /** Timeout riêng cho các endpoint /ai/* — Gemini có thể mất 5–20s, mặc định 15s sẽ cắt giữa chừng. */
   aiTimeout: ENV.aiTimeoutMs,
+  /** Tải ảnh lên (đường truyền di động chậm) — dùng chung mức dài với AI. */
+  uploadTimeout: ENV.aiTimeoutMs,
 } as const;

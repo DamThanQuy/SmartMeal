@@ -38,7 +38,11 @@ export type NotificationIcon =
   | 'water'
   | 'healthConnect'
   | 'grocery'
-  | 'challenge';
+  | 'challenge'
+  | 'badge'
+  | 'premium'
+  /** Nhóm server mới mà bản app này chưa biết — chỉ hiện, không có màn đích. */
+  | 'general';
 
 export interface NotificationItem {
   id: string;
@@ -48,6 +52,14 @@ export interface NotificationItem {
   read: boolean;
   icon: NotificationIcon;
   section: 'today' | 'earlier';
+  /** Thời điểm tạo (ISO, UTC) — chỉ có với thông báo từ server. */
+  createdAtIso?: string;
+}
+
+export interface NotificationsResult {
+  /** Mới → cũ. */
+  items: NotificationItem[];
+  unreadCount: number;
 }
 
 export type HealthConnectSourceId = 'steps' | 'distance' | 'activeCalories';

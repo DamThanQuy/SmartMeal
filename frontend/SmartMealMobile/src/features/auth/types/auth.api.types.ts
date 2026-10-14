@@ -12,6 +12,10 @@ export interface LoginRequestDto {
   password: string;
 }
 
+export interface GoogleAuthRequestDto {
+  idToken: string;
+}
+
 export interface UpdateProfileRequestDto {
   /** Chuỗi rỗng/khoảng trắng bị BE bỏ qua. */
   fullName?: string;
@@ -24,16 +28,67 @@ export interface UserDto {
   email: string;
   fullName: string;
   avatarUrl: string | null;
+  /** Quyền Pro còn hiệu lực — nguồn đáng tin duy nhất (claim trong token sẽ cũ sau khi nâng cấp). */
   isPro: boolean;
+  /** Free | Premium | Expired | Cancelled. */
+  subscriptionStatus: string;
+  /** Hạn dùng gói Pro (ISO 8601 UTC); null nếu chưa có. */
+  proExpiresAt: string | null;
   role: string;
   /** BE tính bằng `user.HealthProfile != null`. */
   hasCompletedSurvey: boolean;
+  /** false = tài khoản không có mật khẩu (tạo bằng đăng nhập Google trước khi app bỏ tính năng này). */
+  hasPassword?: boolean;
+}
+
+/** DELETE /auth/account — `password` với tài khoản có mật khẩu, `confirmEmail` với tài khoản không có mật khẩu. */
+export interface DeleteAccountRequestDto {
+  password?: string;
+  confirmEmail?: string;
 }
 
 export interface AuthResponseDto {
-  /** JWT, sống 30 ngày; không có refresh token. */
+  /** Access token (JWT) ngắn hạn. */
   token: string;
   /** ISO 8601 UTC. */
   expiresAt: string;
+  /** Dùng một lần ở POST /auth/refresh để lấy cặp token mới. */
+  refreshToken: string;
+  refreshTokenExpiresAt: string;
   user: UserDto;
+}
+
+export interface ForgotPasswordRequestDto {
+  email: string;
+}
+
+/** BE nhận mục đích dạng slug: 'reset-password' | 'verify-email'. */
+export type OtpPurposeDto = 'reset-password' | 'verify-email';
+
+export interface ResendOtpRequestDto {
+  email: string;
+  purpose: OtpPurposeDto;
+}
+
+export interface VerifyOtpRequestDto {
+  email: string;
+  /** Đúng 6 chữ số. */
+  code: string;
+  purpose: OtpPurposeDto;
+}
+
+export interface VerifyOtpResponseDto {
+  verified: boolean;
+  resetToken: string | null;
+  resetTokenExpiresAt: string | null;
+}
+
+export interface ResetPasswordRequestDto {
+  email: string;
+  resetToken: string;
+  newPassword: string;
+}
+
+export interface RefreshTokenRequestDto {
+  refreshToken: string;
 }

@@ -13,6 +13,7 @@ import {
   ForgotPasswordScreen,
   GuestPromptScreen,
   OtpScreen,
+  ResetPasswordScreen,
   StateSessionScreen,
 } from '@/features/auth';
 import { CalorieBudgetScreen, QuickLogScreen } from '@/features/dashboard';
@@ -39,6 +40,7 @@ import {
   ProgressChartScreen,
 } from '@/features/nutrition';
 import {
+  DeleteAccountScreen,
   DeleteDataScreen,
   EditProfileScreen,
   HealthConnectScreen,
@@ -56,11 +58,13 @@ import {
   SubscriptionScreen,
 } from '@/features/premium';
 import {
+  AddToCollectionScreen,
   CollectionDetailScreen,
   CreateCollectionScreen,
   FavoritesScreen,
   FilterSheetScreen,
   RecipeDetailScreen,
+  SharedCollectionScreen,
 } from '@/features/recipes';
 import {
   BarcodeScreen,
@@ -72,6 +76,7 @@ import {
   StatePermissionScreen,
 } from '@/features/scanner';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
+import { useOfflineReplay } from '@/features/nutrition/hooks/useOfflineReplay';
 import { MainTabNavigator } from './MainTabNavigator';
 import type { MainStackParamList } from './types';
 
@@ -81,6 +86,8 @@ const Stack = createNativeStackNavigator<MainStackParamList>();
 // Dashboard lẫn Diary) nên đặt làm sibling của MainTabs trong Stack này thay vì lồng theo tab
 // (xem src/navigation/types.ts). Toàn bộ header dùng ScreenHeader tự dựng trong từng Screen.
 export function MainNavigator() {
+  // F12 — gửi lại các lần ghi món đang chờ khi có mạng.
+  useOfflineReplay();
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name={MAIN_STACK_ROUTES.MAIN_TABS} component={MainTabNavigator} />
@@ -110,6 +117,7 @@ export function MainNavigator() {
       <Stack.Screen name={MAIN_STACK_ROUTES.RECIPE_DETAIL} component={RecipeDetailScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.FAVORITES} component={FavoritesScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.COLLECTION_DETAIL} component={CollectionDetailScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.SHARED_COLLECTION} component={SharedCollectionScreen} />
 
       {/* Đợt 6 — meal-planner + grocery. */}
       <Stack.Screen name={MAIN_STACK_ROUTES.SLOT_PICKER} component={SlotPickerScreen} />
@@ -143,10 +151,12 @@ export function MainNavigator() {
       <Stack.Screen name={MAIN_STACK_ROUTES.SETTINGS} component={SettingsScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.EDIT_PROFILE} component={EditProfileScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.DELETE_DATA} component={DeleteDataScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.DELETE_ACCOUNT} component={DeleteAccountScreen} />
       {/* SettingsScreen "Đổi mật khẩu" (sửa lệch sau Đợt 9) — dùng chung ForgotPasswordScreen/
           OtpScreen với AuthNavigator, quay lại Settings khi xong (route.params.returnTo). */}
       <Stack.Screen name={MAIN_STACK_ROUTES.FORGOT_PASSWORD} component={ForgotPasswordScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.OTP} component={OtpScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.RESET_PASSWORD} component={ResetPasswordScreen} />
 
       {/* Bottom sheet / dialog — CLAUDE.md mục 10: QuickLog, StateAILimit, DeleteConfirm,
           FilterSheet, GuestPrompt (Đợt 9), AddToMealPlan (Đợt 10), GroceryAdd/GroceryDone/
@@ -172,6 +182,7 @@ export function MainNavigator() {
           name={MAIN_STACK_ROUTES.CREATE_COLLECTION}
           component={CreateCollectionScreen}
         />
+        <Stack.Screen name={MAIN_STACK_ROUTES.ADD_TO_COLLECTION} component={AddToCollectionScreen} />
       </Stack.Group>
     </Stack.Navigator>
   );

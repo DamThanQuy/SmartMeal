@@ -81,7 +81,7 @@ export function ProductNotFoundScreen({ navigation, route }: Props) {
             icon={<Search size={24} color={colors.primary} />}
             title="Nhập thủ công"
             description="Tự nhập calo và macro từ bao bì"
-            onPress={() => navigation.replace(MAIN_STACK_ROUTES.CREATE_FOOD, { mealType })}
+            onPress={() => navigation.replace(MAIN_STACK_ROUTES.CREATE_FOOD, { mealType, barcode })}
           />
         </View>
 

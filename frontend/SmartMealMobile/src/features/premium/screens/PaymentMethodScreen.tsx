@@ -2,13 +2,14 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Check } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { ScreenContainer, ScreenHeader } from '@/components/common';
+import { ErrorState, LoadingState, ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppButton, AppCard, AppText } from '@/components/ui';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
-import { BILLING_PLAN_OPTIONS, PAYMENT_METHOD_OPTIONS } from '../mocks/premium.mock';
-import type { PaymentMethodId } from '../types/premium.types';
+import { useSubscriptionPlans } from '../hooks/useSubscription';
+import { PAYMENT_METHOD_OPTIONS } from '../mocks/premium.mock';
+import type { SelectablePaymentMethodId } from '../types/premium.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PaymentMethod'>;
 
@@ -18,9 +19,28 @@ type Props = NativeStackScreenProps<MainStackParamList, 'PaymentMethod'>;
 export function PaymentMethodScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
   const { planId } = route.params;
-  const [paymentMethodId, setPaymentMethodId] = useState<PaymentMethodId>('vnpay');
+  const { data: plans, isLoading, isError, error, refetch } = useSubscriptionPlans();
+  const [paymentMethodId, setPaymentMethodId] = useState<SelectablePaymentMethodId>('vnpay');
 
-  const plan = BILLING_PLAN_OPTIONS.find(option => option.id === planId);
+  if (isLoading) {
+    return (
+      <ScreenContainer>
+        <ScreenHeader title="Phương thức thanh toán" onBack={() => navigation.goBack()} />
+        <LoadingState lines={4} />
+      </ScreenContainer>
+    );
+  }
+
+  if (isError || !plans) {
+    return (
+      <ScreenContainer>
+        <ScreenHeader title="Phương thức thanh toán" onBack={() => navigation.goBack()} />
+        <ErrorState description={error?.message} onRetry={refetch} />
+      </ScreenContainer>
+    );
+  }
+
+  const plan = plans.find(option => option.id === planId);
 
   return (
     <ScreenContainer>

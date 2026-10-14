@@ -1,14 +1,50 @@
 import { format } from 'date-fns';
 import { gamificationService } from '@/features/gamification';
-import { healthSyncService, nutritionService, todayIso, type DailyActivity } from '@/features/nutrition';
+import {
+  healthSyncService,
+  nutritionService,
+  todayIso,
+  type DailyActivity,
+} from '@/features/nutrition';
+import { RECIPE_TAG_OPTIONS, recipeService, type Recipe } from '@/features/recipes';
+import { getMealTypeForHour, MEAL_TYPES } from '@/types/meal.types';
 import { parseApiDateTime } from '@/utils/date';
-import { RECOMMENDED_MEAL_MOCK } from '../mocks/dashboard.mock';
-import type { ActivitySummary, DashboardSummary, PetSnippet } from '../types/dashboard.types';
+import type {
+  ActivitySummary,
+  DashboardSummary,
+  PetSnippet,
+  RecommendedMeal,
+} from '../types/dashboard.types';
 
-// TODO: replace mock with real API — recommendedMeal sẽ đến từ feature recipes AI suggestion khi
-// có. Loading/Empty/Error của cả Dashboard đi theo đúng 1 nguồn (nutritionService.getDiaryDay) để
-// nhất quán với Diary — không tự thêm delay/scenario riêng ở đây.
-function toPetSnippet(pet: Awaited<ReturnType<typeof gamificationService.getPetState>>): PetSnippet {
+// Loading/Empty/Error của cả Dashboard đi theo đúng 1 nguồn (nutritionService.getDiaryDay) để nhất
+// quán với Diary — không tự thêm delay/scenario riêng ở đây. Gợi ý món lấy từ recipeService (công thức
+// thật, đã lọc dị ứng BR-101/102) — không cần endpoint dashboard riêng (báo cáo gap F08).
+
+const RECOMMENDATION_COUNT = 2;
+
+/** Món hợp bữa sắp tới, gần phần calo còn lại của ngày nhất (không vượt quá nếu có món phù hợp). */
+export function pickRecommendations(recipes: Recipe[], remainingCalories: number): RecommendedMeal[] {
+  const budget = Math.max(remainingCalories, 0);
+  return [...recipes]
+    .sort((a, b) => {
+      const overA = a.nutritionPerServing.calories > budget ? 1 : 0;
+      const overB = b.nutritionPerServing.calories > budget ? 1 : 0;
+      if (overA !== overB) return overA - overB;
+      return Math.abs(budget - a.nutritionPerServing.calories) - Math.abs(budget - b.nutritionPerServing.calories);
+    })
+    .slice(0, RECOMMENDATION_COUNT)
+    .map(recipe => ({
+      recipeId: recipe.id,
+      name: recipe.name,
+      durationMinutes: recipe.durationMinutes,
+      calories: recipe.nutritionPerServing.calories,
+      tag: RECIPE_TAG_OPTIONS.find(option => option.id === recipe.tags[0])?.label ?? '',
+      imageUrl: recipe.imageUrl,
+    }));
+}
+function toPetSnippet(
+  pet: Awaited<ReturnType<typeof gamificationService.getPetState>>,
+): PetSnippet {
   return {
     name: pet.name,
     level: pet.level,
@@ -34,20 +70,32 @@ export const dashboardService = {
   // nguồn phụ lỗi (vận động, Bé Mầm) chỉ làm khối đó biến mất; nhật ký lỗi mới đáng báo lỗi cả màn.
   async getDashboardSummary(): Promise<DashboardSummary> {
     const dateIso = todayIso();
-    const [diaryResult, activityResult, petResult] = await Promise.allSettled([
+    const [diaryResult, activityResult, petResult, recipesResult] = await Promise.allSettled([
       nutritionService.getDiaryDay(dateIso),
       healthSyncService.getDailySummary(dateIso),
       gamificationService.getPetState(),
+      recipeService.getRecommended({ mealType: getMealTypeForHour(new Date().getHours()) }),
     ]);
 
     if (diaryResult.status === 'rejected') throw diaryResult.reason;
 
+    const diary = diaryResult.value;
+    const consumed = MEAL_TYPES.reduce(
+      (sum, mealType) => sum + diary.entriesByMeal[mealType].reduce((mealSum, entry) => mealSum + entry.nutrition.calories, 0),
+      0,
+    );
+    const remaining = diary.calorieTarget + diary.activityCalories - consumed;
+
     return {
-      diary: diaryResult.value,
+      diary,
       activity:
-        activityResult.status === 'fulfilled' ? toActivitySummary(activityResult.value) : null,
-      pet: petResult.status === 'fulfilled' ? toPetSnippet(petResult.value) : null,
-      recommendedMeal: RECOMMENDED_MEAL_MOCK,
+        activityResult.status === 'fulfilled'
+          ? toActivitySummary(activityResult.value)
+          : null,
+      pet:
+        petResult.status === 'fulfilled' ? toPetSnippet(petResult.value) : null,
+      recommendedMeals:
+        recipesResult.status === 'fulfilled' ? pickRecommendations(recipesResult.value.recipes, remaining) : [],
     };
   },
 };

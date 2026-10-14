@@ -2,10 +2,14 @@ import { ENDPOINTS, api } from '@/services/api';
 import type { MetaItem } from '../types/health.api.types';
 import type { metaMockService } from './metaService.mock';
 
-// /meta/* trả thẳng entity EF — bỏ các mảng điều hướng rỗng (userAllergies, recipeTags…), chỉ giữ
-// phần FE dùng.
+// /meta/* trả { id, code, name, description }; chuẩn hóa description về null để FE khỏi xử lý undefined.
 function toMetaItems(items: MetaItem[]): MetaItem[] {
-  return items.map(({ id, name, description }) => ({ id, name, description: description ?? null }));
+  return items.map(({ id, code, name, description }) => ({
+    id,
+    code,
+    name,
+    description: description ?? null,
+  }));
 }
 
 export const metaApiService: Partial<typeof metaMockService> = {

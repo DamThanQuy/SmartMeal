@@ -14,6 +14,19 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
+// expo-av nạp module native `ExponentAV` ngay khi import (VoiceLogScreen) mà môi trường Jest không có.
+// Smoke test chỉ cần cây component mount được, không ghi âm thật.
+jest.mock('expo-av', () => ({
+  Audio: {
+    requestPermissionsAsync: jest.fn(() => Promise.resolve({ granted: false, status: 'denied' })),
+    getPermissionsAsync: jest.fn(() => Promise.resolve({ granted: false, status: 'denied' })),
+    setAudioModeAsync: jest.fn(() => Promise.resolve()),
+    Sound: { createAsync: jest.fn() },
+    Recording: jest.fn(),
+    RecordingOptionsPresets: { HIGH_QUALITY: {} },
+  },
+}));
+
 // NativeWind.setColorScheme() cần config darkMode/CSS do Metro biên dịch lúc build — không có
 // trong môi trường Jest (không chạy qua Metro) nên throw. Không thuộc phạm vi smoke test (không
 // test sâu theme) → giữ nguyên `vars` thật, chỉ mock useColorScheme để tránh throw khi mount.

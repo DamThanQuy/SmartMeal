@@ -26,8 +26,9 @@ const SNAPSHOT: HealthProfileSnapshot = {
   goalWeightKg: 52,
   activityLevel: 'moderate',
   goal: 'lose',
-  allergyIds: ['peanut'],
+  allergyIds: ['peanut', 'sesame'],
   healthConditionIds: ['diabetes'],
+  dietaryPreferenceIds: ['vegan'],
   result: {
     bmi: 21.5,
     bmr: 1283,
@@ -38,9 +39,9 @@ const SNAPSHOT: HealthProfileSnapshot = {
   },
 };
 
+// Chỉ còn lựa chọn "Khác" giữ cục bộ; dị ứng, bệnh lý và chế độ ăn do BE lưu.
 const EXTRAS: HealthProfileExtras = {
-  dietaryPreferenceIds: ['vegan'],
-  localAllergyIds: ['sesame'],
+  localAllergyIds: ['other'],
   localHealthConditionIds: ['other'],
 };
 
@@ -90,14 +91,25 @@ describe('hydrateFromServer', () => {
       goalWeightKg: 52,
       activityLevel: 'moderate',
       goal: 'lose',
-      allergyIds: ['peanut', 'sesame'],
+      allergyIds: ['peanut', 'sesame', 'other'],
       healthConditionIds: ['diabetes', 'other'],
       dietaryPreferenceIds: ['vegan'],
       result: SNAPSHOT.result,
     });
   });
 
-  test('BE chỉ có tuổi → ước lượng ngày sinh = 01/01 của (năm nay − tuổi)', () => {
+  test('mục tiêu nước của BE được nạp; không có thì giữ giá trị đang dùng', () => {
+    const { useUserProfileStore } = loadStore(false);
+    const hydrate = useUserProfileStore.getState().hydrateFromServer;
+
+    hydrate({ ...SNAPSHOT, waterGoalMl: 2400 }, EXTRAS);
+    expect(useUserProfileStore.getState().waterGoalMl).toBe(2400);
+
+    hydrate(SNAPSHOT, EXTRAS); // snapshot không có waterGoalMl (vd. mock)
+    expect(useUserProfileStore.getState().waterGoalMl).toBe(2400);
+  });
+
+  test('hồ sơ cũ BE chưa có ngày sinh → ước lượng = 01/01 của (năm nay − tuổi)', () => {
     const { useUserProfileStore } = loadStore(false);
 
     useUserProfileStore.getState().hydrateFromServer(SNAPSHOT, EXTRAS);
@@ -115,7 +127,7 @@ describe('hydrateFromServer', () => {
     expect(useUserProfileStore.getState().dateOfBirth).toBe(typedDob);
   });
 
-  test('snapshot đã biết ngày sinh thật (vừa nhập ở EditProfile) → dùng đúng ngày đó', () => {
+  test('BE đã lưu ngày sinh → dùng đúng ngày đó, không ước lượng', () => {
     const { useUserProfileStore } = loadStore(false);
     const typedDob = new Date(1995, 2, 8);
 
@@ -132,8 +144,8 @@ describe('hydrateFromServer', () => {
 
     hydrate(SNAPSHOT, EXTRAS);
     hydrate(
-      { ...SNAPSHOT, allergyIds: [], healthConditionIds: [] },
-      { dietaryPreferenceIds: [], localAllergyIds: [], localHealthConditionIds: [] },
+      { ...SNAPSHOT, allergyIds: [], healthConditionIds: [], dietaryPreferenceIds: [] },
+      { localAllergyIds: [], localHealthConditionIds: [] },
     );
 
     expect(useUserProfileStore.getState()).toMatchObject({

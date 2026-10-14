@@ -6,6 +6,10 @@ export const STORAGE_KEYS = {
   PROFILE_EXTRAS_PREFIX: 'user.profileExtras.',
   /** + userId — tùy chọn Health Connect cục bộ (đã kết nối, nguồn nào bật). */
   HEALTH_CONNECT_PREFIX: 'user.healthConnect.',
+  /** + userId — bật/tắt nhắc nhở cục bộ (bữa ăn, nước, chuỗi ngày). */
+  REMINDERS_PREFIX: 'user.reminders.',
+  /** + userId — các lần ghi món chưa gửi được (hàng đợi offline, kèm Idempotency-Key). */
+  OFFLINE_QUEUE_PREFIX: 'user.offlineQueue.',
 } as const;
 
 /**
@@ -14,4 +18,6 @@ export const STORAGE_KEYS = {
  */
 export const SECURE_KEYS = {
   ACCESS_TOKEN: 'auth.accessToken',
+  /** Dùng một lần để lấy cặp token mới ở POST /auth/refresh (BE xoay vòng mỗi lần dùng). */
+  REFRESH_TOKEN: 'auth.refreshToken',
 } as const;

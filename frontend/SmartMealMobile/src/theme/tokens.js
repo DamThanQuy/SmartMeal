@@ -3,36 +3,41 @@
  * vì được require() trực tiếp bởi tailwind.config.js (chạy trong Node, không qua Babel/TS).
  * src/theme/*.ts import lại từ đây và bọc thêm type cho phần còn lại của app.
  *
- * Giá trị màu light lấy đúng docs/design.md mục 4, 40, 41, 58.
- * Các token đánh dấu "derived" là mở rộng hợp lý (không có trong design.md, chủ yếu
- * để phục vụ dark mode) — nên được design review xác nhận lại khi có điều kiện.
+ * Palette light/dark cập nhật theo ảnh tham chiếu của người dùng.
+ * Các màu ngữ nghĩa vẫn dùng chung cho toàn bộ ứng dụng.
  */
 
 // docs/design.md mục 4.1–4.8, 40 (Button System), 41 (Input)
 const lightColors = {
-  primary: '#22A447', // 4.1 Primary Green
-  primaryPressed: '#16863A', // 4.2 Primary Dark
-  primarySoft: '#EAF8EF', // 4.3 Primary Soft
+  primary: '#19B541',
+  primaryPressed: '#128A32',
+  primarySoft: '#E1F7E7',
   onPrimary: '#FFFFFF', // 40. Primary button text
-  onPrimarySoft: '#16863A', // 40. Secondary button text
+  onPrimarySoft: '#248B3F',
 
-  background: '#F7FAF8', // 4.4
+  energyStart: '#1CBB48',
+  energyEnd: '#16AE32',
+  onEnergy: '#FFFFFF',
+  energyTrack: '#58CD6C',
+  energyFill: '#FFFFFF',
+
+  background: '#F1FAF5',
   surface: '#FFFFFF', // 4.5
   surfaceElevated: '#FFFFFF', // derived — 4.5: modal/bottom sheet cũng dùng Surface
-  surfaceSubtle: '#EFF5F1', // derived — nền phụ nhẹ hơn surface, đậm hơn background
+  surfaceSubtle: '#EAF5EE',
 
-  textPrimary: '#183022', // 4.6
-  textSecondary: '#64746A', // 4.6
-  textMuted: '#94A39A', // 4.6 (cũng là placeholder — 41)
+  textPrimary: '#18251D',
+  textSecondary: '#748078',
+  textMuted: '#87938C',
   textInverse: '#FFFFFF', // derived — chữ trên nền primary/tối
 
-  border: '#E4ECE7', // 4.7
+  border: '#E4EFE8',
   borderStrong: '#C7D6CC', // derived — viền nhấn mạnh hơn border mặc định
-  borderFocus: '#22A447', // 41. Input focus = primary
+  borderFocus: '#19B541',
 
-  success: '#22A447', // 4.8
-  successSoft: '#EAF8EF', // derived (= primarySoft)
-  successText: '#16863A', // derived (= primaryPressed)
+  success: '#19B541',
+  successSoft: '#E1F7E7',
+  successText: '#128A32',
 
   warning: '#F2A93B', // 4.8
   warningSoft: '#FDF1DC', // derived
@@ -47,36 +52,40 @@ const lightColors = {
   infoText: '#2E5F94', // derived
 
   overlay: '#000000', // derived — dùng kèm alpha, vd bg-overlay/40
-  skeleton: '#E4ECE7', // derived (= border) — nền shimmer loading
+  skeleton: '#E4EFE8', // (= border) — nền shimmer loading
 };
 
-// docs/design.md mục 54 (Dark Mode) chỉ định nghĩa background/surface/text — các token
-// còn lại là derived để đảm bảo contrast trên nền tối (design.md: "Primary Green cần
-// điều chỉnh để đảm bảo contrast"). Cần design review khi có điều kiện.
+// Chế độ tối: nền đen thuần, surface xám đen và màu xanh lá cho điểm nhấn.
 const darkColors = {
-  primary: '#34C463', // derived — sáng hơn light primary để đủ contrast trên nền tối
-  primaryPressed: '#2BA854', // derived
-  primarySoft: '#163524', // derived
-  onPrimary: '#FFFFFF',
-  onPrimarySoft: '#6FE39B', // derived
+  primary: '#4AC65C',
+  primaryPressed: '#37AD49',
+  primarySoft: '#103C20',
+  onPrimary: '#080808',
+  onPrimarySoft: '#79D98A',
 
-  background: '#101812', // 54.
-  surface: '#18231C', // 54.
-  surfaceElevated: '#1F2C23', // derived — sáng hơn surface để tạo chiều sâu
-  surfaceSubtle: '#131C16', // derived
+  energyStart: '#4BC75D',
+  energyEnd: '#43BD54',
+  onEnergy: '#0A0A0A',
+  energyTrack: '#7DD988',
+  energyFill: '#111111',
 
-  textPrimary: '#F1F6F2', // 54.
-  textSecondary: '#B7C4BB', // derived
-  textMuted: '#7E8C84', // derived
-  textInverse: '#16231A', // derived — chữ trên nền sáng đặt trong theme tối
+  background: '#000000',
+  surface: '#111111',
+  surfaceElevated: '#1C1C1C',
+  surfaceSubtle: '#0A0A0A',
 
-  border: '#26332B', // derived
-  borderStrong: '#34443A', // derived
-  borderFocus: '#34C463', // derived (= dark primary)
+  textPrimary: '#F5F5F5',
+  textSecondary: '#A3A3A3',
+  textMuted: '#858585',
+  textInverse: '#141414', // chữ trên nền sáng đặt trong theme tối
 
-  success: '#34C463', // derived (= dark primary)
-  successSoft: '#163524', // derived
-  successText: '#6FE39B', // derived
+  border: '#262626',
+  borderStrong: '#3A3A3A',
+  borderFocus: '#4AC65C',
+
+  success: '#4AC65C',
+  successSoft: '#103C20',
+  successText: '#79D98A',
 
   warning: '#F5B85A', // derived
   warningSoft: '#3A2C12', // derived
@@ -91,7 +100,7 @@ const darkColors = {
   infoText: '#A8CDF2', // derived
 
   overlay: '#000000',
-  skeleton: '#26332B', // derived (= dark border)
+  skeleton: '#262626', // (= dark border)
 };
 
 // docs/design.md mục 7 — hệ 4px. '0' được thêm ngoài danh sách gốc vì cần thiết cho
@@ -137,8 +146,7 @@ const fontSize = {
 // docs/design.md mục 6.1 — Inter. Theo CLAUDE.md mục 6: dùng đúng tên family theo từng
 // weight (Regular/SemiBold/Bold), KHÔNG set fontWeight kèm fontFamily custom (Android có
 // thể bỏ qua weight khi đã set family riêng).
-// LƯU Ý: chưa có file Inter-*.ttf trong src/assets/fonts và chưa link native — trước khi
-// link, RN sẽ tự fallback sang font mặc định hệ điều hành (không lỗi, chỉ khác font).
+// Font tĩnh trong assets/fonts được ThemeProvider nạp qua expo-font trước khi render UI.
 const fontFamily = {
   sans: 'Inter-Regular',
   sansSemibold: 'Inter-SemiBold',

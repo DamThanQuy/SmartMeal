@@ -1,4 +1,8 @@
-import type { BillingPlanId, MembershipStatus } from '@/state/premium/premiumStore';
+import type {
+  BillingPlanId,
+  MembershipSnapshot,
+  MembershipStatus,
+} from '@/state/premium/premiumStore';
 
 // BR-230→BR-233, BR-241/242 — Membership Status + Payment Verification.
 
@@ -29,7 +33,7 @@ export interface BillingPlanOption {
 }
 
 export interface PaymentMethodOption {
-  id: PaymentMethodId;
+  id: SelectablePaymentMethodId;
   label: string;
 }
 
@@ -65,8 +69,10 @@ export interface CheckoutResult {
   amountVnd: number;
   planId: BillingPlanId;
   paymentMethodId: PaymentMethodId;
-  /** ISO date yyyy-MM-dd. */
-  expiresAtIso: string;
+  /** ISO date yyyy-MM-dd; null khi gói không có hạn. */
+  expiresAtIso: string | null;
+  /** Trạng thái gói do server xác nhận sau giao dịch (nạp vào premiumStore). */
+  membership: MembershipSnapshot;
 }
 
 // TransactionStatus/TransactionRecord/TRANSACTION_STATUS_LABEL (design/Subscription.dc.html,

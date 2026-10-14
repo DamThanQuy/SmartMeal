@@ -1,7 +1,7 @@
 # 🥗 SmartMeal - AI-Powered Smart Nutrition & Meal Management
 
 > **Dự án môn học**: PRM (Mobile Programming) - Đại học FPT  
-> **Nền tảng**: Flutter (Mobile) + ASP.NET Core & PostgreSQL (Backend API)  
+> **Nền tảng**: React Native / Expo (Mobile) + ASP.NET Core & PostgreSQL (Backend API)  
 > **Phiên bản**: V2 (Tích hợp AI Vision, Voice Logging, OCR Scanner, Health Sync, Gamification)
 
 ---
@@ -42,11 +42,11 @@
 
 | Thành phần | Công nghệ sử dụng |
 | :--- | :--- |
-| **Mobile App** | Flutter 3.13.2+ (Dart), Provider / Riverpod, Dio, fl_chart, SharedPreferences |
-| **Backend API** | ASP.NET Core (.NET 8), Entity Framework Core, RESTful Architecture |
+| **Mobile App** | React Native 0.86 + Expo SDK 57 (TypeScript), TanStack Query, Zustand, Axios, NativeWind, React Hook Form + Zod, AsyncStorage / expo-secure-store |
+| **Backend API** | ASP.NET Core (.NET 9), Entity Framework Core 9, RESTful Architecture |
 | **Database** | PostgreSQL 16 |
-| **Authentication** | JWT (JSON Web Token), Google Sign-In, Email/SMS OTP |
-| **AI & Machine Learning** | Google Gemini Vision API, Google ML Kit (OCR & Barcode Scanner) |
+| **Authentication** | JWT + refresh token, đăng nhập email + mật khẩu, OTP qua email (quên mật khẩu) |
+| **AI & Machine Learning** | Google Gemini (ảnh món ăn, nhãn dinh dưỡng, tủ lạnh, giọng nói) qua backend; quét mã vạch bằng `expo-camera` |
 | **Health Integration** | Google Health Connect / Apple HealthKit |
 | **DevOps / Containers** | Docker & Docker Compose |
 
@@ -62,17 +62,17 @@ SmartMeal/
 │   ├── SmartMeal.Infrastructure/   # EF Core DbContext, Repositories, Migrations, Seed Data
 │   ├── SmartMeal.API/              # Controllers, Program.cs, Middleware, Swagger
 │   ├── Dockerfile                  # Container build cho Backend API
+│   ├── .env.example                # Mẫu biến môi trường của BE → sao chép thành backend/.env
 │   └── SmartMeal.sln               # Solution file
-├── mobile/                         # Mã nguồn Flutter Mobile App
-│   ├── lib/
-│   │   ├── models/                 # Data Models
-│   │   ├── views/                  # UI Screens & Custom Widgets
-│   │   ├── viewmodels/             # State Management (Provider/Riverpod)
-│   │   └── services/               # API Services & Local Storage
-│   └── pubspec.yaml
+├── frontend/SmartMealMobile/       # Mã nguồn app React Native / Expo
+│   ├── src/features/<feature>/     # screens, components, hooks, services (mock/api/mapper), types
+│   ├── src/services/api/           # Axios client, endpoints, interceptors (refresh token)
+│   ├── src/navigation/, src/state/ # React Navigation, Zustand stores
+│   ├── docs/                       # business_rule, design, structure_system, tech_stack, ui-progress
+│   ├── .env.example                # Mẫu biến môi trường của app → sao chép thành frontend/SmartMealMobile/.env
+│   └── package.json
 ├── docs/                           # Tài liệu thiết kế hệ thống, ERD, API specs
-├── docker-compose.yml              # Chạy PostgreSQL, pgAdmin & Backend API
-├── .env.example                    # File mẫu biến môi trường
+├── docker-compose.yml              # Một lệnh chạy PostgreSQL + Backend API (+ pgAdmin)
 └── README.md
 ```
 
@@ -83,9 +83,9 @@ SmartMeal/
 ### 1. Yêu cầu môi trường (Prerequisites)
 Trước khi bắt đầu, máy tính của bạn cần cài đặt sẵn:
 - **Git**: [Tải tại đây](https://git-scm.com/)
-- **.NET 8.0 SDK**: [Tải tại đây](https://dotnet.microsoft.com/download/dotnet/8.0)
-- **Docker Desktop**: [Tải tại đây](https://www.docker.com/products/docker-desktop/) *(Khuyên dùng để chạy PostgreSQL và pgAdmin nhanh chóng)*
-- **Flutter SDK** *(nếu làm phần Mobile)*: [Tải tại đây](https://docs.flutter.dev/get-started/install)
+- **Docker Desktop**: [Tải tại đây](https://www.docker.com/products/docker-desktop/) *(Khuyên dùng: một lệnh chạy cả PostgreSQL lẫn Backend API)*
+- **.NET 9.0 SDK** *(chỉ cần khi chạy/debug API ngoài Docker)*: [Tải tại đây](https://dotnet.microsoft.com/download/dotnet/9.0)
+- **Node.js 20+ và npm** *(nếu làm phần Mobile)*: [Tải tại đây](https://nodejs.org/) — app chạy bằng Expo (`npx expo start`), xem `frontend/SmartMealMobile/README.md`
 - **IDE khuyên dùng**: Visual Studio Code, Visual Studio 2022, Rider hoặc Android Studio.
 
 ---
@@ -99,80 +99,66 @@ git clone https://github.com/DamThanQuy/SmartMeal.git
 cd SmartMeal
 ```
 
-#### Bước 2.2: Tạo file biến môi trường `.env`
-Sao chép file `.env.example` thành `.env`:
+#### Bước 2.2: Tạo file biến môi trường (mỗi phần một file, không có `.env` ở thư mục gốc)
 ```bash
-# Trên Windows PowerShell:
-Copy-Item .env.example .env
+# Backend — Windows PowerShell:
+Copy-Item backend/.env.example backend/.env
+# Backend — Linux/macOS/Git Bash:
+cp backend/.env.example backend/.env
 
-# Trên Linux/macOS:
-cp .env.example .env
+# App (Expo):
+Copy-Item frontend/SmartMealMobile/.env.example frontend/SmartMealMobile/.env   # hoặc cp …
 ```
 
-Mở file `.env` vừa tạo và điền các thông tin (đặc biệt là API Key Google Gemini nếu muốn test AI Vision):
-```env
-# Database (PostgreSQL)
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgrespassword
-POSTGRES_DB=SmartMealDb
-POSTGRES_PORT=5432
-ConnectionStrings__DefaultConnection=Host=localhost;Port=5432;Database=SmartMealDb;Username=postgres;Password=postgrespassword
+Mở `backend/.env` và điền:
+- `Jwt__Key`: tự sinh khóa ngẫu nhiên ≥ 32 ký tự (lệnh mẫu có trong file). Giá trị `CHANGE_ME…` chỉ chạy được ở Development.
+- `Gemini__ApiKey`: nếu muốn AI thật. Lấy miễn phí tại https://aistudio.google.com/app/apikey. Để trống thì AI trả dữ liệu mẫu (isDemo).
 
-# JWT Authentication
-Jwt__Key=SmartMeal_SuperSecret_Jwt_Security_Key_2026_FPT_PRM393_VeryLongAndSecureKey!
-Jwt__Issuer=SmartMealBackend
-Jwt__Audience=SmartMealMobile
+Mở `frontend/SmartMealMobile/.env` và đặt `EXPO_PUBLIC_USE_MOCK_API=false`, `EXPO_PUBLIC_API_URL` theo mục 5 bên dưới.
 
-# Google Gemini AI API (Lấy miễn phí tại: https://aistudio.google.com/app/apikey)
-Gemini__ApiKey=YOUR_GEMINI_API_KEY_HERE
-Gemini__Model=gemini-1.5-flash
-
-# Port Settings
-API_PORT=5000
-PGADMIN_PORT=5050
-```
+> Các file `.env` đã được `.gitignore` — **không commit**, không chép khóa thật vào file `.env.example`.
 
 ---
 
 ### 3. Cách chạy Backend API & Database
 
-Bạn có thể lựa chọn 1 trong 2 cách chạy dưới đây:
-
-#### 🔥 Cách 1: Chạy Database bằng Docker + Chạy API bằng .NET CLI (KHUYÊN DÙNG CHO DEV)
-Cách này giúp bạn code API có **Hot Reload**, debug dễ dàng trên IDE mà không cần cài đặt thủ công PostgreSQL.
-
-**1. Khởi động PostgreSQL & pgAdmin:**
+#### 🐳 Cách 1 (khuyên dùng): một lệnh chạy cả PostgreSQL và API bằng Docker
+Tại thư mục gốc `SmartMeal`, chạy:
 ```bash
-docker compose up -d postgres pgadmin
+docker compose up -d --build
 ```
-*(Kiểm tra container chạy ổn định bằng lệnh `docker ps`)*
 
-**2. Di chuyển vào thư mục API và chạy:**
+Lệnh này làm toàn bộ các bước sau:
+- dựng image API từ `backend/Dockerfile`;
+- khởi động PostgreSQL rồi chờ DB sẵn sàng;
+- chạy API, tự áp dụng EF Core migrations và nạp dữ liệu mẫu;
+- khởi động pgAdmin.
+
+API đọc cấu hình từ `backend/.env`; chuỗi kết nối DB được compose tự trỏ tới container `postgres`.
+
+- API: http://localhost:5000/api — Swagger: http://localhost:5000/swagger
+- Điện thoại cùng Wi-Fi: `http://<IP-LAN-máy-tính>:5000/api`. Cổng 5000 mở trên mọi địa chỉ.
+- Tài khoản dùng thử (Development): `smartmealuser@gmail.com` / `Smartmeal@123`
+
+Các lệnh hay dùng:
 ```bash
-cd backend/SmartMeal.API
-dotnet run --launch-profile http
+docker compose ps                    # trạng thái
+docker compose logs -f backend-api   # log API (ở Development có cả mã OTP email)
+docker compose up -d --build         # chạy lại sau khi sửa code backend
+docker compose down                  # dừng; dữ liệu DB và ảnh đại diện vẫn giữ trong volume
 ```
-> 💡 *Mẹo: Dùng `dotnet watch run --launch-profile http` để tự động reload khi sửa code C#.*
 
-> ⚡ **Tự động khởi tạo Database & Seed Data**: Khi API khởi động, hệ thống sẽ **tự động chạy EF Core Migrations** tạo bảng và nạp sẵn dữ liệu mẫu (12+ nguyên liệu, 6 công thức món ăn chuẩn Eat Clean/Keto, danh mục dị ứng, bệnh lý, thử thách). Bạn không cần chạy lệnh `dotnet ef database update` thủ công!
+> ⚡ Không cần chạy `dotnet ef database update`: API tự migrate và seed dữ liệu mẫu khi khởi động. Dữ liệu mẫu gồm nguyên liệu, công thức, danh mục dị ứng/bệnh lý và thử thách.
 
 ---
 
-#### 🐳 Cách 2: Chạy toàn bộ hệ thống bằng Docker Compose
-Dùng PowerShell hoặc terminal tại thư mục gốc `SmartMeal`. Lệnh sẽ dựng PostgreSQL, pgAdmin và Backend API; các cổng mặc định có thể đổi trong file `.env`:
+#### 🔥 Cách 2: debug API ngoài Docker (hot reload)
+Chỉ chạy DB bằng Docker, còn API chạy bằng .NET CLI để debug trên IDE. API đọc `backend/.env`; chuỗi kết nối trong file mẫu đã trỏ tới `localhost:5432`.
 ```bash
-docker compose up --build -d
-docker compose ps
+docker compose up -d postgres
+dotnet watch run --project backend/SmartMeal.API --launch-profile http   # http://localhost:5000
 ```
-
-Sau khi các container khởi động, mở Swagger tại [http://localhost:5000/swagger](http://localhost:5000/swagger) hoặc pgAdmin tại [http://localhost:5050](http://localhost:5050). API chỉ khởi động sau khi PostgreSQL sẵn sàng và tự chạy migrations khi kết nối được database.
-
-Docker Compose không chạy ứng dụng React Native; hãy khởi động app riêng bằng Android Studio hoặc lệnh `npm start` trong `frontend/SmartMeal`.
-
-Dừng hệ thống khi không sử dụng:
-```bash
-docker compose down
-```
+Nếu container `backend-api` đang chạy, dừng nó trước để nhả cổng 5000: `docker compose stop backend-api`.
 
 ---
 
@@ -198,9 +184,11 @@ Sau khi khởi động API thành công:
 
 ---
 
-### 5. Hướng dẫn dành cho Mobile Developers (Flutter)
+### 5. Hướng dẫn dành cho Mobile Developers (React Native / Expo)
 
-Khi kết nối ứng dụng Flutter tới Backend API:
+Docker Compose không chạy app; app chạy riêng bằng Expo: `cd frontend/SmartMealMobile && npm install && npx expo start`.
+
+Đặt `EXPO_PUBLIC_API_URL` trong `frontend/SmartMealMobile/.env` (xem `frontend/SmartMealMobile/.env.example`). Đổi xong chạy lại `npx expo start --clear`:
 
 1. **Chạy trên Android Emulator**:
    - Sử dụng Base URL: `http://10.0.2.2:5000/api`

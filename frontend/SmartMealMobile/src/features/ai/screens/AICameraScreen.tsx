@@ -15,7 +15,7 @@ type Props = NativeStackScreenProps<MainStackParamList, 'AICamera'>;
 export function AICameraScreen({ navigation, route }: Props) {
   const { mealType } = route.params;
   const { colors } = useTheme();
-  const { remaining, limit } = useAiQuota();
+  const { remaining, limit, isUnlimited } = useAiQuota();
 
   // Tự động yêu cầu quyền camera ngay khi người dùng vào màn hình (request: true)
   const [permission, requestPermission] = useCameraPermissions({ request: true });
@@ -192,7 +192,7 @@ export function AICameraScreen({ navigation, route }: Props) {
           </View>
           <View className="rounded-full bg-overlay/50 px-sm py-xxs">
             <AppText variant="caption" className="text-on-primary opacity-90">
-              {`Còn ${remaining}/${limit} lượt AI hôm nay`}
+              {isUnlimited ? 'Pro: dùng AI không giới hạn' : `Còn ${remaining}/${limit} lượt AI hôm nay`}
             </AppText>
           </View>
         </View>

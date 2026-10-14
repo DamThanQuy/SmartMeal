@@ -9,8 +9,13 @@ export function useAnalyzeMealPhoto() {
   });
 }
 
+// `audioUri` — file ghi âm vừa thu (gửi /ai/voice-log/audio); `transcript` — văn bản người dùng gõ
+// (gửi /ai/voice-log). Có file ghi âm thì ưu tiên file.
 export function useTranscribeVoice() {
   return useMutation({
-    mutationFn: (mealType: MealType) => aiService.transcribeVoice(mealType),
+    mutationFn: (input: { mealType: MealType; transcript?: string; audioUri?: string }) =>
+      input.audioUri
+        ? aiService.transcribeVoiceAudio(input.mealType, input.audioUri)
+        : aiService.transcribeVoice(input.mealType, input.transcript),
   });
 }

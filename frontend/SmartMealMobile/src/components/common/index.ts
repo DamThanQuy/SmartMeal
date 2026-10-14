@@ -6,3 +6,4 @@ export * from './SectionHeader';
 export * from './ScreenHeader';
 export * from './InlineBanner';
 export * from './SuccessToast';
+export * from './UserAvatar';

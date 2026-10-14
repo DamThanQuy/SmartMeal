@@ -16,7 +16,6 @@ import Svg, {
   Path,
   Rect,
 } from 'react-native-svg';
-import { useTheme } from '@/theme/ThemeProvider';
 
 export type PetStage = 1 | 2 | 3 | 4;
 
@@ -208,27 +207,29 @@ export function PetAnimation({ stage, xpRatio = 0, size = 200 }: PetAnimationPro
 
   // Bob (nhún nhảy liên tục)
   useEffect(() => {
-    bobY.value = withRepeat(
-      withSequence(
-        withTiming(-8, { duration: 1200, easing: Easing.inOut(Easing.sin) }),
-        withTiming(0, { duration: 1200, easing: Easing.inOut(Easing.sin) }),
+    bobY.set(
+      withRepeat(
+        withSequence(
+          withTiming(-8, { duration: 1200, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0, { duration: 1200, easing: Easing.inOut(Easing.sin) }),
+        ),
+        -1,
+        false,
       ),
-      -1,
-      false,
     );
   }, [bobY]);
 
   // Entrance spring khi stage đổi
   useEffect(() => {
-    entryScale.value = 0.8;
-    entryOpacity.value = 0;
-    entryScale.value = withSpring(xpScale, { stiffness: 180, damping: 14 });
-    entryOpacity.value = withTiming(1, { duration: 300 });
+    entryScale.set(0.8);
+    entryOpacity.set(0);
+    entryScale.set(withSpring(xpScale, { stiffness: 180, damping: 14 }));
+    entryOpacity.set(withTiming(1, { duration: 300 }));
   }, [stage, xpScale, entryScale, entryOpacity]);
 
   // Khi xpRatio đổi mà stage không đổi — chỉ update scale nhẹ
   useEffect(() => {
-    entryScale.value = withSpring(xpScale, { stiffness: 120, damping: 18 });
+    entryScale.set(withSpring(xpScale, { stiffness: 120, damping: 18 }));
   }, [xpRatio, xpScale, entryScale]);
 
   const bobStyle = useAnimatedStyle(() => ({

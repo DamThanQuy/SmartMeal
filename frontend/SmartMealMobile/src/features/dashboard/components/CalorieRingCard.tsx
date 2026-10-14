@@ -1,29 +1,22 @@
+import { LinearGradient } from 'expo-linear-gradient';
+import { Flame } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { Circle, Svg } from 'react-native-svg';
-import { AppCard, AppText } from '@/components/ui';
+import { AppText } from '@/components/ui';
 import { useTheme } from '@/theme/ThemeProvider';
 
 export interface CalorieRingCardProps {
   consumedCalories: number;
   calorieTarget: number;
   activityCalories: number;
-  /** Mở CalorieBudgetScreen (Đợt 11) — design v2 đổi thẻ calo Dashboard thành link. */
   onPress?: () => void;
   className?: string;
 }
 
-const RING_SIZE = 140;
-const RING_RADIUS = 58;
-const RING_STROKE = 12;
-const CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
-
 function formatNumber(value: number): string {
-  return value.toLocaleString('vi-VN');
+  return Math.round(value).toLocaleString('vi-VN');
 }
 
-// design/Dashboard.dc.html mục 16 (Daily Calorie Card) — chỉ hiển thị Calories/Remaining làm
-// thông tin chính, không nhồi thêm chỉ số khác vào card này (macro nằm ở card riêng).
 export function CalorieRingCard({
   consumedCalories,
   calorieTarget,
@@ -34,70 +27,66 @@ export function CalorieRingCard({
   const { colors } = useTheme();
   const effectiveTarget = calorieTarget + activityCalories;
   const remaining = effectiveTarget - consumedCalories;
-  const percent = effectiveTarget > 0 ? Math.min(consumedCalories / effectiveTarget, 1) : 0;
+  const percent =
+    effectiveTarget > 0
+      ? Math.max(0, Math.min(consumedCalories / effectiveTarget, 1))
+      : 0;
 
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityLabel={onPress ? 'Xem ngân sách calo' : undefined}
+      accessibilityLabel={`Năng lượng hôm nay: ${formatNumber(consumedCalories)} trên ${formatNumber(effectiveTarget)} kcal. Xem ngân sách calo`}
       onPress={onPress}
+      className={`overflow-hidden rounded-lg active:opacity-90 ${className}`}
     >
-      <AppCard className={`flex-row items-center gap-md ${className}`}>
-      <View style={{ width: RING_SIZE, height: RING_SIZE }}>
-        <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
-          <Circle
-            cx={RING_SIZE / 2}
-            cy={RING_SIZE / 2}
-            r={RING_RADIUS}
-            stroke={colors.primarySoft}
-            strokeWidth={RING_STROKE}
-            fill="none"
-          />
-          <Circle
-            cx={RING_SIZE / 2}
-            cy={RING_SIZE / 2}
-            r={RING_RADIUS}
-            stroke={colors.primary}
-            strokeWidth={RING_STROKE}
-            strokeLinecap="round"
-            fill="none"
-            strokeDasharray={`${CIRCUMFERENCE * percent} ${CIRCUMFERENCE}`}
-            rotation={-90}
-            origin={`${RING_SIZE / 2}, ${RING_SIZE / 2}`}
-          />
-        </Svg>
-        <View className="absolute inset-0 items-center justify-center gap-xxs">
-          <AppText variant="h2">{formatNumber(consumedCalories)}</AppText>
-          <AppText variant="caption" color="secondary">
-            kcal đã nạp
+      <LinearGradient
+        colors={[colors.energyStart, colors.energyEnd]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View className="gap-sm p-lg">
+          <View className="flex-row items-center justify-between gap-sm">
+            <View className="flex-1 gap-xxs">
+              <AppText
+                variant="caption"
+                color="onEnergy"
+                className="font-sans-semibold opacity-80"
+              >
+                NĂNG LƯỢNG HÔM NAY
+              </AppText>
+              <View className="flex-row flex-wrap items-baseline gap-xs">
+                <AppText variant="display" color="onEnergy">
+                  {formatNumber(consumedCalories)}
+                </AppText>
+                <AppText variant="body" color="onEnergy" className="opacity-80">
+                  {`/ ${formatNumber(effectiveTarget)} kcal`}
+                </AppText>
+              </View>
+            </View>
+            <Flame size={32} strokeWidth={1.8} color={colors.onEnergy} />
+          </View>
+          <View
+            accessibilityRole="progressbar"
+            accessibilityLabel="Tiến độ năng lượng hôm nay"
+            accessibilityValue={{
+              min: 0,
+              max: 100,
+              now: Math.round(percent * 100),
+            }}
+            className="h-[8px] overflow-hidden rounded-pill bg-energy-track"
+          >
+            <View
+              className="h-full rounded-pill bg-energy-fill"
+              style={{ width: `${percent * 100}%` }}
+            />
+          </View>
+          <AppText variant="caption" color="onEnergy" className="opacity-80">
+            {remaining >= 0
+              ? `Còn ${formatNumber(remaining)} kcal cho mục tiêu hôm nay`
+              : `Đã vượt ${formatNumber(-remaining)} kcal so với mục tiêu hôm nay`}
           </AppText>
         </View>
-      </View>
-
-      <View className="flex-1 gap-sm">
-        <View>
-          <AppText variant="h2" color="onPrimarySoft">
-            {formatNumber(Math.max(remaining, 0))}
-          </AppText>
-          <AppText variant="body" color="secondary">
-            kcal còn lại
-          </AppText>
-        </View>
-        <View className="h-[1px] bg-border" />
-        <View className="flex-row justify-between">
-          <AppText variant="caption" color="secondary">
-            Mục tiêu
-          </AppText>
-          <AppText variant="bodyMedium">{formatNumber(calorieTarget)}</AppText>
-        </View>
-        <View className="flex-row justify-between">
-          <AppText variant="caption" color="secondary">
-            + Vận động
-          </AppText>
-          <AppText variant="bodyMedium">{formatNumber(activityCalories)}</AppText>
-        </View>
-      </View>
-      </AppCard>
+      </LinearGradient>
     </Pressable>
   );
 }

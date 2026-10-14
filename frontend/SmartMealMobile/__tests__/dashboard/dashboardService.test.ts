@@ -37,10 +37,27 @@ const PET = {
   message: 'Hôm nay ăn ngon nhé!',
 };
 
+function recipe(id: string, calories: number) {
+  return {
+    id,
+    name: `Món ${id}`,
+    durationMinutes: 20,
+    servings: 1,
+    nutritionPerServing: { calories, proteinG: 10, carbsG: 10, fatG: 10 },
+    tags: ['eatClean'],
+    mealTypes: [],
+    ingredients: [],
+    steps: [],
+    allergenIds: [],
+    healthWarnings: [],
+  };
+}
+
 function load() {
   const nutritionMock = { getDiaryDay: jest.fn() };
   const healthSyncMock = { getDailySummary: jest.fn() };
   const gamificationMock = { getPetState: jest.fn() };
+  const recipeMock = { getRecommended: jest.fn() };
 
   jest.resetModules();
   jest.doMock('@/features/nutrition', () => ({
@@ -49,6 +66,10 @@ function load() {
     todayIso: () => '2026-10-02',
   }));
   jest.doMock('@/features/gamification', () => ({ gamificationService: gamificationMock }));
+  jest.doMock('@/features/recipes', () => ({
+    recipeService: recipeMock,
+    RECIPE_TAG_OPTIONS: [{ id: 'eatClean', label: 'Eat Clean' }],
+  }));
 
   const { dashboardService } =
     require('@/features/dashboard/services/dashboardService') as typeof import('@/features/dashboard/services/dashboardService');
@@ -56,8 +77,12 @@ function load() {
   nutritionMock.getDiaryDay.mockResolvedValue(DIARY);
   healthSyncMock.getDailySummary.mockResolvedValue(ACTIVITY);
   gamificationMock.getPetState.mockResolvedValue(PET);
+  recipeMock.getRecommended.mockResolvedValue({
+    recipes: [recipe('a', 900), recipe('b', 450), recipe('c', 2500)],
+    excludedAllergenIds: [],
+  });
 
-  return { dashboardService, nutritionMock, healthSyncMock, gamificationMock };
+  return { dashboardService, nutritionMock, healthSyncMock, gamificationMock, recipeMock };
 }
 
 describe('getDashboardSummary', () => {
@@ -76,7 +101,9 @@ describe('getDashboardSummary', () => {
       progressPercent: 38,
       message: 'Hôm nay ăn ngon nhé!',
     });
-    expect(summary.recommendedMeal.recipeId).toBeDefined();
+    // Còn 1776 + 180 kcal: món 900 kcal gần nhất mà không vượt, rồi 450; món 2500 kcal bị đẩy xuống.
+    expect(summary.recommendedMeals.map(meal => meal.recipeId)).toEqual(['a', 'b']);
+    expect(summary.recommendedMeals[0]).toMatchObject({ tag: 'Eat Clean', calories: 900 });
   });
 
   test('vận động: giờ đồng bộ theo giờ máy và nhãn nguồn', async () => {
@@ -117,6 +144,16 @@ describe('getDashboardSummary', () => {
     expect(summary.pet).toBeNull();
     expect(summary.diary).toBe(DIARY);
     expect(summary.activity).not.toBeNull();
+  });
+
+  test('công thức lỗi → không có gợi ý, Dashboard vẫn hiện', async () => {
+    const { dashboardService, recipeMock } = load();
+    recipeMock.getRecommended.mockRejectedValue(new Error('Mất mạng'));
+
+    const summary = await dashboardService.getDashboardSummary();
+
+    expect(summary.recommendedMeals).toEqual([]);
+    expect(summary.diary).toBe(DIARY);
   });
 
   test('vận động lỗi → khối vận động biến mất, Dashboard vẫn hiện', async () => {

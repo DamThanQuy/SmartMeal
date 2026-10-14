@@ -8,7 +8,6 @@ import { AppButton, AppCard, AppText } from '@/components/ui';
 import { ENV } from '@/config/env';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
-import { usePremiumStore } from '@/state/premium/premiumStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useCheckoutPremium } from '../hooks/useCheckoutPremium';
 import { BILLING_PLAN_OPTIONS } from '../mocks/premium.mock';

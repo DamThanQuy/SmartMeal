@@ -22,7 +22,7 @@
 #### 1. Đăng nhập & Đăng ký (Authentication & User Profile)
 - Đăng nhập bằng tài khoản (Email/Username & Password).
 - Đăng ký tài khoản mới kèm xác thực mã OTP qua Email/SMS.
-- Đăng nhập nhanh bằng Google (Google Sign-In).
+- ~~Đăng nhập nhanh bằng Google (Google Sign-In).~~ Đã bỏ đăng nhập Google ngày 14/10/2026 theo quyết định của nhóm — chỉ đăng nhập bằng email + mật khẩu.
 - Quản lý hồ sơ người dùng, cập nhật Avatar và thông tin cá nhân.
 
 #### 2. Dashboard Thông minh (Smart Dashboard)

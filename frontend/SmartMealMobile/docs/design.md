@@ -6,6 +6,21 @@
 > **Purpose:** Quy chuẩn UI/UX dùng chung cho toàn bộ SmartMeal.  
 > **Design Direction:** Calm · Healthy · Simple · Friendly · Modern
 
+**Cập nhật theo ảnh tham chiếu của người dùng — 03/10/2026:** palette hiện hành nằm ở
+`src/theme/tokens.js` và được dùng chung cho NativeWind, icon và navigation. Chế độ sáng dùng
+nền `#F1FAF5`, surface trắng và primary `#19B541`; chế độ tối dùng nền đen thuần `#000000`,
+surface xám đen `#111111` và primary `#4AC65C` theo yêu cầu cập nhật của người dùng.
+Thẻ năng lượng dùng token `energy*` riêng để đổi từ chữ trắng trên xanh đậm sang chữ đen
+trên xanh sáng. Font Inter Regular/SemiBold/Bold được nạp
+từ asset cục bộ qua `expo-font`.
+
+Trang chủ theo thứ tự: header SmartMeal và nút sáng/tối → ngày/lời chào/avatar → năng lượng
+hôm nay → ba ô Đạm/Tinh bột/Chất béo và phần trăm mục tiêu → mẹo nhỏ → gợi ý món ăn có ảnh.
+Các chức năng ghi bữa ăn, bữa ăn hôm nay, vận động và Bé Mầm nằm tiếp bên dưới. Thanh tab:
+Trang chủ · Bữa ăn (Meal Planner) · Khám phá · Nhật ký · Cá nhân. Các route và bảo vệ Guest
+giữ theo chức năng hiện có. Nút sáng/tối lưu lựa chọn qua ThemeProvider; Cài đặt vẫn hỗ trợ
+chế độ theo hệ thống.
+
 ---
 
 ## 1. Design Goal

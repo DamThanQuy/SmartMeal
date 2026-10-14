@@ -3,18 +3,18 @@ import { scannerService } from '../services/scannerService';
 
 export function useScanBarcode() {
   return useMutation({
-    mutationFn: () => scannerService.scanBarcode(),
+    mutationFn: (code: string) => scannerService.scanBarcode(code),
   });
 }
 
 export function useAnalyzeOcrLabel() {
   return useMutation({
-    mutationFn: () => scannerService.analyzeOcrLabel(),
+    mutationFn: (imageUri: string) => scannerService.analyzeOcrLabel(imageUri),
   });
 }
 
 export function useScanFridge() {
   return useMutation({
-    mutationFn: () => scannerService.scanFridge(),
+    mutationFn: (imageUris: string[]) => scannerService.scanFridge(imageUris),
   });
 }

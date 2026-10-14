@@ -1,10 +1,17 @@
 import { ENV } from '@/config/env';
 import { MAIN_STACK_ROUTES, ROOT_ROUTES } from '@/constants/routes';
 import { healthProfileService } from '@/features/health';
+import { premiumService } from '@/features/premium';
+import { cancelReminders, resyncReminders } from '@/features/profile/services/reminderSync';
 import { navigationRef } from '@/navigation/navigationRef';
 import { isApiError, queryClient, setUnauthorizedHandler } from '@/services/api';
-import { tokenStorage } from '@/services/storage/secureStorage';
+import {
+  clearSessionTokens,
+  refreshTokenStorage,
+  tokenStorage,
+} from '@/services/storage/secureStorage';
 import { type AuthState, useAuthStore } from '@/state/auth/authStore';
+import { usePremiumStore } from '@/state/premium/premiumStore';
 import { resetUserData } from '@/state/resetUserData';
 import { useUserProfileStore } from '@/state/user/userProfileStore';
 import type { AuthUser, SessionOpenResult } from '../types/auth.types';
@@ -14,17 +21,37 @@ import { authService } from './authService';
 // đăng nhập, xử lý hết hạn (401) và dọn dữ liệu khi đăng xuất. Token chỉ ở SecureStore.
 
 /**
+ * Nạp gói thành viên của tài khoản vào premiumStore để mọi nơi mở khóa tính năng Pro đúng ngay từ
+ * đầu. Không chặn đăng nhập vì lỗi đọc gói: dùng cờ `isPro` của đăng nhập làm dự phòng, và màn "Gói
+ * của tôi" sẽ đọc lại.
+ */
+async function loadMembership(user: AuthUser): Promise<void> {
+  try {
+    usePremiumStore.getState().hydrateMembership(await premiumService.getStatus());
+  } catch {
+    usePremiumStore.getState().hydrateMembership({
+      status: user.isPro ? 'premium' : 'free',
+      planId: null,
+      expiresAtIso: null,
+    });
+  }
+}
+
+/**
  * Sau khi đã có token + user (đăng nhập hoặc khôi phục phiên): nạp hồ sơ sức khỏe vào
  * userProfileStore (bản sao đồng bộ cho các service lọc dị ứng...) rồi báo có cần làm Health
  * Profile không. Phải xong TRƯỚC khi vào Main để màn hình không bao giờ thấy store rỗng.
  */
 export async function openSession(user: AuthUser): Promise<SessionOpenResult> {
+  await loadMembership(user);
   if (!user.hasCompletedSurvey) return { user, needsSurvey: true };
 
   const hydrated = await healthProfileService.getHealthProfile(user.id);
   if (hydrated) {
     useUserProfileStore.getState().hydrateFromServer(hydrated.snapshot, hydrated.extras);
   }
+  // Nhắc nhở cục bộ theo cài đặt của tài khoản này (không chờ — không được chặn vào app).
+  void resyncReminders();
   return { user, needsSurvey: false };
 }
 
@@ -60,7 +87,7 @@ export async function bootstrapSession(): Promise<void> {
     auth.setBootstrapStatus('ready');
   } catch (error) {
     if (isApiError(error) && (error.code === 'UNAUTHORIZED' || error.code === 'NOT_FOUND')) {
-      await tokenStorage.clear();
+      await clearSessionTokens();
       auth.logout('expired');
       auth.setBootstrapStatus('ready');
       return;
@@ -70,9 +97,28 @@ export async function bootstrapSession(): Promise<void> {
 }
 
 async function clearSessionData(): Promise<void> {
-  await tokenStorage.clear();
+  await clearSessionTokens();
+  // Gói thành viên là của từng tài khoản: không để tài khoản đăng nhập sau thừa hưởng Pro của người trước.
+  usePremiumStore.getState().resetToFree();
+  // Lịch nhắc nhở ở cấp máy: không để tài khoản sau nhận nhắc của người trước.
+  await cancelReminders();
   await queryClient.cancelQueries();
   queryClient.clear();
+}
+
+/**
+ * Đăng xuất chủ động: xóa dữ liệu cục bộ NGAY, rồi thu hồi refresh token ở máy chủ (best effort,
+ * dùng bản đã đọc trước khi xóa). Mất mạng không được chặn đăng xuất; token còn lại tự hết hạn.
+ */
+async function endSession(): Promise<void> {
+  const refreshToken = await refreshTokenStorage.get();
+  await clearSessionData();
+  if (!refreshToken) return;
+  try {
+    await authService.logout(refreshToken);
+  } catch {
+    // Bỏ qua: xem chú thích ở trên.
+  }
 }
 
 /**
@@ -115,7 +161,7 @@ export function startSessionLifecycle(): () => void {
   setUnauthorizedHandler(handleSessionExpired);
   const unsubscribe = useAuthStore.subscribe((state, previous) => {
     if (!hasSession(previous) || hasSession(state)) return;
-    void clearSessionData();
+    void endSession();
     resetUserData();
   });
 

@@ -8,7 +8,7 @@ import { AppBadge, AppButton, AppCard, AppIconButton, AppSegmentedControl, AppTe
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
-import { useChallenges, useCompleteChallenge, useJoinChallenge } from '../hooks/useChallenges';
+import { useChallenges, useJoinChallenge } from '../hooks/useChallenges';
 import type { ChallengeWithWindow } from '../types/challenge.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'Challenges'>;
@@ -34,14 +34,8 @@ export function ChallengesScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const { data, isLoading, isError, error, refetch } = useChallenges();
   const joinChallenge = useJoinChallenge();
-  const completeChallenge = useCompleteChallenge();
   const [tab, setTab] = useState<ChallengeTab>('joined');
 
-  const handleComplete = (challengeId: string) => {
-    completeChallenge.mutate(challengeId, {
-      onSuccess: () => navigation.navigate(MAIN_STACK_ROUTES.CHALLENGE_COMPLETE, { challengeId }),
-    });
-  };
 
   return (
     <ScreenContainer>
@@ -127,11 +121,11 @@ export function ChallengesScreen({ navigation }: Props) {
                     <View className="h-[10px] overflow-hidden rounded-pill bg-primary-soft">
                       <View
                         className="h-[10px] rounded-pill bg-primary"
-                        style={{ width: `${Math.round((challenge.dayCurrent / challenge.dayTotal) * 100)}%` }}
+                        style={{ width: `${Math.round((challenge.completedDays / challenge.dayTotal) * 100)}%` }}
                       />
                     </View>
                     <AppText variant="caption" color="secondary">
-                      {`Ngày ${challenge.dayCurrent} / ${challenge.dayTotal}`}
+                      {`Ngày ${challenge.dayCurrent} / ${challenge.dayTotal} · Đã đạt ${challenge.completedDays} ngày`}
                     </AppText>
                   </View>
                 ) : !challenge.joined && challenge.windowState !== 'ended' && !challenge.completed ? (
@@ -140,14 +134,13 @@ export function ChallengesScreen({ navigation }: Props) {
                   </AppText>
                 ) : null}
 
-                {challenge.completed ? null : challenge.joined ? (
+                {challenge.completed ? (
                   <AppButton
-                    label="Xem chi tiết"
+                    label="Xem phần thưởng"
                     variant="secondary"
-                    onPress={() => handleComplete(challenge.id)}
-                    loading={completeChallenge.isPending}
+                    onPress={() => navigation.navigate(MAIN_STACK_ROUTES.CHALLENGE_COMPLETE, { challengeId: challenge.id })}
                   />
-                ) : challenge.windowState === 'active' ? (
+                ) : challenge.joined ? null : challenge.windowState === 'active' ? (
                   <AppButton
                     label="Tham gia"
                     onPress={() => joinChallenge.mutate(challenge.id)}

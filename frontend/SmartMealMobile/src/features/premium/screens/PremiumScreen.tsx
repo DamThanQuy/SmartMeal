@@ -2,13 +2,14 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Check, Minus, Sparkles } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { ScreenContainer, ScreenHeader } from '@/components/common';
+import { ErrorState, LoadingState, ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppButton, AppCard, AppText } from '@/components/ui';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import type { BillingPlanId } from '@/state/premium/premiumStore';
 import { useTheme } from '@/theme/ThemeProvider';
-import { BILLING_PLAN_OPTIONS, FEATURE_COMPARISON_MOCK } from '../mocks/premium.mock';
+import { useSubscriptionPlans } from '../hooks/useSubscription';
+import { FEATURE_COMPARISON_MOCK } from '../mocks/premium.mock';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'Premium'>;
 
@@ -17,7 +18,27 @@ type Props = NativeStackScreenProps<MainStackParamList, 'Premium'>;
 // hoạt Premium ngay (BR-241/242).
 export function PremiumScreen({ navigation }: Props) {
   const { colors } = useTheme();
+  const { data: plans, isLoading, isError, error, refetch } = useSubscriptionPlans();
   const [planId, setPlanId] = useState<BillingPlanId>('yearly');
+
+  // Giá và chu kỳ do backend quyết định nên chưa có bảng giá thì chưa cho chọn gói.
+  if (isLoading) {
+    return (
+      <ScreenContainer>
+        <ScreenHeader title="" onBack={() => navigation.goBack()} />
+        <LoadingState lines={6} />
+      </ScreenContainer>
+    );
+  }
+
+  if (isError || !plans) {
+    return (
+      <ScreenContainer>
+        <ScreenHeader title="" onBack={() => navigation.goBack()} />
+        <ErrorState description={error?.message} onRetry={refetch} />
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer>
@@ -82,7 +103,7 @@ export function PremiumScreen({ navigation }: Props) {
         </AppCard>
 
         <View className="flex-row gap-sm">
-          {BILLING_PLAN_OPTIONS.map(plan => {
+          {plans.map(plan => {
             const selected = plan.id === planId;
             return (
               <Pressable

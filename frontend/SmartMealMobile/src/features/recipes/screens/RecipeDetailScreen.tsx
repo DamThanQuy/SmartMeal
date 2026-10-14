@@ -1,20 +1,21 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   AlertTriangle,
+  BookmarkPlus,
   ChevronLeft,
   Clock,
   Flame,
   Heart,
+  HeartPulse,
   Info,
   Minus,
   Plus,
   ShieldCheck,
   Star,
-  UtensilsCrossed,
 } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
-import { ErrorState, LoadingState, ScreenContainer } from '@/components/common';
+import { EmptyState, ErrorState, InlineBanner, LoadingState, ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppBadge, AppButton, AppCard, AppIconButton, AppText } from '@/components/ui';
 import { ALLERGY_OPTIONS } from '@/features/health';
 import { MAIN_STACK_ROUTES, MAIN_TAB_ROUTES } from '@/constants/routes';
@@ -22,6 +23,7 @@ import type { MainStackParamList } from '@/navigation/types';
 import { useAuthStore } from '@/state/auth/authStore';
 import { useUserProfileStore } from '@/state/user/userProfileStore';
 import { useTheme } from '@/theme/ThemeProvider';
+import { RecipeImage } from '../components/RecipeImage';
 import { useIsFavorite, useToggleFavorite } from '../hooks/useFavorites';
 import { useRecipeDetail } from '../hooks/useRecipes';
 import { RECIPE_TAG_OPTIONS } from '../types/recipe.types';
@@ -77,10 +79,19 @@ export function RecipeDetailScreen({ navigation, route }: Props) {
     );
   }
 
-  if (isError || !recipe || !scaledNutrition) {
+  if (isError) {
     return (
       <ScreenContainer>
-        <ErrorState description={error?.message ?? 'Không tìm thấy công thức.'} onRetry={refetch} />
+        <ErrorState description={error.message} onRetry={refetch} />
+      </ScreenContainer>
+    );
+  }
+
+  if (!recipe || !scaledNutrition) {
+    return (
+      <ScreenContainer>
+        <ScreenHeader title="Công thức" onBack={() => navigation.goBack()} />
+        <EmptyState title="Không tìm thấy công thức" description="Công thức có thể đã bị xóa hoặc liên kết không đúng." />
       </ScreenContainer>
     );
   }
@@ -97,12 +108,7 @@ export function RecipeDetailScreen({ navigation, route }: Props) {
     <ScreenContainer edges={['left', 'right', 'bottom']}>
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="relative">
-          <View className="h-[300px] items-center justify-center gap-xxs bg-primary-soft">
-            <UtensilsCrossed size={44} color={colors.primary} />
-            <AppText variant="caption" className="text-on-primary-soft">
-              Ảnh món ăn
-            </AppText>
-          </View>
+          <RecipeImage imageUrl={recipe.imageUrl} iconSize={44} className="h-[300px]" accessibilityLabel={recipe.name} />
           <View className="absolute inset-x-md top-[52px] flex-row justify-between">
             <AppIconButton
               accessibilityLabel="Quay lại"
@@ -129,13 +135,20 @@ export function RecipeDetailScreen({ navigation, route }: Props) {
         <View className="-mt-xl gap-xl rounded-t-sheet bg-background p-lg">
           <View className="gap-sm">
             <AppText variant="h1">{recipe.name}</AppText>
+            {recipe.description ? (
+              <AppText variant="body" color="secondary">
+                {recipe.description}
+              </AppText>
+            ) : null}
             <View className="flex-row items-center gap-md">
-              <View className="flex-row items-center gap-xxs">
-                <Star size={16} color={colors.warning} fill={colors.warning} />
-                <AppText variant="body" color="secondary">
-                  {recipe.rating.toLocaleString('vi-VN')}
-                </AppText>
-              </View>
+              {recipe.rating !== undefined ? (
+                <View className="flex-row items-center gap-xxs">
+                  <Star size={16} color={colors.warning} fill={colors.warning} />
+                  <AppText variant="body" color="secondary">
+                    {recipe.rating.toLocaleString('vi-VN')}
+                  </AppText>
+                </View>
+              ) : null}
               <View className="flex-row items-center gap-xxs">
                 <Clock size={16} color={colors.textSecondary} />
                 <AppText variant="body" color="secondary">
@@ -151,6 +164,7 @@ export function RecipeDetailScreen({ navigation, route }: Props) {
             </View>
             <View className="flex-row flex-wrap gap-xs">
               {dietTagLabel ? <AppBadge label={dietTagLabel} /> : null}
+              {recipe.isPremium ? <AppBadge label="Pro" tone="warning" /> : null}
               {!hasAllergyConflict ? (
                 <AppBadge
                   label="Không chứa dị ứng đã khai báo"
@@ -175,6 +189,14 @@ export function RecipeDetailScreen({ navigation, route }: Props) {
                 {`Món này có thành phần trùng với dị ứng bạn đã khai báo: ${matchedAllergenLabels}.`}
               </AppText>
             </View>
+          ) : null}
+
+          {recipe.healthWarnings.length > 0 ? (
+            <InlineBanner
+              icon={<HeartPulse size={20} color={colors.warning} />}
+              title="Lưu ý theo bệnh lý của bạn"
+              description={`${recipe.healthWarnings.join('\n')}\nĐây là ngưỡng tham khảo, không thay thế tư vấn của bác sĩ.`}
+            />
           ) : null}
 
           {hasAllergyConflict && hasUnknownComposition ? (
@@ -236,24 +258,25 @@ export function RecipeDetailScreen({ navigation, route }: Props) {
               </View>
             </View>
             {recipe.ingredients.map(ingredient => {
-              const ingredientAllergenLabel = ingredient.allergenId
-                ? (ALLERGY_OPTIONS.find(option => option.id === ingredient.allergenId)?.label ??
-                  ingredient.allergenId)
-                : null;
+              // Chỉ gắn tag các chất gây dị ứng TRÙNG hồ sơ người dùng (design/RecipeAllergy.dc.html).
+              const ingredientAllergenLabels = ingredient.allergenIds
+                .filter(id => matchedAllergenIds.includes(id))
+                .map(id => ALLERGY_OPTIONS.find(option => option.id === id)?.label ?? id);
               return (
                 <View
-                  key={ingredient.name}
+                  key={`${ingredient.name}-${ingredient.amount}`}
                   className="flex-row items-center justify-between gap-sm border-t border-border py-sm"
                 >
                   <View className="flex-1 flex-row flex-wrap items-center gap-xs">
                     <AppText variant="bodyLg">{ingredient.name}</AppText>
-                    {hasAllergyConflict && ingredientAllergenLabel ? (
+                    {ingredientAllergenLabels.map(label => (
                       <AppBadge
-                        label={ingredientAllergenLabel}
+                        key={label}
+                        label={label}
                         tone="error"
                         icon={<AlertTriangle size={12} color={colors.errorText} />}
                       />
-                    ) : null}
+                    ))}
                     {hasAllergyConflict && ingredient.unknownComposition ? (
                       <AppBadge
                         label="Chưa rõ thành phần"
@@ -297,12 +320,26 @@ export function RecipeDetailScreen({ navigation, route }: Props) {
             }
           />
         ) : null}
-        <AppButton
-          label="Thêm vào thực đơn"
-          variant={hasAllergyConflict ? 'outline' : 'primary'}
-          disabled={hasAllergyConflict}
-          onPress={() => navigation.navigate(MAIN_STACK_ROUTES.ADD_TO_MEAL_PLAN, { recipeId })}
-        />
+        <View className="flex-row gap-sm">
+          <AppButton
+            label="Thêm vào thực đơn"
+            variant={hasAllergyConflict ? 'outline' : 'primary'}
+            disabled={hasAllergyConflict}
+            onPress={() => navigation.navigate(MAIN_STACK_ROUTES.ADD_TO_MEAL_PLAN, { recipeId })}
+            className="flex-1"
+          />
+          <AppIconButton
+            accessibilityLabel="Lưu vào bộ sưu tập"
+            variant="elevated"
+            shape="square"
+            icon={<BookmarkPlus size={22} color={colors.textPrimary} />}
+            onPress={() =>
+              isGuest
+                ? navigation.navigate(MAIN_STACK_ROUTES.GUEST_PROMPT)
+                : navigation.navigate(MAIN_STACK_ROUTES.ADD_TO_COLLECTION, { recipeId })
+            }
+          />
+        </View>
         {hasAllergyConflict ? (
           <AppText variant="caption" color="secondary" className="text-center">
             Không thể thêm món chứa dị ứng đã khai báo vào thực đơn

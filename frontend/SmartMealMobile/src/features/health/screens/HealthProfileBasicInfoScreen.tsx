@@ -13,7 +13,6 @@ import { HealthOptionCard } from '../components/HealthOptionCard';
 import { HealthProfileProgressHeader } from '../components/HealthProfileProgressHeader';
 import { HealthProfileStepFooter } from '../components/HealthProfileStepFooter';
 import { useHealthProfileForm } from '../hooks/useHealthProfileForm';
-import { useMetaMappingCheck } from '../hooks/useMeta';
 import { GENDER_OPTIONS } from '../types/health.types';
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -61,7 +60,6 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'HealthProfileBasicInfo'
 // HPActivity/HPAllergy được mock ở bước 3/4/5), dựng theo đúng ngôn ngữ hình ảnh của 3 màn đó.
 export function HealthProfileBasicInfoScreen({ navigation }: Props) {
   // Wizard sắp gửi id dị ứng/bệnh lý lên BE — đối chiếu sớm với /meta/* (chỉ cảnh báo ở dev).
-  useMetaMappingCheck();
   const logout = useAuthStore(state => state.logout);
   const data = useHealthProfileForm(state => state.data);
   const updateData = useHealthProfileForm(state => state.updateData);

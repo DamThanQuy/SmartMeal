@@ -1,17 +1,18 @@
 import type { DailyHealthSyncSummaryDto } from '../types/healthSync.api.types';
 import type { DailyActivity } from '../types/healthSync.types';
 
-const NO_SYNC_SOURCE = 'Manual';
+const ACTIVE_SOURCE_NOTE = 'Nguồn đang dùng cho hôm nay';
+const SKIPPED_SOURCE_NOTE = 'Bị bỏ qua để không tính trùng với nguồn ưu tiên cao hơn';
 
 /**
- * Ngày chưa có log nào BE vẫn trả `sources: ["Manual"]`, `steps: 0` và `lastSyncedAt = bây giờ` —
- * phải coi là "chưa đồng bộ" (docs/fetch-api/part1 §8), đừng hiện "vừa đồng bộ".
+ * Chưa đồng bộ gì thì BE trả `sources` rỗng và `lastSyncedAt` null → "chưa đồng bộ" (đừng hiện
+ * "vừa đồng bộ"). Một ngày chỉ dùng MỘT nguồn (BR-042): `activeSource` là nguồn được cộng vào ngân
+ * sách, các nguồn còn lại chỉ để hiển thị là đã bị bỏ qua. BE chỉ có tên nguồn và tổng calo (không
+ * tách theo nguồn, không có danh sách hoạt động).
  */
 export function fromDailySummaryDto(dto: DailyHealthSyncSummaryDto): DailyActivity {
-  const hasOnlyPlaceholderSource = dto.sources.length === 1 && dto.sources[0] === NO_SYNC_SOURCE;
-  const hasSyncedData = dto.steps > 0 || dto.burnedCalories > 0 || !hasOnlyPlaceholderSource;
-
-  const sources = hasSyncedData ? dto.sources : [];
+  const hasSyncedData = dto.sources.length > 0;
+  const activeSource = dto.activeSource ?? dto.sources[0];
 
   return {
     dateIso: dto.date,
@@ -19,15 +20,14 @@ export function fromDailySummaryDto(dto: DailyHealthSyncSummaryDto): DailyActivi
     stepGoal: dto.stepGoal,
     caloriesBurned: Math.round(dto.burnedCalories),
     distanceMeters: dto.distanceMeters,
-    sources,
+    sources: dto.sources,
     lastSyncedAt: hasSyncedData ? dto.lastSyncedAt : null,
     hasSyncedData,
-    // BE chỉ có tên nguồn và tổng calo (không tách theo nguồn, không có danh sách hoạt động).
-    sourceDetails: sources.map(name => ({
+    sourceDetails: dto.sources.map(name => ({
       id: name,
       label: name,
-      countsTowardBudget: true,
-      note: 'Nguồn đang dùng cho hôm nay',
+      countsTowardBudget: name === activeSource,
+      note: name === activeSource ? ACTIVE_SOURCE_NOTE : SKIPPED_SOURCE_NOTE,
     })),
     activities: [],
   };

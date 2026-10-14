@@ -13,4 +13,7 @@ export const OCR_REVIEW_RESULT_MOCK: OcrReviewResult = {
     { label: 'Fat', value: '4', unit: 'g' },
     { label: 'Natri', value: '95', unit: 'mg' },
   ],
+  alerts: [],
+  detectedIngredients: ['Sữa bò', 'Đường', 'Dâu tây'],
+  isDemo: false,
 };

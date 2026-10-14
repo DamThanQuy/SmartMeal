@@ -2,6 +2,21 @@
 
 Cập nhật sau mỗi màn/đợt theo CLAUDE.md mục 10. Thứ tự theo `design/screens.json`.
 
+**Theme theo ảnh tham chiếu — 03/10/2026:** cập nhật palette sáng/tối dùng chung, nạp font Inter
+cục bộ, header trang chủ có nút đổi theme lưu preference, thẻ calo xanh với thanh tiến độ,
+`MacroStatGrid.targets` hiển thị ba ô dinh dưỡng, mẹo hôm nay và gợi ý hai cột có ảnh cục bộ.
+`ScreenContainer.header` hỗ trợ header cố định. Các khối ghi bữa ăn, bữa ăn hôm nay, vận động
+và Bé Mầm tiếp tục xuất hiện bên dưới. Thanh tab theo mẫu: Trang chủ · Bữa ăn · Khám phá ·
+Nhật ký · Cá nhân. Gợi ý món vẫn là dữ liệu mẫu của dashboard.
+
+**Điều chỉnh dark mode:** nền đen thuần `#000000`, thẻ xám đen `#111111`, chữ và viền xám
+trung tính; màu xanh lá tiếp tục dùng cho điểm nhấn.
+
+Kiểm tra: `tsc --noEmit` và ESLint các file thay đổi đạt; 6 test `dashboardService` đạt.
+Preview web 390/320 px không tràn ngang, chuyển theme và lưu lựa chọn sau reload hoạt động,
+điều hướng từ Chi tiết dinh dưỡng sang Nhật ký hoạt động, không có lỗi JavaScript runtime.
+Lint toàn dự án còn 2 lỗi có sẵn của `react-hooks/immutability` trong `PetAnimation`/`PetScreen`.
+
 | Artboard | Feature | Screen file | Trạng thái | Ghi chú |
 |---|---|---|---|---|
 | Main.dc.html | auth | `features/auth/screens/LoginScreen.tsx` | done | Đợt 1. Nút "Khám phá không cần đăng nhập" chưa nối (chờ Đợt 5 — Discovery). **Đợt 9:** đã nối — gọi `continueAsGuest()` (authStore). Không còn là điểm vào duy nhất trước đăng nhập — `AuthNavigator` nay khởi đầu ở `WelcomeScreen`, Login chỉ còn là 1 bước (từ "Tôi đã có tài khoản"). |
@@ -167,11 +182,11 @@ xem cột Ghi chú tương ứng ở bảng trên). Cột Feature ghi theo nhóm
 - ~~**Grocery chưa có route riêng**~~ — **đã tách (Đợt 11)**: `PlannerStackNavigator` (nested Stack trong tab Thực đơn), Notifications trỏ thẳng được.
 - ~~**MealPlanner "Gợi ý thực đơn tuần bằng AI"** chưa gate theo Premium~~ — **đã gate (Đợt 11)**: Free → Premium, Pro → PlannerRegenerate (BR-230/231).
 - **HealthSettingsScreen "Lưu thay đổi"** chỉ `goBack()`, chưa có `SuccessToast` như luồng Diary (Đợt 3) — có thể bổ sung nếu cần đồng bộ trải nghiệm.
-- **GroceryDoneScreen "Giữ lại N món chưa mua"** chỉ đóng danh sách, KHÔNG thật sự chuyển nguyên liệu sang tuần sau như mô tả trong design (cần backend thật có khái niệm "carry-over" giữa các tuần — ngoài phạm vi mock UI hiện tại). "Chi phí thực tế" nhập ở GroceryDone chưa có field lưu riêng trong `GroceryList`, chỉ hiển thị lại tức thời.
+- ~~**GroceryDoneScreen "Giữ lại N món chưa mua"**~~ — **đã nối (14/10)**: gọi `POST /grocery/complete` (chi phí thực tế, giữ món chưa mua, cộng thực đơn kỳ sau). Ghi chú cũ: chỉ đóng danh sách, KHÔNG thật sự chuyển nguyên liệu sang tuần sau như mô tả trong design (cần backend thật có khái niệm "carry-over" giữa các tuần — ngoài phạm vi mock UI hiện tại). "Chi phí thực tế" nhập ở GroceryDone chưa có field lưu riêng trong `GroceryList`, chỉ hiển thị lại tức thời.
 - **GroceryAddScreen** dùng 5 nhóm hệ thống (`GROCERY_CATEGORY_ORDER`: Rau củ/Thịt cá/Sữa/Gia vị/Khác) thay vì 6 nhóm tĩnh trong artboard (thêm Ngũ cốc/Đồi khô) — để nhất quán với `categorizeIngredient()` dùng cho nguyên liệu sinh từ Meal Plan, tránh 2 taxonomy khác nhau trong cùng 1 danh sách.
-- **Pet weekCompletion/streak** và **Water reminder progress** vẫn là số liệu mock tĩnh — ứng dụng chưa có tính năng ghi nước (Water Log) hoặc lưu lịch sử diary nhiều ngày để tính thật.
+- ~~**Pet weekCompletion/streak** và **Water reminder progress**~~ — **đã nối (14/10)**: Pet/streak đọc server theo `?date=`; nước uống có API thật. Ghi chú cũ: vẫn là số liệu mock tĩnh — ứng dụng chưa có tính năng ghi nước (Water Log) hoặc lưu lịch sử diary nhiều ngày để tính thật.
 - **Business rule chưa có số BR chính thức** cho Reminders/Notifications (BR-180→183, BR-220→222) và Gamification (BR-200→212) — `docs/business_rule.md` hiện chỉ có §9 (Meal Planner/Grocery, BR-160-174) và §10 (Premium, BR-230-242) khớp Đợt 6/8; Đợt 7 Reminders/Notifications và Đợt 8 Pet dựng theo `design.md` + artboard, chưa có BR số cụ thể đối chiếu — cần bổ sung vào business_rule.md nếu muốn tra cứu chính thức.
-- **Giá Premium (79.000đ/699.000đ)** là mock — artboard gốc chỉ có placeholder "[GIÁ]", cần giá thật từ Backend.
+- ~~**Giá Premium (79.000đ/699.000đ)**~~ — giá lấy từ `GET /subscription/plans`. Ghi chú cũ: là mock — artboard gốc chỉ có placeholder "[GIÁ]", cần giá thật từ Backend.
 - **`src/state/resetUserData.ts`** (mới, sửa lệch sau Đợt 9, BR-271) — registry cho `DeleteDataScreen`.
   Mọi store/service dữ liệu người dùng tạo ở phase sau (`waterStore`, `challenges`, `badges`... Đợt 11-13)
   PHẢI gọi `registerUserDataReset(name, fn)` lúc module load — xem CLAUDE.md mục 8.
@@ -199,3 +214,35 @@ Các màn dưới đây đã đổi hành vi khi `EXPO_PUBLIC_USE_MOCK_API=false
 | `HealthConnectScreen` | Số liệu hôm nay từ `GET /health-sync/daily-summary`; "Kết nối"/bật tắt nguồn là tùy chọn cục bộ; "Đồng bộ ngay" chỉ có số liệu mẫu ở DEV (ngoài DEV báo cần Dev Client). |
 | `DeleteDataScreen` | Vẫn chỉ xóa phía máy rồi đăng xuất — dữ liệu trên server còn (BE chưa có endpoint xóa, P1-BE-10). |
 | Chưa nối (giữ mock) | OTP/quên mật khẩu/đổi mật khẩu, nút Google, tạo món, nước uống, nhắc nhở/thông báo, gợi ý bữa tối, avatar. |
+
+### Nối API thật — hoàn tất các gap còn lại (2026-10-14)
+
+Sau khi BE đã vào `main`, mọi màn dưới đây gọi API thật khi `EXPO_PUBLIC_USE_MOCK_API=false`. Bản mock vẫn chạy được: mỗi feature có cặp `x.mock.ts`/`x.api.ts`, chọn bằng `selectService`. Trạng thái theo từng mục của báo cáo gap: `docs/SmartMeal_FE_API_Gap_Report.md` §0. Bảng "Nối API thật — Phần 1" ở trên là ghi chép cũ: các dòng "chưa nối"/"BE chưa có" ở đó đã được giải quyết.
+
+**Kiểm chứng trên `main` lúc đó (commit `c477a29`):**
+
+- `npx tsc --noEmit`: sạch.
+- `npx expo lint`: 0 lỗi, 16 cảnh báo cũ.
+- `npx jest`: 494 test qua.
+- Test live: 79 test qua khi chạy với BE thật.
+
+| Màn | Hành vi hiện tại |
+|---|---|
+| `WelcomeScreen`, `LoginScreen`, `RegisterScreen` | **Cập nhật 14/10: đã bỏ đăng nhập Google** — chỉ còn email + mật khẩu (bỏ nút Google và đường kẻ "hoặc"). Ghi chú cũ: Nút Google lấy ID token qua `expo-auth-session` rồi gửi `POST /auth/google` (server xác minh token). Nếu thiếu `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID` của nền tảng đang chạy, nút báo "chưa cấu hình". Android/iOS cần Dev Client. |
+| `BarcodeScreen` | Quét EAN/UPC bằng `expo-camera` (chạy trên Expo Go) hoặc nhập mã tay. Mã được tra qua `check-safety {barcode}` trong CSDL. Không có sản phẩm thì sang `ProductNotFound` với đúng mã vừa quét. Cảnh báo dị ứng và vượt ngưỡng lấy từ server (`SafetyAlertList`). Món được ghi với `logMethod: 'Barcode'`. |
+| `ProductNotFoundScreen` → `CreateFoodScreen` | Món tự tạo được gắn mã vạch, nên lần quét sau sẽ tìm thấy. |
+| `OCRCameraScreen`, `OCRReviewScreen` | Chụp hoặc chọn ảnh nhãn rồi gửi `POST /ai/scan-label`. Trường nhãn không ghi để trống và đánh dấu "không rõ"; có banner demo. Chỉ lưu được khi đã có khẩu phần và calo; ghi với `logMethod: 'Ocr'`. |
+| `FridgeCameraScreen`, `FridgeScreen` | Dùng 1–4 ảnh thật; huỷ chụp không tính ảnh. Mỗi ảnh gửi riêng tới `/ai/fridge-scanner`, kết quả gộp và bỏ trùng. Mọi nguyên liệu chờ người dùng tick xác nhận rồi mới gợi ý món. Lỗi được kiểm tra trước loading và có nút "Chụp lại". |
+| `StatePermissionScreen` | Với luồng tủ lạnh, "Cho phép" quay về `FridgeCamera`. |
+| `VoiceLogScreen` | Ghi âm bằng `expo-av` (.m4a) rồi gửi `POST /ai/voice-log/audio`. Câu hiển thị là bản chép lời của server. Không nghe ra món nào thì mở `StateAIFailed`, không trừ lượt. Ghi với `logMethod: 'Voice'`. |
+| `RemindersScreen` | Nhắc nhở cục bộ bằng `expo-notifications`:<ul><li>Bữa 07:00 / 12:00 / 18:30 / 15:00.</li><li>Nước mỗi 2 giờ từ 08:00 đến 20:00.</li><li>Chuỗi ngày lúc 20:00.</li></ul>Cài đặt lưu theo tài khoản. Banner lấy theo quyền thông báo thật. Lịch được lên lại khi đăng nhập và huỷ khi đăng xuất. |
+| `DiaryScreen` (+ mọi luồng ghi món) | Mỗi lần ghi gửi kèm `Idempotency-Key`. Khi mất mạng (NetInfo hoặc mô phỏng ở màn Dev), hoặc mạng rớt giữa chừng, món vào hàng đợi lưu bền. Hàng đợi tự gửi lại khi có mạng và không ghi trùng. Thẻ "Chờ đồng bộ" có "Đồng bộ ngay" và cho bỏ mục bị server từ chối. |
+| `FavoritesScreen`, `CollectionDetailScreen`, `CreateCollectionScreen`, `AddToCollectionScreen`, `SlotPicker` | Yêu thích và bộ sưu tập đọc/ghi server. Có deep link `smartmealmobile://collections/:id`. |
+| `MealPlannerScreen`, `PlannerRegenerateScreen`, `GroceryScreen`, `GroceryDoneScreen` | Thực đơn giữ `mealPlanId`, có đánh dấu đã nấu và xoá món. Tự tạo thực đơn theo mục tiêu calo và bệnh lý. Đi chợ tự sinh khi rỗng và có banner "đã cũ". Hoàn tất mua sắm qua `/grocery/complete`. |
+| `DashboardScreen` | Gợi ý món lấy từ công thức thật đã lọc dị ứng. |
+| `PetScreen`, `ChallengesScreen`, `BadgesScreen` | Đọc XP, nhiệm vụ, thử thách, huy hiệu và trang phục từ server, gửi `?date=` theo ngày máy. |
+| `NotificationsScreen`, chuông ở `DashboardScreen` | Thông báo đọc từ server (`GET /notifications`): lên cấp, huy hiệu, thử thách, danh sách đi chợ, gói Pro. Bấm thì đánh dấu đã đọc rồi mở màn liên quan; "Đọc hết" chỉ hiện khi còn chưa đọc. Chuông có chấm đỏ khi có thông báo chưa đọc. Bản mock vẫn dùng danh sách mẫu của design. |
+| `CollectionDetailScreen`, `SharedCollectionScreen` (mới) | "Chia sẻ" tạo liên kết chỉ đọc có mã (`smartmealmobile://shared/collections/<mã>`); bộ sưu tập vẫn riêng tư, "Tắt liên kết" làm liên kết cũ hết hiệu lực. Màn SharedCollection mở từ liên kết: chỉ xem, liên kết đã tắt thì báo hết hiệu lực. Không có artboard riêng, nên dựng theo CollectionDetail. |
+| `SettingsScreen`, `DeleteAccountScreen` (mới) | "Xóa tài khoản" (`DELETE /auth/account`), tách khỏi "Xóa dữ liệu cá nhân". Xác nhận bằng mật khẩu, hoặc bằng email với tài khoản chỉ có Google. Bố cục theo DeleteData vì không có artboard riêng. |
+| Chưa làm | Health Connect/HealthKit native (cần quyết định chuyển sang Dev Client). Push từ server. |
+

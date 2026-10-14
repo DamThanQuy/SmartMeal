@@ -9,7 +9,10 @@ import {
   fromWeeklyProgressDto,
   logMethodToSource,
   sourceToLogMethod,
-  toLogMealRequest,
+  toCreateFoodRequest,
+  toDiaryItemInput,
+  toLogMealBatchRequest,
+  toUpdateDiaryItemRequest,
 } from '@/features/nutrition/services/nutrition.mapper';
 import type {
   DailyDiarySummaryDto,
@@ -31,6 +34,12 @@ function item(overrides: Partial<DiaryItemDto> = {}): DiaryItemDto {
     fatGrams: 14.2,
     proteinGrams: 22.6,
     logMethod: 'Manual',
+    mealType: 'Breakfast',
+    logDate: '2026-10-02',
+    createdAt: '2026-10-02T05:30:00Z',
+    recipeId: null,
+    ingredientId: null,
+    imageUrl: null,
     ...overrides,
   };
 }
@@ -65,6 +74,7 @@ const DAILY_DTO: DailyDiarySummaryDto = {
           carbsGrams: 90,
           fatGrams: 20,
           proteinGrams: 40,
+          mealType: 'Dinner',
         }),
       ],
     },
@@ -72,19 +82,17 @@ const DAILY_DTO: DailyDiarySummaryDto = {
   ],
 };
 
-describe('toLogMealRequest', () => {
-  const input: NewMealLogInput = {
-    foodName: 'Phở bò tái',
-    servingLabel: '1 tô (500 g)',
-    grams: 500,
-    nutrition: { calories: 450, proteinG: 25, carbsG: 55, fatG: 12 },
-    source: 'database',
-  };
+const MEAL_INPUT: NewMealLogInput = {
+  foodName: 'Phở bò tái',
+  servingLabel: '1 tô (500 g)',
+  grams: 500,
+  nutrition: { calories: 450, proteinG: 25, carbsG: 55, fatG: 12 },
+  source: 'database',
+};
 
-  test('luôn gửi unit "g" và servingSize = grams, tên bữa PascalCase, ngày theo giờ máy', () => {
-    expect(toLogMealRequest('2026-10-02', 'lunch', input)).toEqual({
-      logDate: '2026-10-02',
-      mealType: 'Lunch',
+describe('toDiaryItemInput', () => {
+  test('luôn gửi unit "g" và servingSize = grams (BR-053)', () => {
+    expect(toDiaryItemInput(MEAL_INPUT)).toEqual({
       foodName: 'Phở bò tái',
       servingSize: 500,
       unit: 'g',
@@ -96,36 +104,81 @@ describe('toLogMealRequest', () => {
     });
   });
 
+  test('món lấy từ danh mục mang theo id thực phẩm/công thức để "Gần đây" nhớ món', () => {
+    expect(
+      toDiaryItemInput({ ...MEAL_INPUT, ingredientId: 'ing-1', recipeId: 'rec-1' }),
+    ).toMatchObject({ ingredientId: 'ing-1', recipeId: 'rec-1' });
+  });
+
+  test('logMethod: mặc định theo source, truyền rõ thì giữ nguyên', () => {
+    expect(toDiaryItemInput({ ...MEAL_INPUT, source: 'ai' }).logMethod).toBe('AiImage');
+    expect(toDiaryItemInput({ ...MEAL_INPUT, source: 'manual' }).logMethod).toBe('Manual');
+    expect(toDiaryItemInput({ ...MEAL_INPUT, source: 'ai', logMethod: 'Voice' }).logMethod).toBe(
+      'Voice',
+    );
+    expect(toDiaryItemInput({ ...MEAL_INPUT, logMethod: 'Barcode' }).logMethod).toBe('Barcode');
+  });
+
+  test('ghi lại bản ghi đơn vị khác gram thì giữ nguyên đơn vị', () => {
+    expect(toDiaryItemInput({ ...MEAL_INPUT, grams: 2 }, 'phần')).toMatchObject({
+      servingSize: 2,
+      unit: 'phần',
+    });
+  });
+});
+
+describe('toLogMealBatchRequest', () => {
+  test('cả bữa trong một request: ngày theo giờ máy, tên bữa PascalCase, mọi món theo thứ tự', () => {
+    const request = toLogMealBatchRequest('2026-10-02', 'lunch', [
+      MEAL_INPUT,
+      { ...MEAL_INPUT, foodName: 'Trà đào', grams: 300 },
+    ]);
+
+    expect(request.logDate).toBe('2026-10-02');
+    expect(request.mealType).toBe('Lunch');
+    expect(request.items.map(entry => entry.foodName)).toEqual(['Phở bò tái', 'Trà đào']);
+    expect(request.items[1].servingSize).toBe(300);
+  });
+
   test.each([
     ['breakfast', 'Breakfast'],
     ['lunch', 'Lunch'],
     ['dinner', 'Dinner'],
     ['snack', 'Snack'],
   ] as const)('bữa %s → %s', (mealType, expected) => {
-    expect(toLogMealRequest('2026-10-02', mealType, input).mealType).toBe(expected);
+    expect(toLogMealBatchRequest('2026-10-02', mealType, [MEAL_INPUT]).mealType).toBe(expected);
+  });
+});
+
+describe('toUpdateDiaryItemRequest', () => {
+  // JSON.stringify bỏ trường undefined: đây mới là thứ BE nhận được.
+  const wire = (value: unknown) => JSON.parse(JSON.stringify(value)) as unknown;
+
+  test('chỉ đổi bữa → chỉ gửi mealType (BE giữ nguyên các trường còn lại)', () => {
+    expect(wire(toUpdateDiaryItemRequest({ mealType: 'dinner' }))).toEqual({ mealType: 'Dinner' });
   });
 
-  test('logMethod: mặc định theo source, truyền rõ thì giữ nguyên', () => {
-    expect(toLogMealRequest('2026-10-02', 'lunch', { ...input, source: 'ai' }).logMethod).toBe(
-      'AiImage',
-    );
-    expect(toLogMealRequest('2026-10-02', 'lunch', { ...input, source: 'manual' }).logMethod).toBe(
-      'Manual',
-    );
+  test('đổi khối lượng → gửi kèm dinh dưỡng đã tính lại', () => {
     expect(
-      toLogMealRequest('2026-10-02', 'lunch', { ...input, source: 'ai', logMethod: 'Voice' })
-        .logMethod,
-    ).toBe('Voice');
-    expect(
-      toLogMealRequest('2026-10-02', 'lunch', { ...input, logMethod: 'Barcode' }).logMethod,
-    ).toBe('Barcode');
+      wire(
+        toUpdateDiaryItemRequest({
+          grams: 300,
+          nutrition: { calories: 270, proteinG: 15, carbsG: 33, fatG: 7 },
+        }),
+      ),
+    ).toEqual({ servingSize: 300, calories: 270, proteinGrams: 15, carbsGrams: 33, fatGrams: 7 });
   });
 
-  test('ghi lại bản ghi đơn vị khác gram thì giữ nguyên đơn vị', () => {
-    expect(toLogMealRequest('2026-10-02', 'dinner', { ...input, grams: 2 }, 'phần')).toMatchObject({
-      servingSize: 2,
-      unit: 'phần',
-    });
+  test('đổi cả bữa lẫn khối lượng', () => {
+    expect(
+      wire(
+        toUpdateDiaryItemRequest({
+          mealType: 'snack',
+          grams: 100,
+          nutrition: { calories: 90, proteinG: 1, carbsG: 20, fatG: 0 },
+        }),
+      ),
+    ).toMatchObject({ mealType: 'Snack', servingSize: 100, calories: 90 });
   });
 });
 
@@ -146,8 +199,8 @@ describe('logMethod ↔ source', () => {
 });
 
 describe('fromDiaryItemDto', () => {
-  test('món tính theo gram: nhãn "450 g", không có giờ ghi, dinh dưỡng làm tròn', () => {
-    const entry = fromDiaryItemDto(item(), 'breakfast');
+  test('món tính theo gram: nhãn "450 g", bữa lấy từ DTO, giờ ghi = createdAt, dinh dưỡng làm tròn', () => {
+    const entry = fromDiaryItemDto(item());
 
     expect(entry).toMatchObject({
       id: '11111111-1111-1111-1111-111111111111',
@@ -158,13 +211,25 @@ describe('fromDiaryItemDto', () => {
       nutrition: { calories: 420, proteinG: 23, carbsG: 46, fatG: 14 },
       source: 'manual',
       aiConfirmed: false,
+      loggedAt: '2026-10-02T05:30:00.000Z',
     });
     expect(entry.unit).toBeUndefined();
-    expect(entry.loggedAt).toBeUndefined();
+  });
+
+  test('bữa truyền vào (nhóm của daily) được ưu tiên hơn bữa trong DTO', () => {
+    expect(fromDiaryItemDto(item({ mealType: 'Lunch' }), 'dinner').mealType).toBe('dinner');
+    expect(fromDiaryItemDto(item({ mealType: 'LUNCH' })).mealType).toBe('lunch');
+  });
+
+  test('giờ ghi thiếu múi giờ vẫn được hiểu là UTC; chuỗi hỏng → không có giờ ghi', () => {
+    expect(fromDiaryItemDto(item({ createdAt: '2026-10-02T05:30:00' })).loggedAt).toBe(
+      '2026-10-02T05:30:00.000Z',
+    );
+    expect(fromDiaryItemDto(item({ createdAt: 'khong-phai-ngay' })).loggedAt).toBeUndefined();
   });
 
   test('nutritionPerGram tính từ số thực của BE, không từ số đã làm tròn', () => {
-    const entry = fromDiaryItemDto(item({ servingSize: 3, calories: 1.4, proteinGrams: 0.4 }), 'snack');
+    const entry = fromDiaryItemDto(item({ servingSize: 3, calories: 1.4, proteinGrams: 0.4 }));
 
     expect(entry.nutrition.calories).toBe(1);
     expect(entry.nutrition.proteinG).toBe(0);
@@ -173,10 +238,7 @@ describe('fromDiaryItemDto', () => {
   });
 
   test('bản ghi do nơi khác tạo với đơn vị "phần": giữ đơn vị, số lượng thành "grams"', () => {
-    const entry = fromDiaryItemDto(
-      item({ servingSize: 1.5, unit: 'phần', calories: 300 }),
-      'dinner',
-    );
+    const entry = fromDiaryItemDto(item({ servingSize: 1.5, unit: 'phần', calories: 300 }));
 
     expect(entry.servingLabel).toBe('1.5 phần');
     expect(entry.unit).toBe('phần');
@@ -185,22 +247,18 @@ describe('fromDiaryItemDto', () => {
   });
 
   test('servingSize không hợp lệ (0) được coi là 1 để không chia cho 0', () => {
-    const entry = fromDiaryItemDto(item({ servingSize: 0, unit: '' }), 'lunch');
+    const entry = fromDiaryItemDto(item({ servingSize: 0, unit: '' }));
 
     expect(entry.grams).toBe(1);
     expect(entry.servingLabel).toBe('1 g');
     expect(Number.isFinite(entry.nutritionPerGram.calories)).toBe(true);
   });
 
-  test('bản ghi vừa tạo có giờ ghi; AI → đã xác nhận', () => {
-    const entry = fromDiaryItemDto(
-      item({ logMethod: 'AiImage' }),
-      'lunch',
-      '2026-10-02T05:30:00.000Z',
-    );
-
-    expect(entry.loggedAt).toBe('2026-10-02T05:30:00.000Z');
-    expect(entry).toMatchObject({ source: 'ai', aiConfirmed: true });
+  test('AI → đã xác nhận (BR-054)', () => {
+    expect(fromDiaryItemDto(item({ logMethod: 'AiImage' }))).toMatchObject({
+      source: 'ai',
+      aiConfirmed: true,
+    });
   });
 });
 
@@ -259,22 +317,28 @@ describe('fromDailyDiaryDto', () => {
 });
 
 describe('fromWeeklyProgressDto', () => {
-  // 26/09/2026 là thứ Bảy → 02/10/2026 là thứ Sáu.
+  // 26/09/2026 là thứ Bảy → 02/10/2026 là thứ Sáu. [ngày, thứ (BE), kcal, protein, carbs, fat]
   const days = [
-    ['2026-09-26', 'Saturday', 0],
-    ['2026-09-27', 'Sunday', 1800.4],
-    ['2026-09-28', 'Monday', 2100],
-    ['2026-09-29', 'Tuesday', 0],
-    ['2026-09-30', 'Wednesday', 1500],
-    ['2026-10-01', 'Thursday', 1990],
-    ['2026-10-02', 'Friday', 1200],
+    ['2026-09-26', 'Saturday', 0, 0, 0, 0],
+    ['2026-09-27', 'Sunday', 1800.4, 90.2, 200, 60],
+    ['2026-09-28', 'Monday', 2100, 110, 260, 70],
+    ['2026-09-29', 'Tuesday', 0, 0, 0, 0],
+    ['2026-09-30', 'Wednesday', 1500, 80, 180, 50],
+    ['2026-10-01', 'Thursday', 1990, 100, 240, 66],
+    ['2026-10-02', 'Friday', 1200, 60, 150, 40],
   ] as const;
   const dto: WeeklyProgressDto = {
-    days: days.map(([date, dayOfWeek, calories]) => ({
+    days: days.map(([date, dayOfWeek, calories, proteinGrams, carbsGrams, fatGrams]) => ({
       date,
       dayOfWeek,
       calories,
       targetCalories: 1775.6,
+      proteinGrams,
+      carbsGrams,
+      fatGrams,
+      targetProteinGrams: 111.4,
+      targetCarbsGrams: 222.4,
+      targetFatGrams: 49.3,
     })),
   };
 
@@ -305,18 +369,32 @@ describe('fromWeeklyProgressDto', () => {
     expect(summary.daysOnTarget).toBe(2);
   });
 
-  test('chưa có macro theo ngày → averageMacros rỗng (UI ẩn khối này)', () => {
-    expect(fromWeeklyProgressDto(dto, '2026-10-02').averageMacros).toEqual([]);
+  test('macro trung bình tính trên các ngày đã ghi, so với mục tiêu macro của hồ sơ', () => {
+    // Protein (90.2 + 110 + 80 + 100 + 60) / 5 = 88,04; carbs 1030 / 5 = 206; fat 286 / 5 = 57,2.
+    expect(fromWeeklyProgressDto(dto, '2026-10-02').averageMacros).toEqual([
+      { label: 'Protein', consumedG: 88, targetG: 111 },
+      { label: 'Carbs', consumedG: 206, targetG: 222 },
+      { label: 'Fat', consumedG: 57, targetG: 49 },
+    ]);
   });
 
-  test('tuần chưa ghi gì → trung bình 0, không chia cho 0', () => {
+  test('tuần chưa ghi gì → trung bình 0, không chia cho 0, ẩn khối macro', () => {
     const empty = fromWeeklyProgressDto(
-      { days: dto.days.map(day => ({ ...day, calories: 0 })) },
+      {
+        days: dto.days.map(day => ({
+          ...day,
+          calories: 0,
+          proteinGrams: 0,
+          carbsGrams: 0,
+          fatGrams: 0,
+        })),
+      },
       '2026-10-02',
     );
 
     expect(empty.averageCalories).toBe(0);
     expect(empty.daysOnTarget).toBe(0);
+    expect(empty.averageMacros).toEqual([]);
   });
 
   test('BE không trả ngày nào → không ném lỗi', () => {
@@ -324,6 +402,7 @@ describe('fromWeeklyProgressDto', () => {
       rangeLabel: '',
       calorieTarget: 0,
       days: [],
+      averageMacros: [],
     });
   });
 });
@@ -346,16 +425,24 @@ describe('fromFoodDto', () => {
     sodiumMgPer100g: 74.4,
     allergyId: null,
     allergyName: null,
+    allergyIds: [],
+    isVerified: true,
+    isUserCreated: false,
+    isFavorite: false,
+    barcode: null,
+    servings: [{ id: 's-100', label: '100 g', grams: 100 }],
+    defaultServingId: 's-100',
   };
-  const resolveSlug = (id: number) => (id === 2 ? 'peanut' : undefined);
+  const resolveSlug = (id: number) => ({ 2: 'peanut', 3: 'seafood' })[id as 2 | 3];
 
-  test('dinh dưỡng theo 100 g, khẩu phần mặc định "100 g", dữ liệu đã xác minh', () => {
+  test('dinh dưỡng theo khẩu phần mặc định "100 g", dữ liệu đã xác minh', () => {
     expect(fromFoodDto(food, resolveSlug)).toEqual({
       id: '33333333-3333-3333-3333-333333333333',
       name: 'Ức gà',
       verified: true,
-      servingOptions: [{ id: 'g-100', label: '100 g', grams: 100 }],
-      defaultServingId: 'g-100',
+      isFavorite: false,
+      servingOptions: [{ id: 's-100', label: '100 g', grams: 100 }],
+      defaultServingId: 's-100',
       nutritionPerServing: {
         calories: 165,
         proteinG: 31,
@@ -365,13 +452,224 @@ describe('fromFoodDto', () => {
         sodiumMg: 74,
         fiberG: 0,
       },
-      allergenIds: undefined,
     });
   });
 
-  test('id dị ứng của BE → slug FE; id lạ hoặc null → không có cảnh báo', () => {
-    expect(fromFoodDto({ ...food, allergyId: 2 }, resolveSlug).allergenIds).toEqual(['peanut']);
-    expect(fromFoodDto({ ...food, allergyId: 99 }, resolveSlug).allergenIds).toBeUndefined();
+  test('khẩu phần có nhãn ghi kèm gram và dinh dưỡng nhân theo khẩu phần mặc định', () => {
+    const result = fromFoodDto(
+      {
+        ...food,
+        servings: [
+          { id: 'tô', label: '1 tô', grams: 500 },
+          { id: 'g100', label: '100 g', grams: 100 },
+        ],
+        defaultServingId: 'tô',
+      },
+      resolveSlug,
+    );
+
+    expect(result.servingOptions).toEqual([
+      { id: 'tô', label: '1 tô (500 g)', grams: 500 },
+      { id: 'g100', label: '100 g', grams: 100 },
+    ]);
+    expect(result.defaultServingId).toBe('tô');
+    expect(result.nutritionPerServing).toMatchObject({
+      calories: 826,
+      proteinG: 155.2,
+      fatG: 18.2,
+      sodiumMg: 372,
+    });
+  });
+
+  test('không có khẩu phần hoặc id mặc định lạ → rơi về khẩu phần hợp lệ, không ném lỗi', () => {
+    expect(fromFoodDto({ ...food, servings: [], defaultServingId: null }, resolveSlug)).toMatchObject({
+      servingOptions: [{ id: 'g-100', label: '100 g', grams: 100 }],
+      defaultServingId: 'g-100',
+    });
+    expect(
+      fromFoodDto(
+        {
+          ...food,
+          servings: [
+            { id: 'a', label: '1 chén', grams: 200 },
+            { id: 'b', label: '1 muỗng', grams: 15 },
+          ],
+          defaultServingId: 'khong-co',
+        },
+        resolveSlug,
+      ).defaultServingId,
+    ).toBe('a');
+  });
+
+  test('mọi id dị ứng của BE → slug FE, bỏ trùng và id lạ; không có thì không cảnh báo', () => {
+    expect(
+      fromFoodDto({ ...food, allergyIds: [2, 2, 99, 3] }, resolveSlug).allergenIds,
+    ).toEqual(['peanut', 'seafood']);
+    expect(fromFoodDto({ ...food, allergyIds: [99] }, resolveSlug).allergenIds).toBeUndefined();
     expect(fromFoodDto(food, resolveSlug).allergenIds).toBeUndefined();
+  });
+
+  test('món chưa kiểm chứng/tự nhập không được gắn "đã xác minh" (BR-120/121); giữ trạng thái yêu thích', () => {
+    expect(
+      fromFoodDto(
+        { ...food, isVerified: false, isUserCreated: true, isFavorite: true },
+        resolveSlug,
+      ),
+    ).toMatchObject({ verified: false, isUserCreated: true, isFavorite: true });
+    expect(fromFoodDto({ ...food, isVerified: false }, resolveSlug)).toMatchObject({
+      verified: false,
+    });
+    expect(fromFoodDto(food, resolveSlug).isUserCreated).toBeUndefined();
+  });
+});
+
+describe('toCreateFoodRequest', () => {
+  test('g: số liệu của cả khẩu phần quy về trên 100 g; khẩu phần duy nhất là phần đã nhập', () => {
+    expect(
+      toCreateFoodRequest({
+        name: '  Bánh quy yến mạch ',
+        amount: 50,
+        unit: 'g',
+        nutrition: { calories: 250, proteinG: 5, carbsG: 30, fatG: 12, sugarG: 10 },
+      }),
+    ).toEqual({
+      name: 'Bánh quy yến mạch',
+      caloriesPer100g: 500,
+      proteinPer100g: 10,
+      carbsPer100g: 60,
+      fatPer100g: 24,
+      fiberPer100g: 0,
+      sugarPer100g: 20,
+      sodiumMgPer100g: 0,
+      servings: [{ label: '50 g', grams: 50, isDefault: true }],
+    });
+  });
+
+  test('ml được coi như g (BE chỉ biết gam), nhãn giữ "ml"', () => {
+    expect(
+      toCreateFoodRequest({
+        name: 'Sữa hạt',
+        amount: 250,
+        unit: 'ml',
+        nutrition: { calories: 100, proteinG: 8, carbsG: 12, fatG: 2.5 },
+      }),
+    ).toMatchObject({
+      caloriesPer100g: 40,
+      proteinPer100g: 3.2,
+      carbsPer100g: 4.8,
+      fatPer100g: 1,
+      servings: [{ label: '250 ml', grams: 250, isDefault: true }],
+    });
+  });
+
+  test('không để nhiễu dấu phẩy động (2.4600000000000004) lên server', () => {
+    const request = toCreateFoodRequest({
+      name: 'Món thử',
+      amount: 500,
+      unit: 'g',
+      nutrition: { calories: 450, proteinG: 12.3, carbsG: 50, fatG: 10 },
+    });
+
+    expect(request.proteinPer100g).toBe(2.46);
+  });
+
+  test('"phần" nhỏ: khối lượng quy ước 100 g/phần nên số trên 100 g bằng đúng số người dùng nhập', () => {
+    expect(
+      toCreateFoodRequest({
+        name: 'Phần ăn nhẹ',
+        amount: 1,
+        unit: 'phần',
+        nutrition: { calories: 300, proteinG: 20, carbsG: 30, fatG: 10 },
+      }),
+    ).toMatchObject({
+      caloriesPer100g: 300,
+      proteinPer100g: 20,
+      carbsPer100g: 30,
+      fatPer100g: 10,
+      servings: [{ label: '1 phần', grams: 100, isDefault: true }],
+    });
+  });
+
+  test('"phần" lớn: nới khối lượng để tổng đa lượng/100 g không vượt giới hạn 100 g của BE', () => {
+    // 40 + 70 + 20 = 130 g đa lượng trong 1 phần → phần phải nặng ≥ 130 g.
+    const request = toCreateFoodRequest({
+      name: 'Cơm gà',
+      amount: 1,
+      unit: 'phần',
+      nutrition: { calories: 650, proteinG: 40, carbsG: 70, fatG: 20 },
+    });
+
+    expect(request.servings).toEqual([{ label: '1 phần', grams: 130, isDefault: true }]);
+    expect(request.caloriesPer100g).toBe(500);
+    expect(request.proteinPer100g + request.carbsPer100g + request.fatPer100g).toBeCloseTo(100, 3);
+  });
+
+  test('"phần" giàu năng lượng: khối lượng đủ để không quá 900 kcal/100 g', () => {
+    const request = toCreateFoodRequest({
+      name: 'Phần bơ đậu phộng',
+      amount: 1,
+      unit: 'phần',
+      nutrition: { calories: 1800, proteinG: 10, carbsG: 20, fatG: 5 },
+    });
+
+    expect(request.servings[0].grams).toBe(200);
+    expect(request.caloriesPer100g).toBe(900);
+  });
+
+  test('nhiều phần: khẩu phần là cả số phần đã nhập, quy ra gam theo từng phần', () => {
+    const request = toCreateFoodRequest({
+      name: 'Hai phần mì',
+      amount: 2,
+      unit: 'phần',
+      nutrition: { calories: 600, proteinG: 30, carbsG: 60, fatG: 20 },
+    });
+
+    expect(request.servings).toEqual([{ label: '2 phần', grams: 200, isDefault: true }]);
+    expect(request.caloriesPer100g).toBe(300);
+  });
+
+  test('khẩu phần mặc định cho đúng số đã nhập sau khi đọc lại (round-trip với fromFoodDto)', () => {
+    const request = toCreateFoodRequest({
+      name: 'Cơm gà',
+      amount: 1,
+      unit: 'phần',
+      nutrition: { calories: 650, proteinG: 40, carbsG: 70, fatG: 20, sodiumMg: 800 },
+    });
+    const dto: FoodItemDto = {
+      id: 'new',
+      name: request.name,
+      description: null,
+      imageUrl: null,
+      category: 'General',
+      defaultUnit: 'g',
+      estimatedPriceVnd: 0,
+      caloriesPer100g: request.caloriesPer100g,
+      carbsPer100g: request.carbsPer100g,
+      fatPer100g: request.fatPer100g,
+      proteinPer100g: request.proteinPer100g,
+      fiberPer100g: request.fiberPer100g,
+      sugarPer100g: request.sugarPer100g,
+      sodiumMgPer100g: request.sodiumMgPer100g,
+      allergyId: null,
+      allergyName: null,
+      allergyIds: [],
+      isVerified: false,
+      isUserCreated: true,
+      isFavorite: false,
+      barcode: null,
+      servings: request.servings.map((serving, index) => ({
+        id: `s${index}`,
+        label: serving.label,
+        grams: serving.grams,
+      })),
+      defaultServingId: 's0',
+    };
+
+    expect(fromFoodDto(dto, () => undefined)).toMatchObject({
+      verified: false,
+      isUserCreated: true,
+      nutritionPerServing: { calories: 650, proteinG: 40, carbsG: 70, fatG: 20, sodiumMg: 800 },
+      servingOptions: [{ label: '1 phần (130 g)', grams: 130 }],
+    });
   });
 });

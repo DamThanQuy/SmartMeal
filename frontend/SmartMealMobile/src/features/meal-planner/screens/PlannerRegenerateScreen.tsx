@@ -1,12 +1,12 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { addDays, format } from 'date-fns';
-import { Sparkles, X } from 'lucide-react-native';
+import { CheckCircle2, Sparkles, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { InlineBanner } from '@/components/common';
 import { AppBadge, AppButton, AppIconButton, AppText } from '@/components/ui';
 import { ALLERGY_OPTIONS, DIETARY_PREFERENCE_OPTIONS } from '@/features/health';
-import { calculateCalorieBudget, CURRENT_USER_DAILY_TARGET, TODAY_ACTIVITY_CALORIES_BURNED_MOCK } from '@/features/nutrition';
 import type { MainStackParamList } from '@/navigation/types';
 import { useUserProfileStore } from '@/state/user/userProfileStore';
 import { shadows } from '@/theme/shadows';
@@ -65,13 +65,11 @@ export function PlannerRegenerateScreen({ navigation, route }: Props) {
   const regenerateWeek = useRegenerateWeek(weekStartIso);
   const allergyIds = useUserProfileStore(state => state.allergyIds);
   const dietaryPreferenceIds = useUserProfileStore(state => state.dietaryPreferenceIds);
-  const includeActivityCalories = useUserProfileStore(state => state.includeActivityCalories);
+  // Mục tiêu calo/ngày của hồ sơ (BR-022) — cả tuần dùng mục tiêu cố định, không cộng calo vận động
+  // của riêng hôm nay.
+  const calorieTarget = useUserProfileStore(state => state.result.calorieTarget);
+  const [resultNote, setResultNote] = useState<string | null>(null);
 
-  const { budget } = calculateCalorieBudget({
-    calorieTarget: CURRENT_USER_DAILY_TARGET.calorieTarget,
-    activityCaloriesBurned: TODAY_ACTIVITY_CALORIES_BURNED_MOCK,
-    includeActivityCalories,
-  });
   const dietLabel = DIETARY_PREFERENCE_OPTIONS.find(option => option.id === dietaryPreferenceIds[0])?.label;
   const allergyLabels = allergyIds
     .map(id => ALLERGY_OPTIONS.find(option => option.id === id)?.label)
@@ -83,7 +81,10 @@ export function PlannerRegenerateScreen({ navigation, route }: Props) {
 
   const handleGenerate = () => {
     const mutation = choice === 'keep' ? autoFillWeek : regenerateWeek;
-    mutation.mutate(undefined, { onSuccess: () => navigation.goBack() });
+    mutation.mutate(calorieTarget, {
+      // Server có ghi chú (đã bỏ món theo bệnh lý, thiếu món đúng chế độ…) thì cho người dùng đọc trước khi đóng.
+      onSuccess: result => (result.note ? setResultNote(result.note) : navigation.goBack()),
+    });
   };
 
   return (
@@ -133,22 +134,34 @@ export function PlannerRegenerateScreen({ navigation, route }: Props) {
         <View className="flex-row items-center gap-sm rounded-md bg-primary-soft p-md">
           <Sparkles size={22} color={colors.primary} />
           <AppText variant="caption" className="flex-1">
-            {`Gợi ý theo mục tiêu ${budget.toLocaleString('vi-VN')} kcal/ngày${dietLabel ? `, chế độ ${dietLabel}` : ''}${
+            {`Gợi ý theo mục tiêu ${calorieTarget.toLocaleString('vi-VN')} kcal/ngày${dietLabel ? `, chế độ ${dietLabel}` : ''}${
               allergyLabels ? ` và đã loại món chứa ${allergyLabels}` : ''
-            }.`}
+            }, có tính đến bệnh lý bạn đã khai báo.`}
           </AppText>
         </View>
 
         {errorMessage ? (
-          <AppText variant="caption" color="error">
+          <AppText variant="caption" color="error" accessibilityRole="alert">
             {errorMessage}
           </AppText>
         ) : null}
 
-        <View className="flex-row gap-sm">
-          <AppButton label="Hủy" variant="outline" onPress={() => navigation.goBack()} className="flex-shrink" />
-          <AppButton label="Tạo gợi ý" onPress={handleGenerate} loading={isPending} className="flex-1" />
-        </View>
+        {resultNote ? (
+          <>
+            <InlineBanner
+              icon={<CheckCircle2 size={20} color={colors.primary} />}
+              title="Đã cập nhật thực đơn"
+              description={resultNote}
+              tone="success-soft"
+            />
+            <AppButton label="Xem thực đơn" onPress={() => navigation.goBack()} />
+          </>
+        ) : (
+          <View className="flex-row gap-sm">
+            <AppButton label="Hủy" variant="outline" onPress={() => navigation.goBack()} className="flex-shrink" />
+            <AppButton label="Tạo gợi ý" onPress={handleGenerate} loading={isPending} className="flex-1" />
+          </View>
+        )}
       </View>
     </View>
   );

@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ArrowRight, Leaf, Lock, Mail } from 'lucide-react-native';
+import { ArrowRight, Lock, Mail } from 'lucide-react-native';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Image, Pressable, View } from 'react-native';
@@ -13,6 +13,7 @@ import { useAuthStore } from '@/state/auth/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { AuthGoogleButton } from '../components/AuthGoogleButton';
 import { AuthSocialDivider } from '../components/AuthSocialDivider';
+import { useGoogleLogin } from '../hooks/useGoogleLogin';
 import { useLogin } from '../hooks/useLogin';
 
 const loginSchema = z.object({
@@ -33,13 +34,25 @@ export function LoginScreen({ navigation }: Props) {
   const setPendingUser = useAuthStore(state => state.setPendingUser);
   const continueAsGuest = useAuthStore(state => state.continueAsGuest);
   const loginMutation = useLogin();
+  const handleSessionOpen = ({ user, needsSurvey }: { user: import('@/state/auth/authStore').AuthUser; needsSurvey: boolean }) => {
+    if (!needsSurvey) {
+      login(user);
+      return;
+    }
+    setPendingUser(user);
+    navigation.reset({ index: 0, routes: [{ name: AUTH_ROUTES.HEALTH_PROFILE_BASIC_INFO }] });
+  };
+  const googleLogin = useGoogleLogin({ onSuccess: handleSessionOpen });
   const {
     control,
     handleSubmit,
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: 'smartmealuser@gmail.com', password: 'Smartmeal@123' },
+    // Tài khoản dùng thử chỉ có khi backend chạy Development; bản phát hành không được điền sẵn mật khẩu.
+    defaultValues: __DEV__
+      ? { email: 'smartmealuser@gmail.com', password: 'Smartmeal@123' }
+      : { email: '', password: '' },
   });
 
   const onSubmit = handleSubmit(values => {
@@ -141,9 +154,14 @@ export function LoginScreen({ navigation }: Props) {
             {loginMutation.error.message}
           </AppText>
         ) : null}
-
         <AuthSocialDivider />
-        <AuthGoogleButton label="Tiếp tục với Google" onPress={() => {}} />
+        <AuthGoogleButton
+          label="Tiếp tục với Google"
+          onPress={googleLogin.start}
+          onCredential={googleLogin.acceptCredential}
+          disabled={googleLogin.isLoading || googleLogin.isPrompting}
+        />
+        {googleLogin.error ? <AppText variant="caption" color="error" className="text-center">{googleLogin.error.message}</AppText> : null}
       </View>
 
       <View className="items-center gap-sm">

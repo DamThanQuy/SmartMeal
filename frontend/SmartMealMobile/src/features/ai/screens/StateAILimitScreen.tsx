@@ -9,7 +9,7 @@ import type { MainStackParamList } from '@/navigation/types';
 import { shadows } from '@/theme/shadows';
 import { spacing } from '@/theme/spacing';
 import { useTheme } from '@/theme/ThemeProvider';
-import { DAILY_AI_QUOTA_LIMIT } from '../state/aiQuotaStore';
+import { useAiQuota } from '../hooks/useAiQuota';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'StateAILimit'>;
 
@@ -19,6 +19,7 @@ export function StateAILimitScreen({ navigation, route }: Props) {
   const { mealType } = route.params ?? {};
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { limit, resetTimeLabel } = useAiQuota();
 
   return (
     <View className="flex-1 justify-end">
@@ -38,11 +39,10 @@ export function StateAILimitScreen({ navigation, route }: Props) {
             <Sparkles size={34} color={colors.primary} />
           </View>
           <AppText variant="h1" className="text-center">
-            {`Bạn đã dùng hết ${DAILY_AI_QUOTA_LIMIT}/${DAILY_AI_QUOTA_LIMIT} lượt AI hôm nay`}
+            {`Bạn đã dùng hết ${limit}/${limit} lượt AI hôm nay`}
           </AppText>
           <AppText variant="body" color="secondary" className="text-center">
-            Lượt AI sẽ làm mới vào 00:00. Bạn vẫn có thể ghi bữa ăn thủ công, hoặc nâng cấp Pro
-            để dùng AI không giới hạn.
+            {`Lượt AI sẽ làm mới vào ${resetTimeLabel || '00:00'}. Bạn vẫn có thể ghi bữa ăn thủ công, hoặc nâng cấp Pro để dùng AI không giới hạn.`}
           </AppText>
         </View>
 

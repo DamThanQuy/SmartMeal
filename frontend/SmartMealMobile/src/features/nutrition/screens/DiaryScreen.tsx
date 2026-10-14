@@ -2,20 +2,20 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { addDays, format, isSameDay, startOfWeek } from 'date-fns';
-import { BarChart3, Calendar, ChevronLeft, ChevronRight, Clock, Plus, WifiOff } from 'lucide-react-native';
+import { BarChart3, Calendar, ChevronLeft, ChevronRight, Plus, WifiOff } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, TouchableOpacity, View } from 'react-native';
 import { ErrorState, InlineBanner, LoadingState, ScreenContainer, SuccessToast } from '@/components/common';
-import { AppBadge, AppButton, AppCard, AppIconButton, AppText } from '@/components/ui';
+import { AppCard, AppIconButton, AppText } from '@/components/ui';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList, MainTabParamList } from '@/navigation/types';
-import { useAppStore } from '@/state/app/appStore';
+import { useIsOnline } from '@/services/network/connectivity';
 import { MEAL_TYPES, type MealType } from '@/types/meal.types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { DiaryMealSection } from '../components/DiaryMealSection';
+import { PendingSyncCard } from '../components/PendingSyncCard';
 import { useDiaryDay } from '../hooks/useDiary';
 import { todayIso } from '../services/nutritionService';
-import { useOfflineSyncStore } from '../state/offlineSyncStore';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Diary'>;
 
@@ -48,9 +48,7 @@ export function DiaryScreen({ route }: Props) {
   const dateIso = format(selectedDate, 'yyyy-MM-dd');
   const isToday = dateIso === todayIso();
   const { data: diary, isLoading, isError, error, refetch } = useDiaryDay(dateIso);
-  const isOffline = useAppStore(state => state.isOfflineDevOverride);
-  const pendingSync = useOfflineSyncStore(state => state.pending);
-  const pendingSyncIds = new Set(pendingSync.map(entry => entry.id));
+  const isOffline = !useIsOnline();
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -186,40 +184,10 @@ export function DiaryScreen({ route }: Props) {
                 onEditEntry={logId =>
                   navigation.navigate(MAIN_STACK_ROUTES.EDIT_MEAL_LOG, { logId, dateIso })
                 }
-                pendingSyncIds={pendingSyncIds}
               />
             ))}
 
-            {isOffline && pendingSync.length > 0 ? (
-              <AppCard className="gap-xs">
-                <View className="flex-row items-center justify-between pb-xxs">
-                  <AppText variant="h3">{`Chờ đồng bộ (${pendingSync.length})`}</AppText>
-                  <AppBadge
-                    label="Cần kết nối mạng"
-                    tone="warning"
-                    icon={<WifiOff size={12} color={colors.warningText} />}
-                  />
-                </View>
-                {pendingSync.map(entry => (
-                  <View
-                    key={entry.id}
-                    className="flex-row items-center gap-sm border-t border-border py-xs"
-                  >
-                    <Clock size={18} color={colors.textSecondary} />
-                    <AppText variant="body" className="flex-1">
-                      {entry.label}
-                    </AppText>
-                    <AppText variant="caption" color="secondary">
-                      {entry.timeLabel}
-                    </AppText>
-                  </View>
-                ))}
-                <AppButton label="Đồng bộ ngay" variant="secondary" disabled className="mt-xs" />
-                <AppText variant="caption" color="secondary">
-                  Mỗi thao tác chỉ được gửi một lần khi có mạng, nên sẽ không tạo bản ghi trùng.
-                </AppText>
-              </AppCard>
-            ) : null}
+            <PendingSyncCard />
           </>
         ) : null}
       </ScrollView>
