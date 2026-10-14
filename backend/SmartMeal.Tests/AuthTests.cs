@@ -269,11 +269,11 @@ public class AuthTests : IClassFixture<ApiFactory>
     }
 
     [DbFact]
-    public async Task Google_login_endpoint_has_been_removed()
+    public async Task Google_login_endpoint_requires_an_ID_token()
     {
-        var response = await _factory.CreateClient().PostJsonAsync("/api/auth/google", new { idToken = "anything" });
+        var response = await _factory.CreateClient().PostJsonAsync("/api/auth/google", new { });
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     // ───────────────────────────── Hồ sơ tài khoản ─────────────────────────────

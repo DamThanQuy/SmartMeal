@@ -11,6 +11,9 @@ import { AUTH_ROUTES } from '@/constants/routes';
 import type { AuthStackParamList } from '@/navigation/types';
 import { useAuthStore } from '@/state/auth/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
+import { AuthGoogleButton } from '../components/AuthGoogleButton';
+import { AuthSocialDivider } from '../components/AuthSocialDivider';
+import { useGoogleLogin } from '../hooks/useGoogleLogin';
 import { useRegister } from '../hooks/useRegister';
 
 const registerSchema = z
@@ -40,7 +43,18 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Register'>;
 export function RegisterScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const registerMutation = useRegister();
+  const login = useAuthStore(state => state.login);
   const setPendingUser = useAuthStore(state => state.setPendingUser);
+  const googleLogin = useGoogleLogin({
+    onSuccess: ({ user, needsSurvey }) => {
+      if (!needsSurvey) {
+        login(user);
+        return;
+      }
+      setPendingUser(user);
+      navigation.reset({ index: 0, routes: [{ name: AUTH_ROUTES.HEALTH_PROFILE_BASIC_INFO }] });
+    },
+  });
   const {
     control,
     handleSubmit,
@@ -176,6 +190,14 @@ export function RegisterScreen({ navigation }: Props) {
               />
             )}
           />
+          <AuthSocialDivider />
+          <AuthGoogleButton
+            label="Tiếp tục với Google"
+            onPress={googleLogin.start}
+            onCredential={googleLogin.acceptCredential}
+            disabled={googleLogin.isLoading || googleLogin.isPrompting}
+          />
+          {googleLogin.error ? <AppText variant="caption" color="error" className="text-center">{googleLogin.error.message}</AppText> : null}
         </View>
 
         <View>

@@ -56,6 +56,10 @@ export const authMockService = {
     return { user: buildMockUser(fullName, payload.email, true) };
   },
 
+  async loginWithGoogle(_payload: { idToken: string }): Promise<LoginResult> {
+    throw new Error('Đăng nhập Google yêu cầu EXPO_PUBLIC_USE_MOCK_API=false để gọi backend thật.');
+  },
+
   // BR-010, BR-011 — Đăng ký Email/Password. Scenario 'error' mô phỏng đúng trạng thái
   // "Email đã được đăng ký" hiển thị trong design/Register.dc.html.
   async register(payload: RegisterPayload): Promise<RegisterResult> {

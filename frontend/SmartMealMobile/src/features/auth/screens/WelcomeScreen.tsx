@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ArrowRight, CalendarCheck, Leaf, ShoppingBasket, Sparkles } from 'lucide-react-native';
+import { ArrowRight, CalendarCheck, ShoppingBasket, Sparkles } from 'lucide-react-native';
 import React from 'react';
 import { Image, Pressable, View } from 'react-native';
 import { ScreenContainer } from '@/components/common';
