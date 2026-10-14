@@ -82,7 +82,15 @@ public sealed record RecipePayload(
 
 public sealed record CollectionPayload(
     Guid Id, string Name, string? Description, string? CoverImageUrl, int RecipeCount, bool IsPublic, Guid OwnerId,
-    bool IsOwner, List<RecipePayload> Recipes);
+    bool IsOwner, List<RecipePayload> Recipes, string? ShareToken = null);
+
+public sealed record CollectionSharePayload(string ShareToken, DateTime SharedAt);
+
+public sealed record NotificationPayload(Guid Id, string Category, string Title, string Body, DateTime CreatedAt, bool IsRead);
+
+public sealed record NotificationListPayload(List<NotificationPayload> Items, int UnreadCount);
+
+public sealed record MarkAllReadPayload(int Updated);
 
 public sealed record FavoritePayload(bool IsFavorite, int TotalFavorites);
 

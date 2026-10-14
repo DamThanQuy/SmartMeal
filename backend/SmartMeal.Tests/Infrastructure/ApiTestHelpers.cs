@@ -8,7 +8,7 @@ public sealed record ApiEnvelope<T>(bool Success, string? Message, T? Data, List
 
 public sealed record UserPayload(
     Guid Id, string Email, string FullName, string? AvatarUrl, bool IsPro, string SubscriptionStatus, DateTime? ProExpiresAt,
-    string Role, bool HasCompletedSurvey);
+    string Role, bool HasCompletedSurvey, bool HasPassword = false);
 
 public sealed record AuthPayload(string Token, DateTime ExpiresAt, string RefreshToken, DateTime RefreshTokenExpiresAt, UserPayload User);
 

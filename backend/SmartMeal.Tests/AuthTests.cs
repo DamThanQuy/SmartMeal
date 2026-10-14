@@ -260,9 +260,22 @@ public class AuthTests : IClassFixture<ApiFactory>
         Assert.Equal("https://pics.example.com/a.png", auth.User.AvatarUrl);
         Assert.False(string.IsNullOrEmpty(auth.RefreshToken));
 
+        // Tài khoản chỉ có Google: không có mật khẩu (xóa tài khoản xác nhận bằng email, không có "đổi mật khẩu").
+        Assert.False(auth.User.HasPassword);
+
         // Đăng nhập lại cùng token → cùng tài khoản.
         var again = (await (await _factory.CreateClient().PostJsonAsync("/api/auth/google", new { idToken = "token-new" })).ReadEnvelopeAsync<AuthPayload>()).Data!;
         Assert.Equal(auth.User.Id, again.User.Id);
+    }
+
+    [DbFact]
+    public async Task Accounts_registered_with_email_report_that_they_have_a_password()
+    {
+        var user = await _factory.RegisterUserAsync();
+
+        var me = (await (await user.Client.GetAsync("/api/auth/me")).ReadEnvelopeAsync<UserPayload>()).Data!;
+
+        Assert.True(me.HasPassword);
     }
 
     [DbFact]
