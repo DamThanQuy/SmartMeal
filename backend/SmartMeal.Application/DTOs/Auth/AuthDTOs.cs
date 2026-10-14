@@ -29,14 +29,6 @@ public class LoginRequestDto
     public string Password { get; set; } = string.Empty;
 }
 
-/// <summary>Đăng nhập Google: gửi Google ID token để server tự xác minh (không tin email/id do client gửi).</summary>
-public class GoogleLoginRequestDto
-{
-    [Required(ErrorMessage = "idToken là bắt buộc.")]
-    [StringLength(8192, ErrorMessage = "idToken quá dài.")]
-    public string IdToken { get; set; } = string.Empty;
-}
-
 public class RefreshTokenRequestDto
 {
     [Required(ErrorMessage = "refreshToken là bắt buộc.")]
@@ -85,8 +77,8 @@ public class UserDto
     public bool HasCompletedSurvey { get; set; }
 
     /// <summary>
-    /// Tài khoản có mật khẩu (đăng ký bằng email). false = chỉ đăng nhập Google: xóa tài khoản xác nhận bằng email thay vì
-    /// mật khẩu, và không có "đổi mật khẩu".
+    /// Tài khoản có mật khẩu. false = tài khoản tạo bằng đăng nhập Google trước đây (app đã bỏ đăng nhập Google): đặt mật khẩu
+    /// qua "Quên mật khẩu"; xóa tài khoản xác nhận bằng email thay vì mật khẩu.
     /// </summary>
     public bool HasPassword { get; set; }
 }

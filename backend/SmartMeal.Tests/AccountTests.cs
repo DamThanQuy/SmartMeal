@@ -268,19 +268,16 @@ public class AccountTests : IClassFixture<ApiFactory>
     }
 
     [DbFact]
-    public async Task A_google_only_account_confirms_deletion_with_its_own_email()
+    public async Task An_account_without_a_password_confirms_deletion_with_its_own_email()
     {
-        var email = $"g-{Guid.NewGuid():N}@example.com";
-        _factory.Google.Add("token-delete", new GoogleIdentity($"sub-{Guid.NewGuid():N}", email, true, "Only", null));
-        var auth = (await (await _factory.CreateClient().PostJsonAsync("/api/auth/google", new { idToken = "token-delete" })).ReadEnvelopeAsync<AuthPayload>()).Data!;
-        var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
+        // Như tài khoản tạo bằng đăng nhập Google trước khi app bỏ tính năng này.
+        var user = await _factory.RegisterPasswordlessUserAsync();
 
-        var wrong = await DeleteAccountAsync(client, new { confirmEmail = "someone-else@example.com" });
-        var ok = await DeleteAccountAsync(client, new { confirmEmail = email.ToUpperInvariant() });
+        var wrong = await DeleteAccountAsync(user.Client, new { confirmEmail = "someone-else@example.com" });
+        var ok = await DeleteAccountAsync(user.Client, new { confirmEmail = user.Email.ToUpperInvariant() });
 
         Assert.Equal(HttpStatusCode.BadRequest, wrong.StatusCode);
         Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
-        await WithDbAsync(_factory, async db => Assert.False(await db.Users.AnyAsync(u => u.Id == auth.User.Id)));
+        await WithDbAsync(_factory, async db => Assert.False(await db.Users.AnyAsync(u => u.Id == user.Id)));
     }
 }

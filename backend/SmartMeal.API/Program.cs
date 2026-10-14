@@ -53,7 +53,6 @@ builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
 });
 
 // 3. Dependency Injection
-builder.Services.AddSingleton<IGoogleTokenVerifier, GoogleTokenVerifier>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<ILoginAttemptTracker, LoginAttemptTracker>();
 builder.Services.AddScoped<IAccountService, AccountService>();

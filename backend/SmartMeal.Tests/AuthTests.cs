@@ -13,7 +13,7 @@ using Xunit;
 
 namespace SmartMeal.Tests;
 
-/// <summary>SEC-02 (khóa khi dò mật khẩu), P1-BE-03 (refresh token), P1-BE-01 (Google ID token).</summary>
+/// <summary>SEC-02 (khóa khi dò mật khẩu), P1-BE-03 (refresh token); đăng nhập Google đã bỏ (chỉ còn email + mật khẩu).</summary>
 public class AuthTests : IClassFixture<ApiFactory>
 {
     private readonly ApiFactory _factory;
@@ -243,30 +243,7 @@ public class AuthTests : IClassFixture<ApiFactory>
         Assert.False((await limited.ReadEnvelopeAsync<object>()).Success);
     }
 
-    // ───────────────────────────── Google ID token (P1-BE-01) ─────────────────────────────
-
-    [DbFact]
-    public async Task Google_login_creates_a_verified_account_from_the_verified_identity_only()
-    {
-        var email = $"g-{Guid.NewGuid():N}@example.com";
-        _factory.Google.Add("token-new", new GoogleIdentity($"sub-{Guid.NewGuid():N}", email, true, "Gờ Một", "https://pics.example.com/a.png"));
-
-        var response = await _factory.CreateClient().PostJsonAsync("/api/auth/google", new { idToken = "token-new" });
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var auth = (await response.ReadEnvelopeAsync<AuthPayload>()).Data!;
-        Assert.Equal(email, auth.User.Email);
-        Assert.Equal("Gờ Một", auth.User.FullName);
-        Assert.Equal("https://pics.example.com/a.png", auth.User.AvatarUrl);
-        Assert.False(string.IsNullOrEmpty(auth.RefreshToken));
-
-        // Tài khoản chỉ có Google: không có mật khẩu (xóa tài khoản xác nhận bằng email, không có "đổi mật khẩu").
-        Assert.False(auth.User.HasPassword);
-
-        // Đăng nhập lại cùng token → cùng tài khoản.
-        var again = (await (await _factory.CreateClient().PostJsonAsync("/api/auth/google", new { idToken = "token-new" })).ReadEnvelopeAsync<AuthPayload>()).Data!;
-        Assert.Equal(auth.User.Id, again.User.Id);
-    }
+    // ───────────────────────────── Mật khẩu của tài khoản ─────────────────────────────
 
     [DbFact]
     public async Task Accounts_registered_with_email_report_that_they_have_a_password()
@@ -279,68 +256,24 @@ public class AuthTests : IClassFixture<ApiFactory>
     }
 
     [DbFact]
-    public async Task Google_login_rejects_unverified_tokens_and_the_old_unsigned_payload()
+    public async Task Accounts_without_a_password_report_it_and_cannot_sign_in_with_a_password()
     {
-        var client = _factory.CreateClient();
+        // Như tài khoản tạo bằng đăng nhập Google trước khi app bỏ tính năng này.
+        var user = await _factory.RegisterPasswordlessUserAsync();
 
-        var forged = await client.PostJsonAsync("/api/auth/google", new { idToken = "forged-token" });
-        var oldStyle = await client.PostJsonAsync("/api/auth/google",
-            new { googleId = "123", email = "victim@example.com", fullName = "Attacker" });
+        var me = (await (await user.Client.GetAsync("/api/auth/me")).ReadEnvelopeAsync<UserPayload>()).Data!;
+        var login = await _factory.CreateClient().PostJsonAsync("/api/auth/login", new { email = user.Email, password = user.Password });
 
-        Assert.Equal(HttpStatusCode.Unauthorized, forged.StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, oldStyle.StatusCode);   // thiếu idToken
+        Assert.False(me.HasPassword);
+        Assert.Equal(HttpStatusCode.Unauthorized, login.StatusCode);
     }
 
     [DbFact]
-    public async Task Google_login_cannot_take_over_a_password_account_without_a_verified_email()
+    public async Task Google_login_endpoint_has_been_removed()
     {
-        var victim = await _factory.RegisterUserAsync();
-        _factory.Google.Add("token-unverified", new GoogleIdentity($"sub-{Guid.NewGuid():N}", victim.Email, false, "Attacker", null));
-        _factory.Google.Add("token-verified", new GoogleIdentity($"sub-{Guid.NewGuid():N}", victim.Email, true, "Owner", null));
+        var response = await _factory.CreateClient().PostJsonAsync("/api/auth/google", new { idToken = "anything" });
 
-        var unverified = await _factory.CreateClient().PostJsonAsync("/api/auth/google", new { idToken = "token-unverified" });
-        var verified = await _factory.CreateClient().PostJsonAsync("/api/auth/google", new { idToken = "token-verified" });
-
-        Assert.Equal(HttpStatusCode.Unauthorized, unverified.StatusCode);
-        // Google xác nhận chính chủ email → liên kết vào tài khoản có sẵn (BR-011).
-        Assert.Equal(HttpStatusCode.OK, verified.StatusCode);
-        Assert.Equal(victim.Id, (await verified.ReadEnvelopeAsync<AuthPayload>()).Data!.User.Id);
-    }
-
-    [DbFact]
-    public async Task One_google_account_per_email_account()
-    {
-        var first = await _factory.RegisterUserAsync();
-        _factory.Google.Add("token-a", new GoogleIdentity($"sub-{Guid.NewGuid():N}", first.Email, true, "A", null));
-        _factory.Google.Add("token-b", new GoogleIdentity($"sub-{Guid.NewGuid():N}", first.Email, true, "B", null));
-
-        Assert.Equal(HttpStatusCode.OK, (await _factory.CreateClient().PostJsonAsync("/api/auth/google", new { idToken = "token-a" })).StatusCode);
-        var second = await _factory.CreateClient().PostJsonAsync("/api/auth/google", new { idToken = "token-b" });
-
-        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);   // BR-012
-    }
-
-    [DbFact]
-    public async Task Google_only_accounts_cannot_sign_in_with_a_password()
-    {
-        var email = $"g-{Guid.NewGuid():N}@example.com";
-        _factory.Google.Add("token-only", new GoogleIdentity($"sub-{Guid.NewGuid():N}", email, true, "Only", null));
-        (await _factory.CreateClient().PostJsonAsync("/api/auth/google", new { idToken = "token-only" })).EnsureSuccessStatusCode();
-
-        var response = await _factory.CreateClient().PostJsonAsync("/api/auth/login", new { email, password = "anything-1" });
-
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [DbFact]
-    public async Task Google_login_is_unavailable_when_no_client_id_is_configured()
-    {
-        using var factory = new ApiFactory();
-        factory.Google.IsConfigured = false;
-
-        var response = await factory.CreateClient().PostJsonAsync("/api/auth/google", new { idToken = "whatever" });
-
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     // ───────────────────────────── Hồ sơ tài khoản ─────────────────────────────

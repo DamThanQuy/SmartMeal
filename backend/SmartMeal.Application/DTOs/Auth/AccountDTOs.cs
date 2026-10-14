@@ -2,7 +2,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace SmartMeal.Application.DTOs.Auth;
 
-/// <summary>Xóa tài khoản: tài khoản có mật khẩu gửi <c>password</c>; tài khoản chỉ đăng nhập Google gửi <c>confirmEmail</c> (đúng email của mình).</summary>
+/// <summary>
+/// Xóa tài khoản: tài khoản có mật khẩu gửi <c>password</c>; tài khoản không có mật khẩu (tạo bằng đăng nhập Google trước đây) gửi
+/// <c>confirmEmail</c> (đúng email của mình).
+/// </summary>
 public class DeleteAccountRequestDto
 {
     [StringLength(128)]

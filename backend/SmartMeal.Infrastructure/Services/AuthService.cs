@@ -23,7 +23,6 @@ public class AuthService : IAuthService
 
     private readonly ApplicationDbContext _db;
     private readonly IJwtTokenService _jwtService;
-    private readonly IGoogleTokenVerifier _google;
     private readonly ILoginAttemptTracker _attempts;
     private readonly JwtOptions _jwt;
     private readonly AuthOptions _auth;
@@ -31,14 +30,12 @@ public class AuthService : IAuthService
     public AuthService(
         ApplicationDbContext db,
         IJwtTokenService jwtService,
-        IGoogleTokenVerifier google,
         ILoginAttemptTracker attempts,
         IOptions<JwtOptions> jwt,
         IOptions<AuthOptions> auth)
     {
         _db = db;
         _jwtService = jwtService;
-        _google = google;
         _attempts = attempts;
         _jwt = jwt.Value;
         _auth = auth.Value;
@@ -108,71 +105,6 @@ public class AuthService : IAuthService
 
         var hasSurvey = await _db.HealthProfiles.AnyAsync(hp => hp.UserId == user.Id);
         return ApiResponse<AuthResponseDto>.Ok(await IssueTokensAsync(user, hasSurvey), "Đăng nhập thành công.");
-    }
-
-    public async Task<ApiResponse<AuthResponseDto>> GoogleLoginAsync(GoogleLoginRequestDto dto)
-    {
-        if (!_google.IsConfigured)
-        {
-            return ApiResponse<AuthResponseDto>.Fail("Đăng nhập Google chưa được cấu hình trên máy chủ.", null, ApiErrorKind.Unavailable);
-        }
-
-        // Chỉ tin danh tính do Google xác nhận trong ID token, không tin email/id do client tự gửi.
-        var identity = await _google.VerifyAsync(dto.IdToken);
-        if (identity is null)
-        {
-            return ApiResponse<AuthResponseDto>.Fail("Google ID token không hợp lệ hoặc đã hết hạn.", null, ApiErrorKind.Unauthorized);
-        }
-
-        var email = NormalizeEmail(identity.Email);
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.GoogleId == identity.Subject);
-
-        if (user is null)
-        {
-            if (string.IsNullOrWhiteSpace(email) || !identity.EmailVerified)
-            {
-                return ApiResponse<AuthResponseDto>.Fail("Email của tài khoản Google chưa được xác minh.", null, ApiErrorKind.Unauthorized);
-            }
-
-            user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email);
-            if (user is null)
-            {
-                user = new User
-                {
-                    Email = email,
-                    FullName = string.IsNullOrWhiteSpace(identity.Name) ? email.Split('@')[0] : identity.Name.Trim(),
-                    AvatarUrl = identity.PictureUrl,
-                    GoogleId = identity.Subject,
-                    IsEmailVerified = true,
-                    Role = "User"
-                };
-                _db.Users.Add(user);
-            }
-            else if (!string.IsNullOrEmpty(user.GoogleId))
-            {
-                // BR-012: một tài khoản SmartMeal chỉ liên kết với một tài khoản Google.
-                return ApiResponse<AuthResponseDto>.Fail("Email này đã liên kết với một tài khoản Google khác.", null, ApiErrorKind.Conflict);
-            }
-            else
-            {
-                // Email đã có (đăng ký bằng mật khẩu) và Google xác nhận cùng email → liên kết (BR-011).
-                user.GoogleId = identity.Subject;
-                user.IsEmailVerified = true;
-                if (string.IsNullOrEmpty(user.AvatarUrl)) user.AvatarUrl = identity.PictureUrl;
-            }
-
-            try
-            {
-                await _db.SaveChangesAsync();
-            }
-            catch (DbUpdateException ex) when (IsUniqueViolation(ex))
-            {
-                return ApiResponse<AuthResponseDto>.Fail("Không thể liên kết tài khoản Google, vui lòng thử lại.", null, ApiErrorKind.Conflict);
-            }
-        }
-
-        var hasSurvey = await _db.HealthProfiles.AnyAsync(hp => hp.UserId == user.Id);
-        return ApiResponse<AuthResponseDto>.Ok(await IssueTokensAsync(user, hasSurvey), "Đăng nhập Google thành công.");
     }
 
     // ───────────────────────────── Phiên: refresh / đăng xuất ─────────────────────────────
@@ -297,7 +229,7 @@ public class AuthService : IAuthService
 
         if (string.IsNullOrEmpty(user.PasswordHash))
         {
-            return ApiResponse<AuthResponseDto>.Fail("Tài khoản đăng nhập bằng Google chưa có mật khẩu. Hãy dùng \"Quên mật khẩu\" để tạo mật khẩu.");
+            return ApiResponse<AuthResponseDto>.Fail("Tài khoản chưa có mật khẩu. Hãy dùng \"Quên mật khẩu\" để tạo mật khẩu.");
         }
 
         var now = DateTime.UtcNow;

@@ -273,16 +273,13 @@ public class PasswordTests : IClassFixture<ApiFactory>
     }
 
     [DbFact]
-    public async Task Google_only_accounts_must_use_forgot_password_to_create_a_password()
+    public async Task Accounts_without_a_password_must_use_forgot_password_to_create_one()
     {
-        var email = $"g-{Guid.NewGuid():N}@example.com";
-        _factory.Google.Add("token-pw", new GoogleIdentity($"sub-{Guid.NewGuid():N}", email, true, "Only", null));
-        var login = await _factory.CreateClient().PostJsonAsync("/api/auth/google", new { idToken = "token-pw" });
-        var auth = (await login.ReadEnvelopeAsync<AuthPayload>()).Data!;
-        var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", auth.Token);
+        // Như tài khoản tạo bằng đăng nhập Google trước khi app bỏ tính năng này.
+        var user = await _factory.RegisterPasswordlessUserAsync();
+        var email = user.Email;
 
-        var change = await client.PostJsonAsync("/api/auth/change-password", new { currentPassword = "anything-1", newPassword = "Fresh-pass-123" });
+        var change = await user.Client.PostJsonAsync("/api/auth/change-password", new { currentPassword = "anything-1", newPassword = "Fresh-pass-123" });
         Assert.Equal(HttpStatusCode.BadRequest, change.StatusCode);
         Assert.Contains("Quên mật khẩu", (await change.ReadEnvelopeAsync<object>()).Message);
 

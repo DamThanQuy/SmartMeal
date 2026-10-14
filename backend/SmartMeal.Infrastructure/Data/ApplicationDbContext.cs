@@ -161,7 +161,7 @@ public class ApplicationDbContext : DbContext
             .HasIndex(l => new { l.UserId, l.SyncDate, l.Source })
             .IsUnique();
 
-        // Một tài khoản Google chỉ liên kết với một tài khoản SmartMeal (BR-012); NULL được phép lặp.
+        // GoogleId (dữ liệu cũ, đã bỏ đăng nhập Google): mỗi giá trị chỉ thuộc một tài khoản; NULL được phép lặp.
         modelBuilder.Entity<User>()
             .HasIndex(u => u.GoogleId)
             .IsUnique();

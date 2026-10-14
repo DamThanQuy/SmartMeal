@@ -132,7 +132,7 @@ public class AccountService : IAccountService
         }
         else if (!string.Equals(dto.ConfirmEmail?.Trim(), user.Email, StringComparison.OrdinalIgnoreCase))
         {
-            // Tài khoản chỉ đăng nhập Google không có mật khẩu: bắt nhập lại email của chính mình để xác nhận.
+            // Tài khoản không có mật khẩu (tạo bằng đăng nhập Google trước đây): bắt nhập lại email của chính mình để xác nhận.
             return ApiResponse<bool>.Fail("Nhập đúng email của tài khoản vào confirmEmail để xác nhận xóa.");
         }
 

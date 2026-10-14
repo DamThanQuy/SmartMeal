@@ -23,8 +23,6 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     private readonly Dictionary<string, string?> _overrides = new();
     private string? _adminConnectionString;
 
-    /// <summary>Bộ xác minh Google giả: đăng ký token → danh tính để kiểm thử đăng nhập Google.</summary>
-    public FakeGoogleTokenVerifier Google { get; } = new();
 
     /// <summary>Bộ gửi email giả: giữ các email đã "gửi" (OTP...) để test đọc mã.</summary>
     public FakeEmailSender Email { get; } = new();
@@ -62,8 +60,6 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Testing");
         builder.ConfigureTestServices(services =>
         {
-            services.RemoveAll<IGoogleTokenVerifier>();
-            services.AddSingleton<IGoogleTokenVerifier>(Google);
             services.RemoveAll<IEmailSender>();
             services.AddSingleton<IEmailSender>(Email);
             foreach (var configure in _serviceOverrides) configure(services);
@@ -81,10 +77,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
                 ["Storage:Root"] = UploadsRoot,
 
                 // Test phải độc lập với máy chạy: Program.cs nạp file .env của dev (DotNetEnv) vào biến môi trường nên
-                // mọi khóa bên ngoài (Gemini, SMTP, Google, webhook...) được đặt rỗng tường minh. Cấu hình in-memory
+                // mọi khóa bên ngoài (Gemini, SMTP, webhook...) được đặt rỗng tường minh. Cấu hình in-memory
                 // này ưu tiên hơn biến môi trường; test cần giá trị thật thì ghi đè bằng WithSetting.
                 ["Gemini:ApiKey"] = "",
-                ["Google:ClientIds"] = "",
                 ["Smtp:Host"] = "",
                 ["Subscription:WebhookSecret"] = "",
                 ["Subscription:AllowMockActivation"] = "false",

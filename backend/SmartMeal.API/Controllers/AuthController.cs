@@ -36,12 +36,6 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Login([FromBody] LoginRequestDto dto) =>
         this.ToActionResult(await _authService.LoginAsync(dto));
 
-    /// <summary>Đăng nhập Google bằng Google ID token (server tự xác minh chữ ký và audience).</summary>
-    [EnableRateLimiting(RateLimitPolicies.Auth)]
-    [HttpPost("google")]
-    public async Task<ActionResult<ApiResponse<AuthResponseDto>>> GoogleLogin([FromBody] GoogleLoginRequestDto dto) =>
-        this.ToActionResult(await _authService.GoogleLoginAsync(dto));
-
     /// <summary>Đổi refresh token (dùng một lần) lấy cặp access + refresh token mới. 401 nếu token sai/đã dùng/hết hạn.</summary>
     [EnableRateLimiting(RateLimitPolicies.Auth)]
     [HttpPost("refresh")]
@@ -128,7 +122,10 @@ public class AuthController : ControllerBase
         return this.ToActionResult(await _accountService.UploadAvatarAsync(userId, stream, file.Length, baseUrl));
     }
 
-    /// <summary>Xóa vĩnh viễn tài khoản và dữ liệu (BR-271). Cần <c>password</c> (hoặc <c>confirmEmail</c> với tài khoản Google).</summary>
+    /// <summary>
+    /// Xóa vĩnh viễn tài khoản và dữ liệu (BR-271). Cần <c>password</c>; tài khoản không có mật khẩu (tạo bằng đăng nhập Google
+    /// trước đây) gửi <c>confirmEmail</c>.
+    /// </summary>
     [Authorize]
     [HttpDelete("account")]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteAccount([FromBody] DeleteAccountRequestDto? dto)

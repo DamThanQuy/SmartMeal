@@ -1,6 +1,9 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using SmartMeal.Infrastructure.Data;
 
 namespace SmartMeal.Tests.Infrastructure;
 
@@ -39,6 +42,19 @@ public static class ApiTestHelpers
 
     public static Task<HttpResponseMessage> PutJsonAsync(this HttpClient client, string url, object? body) =>
         client.PutAsJsonAsync(url, body, Json);
+
+    /// <summary>
+    /// Tài khoản không có mật khẩu — như tài khoản tạo bằng đăng nhập Google trước khi app bỏ tính năng này. Đăng ký bình
+    /// thường rồi xóa mật khẩu trong DB; token đã cấp vẫn dùng được.
+    /// </summary>
+    public static async Task<TestUser> RegisterPasswordlessUserAsync(this ApiFactory factory)
+    {
+        var user = await factory.RegisterUserAsync();
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await db.Users.Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.PasswordHash, (string?)null));
+        return user;
+    }
 
     /// <summary>Đăng ký tài khoản mới và trả client đã gắn Bearer token.</summary>
     public static async Task<TestUser> RegisterUserAsync(

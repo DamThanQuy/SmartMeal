@@ -7,6 +7,7 @@ public class User
     public string? PasswordHash { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string? AvatarUrl { get; set; }
+    /// <summary>Liên kết Google của tài khoản cũ. App đã bỏ đăng nhập Google; giữ cột để không mất dữ liệu, không còn được ghi.</summary>
     public string? GoogleId { get; set; }
     public bool IsEmailVerified { get; set; } = false;
     public bool IsPro { get; set; } = false;
