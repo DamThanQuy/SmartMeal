@@ -8,13 +8,13 @@ Phạm vi: frontend React Native/Expo tại `frontend/SmartMealMobile` và backe
 
 ## 0. Trạng thái xử lý — cập nhật 14/10/2026
 
-Toàn bộ phần dưới (mục 1–10) giữ nguyên như bản rà soát ngày 13/10 để đối chiếu. Mục này ghi lại những gì đã được sửa trên nhánh `main` cục bộ (commit `c477a29`, **chưa push**).
+Toàn bộ phần dưới (mục 1–10) giữ nguyên như bản rà soát ngày 13/10 để đối chiếu. Mục này ghi lại những gì đã được sửa trên nhánh `main`. Lần cập nhật thứ hai trong ngày bổ sung: thông báo trong app, chia sẻ bộ sưu tập bằng liên kết thu hồi được, màn xóa tài khoản.
 
 Tất cả đã được kiểm chứng như sau:
 
-- **BE:** 224 test xUnit qua, chạy trên PostgreSQL thật.
-- **FE:** 494 test Jest qua.
-- **Test live (79 test):** FE gọi BE thật qua HTTP với DB thật. Gồm auth, hồ sơ sức khỏe, nhật ký, nước, AI, scanner, công thức/bộ sưu tập, thực đơn/đi chợ, gamification, premium và health sync.
+- **BE:** 235 test xUnit qua, chạy trên PostgreSQL thật.
+- **FE:** 505 test Jest qua.
+- **Test live (83 test):** FE gọi BE thật qua HTTP với DB thật. Gồm auth (cả xóa tài khoản), hồ sơ sức khỏe, nhật ký, nước, AI, scanner, công thức/bộ sưu tập (cả liên kết chia sẻ), thực đơn/đi chợ, gamification, thông báo, premium và health sync.
 
 **Ký hiệu:** ✅ đã xong · ➖ không làm, kèm lý do · ⏳ chưa làm.
 
@@ -44,15 +44,15 @@ Tất cả đã được kiểm chứng như sau:
 | F09 | ✅ | Bỏ `completeChallenge` cục bộ. Huy hiệu/trang phục đọc và mặc qua server (`9916999`). |
 | F10, F11 | ✅ | Recipe mapper giữ `imageUrl`/`isPremium`/`description`. Recipes/planner/grocery có cặp service mock/api, chọn theo `EXPO_PUBLIC_USE_MOCK_API`. |
 | F12 | ✅ | Hàng đợi offline lưu bền, giữ payload và gửi lại bằng `Idempotency-Key`; BE không ghi trùng (BE `e25f41f`, FE `f22c22c`). |
-| F13 | ⏳ | Cần module native Health Connect/HealthKit trong Dev Client; Expo Go không làm được. API `health-sync` đã sẵn sàng. |
-| §6 Collections, chia sẻ | ✅ | Đủ CRUD. Chia sẻ dùng `isPublic` + deep link; chưa có token thu hồi riêng. |
+| F13 | ⏳ | Cần module native Health Connect/HealthKit, tức phải chuyển dự án từ Expo Go sang Dev Client. Theo `structure_system.md` §2/§11, việc này cần nhóm quyết định trước. API `health-sync` đã sẵn sàng. |
+| §6 Collections, chia sẻ | ✅ | Đủ CRUD. Chia sẻ bằng liên kết chỉ đọc có mã: bộ sưu tập vẫn riêng tư, tắt hoặc tạo lại mã thì liên kết cũ hết hiệu lực. Deep link `shared/collections/:token` mở màn SharedCollection (BE `dadaebb`, FE `f64ceb9`). |
 | §6 Planner, Grocery, Barcode | ✅ | Xem C07, C08, F04–F06. |
 | §6 Voice | ✅ | `POST /ai/voice-log/audio`: FE ghi âm bằng `expo-av`, server chép lời và trả `transcript`; câu không nhận ra trả `voice_unrecognized` (`67d8e01`, `7a771ea`). |
 | §6 OCR | ✅ | `POST /ai/scan-label` nhận ảnh nhãn (`67d8e01`). |
 | §6 Gamification | ✅ | Xem C09. |
 | §6 Reminders | ✅ | Nhắc cục bộ bằng `expo-notifications`, cài đặt lưu theo tài khoản; không cần BE (`9915e80`). |
-| §6 Notifications | ⏳ | BE chưa có API thông báo; danh sách ở chế độ API vẫn rỗng. |
-| §6 Account/password | ➖ | BE đã có `change-password` và `DELETE /auth/account`. FE đổi mật khẩu qua luồng OTP và chỉ có "Xóa dữ liệu cá nhân"; chưa có màn xóa tài khoản. |
+| §6 Notifications | ✅ | `GET /notifications`, `PATCH /notifications/{id}/read`, `POST /notifications/read-all`. Server tạo thông báo từ sự kiện thật (lên cấp, huy hiệu, thử thách, danh sách đi chợ, Pro kích hoạt/sắp hết hạn), mỗi sự kiện một lần. App có chấm chưa đọc ở chuông; bấm thì đánh dấu đã đọc rồi mở màn liên quan (BE `ce9f091`, FE `a58312b`). Push từ server vẫn cần Dev Client. |
+| §6 Account/password | ✅ | Màn "Xóa tài khoản" gọi `DELETE /auth/account`: xác nhận bằng mật khẩu, hoặc bằng email với tài khoản chỉ có Google (`UserDto.hasPassword`). Đổi mật khẩu vẫn qua luồng OTP (BE `1c460e3`, FE `8cf63ac`). |
 | §7 Tài liệu cũ | ✅ | Đã cập nhật API Contract. Phần 1/2 nối API được đánh dấu là bản ghi chép cũ. Đã sửa README/Overview. |
 
 Chi tiết từng việc và cách kiểm chứng: [`docs/implementation_report.md`](implementation_report.md).

@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| Cập nhật | 2026-10-14 |
-| Nguồn | Swagger của backend (`/swagger/v1/swagger.json`, bật ở môi trường Development) + chú thích XML và thuộc tính trong `SmartMeal.API/Controllers` và `SmartMeal.Application/DTOs` @ `c477a29` (bổ sung: scan-label, voice-log/audio, grocery/complete, Idempotency-Key, tra mã vạch bằng CSDL, ngưỡng bệnh lý) |
+| Cập nhật | 2026-10-14 (bổ sung thông báo, chia sẻ bộ sưu tập, `hasPassword`) |
+| Nguồn | Swagger của backend (`/swagger/v1/swagger.json`, bật ở môi trường Development) + chú thích XML và thuộc tính trong `SmartMeal.API/Controllers` và `SmartMeal.Application/DTOs` @ `cc98da0` (bổ sung: thông báo trong app, liên kết chia sẻ bộ sưu tập, `UserDto.hasPassword`; scan-label, voice-log/audio, grocery/complete, Idempotency-Key, tra mã vạch bằng CSDL, ngưỡng bệnh lý) |
 | Thay thế | Bản V2.0 (2026-09-26) đã cũ: nhiều endpoint ghi "chưa làm" nhưng đã có, đường dẫn và field khác |
 | Nguồn sự thật | **Code backend.** Tài liệu này được sinh lại từ code mỗi khi API đổi; nếu lệch thì code thắng |
 
@@ -80,6 +80,9 @@
 | Công thức, yêu thích, bộ sưu tập | DELETE | `/api/recipes/collections/{collectionId}` | Cần đăng nhập | Xóa bộ sưu tập — chỉ chủ sở hữu. |
 | Công thức, yêu thích, bộ sưu tập | POST | `/api/recipes/collections/{collectionId}/items` | Cần đăng nhập | Thêm công thức vào bộ sưu tập — chỉ chủ sở hữu. |
 | Công thức, yêu thích, bộ sưu tập | DELETE | `/api/recipes/collections/{collectionId}/items/{recipeId}` | Cần đăng nhập | Bỏ công thức khỏi bộ sưu tập — chỉ chủ sở hữu. |
+| Công thức, yêu thích, bộ sưu tập | POST | `/api/recipes/collections/{collectionId}/share` | Cần đăng nhập | Bật liên kết chia sẻ chỉ đọc — chỉ chủ sở hữu; đã bật thì trả mã cũ, `regenerate=true` đổi mã. |
+| Công thức, yêu thích, bộ sưu tập | DELETE | `/api/recipes/collections/{collectionId}/share` | Cần đăng nhập | Tắt liên kết chia sẻ (idempotent) — chỉ chủ sở hữu. |
+| Công thức, yêu thích, bộ sưu tập | GET | `/api/recipes/collections/shared/{shareToken}` | Công khai (token tùy chọn: cá nhân hóa `isFavorite`, `healthWarnings`) | Xem bộ sưu tập qua liên kết chia sẻ (chỉ đọc, kể cả riêng tư); mã sai/đã tắt → 404. |
 | Thực đơn tuần | GET | `/api/mealplanner/week` | Cần đăng nhập | Lấy kế hoạch thực đơn 7 ngày trong tuần (kèm tổng Calo & Macros mỗi ngày). |
 | Thực đơn tuần | POST | `/api/mealplanner/assign` | Cần đăng nhập | Gán hoặc thay đổi một món ăn vào lịch tuần (Sáng, Trưa, Tối, Phụ); món chứa chất gây dị ứng của người dùng → `400` `allergen_conflict` |
 | Thực đơn tuần | PATCH | `/api/mealplanner/{id}/complete` | Cần đăng nhập | Đánh dấu một món trong thực đơn là đã nấu/ăn (hoặc bỏ đánh dấu) |
@@ -107,6 +110,9 @@
 | Bé Mầm: XP, thử thách, huy hiệu | GET | `/api/gamification/badges` | Cần đăng nhập | Huy hiệu (đã mở/chưa) và trang phục (đã mở/đang mặc). |
 | Bé Mầm: XP, thử thách, huy hiệu | POST | `/api/gamification/costumes/{costumeId}/equip` | Cần đăng nhập | Mặc một trang phục đã mở (400 nếu chưa mở khóa, 404 nếu không có). |
 | Bé Mầm: XP, thử thách, huy hiệu | DELETE | `/api/gamification/costumes/equipped` | Cần đăng nhập | Cởi trang phục đang mặc. |
+| Thông báo | GET | `/api/notifications` | Cần đăng nhập | Thông báo trong app (mới → cũ) kèm `unreadCount`; `date`, `limit` (1–100, mặc định 50). |
+| Thông báo | PATCH | `/api/notifications/{id}/read` | Cần đăng nhập | Đánh dấu một thông báo đã đọc (idempotent); của người khác → 404. |
+| Thông báo | POST | `/api/notifications/read-all` | Cần đăng nhập | Đánh dấu đã đọc tất cả; trả số thông báo vừa đánh dấu. |
 | Gói Pro & thanh toán | GET | `/api/subscription/plans` | Công khai | Bảng giá các gói Pro (giá, chu kỳ, quyền lợi) — nguồn duy nhất cho giá. |
 | Gói Pro & thanh toán | POST | `/api/subscription/create-checkout-session` | Cần đăng nhập | Tạo phiên thanh toán |
 | Gói Pro & thanh toán | POST | `/api/subscription/activate-mock` | Cần đăng nhập | Chỉ dùng khi phát triển: mô phỏng cổng thanh toán xác nhận |
@@ -695,6 +701,42 @@ Bỏ công thức khỏi bộ sưu tập — chỉ chủ sở hữu.
 | `collectionId` | đường dẫn | uuid | có |  |
 | `recipeId` | đường dẫn | uuid | có |  |
 
+> **Liên kết chia sẻ**: mã 32 ký tự base64url ngẫu nhiên; ai có mã đều xem được bộ sưu tập (chỉ đọc) qua `GET /recipes/collections/shared/{shareToken}`, kể cả khi bộ sưu tập riêng tư — khác `isPublic` (hiện cho mọi người trong `GET /recipes/collections`). Tạo mã mới hoặc tắt liên kết thì mã cũ trả 404. `shareToken` trong `RecipeCollectionDto` chỉ có với chủ sở hữu. Deep link của app: `smartmealmobile://shared/collections/{shareToken}`.
+
+#### `POST /api/recipes/collections/{collectionId}/share`
+
+Bật liên kết chia sẻ chỉ đọc — chỉ chủ sở hữu (403/404 như khi sửa). Đã có mã thì trả lại mã cũ; `regenerate=true` tạo mã mới và liên kết cũ hết hiệu lực.
+
+- **Quyền**: Cần đăng nhập
+- **Response `data`**: [CollectionShareDto](#schema-collectionsharedto)
+
+| Tham số | Vị trí | Kiểu | Bắt buộc | Ràng buộc |
+|---|---|---|---|---|
+| `collectionId` | đường dẫn | uuid | có |  |
+| `regenerate` | query | bool |  | mặc định false |
+
+#### `DELETE /api/recipes/collections/{collectionId}/share`
+
+Tắt liên kết chia sẻ (idempotent) — chỉ chủ sở hữu.
+
+- **Quyền**: Cần đăng nhập
+- **Response `data`**: bool
+
+| Tham số | Vị trí | Kiểu | Bắt buộc | Ràng buộc |
+|---|---|---|---|---|
+| `collectionId` | đường dẫn | uuid | có |  |
+
+#### `GET /api/recipes/collections/shared/{shareToken}`
+
+Xem bộ sưu tập qua liên kết chia sẻ (chỉ đọc, kể cả bộ sưu tập riêng tư). Không cần đăng nhập; có token thì cá nhân hóa `isFavorite`/`healthWarnings`. Mã sai hoặc đã tắt → 404.
+
+- **Quyền**: Công khai
+- **Response `data`**: [RecipeCollectionDto](#schema-recipecollectiondto)
+
+| Tham số | Vị trí | Kiểu | Bắt buộc | Ràng buộc |
+|---|---|---|---|---|
+| `shareToken` | đường dẫn | string | có | ≤64 ký tự |
+
 ### Thực đơn tuần
 
 > Mỗi `(người dùng, ngày, bữa)` chỉ có một món trong thực đơn (ràng buộc duy nhất). Hai request đồng thời vào cùng ô: một bên thắng, bên kia nhận `409` kèm thông báo thử lại.
@@ -982,6 +1024,42 @@ Cởi trang phục đang mặc.
 |---|---|---|---|---|
 | `date` | query | date (yyyy-MM-dd) |  |  |
 
+### Thông báo
+
+> Thông báo do **server tạo từ sự kiện thật**, mỗi sự kiện đúng một lần (khóa duy nhất theo người dùng + sự kiện): Bé Mầm lên cấp (`pet`, kèm trang phục mở ở cấp đó), mở huy hiệu (`badge`), hoàn thành thử thách (`challenge`), danh sách đi chợ tạo từ thực đơn — mỗi khoảng ngày một lần (`grocery`), kích hoạt Pro và Pro còn ≤ 3 ngày (`premium`). Nhắc giờ ăn/uống nước là thông báo cục bộ của app, không đi qua API này.
+
+> `GET /notifications` đánh giá lại tiến trình Bé Mầm như các endpoint gamification (`date` = hôm nay theo máy, ±1 ngày quanh UTC) và dọn thông báo quá 90 ngày. "Xóa dữ liệu cá nhân" xóa cả thông báo.
+
+#### `GET /api/notifications`
+
+Thông báo của người dùng (mới → cũ) kèm số chưa đọc.
+
+- **Quyền**: Cần đăng nhập
+- **Response `data`**: [NotificationListDto](#schema-notificationlistdto)
+
+| Tham số | Vị trí | Kiểu | Bắt buộc | Ràng buộc |
+|---|---|---|---|---|
+| `limit` | query | int |  | 1–100, mặc định 50 |
+| `date` | query | date (yyyy-MM-dd) |  |  |
+
+#### `PATCH /api/notifications/{id}/read`
+
+Đánh dấu một thông báo đã đọc (idempotent); thông báo của người khác trả 404.
+
+- **Quyền**: Cần đăng nhập
+- **Response `data`**: [NotificationDto](#schema-notificationdto)
+
+| Tham số | Vị trí | Kiểu | Bắt buộc | Ràng buộc |
+|---|---|---|---|---|
+| `id` | đường dẫn | uuid | có |  |
+
+#### `POST /api/notifications/read-all`
+
+Đánh dấu đã đọc tất cả thông báo.
+
+- **Quyền**: Cần đăng nhập
+- **Response `data`**: [MarkAllNotificationsReadResultDto](#schema-markallnotificationsreadresultdto)
+
 ### Gói Pro & thanh toán
 
 > Gói: `PRO_MONTHLY` 79.000đ / 30 ngày, `PRO_YEARLY` 699.000đ / 365 ngày. Phương thức: `VNPAY`, `MOMO`, `STRIPE`.
@@ -1233,6 +1311,14 @@ Cần ít nhất một trong `barcode` hoặc `ocrRawText`.
 | `qrCodeUrl` | string? |  |  |  |
 | `amountVnd` | number |  |  |  |
 | `message` | string? |  |  |  |
+
+<a id="schema-collectionsharedto"></a>
+#### CollectionShareDto
+
+| Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| `shareToken` | string? |  |  |  |
+| `sharedAt` | datetime (ISO 8601 UTC) |  |  | Lúc tạo mã hiện tại (UTC). |
 
 <a id="schema-completegroceryrequestdto"></a>
 #### CompleteGroceryRequestDto
@@ -1747,6 +1833,13 @@ Ghi nhiều món vào cùng một bữa trong một lần gọi — hoặc tất
 |---|---|---|---|---|
 | `refreshToken` | string? |  | ≤512 ký tự |  |
 
+<a id="schema-markallnotificationsreadresultdto"></a>
+#### MarkAllNotificationsReadResultDto
+
+| Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| `updated` | int |  |  | Số thông báo vừa được đánh dấu đã đọc. |
+
 <a id="schema-mealgroupdto"></a>
 #### MealGroupDto
 
@@ -1767,6 +1860,26 @@ Một mục danh mục (dị ứng, bệnh lý, chế độ ăn). `Code` là mã
 | `code` | string? |  |  |  |
 | `name` | string? |  |  |  |
 | `description` | string? |  |  |  |
+
+<a id="schema-notificationdto"></a>
+#### NotificationDto
+
+| Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| `id` | uuid |  |  |  |
+| `category` | string? |  |  | pet \| badge \| challenge \| grocery \| premium — app chọn biểu tượng và màn đích theo nhóm này. |
+| `title` | string? |  |  |  |
+| `body` | string? |  |  |  |
+| `createdAt` | datetime (ISO 8601 UTC) |  |  | Thời điểm tạo (UTC). |
+| `isRead` | bool |  |  |  |
+
+<a id="schema-notificationlistdto"></a>
+#### NotificationListDto
+
+| Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| `items` | [NotificationDto](#schema-notificationdto)[]? |  |  | Mới → cũ. |
+| `unreadCount` | int |  |  | Số thông báo chưa đọc (toàn bộ, không chỉ trong trang này). |
 
 <a id="schema-pantrysuggestionrequestdto"></a>
 #### PantrySuggestionRequestDto
@@ -1832,6 +1945,7 @@ Một mục danh mục (dị ứng, bệnh lý, chế độ ăn). `Code` là mã
 | `isPublic` | bool |  |  |  |
 | `ownerId` | uuid |  |  | Chủ sở hữu bộ sưu tập (BR-152: chỉ chủ sở hữu được đổi tên/xóa/bỏ món). |
 | `isOwner` | bool |  |  | Người dùng đang đăng nhập là chủ sở hữu. |
+| `shareToken` | string? |  |  | Mã liên kết chia sẻ đang bật — chỉ trả cho chủ sở hữu; null = chưa chia sẻ (hoặc người xem không phải chủ). |
 | `recipes` | [RecipeDto](#schema-recipedto)[]? |  |  |  |
 
 <a id="schema-recipedto"></a>
@@ -2093,6 +2207,7 @@ Cập nhật từng phần hồ sơ đã có. Trường không gửi (null) gi�
 | `proExpiresAt` | datetime (ISO 8601 UTC)? |  |  | Hạn dùng gói Pro (UTC); null nếu chưa có hoặc không có hạn. |
 | `role` | string? |  |  |  |
 | `hasCompletedSurvey` | bool |  |  |  |
+| `hasPassword` | bool |  |  | Tài khoản có mật khẩu (đăng ký bằng email). false = chỉ đăng nhập Google: xóa tài khoản xác nhận bằng email thay vì mật khẩu, và không có "đổi mật khẩu". |
 
 <a id="schema-verifyotprequestdto"></a>
 #### VerifyOtpRequestDto

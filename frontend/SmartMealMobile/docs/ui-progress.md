@@ -241,5 +241,8 @@ Sau khi BE đã vào `main`, mọi màn dưới đây gọi API thật khi `EXPO
 | `MealPlannerScreen`, `PlannerRegenerateScreen`, `GroceryScreen`, `GroceryDoneScreen` | Thực đơn giữ `mealPlanId`, có đánh dấu đã nấu và xoá món. Tự tạo thực đơn theo mục tiêu calo và bệnh lý. Đi chợ tự sinh khi rỗng và có banner "đã cũ". Hoàn tất mua sắm qua `/grocery/complete`. |
 | `DashboardScreen` | Gợi ý món lấy từ công thức thật đã lọc dị ứng. |
 | `PetScreen`, `ChallengesScreen`, `BadgesScreen` | Đọc XP, nhiệm vụ, thử thách, huy hiệu và trang phục từ server, gửi `?date=` theo ngày máy. |
-| Chưa làm | Health Connect/HealthKit native (cần Dev Client). Danh sách thông báo (BE chưa có API). Màn xoá tài khoản (`DELETE /auth/account` đã có ở BE). |
+| `NotificationsScreen`, chuông ở `DashboardScreen` | Thông báo đọc từ server (`GET /notifications`): lên cấp, huy hiệu, thử thách, danh sách đi chợ, gói Pro. Bấm thì đánh dấu đã đọc rồi mở màn liên quan; "Đọc hết" chỉ hiện khi còn chưa đọc. Chuông có chấm đỏ khi có thông báo chưa đọc. Bản mock vẫn dùng danh sách mẫu của design. |
+| `CollectionDetailScreen`, `SharedCollectionScreen` (mới) | "Chia sẻ" tạo liên kết chỉ đọc có mã (`smartmealmobile://shared/collections/<mã>`); bộ sưu tập vẫn riêng tư, "Tắt liên kết" làm liên kết cũ hết hiệu lực. Màn SharedCollection mở từ liên kết: chỉ xem, liên kết đã tắt thì báo hết hiệu lực. Không có artboard riêng, nên dựng theo CollectionDetail. |
+| `SettingsScreen`, `DeleteAccountScreen` (mới) | "Xóa tài khoản" (`DELETE /auth/account`), tách khỏi "Xóa dữ liệu cá nhân". Xác nhận bằng mật khẩu, hoặc bằng email với tài khoản chỉ có Google. Bố cục theo DeleteData vì không có artboard riêng. |
+| Chưa làm | Health Connect/HealthKit native (cần quyết định chuyển sang Dev Client). Push từ server. |
 
