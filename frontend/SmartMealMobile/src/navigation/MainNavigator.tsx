@@ -40,6 +40,7 @@ import {
   ProgressChartScreen,
 } from '@/features/nutrition';
 import {
+  DeleteAccountScreen,
   DeleteDataScreen,
   EditProfileScreen,
   HealthConnectScreen,
@@ -150,6 +151,7 @@ export function MainNavigator() {
       <Stack.Screen name={MAIN_STACK_ROUTES.SETTINGS} component={SettingsScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.EDIT_PROFILE} component={EditProfileScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.DELETE_DATA} component={DeleteDataScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.DELETE_ACCOUNT} component={DeleteAccountScreen} />
       {/* SettingsScreen "Đổi mật khẩu" (sửa lệch sau Đợt 9) — dùng chung ForgotPasswordScreen/
           OtpScreen với AuthNavigator, quay lại Settings khi xong (route.params.returnTo). */}
       <Stack.Screen name={MAIN_STACK_ROUTES.FORGOT_PASSWORD} component={ForgotPasswordScreen} />

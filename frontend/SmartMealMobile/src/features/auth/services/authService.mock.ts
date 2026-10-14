@@ -2,6 +2,7 @@ import { getCurrentMockScenario } from '@/state/app/appStore';
 import { getMockDelayMs, wait } from '@/config/mock';
 import type {
   AuthUser,
+  DeleteAccountConfirmation,
   ForgotPasswordPayload,
   GoogleLoginPayload,
   LoginPayload,
@@ -63,7 +64,7 @@ export const authMockService = {
     if (scenario === 'error') {
       throw new Error('Đăng nhập Google không thành công, vui lòng thử lại.');
     }
-    return { user: buildMockUser('Người dùng Google', 'google.user@gmail.com', true) };
+    return { user: { ...buildMockUser('Người dùng Google', 'google.user@gmail.com', true), hasPassword: false } };
   },
 
   // BR-010, BR-011 — Đăng ký Email/Password. Scenario 'error' mô phỏng đúng trạng thái
@@ -112,6 +113,17 @@ export const authMockService = {
   },
 
   // Mock không có dữ liệu phía máy chủ; DeleteDataScreen vẫn tự xóa dữ liệu cục bộ (resetUserData).
+  async deleteAccount(confirmation: DeleteAccountConfirmation): Promise<void> {
+    const scenario = getCurrentMockScenario();
+    await wait(getMockDelayMs(scenario));
+    if (scenario === 'error') {
+      throw new Error('Không thể xóa tài khoản, vui lòng thử lại.');
+    }
+    if (!confirmation.password?.trim() && !confirmation.confirmEmail?.trim()) {
+      throw new Error('Cần nhập mật khẩu để xóa tài khoản.');
+    }
+  },
+
   async deleteMyData(): Promise<void> {
     const scenario = getCurrentMockScenario();
     await wait(getMockDelayMs(scenario));

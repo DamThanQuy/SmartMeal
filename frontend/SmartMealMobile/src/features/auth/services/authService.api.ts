@@ -3,6 +3,7 @@ import { ENDPOINTS, api } from '@/services/api';
 import { saveSessionTokens } from '@/services/storage/secureStorage';
 import type {
   AuthResponseDto,
+  DeleteAccountRequestDto,
   ForgotPasswordRequestDto,
   GoogleLoginRequestDto,
   LoginRequestDto,
@@ -121,6 +122,17 @@ export const authApiService: Partial<typeof authMockService> = {
   // đi chợ, yêu thích, món tự nhập, XP/huy hiệu... Giữ tài khoản và lịch sử thanh toán.
   async deleteMyData() {
     await api.delete<{ deleted: Record<string, number> }>(ENDPOINTS.me.data);
+  },
+
+  // DELETE /auth/account — xóa vĩnh viễn tài khoản và dữ liệu (BR-271). Sai mật khẩu → 400 (không phải 401,
+  // không làm hết phiên); sai nhiều lần → 423 khóa tạm thời. Lịch sử thanh toán được BE giữ ẩn danh.
+  async deleteAccount(confirmation) {
+    await api.delete<boolean>(ENDPOINTS.auth.account, {
+      data: {
+        password: confirmation.password,
+        confirmEmail: confirmation.confirmEmail?.trim(),
+      } satisfies DeleteAccountRequestDto,
+    });
   },
 
   // GET /auth/me — làm mới isPro/hasCompletedSurvey khi khôi phục phiên.

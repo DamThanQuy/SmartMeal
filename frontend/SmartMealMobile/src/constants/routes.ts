@@ -80,6 +80,8 @@ export const MAIN_STACK_ROUTES = {
   SETTINGS: 'Settings',
   EDIT_PROFILE: 'EditProfile',
   DELETE_DATA: 'DeleteData',
+  /** Xóa vĩnh viễn tài khoản (BR-271) — khác DeleteData (giữ tài khoản). */
+  DELETE_ACCOUNT: 'DeleteAccount',
   /** SettingsScreen "Đổi mật khẩu" (sửa lệch sau Đợt 9) — ForgotPasswordScreen/OtpScreen dùng
    * chung với AuthNavigator, đăng ký thêm ở đây để mở được từ Main (xem MainNavigator.tsx). */
   FORGOT_PASSWORD: 'ForgotPassword',

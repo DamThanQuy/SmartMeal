@@ -15,3 +15,4 @@ export * from './screens/NotificationsScreen';
 export * from './screens/SettingsScreen';
 export * from './screens/EditProfileScreen';
 export * from './screens/DeleteDataScreen';
+export * from './screens/DeleteAccountScreen';

@@ -115,6 +115,7 @@ export type MainStackParamList = {
   Settings: undefined;
   EditProfile: undefined;
   DeleteData: undefined;
+  DeleteAccount: undefined;
   /** "Đổi mật khẩu" ở Settings (sửa lệch sau Đợt 9) — cùng shape với AuthStackParamList. */
   ForgotPassword: { returnTo?: ForgotPasswordReturnTo } | undefined;
   Otp: { email: string; purpose: OtpPurpose; returnTo?: ForgotPasswordReturnTo };

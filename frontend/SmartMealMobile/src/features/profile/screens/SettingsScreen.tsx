@@ -8,6 +8,7 @@ import {
   Lock,
   ShieldCheck,
   Trash2,
+  UserX,
   Wrench,
 } from 'lucide-react-native';
 import React from 'react';
@@ -151,6 +152,12 @@ export function SettingsScreen({ navigation }: Props) {
             label="Xóa dữ liệu cá nhân"
             tone="error"
             onPress={() => navigation.navigate(MAIN_STACK_ROUTES.DELETE_DATA)}
+          />
+          <ProfileMenuRow
+            icon={<UserX size={20} color={colors.error} />}
+            label="Xóa tài khoản"
+            tone="error"
+            onPress={() => navigation.navigate(MAIN_STACK_ROUTES.DELETE_ACCOUNT)}
           />
         </AppCard>
 

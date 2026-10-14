@@ -33,6 +33,14 @@ export interface UserDto {
   role: string;
   /** BE tính bằng `user.HealthProfile != null`. */
   hasCompletedSurvey: boolean;
+  /** false = tài khoản chỉ đăng nhập Google. */
+  hasPassword?: boolean;
+}
+
+/** DELETE /auth/account — `password` với tài khoản có mật khẩu, `confirmEmail` với tài khoản chỉ có Google. */
+export interface DeleteAccountRequestDto {
+  password?: string;
+  confirmEmail?: string;
 }
 
 export interface AuthResponseDto {
