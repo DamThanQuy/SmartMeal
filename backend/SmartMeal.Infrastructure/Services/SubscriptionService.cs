@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using SmartMeal.Application.Common;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.Subscription;
 using SmartMeal.Application.Services;
@@ -113,6 +114,7 @@ public class SubscriptionService : ISubscriptionService
 
         Activate(user, plan, now);
         await _db.SaveChangesAsync();
+        await NotifyActivatedAsync(user.Id, plan, transaction.Id);
 
         return ApiResponse<bool>.Ok(true, "Kích hoạt gói Pro thành công (chế độ phát triển).");
     }
@@ -183,12 +185,19 @@ public class SubscriptionService : ISubscriptionService
         transaction.PaidAt = now;
         transaction.ProviderTransactionId = payload.ProviderTransactionId;
 
+        User? activated = null;
         if (transaction.UserId is { } userId && await _db.Users.FindAsync(userId) is { } user)
         {
             Activate(user, plan, now);
+            activated = user;
         }
 
         await _db.SaveChangesAsync();
+        if (activated is not null)
+        {
+            await NotifyActivatedAsync(activated.Id, plan, transaction.Id);
+        }
+
         return ApiResponse<bool>.Ok(true, "Đã xác nhận thanh toán và kích hoạt gói Pro.");
     }
 
@@ -259,6 +268,10 @@ public class SubscriptionService : ISubscriptionService
         SessionId = sessionId,
         CreatedAt = DateTime.UtcNow
     };
+
+    private Task NotifyActivatedAsync(Guid userId, SubscriptionCatalog.Plan plan, Guid transactionId) =>
+        NotificationWriter.TryAddAsync(_db, userId, NotificationCategories.Premium, "Đã kích hoạt SmartMeal Pro",
+            $"{plan.Name}: thêm {plan.DurationDays} ngày dùng toàn bộ tính năng Pro.", $"subscription-{transactionId}");
 
     /// <summary>Kích hoạt/gia hạn Pro: cộng thời hạn vào cuối kỳ hiện tại nếu còn hạn, ngược lại tính từ bây giờ.</summary>
     private static void Activate(User user, SubscriptionCatalog.Plan plan, DateTime now)

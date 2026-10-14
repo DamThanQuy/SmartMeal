@@ -73,6 +73,7 @@ public class GroceryService : IGroceryService
         }
 
         await _db.SaveChangesAsync();
+        await NotifyListReadyAsync(userId, dto.StartDate, dto.EndDate);
         return await GetGroceryListAsync(userId);
     }
 
@@ -125,20 +126,35 @@ public class GroceryService : IGroceryService
         await _db.SaveChangesAsync();
 
         var note = dto.KeepPending ? $"Đã giữ lại {pending.Count} món chưa mua." : "Đã làm trống danh sách.";
+        var nextPeriodApplied = false;
         if (dto.KeepPending && dto.NextStartDate is { } start && nextEnd is { } end)
         {
-            note += await ApplyMealPlanAsync(userId, start, end, clearExisting: false)
+            nextPeriodApplied = await ApplyMealPlanAsync(userId, start, end, clearExisting: false);
+            note += nextPeriodApplied
                 ? " Đã cộng nguyên liệu từ thực đơn kỳ tiếp theo."
                 : " Kỳ tiếp theo chưa có thực đơn.";
             await _db.SaveChangesAsync();
         }
 
         await transaction.CommitAsync();
+        if (nextPeriodApplied && dto.NextStartDate is { } readyStart && nextEnd is { } readyEnd)
+        {
+            await NotifyListReadyAsync(userId, readyStart, readyEnd);
+        }
+
         await NotifyGamificationAsync(userId);
 
         var summary = await GetGroceryListAsync(userId);
         summary.Message = $"Đã hoàn tất mua sắm: {purchased.Count} món đã mua. {note}";
         return summary;
+    }
+
+    /// <summary>Báo danh sách đi chợ đã tạo từ thực đơn — mỗi khoảng ngày một lần (tạo lại cùng kỳ không báo thêm).</summary>
+    private async Task NotifyListReadyAsync(Guid userId, DateOnly start, DateOnly end)
+    {
+        var pending = await _db.GroceryItems.CountAsync(g => g.UserId == userId && !g.IsChecked);
+        await NotificationWriter.TryAddAsync(_db, userId, NotificationCategories.Grocery, "Danh sách đi chợ đã sẵn sàng",
+            $"{pending} nguyên liệu cho thực đơn {start:dd/MM}–{end:dd/MM}.", $"grocery-{start:yyyyMMdd}-{end:yyyyMMdd}");
     }
 
     private static string? ValidateRange(DateOnly start, DateOnly end)

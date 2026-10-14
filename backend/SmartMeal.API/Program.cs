@@ -87,6 +87,7 @@ builder.Services
 builder.Services.AddScoped<IGroceryService, GroceryService>();
 builder.Services.AddScoped<IHealthSyncService, HealthSyncService>();
 builder.Services.AddScoped<IGamificationService, GamificationService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddScoped<IFoodService, FoodService>();
 builder.Services.AddHttpClient<IAiVisionService, GeminiAiVisionService>(client => client.Timeout = TimeSpan.FromSeconds(45));

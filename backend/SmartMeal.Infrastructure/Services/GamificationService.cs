@@ -263,7 +263,13 @@ public class GamificationService : IGamificationService
 
         await _db.SaveChangesAsync();
         foreach (var uc in finished)
+        {
+            await NotificationWriter.TryAddAsync(_db, userId, NotificationCategories.Challenge,
+                $"Hoàn thành thử thách: {uc.Challenge.Title}",
+                uc.Challenge.RewardExp > 0 ? $"Bé Mầm nhận +{uc.Challenge.RewardExp} XP. Làm tốt lắm!" : "Làm tốt lắm!",
+                $"challenge-{uc.ChallengeId}");
             await AwardXpAsync(userId, $"challenge-{uc.ChallengeId}", "Challenge", uc.Challenge.RewardExp);
+        }
 
         // 3. Huy hiệu
         await UnlockBadgesAsync(userId, today, waterGoal, proteinTarget);
@@ -358,8 +364,28 @@ public class GamificationService : IGamificationService
             .SetProperty(p => p.Level, p => (p.TotalXp + xp) / GamificationRules.XpPerLevel + 1)
             .SetProperty(p => p.Exp, p => (p.TotalXp + xp) % GamificationRules.XpPerLevel)
             .SetProperty(p => p.LastUpdated, DateTime.UtcNow));
+
+        // Đọc lại sau UPDATE (dòng pet đang bị khóa tới khi commit) nên tổng XP đúng cả khi nhiều sự kiện cộng đồng thời.
+        var totalXp = await _db.HealthPets.Where(p => p.UserId == userId).Select(p => p.TotalXp).FirstAsync();
+        var (before, _) = GamificationRules.LevelOf(totalXp - xp);
+        var (after, _) = GamificationRules.LevelOf(totalXp);
+        for (var level = before + 1; level <= after; level++)
+        {
+            await NotifyLevelUpAsync(userId, level);
+        }
+
         await transaction.CommitAsync();
         return true;
+    }
+
+    private Task NotifyLevelUpAsync(Guid userId, int level)
+    {
+        var costume = GamificationCatalog.Costumes.FirstOrDefault(c => GamificationCatalog.IsCostumeUnlocked(c.Id, level, 0, 0)
+                                                                      && !GamificationCatalog.IsCostumeUnlocked(c.Id, level - 1, 0, 0));
+        var body = costume is not null
+            ? $"Bạn vừa mở khóa trang phục {costume.Title} cho Bé Mầm."
+            : "Tiếp tục ghi bữa và uống đủ nước để Bé Mầm lớn nhanh hơn.";
+        return NotificationWriter.TryAddAsync(_db, userId, NotificationCategories.Pet, $"Bé Mầm đã lên Level {level}", body, $"level-{level}");
     }
 
     // ───────────────────────────── Huy hiệu ─────────────────────────────
@@ -406,10 +432,15 @@ public class GamificationService : IGamificationService
 
         foreach (var id in earned)
         {
-            await _db.Database.ExecuteSqlInterpolatedAsync($"""
+            var unlocked = await _db.Database.ExecuteSqlInterpolatedAsync($"""
                 INSERT INTO "UserBadges" ("UserId","BadgeId","UnlockedAt") VALUES ({userId},{id},{DateTime.UtcNow})
                 ON CONFLICT ("UserId","BadgeId") DO NOTHING
                 """);
+            if (unlocked == 0) continue;
+
+            var badge = GamificationCatalog.Badges.FirstOrDefault(b => b.Id == id);
+            await NotificationWriter.TryAddAsync(_db, userId, NotificationCategories.Badge,
+                $"Mở khóa huy hiệu: {badge?.Title ?? id}", badge?.Description ?? string.Empty, $"badge-{id}");
         }
     }
 
