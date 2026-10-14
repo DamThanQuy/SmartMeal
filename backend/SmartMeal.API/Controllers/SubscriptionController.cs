@@ -1,7 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SmartMeal.API.Infrastructure;
+using Net.payOS.Types;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.Subscription;
 using SmartMeal.Application.Services;
@@ -33,7 +33,22 @@ public class SubscriptionController : ControllerBase
         return this.ToActionResult(await _subscriptionService.CreateCheckoutSessionAsync(userId, dto));
     }
 
-    /// <summary>Chỉ dùng khi phát triển: mô phỏng cổng thanh toán xác nhận. Môi trường thật trả 404.</summary>
+    [HttpGet("check-status/{orderCode}")]
+    public async Task<ActionResult<ApiResponse<PaymentTransactionStatusDto>>> CheckPaymentStatus([FromRoute] long orderCode)
+    {
+        var result = await _subscriptionService.CheckPaymentStatusAsync(orderCode);
+        if (!result.Success) return NotFound(result);
+        return Ok(result);
+    }
+
+    [HttpPost("payos-webhook")]
+    public async Task<ActionResult<ApiResponse<bool>>> PayOSWebhook([FromBody] WebhookType webhookBody)
+    {
+        var result = await _subscriptionService.HandlePayOSWebhookAsync(webhookBody);
+        if (!result.Success) return BadRequest(result);
+        return Ok(result);
+    }
+
     [Authorize]
     [HttpPost("activate-mock")]
     public async Task<ActionResult<ApiResponse<bool>>> ActivateMock([FromBody] CreateCheckoutSessionRequestDto dto)

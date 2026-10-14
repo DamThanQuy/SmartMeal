@@ -2,9 +2,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
-using SmartMeal.Application.Common;
+using Microsoft.Extensions.Configuration;
+using Net.payOS;
+using Net.payOS.Types;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.Subscription;
 using SmartMeal.Application.Services;
@@ -17,14 +17,20 @@ namespace SmartMeal.Infrastructure.Services;
 public class SubscriptionService : ISubscriptionService
 {
     private readonly ApplicationDbContext _db;
-    private readonly SubscriptionOptions _options;
-    private readonly IHostEnvironment _environment;
+    private readonly IConfiguration _config;
 
-    public SubscriptionService(ApplicationDbContext db, IOptions<SubscriptionOptions> options, IHostEnvironment environment)
+    public SubscriptionService(ApplicationDbContext db, IConfiguration config)
     {
         _db = db;
-        _options = options.Value;
-        _environment = environment;
+        _config = config;
+    }
+
+    private PayOS GetPayOSClient()
+    {
+        var clientId = _config["PayOS:ClientId"] ?? "f222d523-5c08-4bdb-b216-3f78f7e9a6b5";
+        var apiKey = _config["PayOS:ApiKey"] ?? "0ff53c5c-baca-4bbc-954a-92c7ebe4fe53";
+        var checksumKey = _config["PayOS:ChecksumKey"] ?? "4269156b92bb565c0e340b92a5e77027c28548d350ea9a256b89c1115cd89bb1";
+        return new PayOS(clientId, apiKey, checksumKey);
     }
 
     private bool MockActivationAllowed => _options.AllowMockActivation ?? _environment.IsDevelopment();
@@ -68,7 +74,53 @@ public class SubscriptionService : ISubscriptionService
         }
 
         var sessionId = $"SES_{Guid.NewGuid():N}";
-        _db.PaymentTransactions.Add(NewTransaction(userId, plan, method, sessionId));
+        long orderCode = DateTimeOffset.UtcNow.ToUnixTimeSeconds() * 1000 + Random.Shared.Next(100, 999);
+
+        string paymentUrl = string.Empty;
+        string qrCodeUrl = string.Empty;
+        string? rawQrCode = null;
+
+        if (dto.PaymentMethod == "PAYOS")
+        {
+            var payOS = GetPayOSClient();
+            var paymentData = new PaymentData(
+                orderCode,
+                (int)amount,
+                $"SmartMeal {dto.PlanId}",
+                new List<ItemData> { new ItemData(dto.PlanId, 1, (int)amount) },
+                "smartmeal://payment-cancel",
+                "smartmeal://payment-success"
+            );
+
+            CreatePaymentResult createPayment = await payOS.createPaymentLink(paymentData);
+            paymentUrl = createPayment.checkoutUrl;
+            rawQrCode = createPayment.qrCode;
+
+            // Generate direct QR code image URL from raw VietQR string or checkoutUrl
+            var qrData = !string.IsNullOrEmpty(rawQrCode) ? rawQrCode : paymentUrl;
+            qrCodeUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={Uri.EscapeDataString(qrData)}";
+        }
+        else
+        {
+            paymentUrl = $"https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Session={sessionId}&vnp_Amount={amount * 100}&vnp_OrderInfo={dto.PlanId}";
+            qrCodeUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={Uri.EscapeDataString(paymentUrl)}";
+        }
+
+        // Persist transaction record into database
+        var transaction = new PaymentTransaction
+        {
+            UserId = userId,
+            OrderCode = orderCode,
+            Amount = amount,
+            PlanId = dto.PlanId,
+            PaymentMethod = dto.PaymentMethod,
+            Status = "PENDING",
+            PaymentUrl = paymentUrl,
+            QrCode = rawQrCode,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _db.PaymentTransactions.AddAsync(transaction);
         await _db.SaveChangesAsync();
 
         // Đường dẫn thanh toán sandbox (chưa tích hợp cổng thật). Cổng thật sẽ gọi webhook với sessionId này.
@@ -78,11 +130,119 @@ public class SubscriptionService : ISubscriptionService
         return ApiResponse<CheckoutSessionResponseDto>.Ok(new CheckoutSessionResponseDto
         {
             SessionId = sessionId,
+            OrderCode = orderCode,
             PaymentUrl = paymentUrl,
             QrCodeUrl = qrCodeUrl,
             AmountVnd = plan.PriceVnd,
             Message = "Tạo phiên thanh toán thành công. Gói Pro chỉ được kích hoạt sau khi cổng thanh toán xác nhận giao dịch."
         });
+    }
+
+    public async Task<ApiResponse<PaymentTransactionStatusDto>> CheckPaymentStatusAsync(long orderCode)
+    {
+        var tx = await _db.PaymentTransactions
+            .Include(t => t.User)
+            .FirstOrDefaultAsync(t => t.OrderCode == orderCode);
+
+        if (tx == null)
+            return ApiResponse<PaymentTransactionStatusDto>.Fail("Không tìm thấy thông tin giao dịch.");
+
+        if (tx.Status == "PAID")
+        {
+            return ApiResponse<PaymentTransactionStatusDto>.Ok(new PaymentTransactionStatusDto
+            {
+                OrderCode = tx.OrderCode,
+                Status = "PAID",
+                IsPaid = true,
+                Amount = tx.Amount,
+                PlanId = tx.PlanId,
+                PaidAt = tx.PaidAt
+            });
+        }
+
+        if (tx.Status == "PENDING" && tx.PaymentMethod == "PAYOS")
+        {
+            try
+            {
+                var payOS = GetPayOSClient();
+                PaymentLinkInformation info = await payOS.getPaymentLinkInformation(orderCode);
+                if (info != null && info.status == "PAID")
+                {
+                    tx.Status = "PAID";
+                    tx.PaidAt = DateTime.UtcNow;
+                    if (tx.User != null)
+                    {
+                        tx.User.IsPro = true;
+                        tx.User.UpdatedAt = DateTime.UtcNow;
+                    }
+                    await _db.SaveChangesAsync();
+
+                    return ApiResponse<PaymentTransactionStatusDto>.Ok(new PaymentTransactionStatusDto
+                    {
+                        OrderCode = tx.OrderCode,
+                        Status = "PAID",
+                        IsPaid = true,
+                        Amount = tx.Amount,
+                        PlanId = tx.PlanId,
+                        PaidAt = tx.PaidAt
+                    });
+                }
+                else if (info != null && info.status == "CANCELLED")
+                {
+                    tx.Status = "CANCELLED";
+                    await _db.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PayOS] Check status error for {orderCode}: {ex.Message}");
+            }
+        }
+
+        return ApiResponse<PaymentTransactionStatusDto>.Ok(new PaymentTransactionStatusDto
+        {
+            OrderCode = tx.OrderCode,
+            Status = tx.Status,
+            IsPaid = tx.Status == "PAID",
+            Amount = tx.Amount,
+            PlanId = tx.PlanId,
+            PaidAt = tx.PaidAt
+        });
+    }
+
+    public async Task<ApiResponse<bool>> HandlePayOSWebhookAsync(WebhookType webhookBody)
+    {
+        try
+        {
+            var payOS = GetPayOSClient();
+            WebhookData verifiedData = payOS.verifyPaymentWebhookData(webhookBody);
+
+            if (verifiedData != null && verifiedData.code == "00")
+            {
+                var tx = await _db.PaymentTransactions
+                    .Include(t => t.User)
+                    .FirstOrDefaultAsync(t => t.OrderCode == verifiedData.orderCode);
+
+                if (tx != null)
+                {
+                    tx.Status = "PAID";
+                    tx.PaidAt = DateTime.UtcNow;
+                    if (tx.User != null)
+                    {
+                        tx.User.IsPro = true;
+                        tx.User.UpdatedAt = DateTime.UtcNow;
+                    }
+                    await _db.SaveChangesAsync();
+                    return ApiResponse<bool>.Ok(true, "Kích hoạt giao dịch thành công.");
+                }
+            }
+
+            return ApiResponse<bool>.Ok(true, "Webhook hợp lệ.");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<bool>.Fail($"Xác thực webhook thất bại: {ex.Message}");
+        }
     }
 
     public async Task<ApiResponse<bool>> ActivateProPlanAsync(Guid userId, string planId)

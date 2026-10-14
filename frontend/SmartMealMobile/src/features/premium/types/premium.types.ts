@@ -22,19 +22,7 @@ export const MEMBERSHIP_STATUS_LABEL: Record<MembershipStatus, string> = {
   cancelled: 'Đã hủy',
 };
 
-/** 'mock' chỉ xuất hiện trong lịch sử: giao dịch do công tắc kích hoạt thử của backend ở môi trường phát triển. */
-export type PaymentMethodId = 'vnpay' | 'momo' | 'card' | 'mock';
-
-/** Phương thức người dùng có thể chọn khi thanh toán (không gồm 'mock'). */
-export type SelectablePaymentMethodId = Exclude<PaymentMethodId, 'mock'>;
-
-/** Nhãn hiển thị của mọi phương thức, gồm cả 'mock' (không nằm trong danh sách để chọn). */
-export const PAYMENT_METHOD_LABEL: Record<PaymentMethodId, string> = {
-  vnpay: 'VNPAY',
-  momo: 'MoMo',
-  card: 'Thẻ quốc tế',
-  mock: 'Kích hoạt thử (dev)',
-};
+export type PaymentMethodId = 'vnpay' | 'momo' | 'card' | 'payos';
 
 export interface BillingPlanOption {
   id: BillingPlanId;
@@ -56,8 +44,28 @@ export interface FeatureComparisonRow {
   proValueLabel?: string;
 }
 
+export interface CheckoutSessionData {
+  sessionId: string;
+  orderCode?: number;
+  paymentUrl: string;
+  qrCodeUrl: string | null;
+  amountVnd: number;
+}
+
+export interface PaymentStatusResult {
+  orderCode: number;
+  status: string;
+  isPaid: boolean;
+  amount: number;
+  planId: string;
+  paidAt: string | null;
+}
+
 export interface CheckoutResult {
   transactionId: string;
+  orderCode?: number;
+  paymentUrl?: string;
+  qrCodeUrl?: string | null;
   amountVnd: number;
   planId: BillingPlanId;
   paymentMethodId: PaymentMethodId;

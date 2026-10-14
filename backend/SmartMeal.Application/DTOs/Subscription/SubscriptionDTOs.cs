@@ -49,59 +49,27 @@ public class SubscriptionPlanDto
 
 public class CreateCheckoutSessionRequestDto
 {
-    [Required(ErrorMessage = "planId là bắt buộc.")]
-    public string PlanId { get; set; } = SubscriptionCatalog.ProMonthly;
-
-    [OneOfIgnoreCase("VNPAY", "MOMO", "STRIPE")]
-    public string PaymentMethod { get; set; } = "VNPAY"; // VNPAY, MOMO, STRIPE
+    public string PlanId { get; set; } = "PRO_MONTHLY";
+    public string PaymentMethod { get; set; } = "VNPAY"; // VNPAY, MOMO, STRIPE, PAYOS
 }
 
 public class CheckoutSessionResponseDto
 {
     public string SessionId { get; set; } = string.Empty;
+    public long? OrderCode { get; set; }
     public string PaymentUrl { get; set; } = string.Empty;
     public string? QrCodeUrl { get; set; }
     public decimal AmountVnd { get; set; }
     public string Message { get; set; } = string.Empty;
 }
 
-/// <summary>Thông báo kết quả thanh toán từ cổng thanh toán (webhook, có chữ ký HMAC).</summary>
-public class PaymentWebhookDto
+public class PaymentTransactionStatusDto
 {
-    [Required]
-    public string SessionId { get; set; } = string.Empty;
-
-    /// <summary>"paid" hoặc "failed".</summary>
-    [Required]
-    [OneOfIgnoreCase("paid", "failed")]
-    public string Status { get; set; } = string.Empty;
-
-    public string? ProviderTransactionId { get; set; }
-
-    /// <summary>Số tiền cổng thanh toán đã thu; phải khớp số tiền của phiên.</summary>
-    public decimal AmountVnd { get; set; }
-}
-
-public class SubscriptionStatusDto
-{
-    /// <summary>Free | Premium | Expired | Cancelled.</summary>
-    public string Status { get; set; } = "Free";
-
-    /// <summary>Quyền Pro còn hiệu lực (Premium hoặc Cancelled-nhưng-chưa-hết-hạn).</summary>
-    public bool IsPro { get; set; }
-
-    public string? PlanId { get; set; }
-    public DateTime? ProExpiresAt { get; set; }
-}
-
-public class PaymentTransactionDto
-{
-    public Guid Id { get; set; }
-    public string SessionId { get; set; } = string.Empty;
+    public long OrderCode { get; set; }
+    public string Status { get; set; } = "PENDING";
+    public bool IsPaid { get; set; }
+    public decimal Amount { get; set; }
     public string PlanId { get; set; } = string.Empty;
-    public decimal AmountVnd { get; set; }
-    public string PaymentMethod { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; }
     public DateTime? PaidAt { get; set; }
 }
+

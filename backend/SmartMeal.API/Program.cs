@@ -22,16 +22,11 @@ DotNetEnv.Env.NoClobber().TraversePath().Load();
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables();
 
-// 1. Options — bí mật (Jwt:Key, chuỗi kết nối, Gemini key) chỉ đến từ biến môi trường / .env / User Secrets.
-// Cấu hình được đọc lazy (lúc resolve) nên test và môi trường tiêm cấu hình sau vẫn có hiệu lực.
-builder.Services
-    .AddOptions<JwtOptions>()
-    .Bind(builder.Configuration.GetSection(JwtOptions.SectionName))
-    .ValidateDataAnnotations()
-    .Validate(
-        o => builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing") || !o.LooksLikePublishedSampleKey(),
-        "Jwt:Key đang là giá trị mẫu đã công khai — hãy sinh khóa ngẫu nhiên mới (vd. openssl rand -base64 48).")
-    .ValidateOnStart();
+// 1. Add Database Context (PostgreSQL)
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseNpgsql(connectionString)
+           .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
 builder.Services
     .AddOptions<AuthOptions>()
