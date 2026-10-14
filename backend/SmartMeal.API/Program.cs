@@ -15,8 +15,9 @@ using SmartMeal.Infrastructure.Data;
 using SmartMeal.Infrastructure.Options;
 using SmartMeal.Infrastructure.Services;
 
-// Nạp file .env (chỉ dùng khi chạy local). Môi trường thật tiêm biến môi trường trực tiếp.
-DotNetEnv.Env.TraversePath().Load();
+// Nạp file .env (chỉ dùng khi chạy local). Môi trường thật tiêm biến môi trường trực tiếp. NoClobber: biến môi trường
+// đã đặt khi chạy (vd. ConnectionStrings__DefaultConnection=… dotnet run) được ưu tiên hơn giá trị cùng tên trong .env.
+DotNetEnv.Env.NoClobber().TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables();
