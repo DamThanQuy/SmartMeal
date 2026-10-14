@@ -30,13 +30,23 @@ function loadWaterService(useMockApi: boolean) {
 }
 
 function loadNotificationsService(useMockApi: boolean) {
+  const apiMock = {
+    get: jest.fn().mockResolvedValue({ items: [], unreadCount: 0 }),
+    patch: jest.fn().mockResolvedValue({}),
+    post: jest.fn().mockResolvedValue({ updated: 0 }),
+  };
   jest.resetModules();
   jest.doMock('@/config/env', () => ({ ENV: { useMockApi } }));
   jest.doMock('@/config/mock', () => ({ getMockDelayMs: () => 0, wait: async () => undefined }));
   jest.doMock('@/state/app/appStore', () => ({ getCurrentMockScenario: () => 'success' }));
+  jest.doMock('@/services/api', () => ({
+    selectService: jest.requireActual('@/services/api/serviceSelector').selectService,
+    api: apiMock,
+    ENDPOINTS: jest.requireActual('@/services/api/endpoints').ENDPOINTS,
+  }));
   const { notificationsService } =
     require('@/features/profile/services/notificationsService') as typeof import('@/features/profile/services/notificationsService');
-  return notificationsService;
+  return { service: notificationsService, apiMock };
 }
 
 describe('waterService', () => {
@@ -75,18 +85,22 @@ describe('waterService', () => {
 });
 
 describe('notificationsService', () => {
-  test('chạy mock → danh sách thông báo mẫu của design', async () => {
-    const service = loadNotificationsService(true);
+  test('chạy mock → danh sách thông báo mẫu của design, không gọi API', async () => {
+    const { service, apiMock } = loadNotificationsService(true);
 
-    const notifications = await service.getNotifications();
+    const result = await service.getNotifications();
 
-    expect(notifications.length).toBeGreaterThan(0);
+    expect(result.items.length).toBeGreaterThan(0);
+    expect(result.unreadCount).toBe(result.items.filter(item => !item.read).length);
+    expect(apiMock.get).not.toHaveBeenCalled();
   });
 
-  test('gọi API thật → rỗng (backend không có thông báo), đánh dấu đã đọc không lỗi', async () => {
-    const service = loadNotificationsService(false);
+  test('gọi API thật → đọc thông báo của server (người dùng mới rỗng), không có thông báo mẫu', async () => {
+    const { service, apiMock } = loadNotificationsService(false);
 
-    expect(await service.getNotifications()).toEqual([]);
-    await expect(service.markAllRead()).resolves.toBeUndefined();
+    expect(await service.getNotifications()).toEqual({ items: [], unreadCount: 0 });
+    expect(apiMock.get).toHaveBeenCalledWith('/notifications', { params: { date: expect.any(String) } });
+    await service.markAllRead();
+    expect(apiMock.post).toHaveBeenCalledWith('/notifications/read-all');
   });
 });

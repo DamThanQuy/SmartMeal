@@ -98,6 +98,11 @@ export const ENDPOINTS = {
     /** Đọc nhãn dinh dưỡng từ ảnh (multipart, trường `image`). */
     scanLabel: '/ai/scan-label',
   },
+  notifications: {
+    list: '/notifications',
+    read: (id: string) => `/notifications/${id}/read`,
+    readAll: '/notifications/read-all',
+  },
   gamification: {
     pet: '/gamification/pet',
     streak: '/gamification/streak',

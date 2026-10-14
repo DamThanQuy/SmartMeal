@@ -17,6 +17,7 @@ import { ErrorState, LoadingState, ScreenContainer } from '@/components/common';
 import { AppButton, AppCard, AppIconButton, AppText } from '@/components/ui';
 import { useAiQuotaStore } from '@/features/ai';
 import { MacroStatGrid } from '@/features/nutrition';
+import { useUnreadNotificationsCount } from '@/features/profile/hooks/useNotifications';
 import { MAIN_STACK_ROUTES, MAIN_TAB_ROUTES } from '@/constants/routes';
 import type { MainStackParamList, MainTabParamList } from '@/navigation/types';
 import { MEAL_TYPE_TITLES } from '@/types/meal.types';
@@ -49,6 +50,7 @@ export function DashboardScreen(_props: Props) {
     state => state.micPermissionGranted,
   );
   const { data, isLoading, isError, error, refetch } = useDashboard();
+  const unreadNotifications = useUnreadNotificationsCount();
 
   const now = new Date();
   const dateLabel = format(now, "EEEE, dd 'tháng' MM", { locale: vi });
@@ -95,11 +97,19 @@ export function DashboardScreen(_props: Props) {
           }
           onPress={() => setMode(resolvedScheme === 'dark' ? 'light' : 'dark')}
         />
-        <AppIconButton
-          accessibilityLabel="Thông báo"
-          icon={<Bell size={20} color={colors.textSecondary} />}
-          onPress={() => navigation.navigate(MAIN_STACK_ROUTES.NOTIFICATIONS)}
-        />
+        <View>
+          <AppIconButton
+            accessibilityLabel={unreadNotifications > 0 ? `Thông báo, ${unreadNotifications} chưa đọc` : 'Thông báo'}
+            icon={<Bell size={20} color={colors.textSecondary} />}
+            onPress={() => navigation.navigate(MAIN_STACK_ROUTES.NOTIFICATIONS)}
+          />
+          {unreadNotifications > 0 ? (
+            <View
+              pointerEvents="none"
+              className="absolute right-[8px] top-[8px] h-[10px] w-[10px] rounded-full border-2 border-surface bg-error"
+            />
+          ) : null}
+        </View>
       </View>
     </View>
   );
