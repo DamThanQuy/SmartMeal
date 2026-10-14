@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ArrowRight, Leaf, Lock, Mail } from 'lucide-react-native';
+import { ArrowRight, Lock, Mail } from 'lucide-react-native';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Image, Pressable, View } from 'react-native';
@@ -155,6 +155,7 @@ export function LoginScreen({ navigation }: Props) {
         <AuthGoogleButton
           label="Tiếp tục với Google"
           onPress={googleLogin.start}
+          onCredential={googleLogin.acceptCredential}
           disabled={googleLogin.isLoading || googleLogin.isPrompting}
         />
         {googleLogin.isLoading ? (

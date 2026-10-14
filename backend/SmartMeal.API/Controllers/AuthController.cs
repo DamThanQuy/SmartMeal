@@ -37,8 +37,16 @@ public class AuthController : ControllerBase
     [HttpPost("google")]
     public async Task<ActionResult<ApiResponse<AuthResponseDto>>> GoogleLogin([FromBody] GoogleAuthRequestDto dto)
     {
-        var result = await _authService.GoogleLoginAsync(dto);
-        return Ok(result);
+        try
+        {
+            var result = await _authService.GoogleLoginAsync(dto);
+            return Ok(result);
+        }
+        catch (GoogleAuthException ex)
+        {
+            var response = ApiResponse<AuthResponseDto>.Fail(ex.Message, new List<string> { ex.Message });
+            return StatusCode(ex.StatusCode, response);
+        }
     }
 
     [Authorize]

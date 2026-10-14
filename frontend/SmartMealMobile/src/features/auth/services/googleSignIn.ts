@@ -40,6 +40,8 @@ const GOOGLE_CLIENT_ID: string | undefined =
 const GSI_SCRIPT_URL = 'https://accounts.google.com/gsi/client';
 
 let gsiReady: Promise<void> | null = null;
+let activeCredentialHandler: ((credential: string) => void) | null = null;
+let gsiInitialized = false;
 
 /**
  * Load script GSI một lần. Resolve khi window.google.accounts.id khả dụng.
@@ -92,7 +94,14 @@ export interface GoogleSignInOptions {
 }
 
 type IdCredentialResponse = { credential: string; select_by?: string };
-type IdTokenError = { error_type: string; error_reason?: string; error_description?: string };
+type PromptMomentNotification = {
+  isNotDisplayed: () => boolean;
+  isSkippedMoment: () => boolean;
+  isDismissedMoment: () => boolean;
+  getNotDisplayedReason?: () => string;
+  getSkippedReason?: () => string;
+  getDismissedReason?: () => string;
+};
 
 type GsiAccountsId = {
   initialize: (params: {
@@ -100,7 +109,7 @@ type GsiAccountsId = {
     callback: (response: IdCredentialResponse) => void;
     hint?: string;
   }) => void;
-  prompt: () => void;
+  prompt: (listener?: (notification: PromptMomentNotification) => void) => void;
   renderButton: (el: HTMLElement, options: Record<string, unknown>) => void;
 };
 
@@ -137,9 +146,23 @@ export function getGoogleIdToken(options?: GoogleSignInOptions): Promise<string>
 
     return new Promise<string>((resolve, reject) => {
       let settled = false;
+      const timeoutId = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        reject(new Error('Đăng nhập Google hết thời gian chờ. Vui lòng thử lại.'));
+      }, 20_000);
+
+      const fail = (message: string) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        reject(new Error(message));
+      };
 
       const onCredential = (response: IdCredentialResponse) => {
+        if (settled) return;
         settled = true;
+        clearTimeout(timeoutId);
         resolve(response.credential);
       };
 
@@ -149,18 +172,17 @@ export function getGoogleIdToken(options?: GoogleSignInOptions): Promise<string>
         hint: options?.hintEmail,
       });
 
-      // Nếu usePromptButton → render nút Google vào element (màn hình cần truyền DOM ref).
-      // Mặc định: gọi prompt() để Google hiện nút của chính Google trên page.
-      if (options?.usePromptButton) {
-        // Gọier sẽ render nút qua renderButton (xem useGoogleLogin hook).
-        // prompt() vẫn dùng ở chế độ headless.
-        gsi.prompt();
-      } else {
-        gsi.prompt();
-      }
-
-      // Người dùng có thể không bấm ngay → không có callback nào.
-      // Không timeout tự động; hook bên trên sẽ manage trạng thái.
+      // The app button calls prompt() headlessly. Always settle the promise when
+      // Google says the prompt was dismissed, skipped, or could not be displayed.
+      gsi.prompt(notification => {
+        if (notification.isNotDisplayed()) {
+          fail(`Google Sign-In không hiển thị được (${notification.getNotDisplayedReason?.() ?? 'unknown'}).`);
+        } else if (notification.isSkippedMoment()) {
+          fail(`Bạn đã bỏ qua đăng nhập Google (${notification.getSkippedReason?.() ?? 'skipped'}).`);
+        } else if (notification.isDismissedMoment()) {
+          fail(`Đăng nhập Google đã bị hủy (${notification.getDismissedReason?.() ?? 'dismissed'}).`);
+        }
+      });
     });
   })();
 }
@@ -171,20 +193,43 @@ export function getGoogleIdToken(options?: GoogleSignInOptions): Promise<string>
  */
 export function renderGoogleButton(
   container: HTMLElement,
+  onCredential: (credential: string) => void,
   options?: { theme?: 'outline' | 'filled_black' | 'filled_white'; text?: 'sign_in' | 'continue' },
-): void {
+): () => void {
   if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes('your-google-oauth')) {
     console.warn('[googleSignIn] EXPO_PUBLIC_GOOGLE_CLIENT_ID chưa cấu hình — không thể render nút.');
-    return;
+    return () => undefined;
   }
+  let disposed = false;
+  activeCredentialHandler = onCredential;
   void (async () => {
-    await ensureGsiScript();
-    const gsi = getGsi();
-    gsi.renderButton(container, {
-      client_id: GOOGLE_CLIENT_ID,
-      width: 280,
-      theme: options?.theme ?? 'outline',
-      text: options?.text ?? 'continue',
-    });
+    try {
+      await ensureGsiScript();
+      if (disposed) return;
+      const gsi = getGsi();
+      if (!gsiInitialized) {
+        gsi.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: response => activeCredentialHandler?.(response.credential),
+        });
+        gsiInitialized = true;
+      }
+      container.replaceChildren();
+      gsi.renderButton(container, {
+        type: 'standard',
+        size: 'large',
+        width: Math.min(400, Math.max(240, Math.floor(container.getBoundingClientRect().width || 280))),
+        theme: options?.theme ?? 'outline',
+        text: options?.text ?? 'continue_with',
+        shape: 'rectangular',
+      });
+    } catch (error) {
+      console.error('[googleSignIn] Không thể render nút Google:', error);
+    }
   })();
+  return () => {
+    disposed = true;
+    if (activeCredentialHandler === onCredential) activeCredentialHandler = null;
+    container.replaceChildren();
+  };
 }

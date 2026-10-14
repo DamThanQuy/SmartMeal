@@ -58,6 +58,11 @@ public class ApplicationDbContext : DbContext
             .HasIndex(u => u.Email)
             .IsUnique();
 
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.GoogleId)
+            .IsUnique()
+            .HasFilter("\"GoogleId\" IS NOT NULL");
+
         // User - HealthProfile (1-1)
         modelBuilder.Entity<HealthProfile>()
             .HasOne(hp => hp.User)

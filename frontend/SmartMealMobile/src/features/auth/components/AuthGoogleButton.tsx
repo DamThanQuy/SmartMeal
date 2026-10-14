@@ -1,16 +1,35 @@
-import React from 'react';
-import { Pressable, View, type PressableProps } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Platform, Pressable, View, type PressableProps } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
+import { renderGoogleButton } from '../services/googleSignIn';
 
 export interface AuthGoogleButtonProps
   extends Omit<PressableProps, 'children'> {
   label: string;
+  onCredential?: (credential: string) => void;
 }
 
 // design/Main.dc.html + Register.dc.html — nút Google chỉ đổi label ("Tiếp tục với Google" /
 // "Đăng ký với Google"), UI giống hệt AppButton variant="outline" nhưng có thêm badge "G" nên
 // tách riêng thay vì ép AppButton nhận thêm slot icon trái không dùng ở chỗ khác.
-export function AuthGoogleButton({ label, ...rest }: AuthGoogleButtonProps) {
+export function AuthGoogleButton({ label, onCredential, ...rest }: AuthGoogleButtonProps) {
+  const googleButtonRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !onCredential || !googleButtonRef.current) return;
+    return renderGoogleButton(googleButtonRef.current, onCredential);
+  }, [onCredential]);
+
+  if (Platform.OS === 'web' && onCredential) {
+    return (
+      <View
+        ref={googleButtonRef as never}
+        accessibilityLabel={label}
+        className="min-h-[48px] w-full items-center justify-center overflow-hidden"
+      />
+    );
+  }
+
   return (
     <Pressable
       accessibilityRole="button"

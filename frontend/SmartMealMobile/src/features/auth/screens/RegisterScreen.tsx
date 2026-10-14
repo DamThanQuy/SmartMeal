@@ -225,6 +225,7 @@ export function RegisterScreen({ navigation }: Props) {
           <AuthGoogleButton
             label="Đăng ký với Google"
             onPress={googleLogin.start}
+            onCredential={googleLogin.acceptCredential}
             disabled={googleLogin.isLoading || googleLogin.isPrompting}
           />
           {googleLogin.isLoading ? (
