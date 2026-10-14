@@ -69,7 +69,15 @@ export interface RecipeCollectionApiDto {
   isPublic: boolean;
   ownerId: string;
   isOwner: boolean;
+  /** Chỉ có với chủ sở hữu; null = chưa chia sẻ bằng liên kết. */
+  shareToken?: string | null;
   recipes: RecipeApiDto[];
+}
+
+/** POST /recipes/collections/{id}/share. */
+export interface CollectionShareApiDto {
+  shareToken: string;
+  sharedAt: string;
 }
 
 export interface CreateCollectionRequest {

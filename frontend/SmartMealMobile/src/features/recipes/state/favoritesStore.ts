@@ -9,6 +9,7 @@ export interface MockCollection {
   name: string;
   isPublic: boolean;
   recipeIds: string[];
+  shareToken?: string | null;
 }
 
 interface FavoritesState {

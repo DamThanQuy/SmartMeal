@@ -14,9 +14,10 @@ function appUrlPrefixes(): string[] {
   }
 }
 
-// Deep link của app (scheme "smartmealmobile" trong app.json; trên Expo Go là exp://…/--/). Hiện có
-// liên kết chia sẻ bộ sưu tập (CollectionDetailScreen "Chia sẻ", BR-150→152) — chỉ mở được khi đã đăng
-// nhập vì CollectionDetail nằm trong MainNavigator.
+// Deep link của app (scheme "smartmealmobile" trong app.json; trên Expo Go là exp://…/--/):
+// - shared/collections/:token — liên kết chia sẻ chỉ đọc (CollectionDetailScreen "Chia sẻ", BR-150→152);
+// - collections/:collectionId — bộ sưu tập công khai theo id.
+// Chỉ mở được khi đã đăng nhập vì các màn này nằm trong MainNavigator.
 export const linking: LinkingOptions<RootStackParamList> = {
   prefixes: appUrlPrefixes(),
   config: {
@@ -24,6 +25,7 @@ export const linking: LinkingOptions<RootStackParamList> = {
       [ROOT_ROUTES.MAIN]: {
         screens: {
           [MAIN_STACK_ROUTES.COLLECTION_DETAIL]: 'collections/:collectionId',
+          [MAIN_STACK_ROUTES.SHARED_COLLECTION]: 'shared/collections/:token',
         },
       },
     },

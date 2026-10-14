@@ -99,6 +99,32 @@ export function useAddRecipeToCollection() {
   });
 }
 
+/** Bật liên kết chia sẻ (đã bật thì lấy lại mã cũ) — chủ sở hữu. */
+export function useCreateCollectionShareLink(collectionId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => recipeService.createCollectionShareLink(collectionId),
+    onSuccess: () => invalidateCollections(queryClient, collectionId),
+  });
+}
+
+/** Tắt liên kết chia sẻ — người đang giữ liên kết không mở được nữa. */
+export function useRevokeCollectionShareLink(collectionId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => recipeService.revokeCollectionShareLink(collectionId),
+    onSuccess: () => invalidateCollections(queryClient, collectionId),
+  });
+}
+
+/** Bộ sưu tập mở từ liên kết chia sẻ (chỉ đọc); undefined khi liên kết sai hoặc đã tắt. */
+export function useSharedCollection(shareToken: string) {
+  return useQuery({
+    queryKey: ['recipes', 'shared-collection', shareToken],
+    queryFn: () => recipeService.getSharedCollection(shareToken),
+  });
+}
+
 export function useRemoveRecipeFromCollection() {
   const queryClient = useQueryClient();
   return useMutation({

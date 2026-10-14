@@ -90,6 +90,7 @@ export function fromCollectionDto(dto: RecipeCollectionApiDto, catalog: MetaCata
     coverImageUrl: imageUrlOf(dto.coverImageUrl),
     isPublic: dto.isPublic,
     isOwner: dto.isOwner,
+    shareToken: dto.shareToken ?? null,
     recipes: dto.recipes.map(recipe => fromRecipeDto(recipe, catalog)),
   };
 }

@@ -3,6 +3,7 @@ import { getCurrentMockScenario } from '@/state/app/appStore';
 import { RECIPE_DATABASE_MOCK } from '../mocks/recipes.mock';
 import { nextMockCollectionId, useFavoritesStore, type MockCollection } from '../state/favoritesStore';
 import type {
+  CollectionShareLink,
   CollectionUpdate,
   FavoriteToggleResult,
   NewCollectionInput,
@@ -34,6 +35,7 @@ function toCollection(collection: MockCollection): RecipeCollection {
     name: collection.name,
     isPublic: collection.isPublic,
     isOwner: true, // dữ liệu mẫu chỉ có một người dùng
+    shareToken: collection.shareToken ?? null,
     recipes: collection.recipeIds.map(findRecipe).filter((recipe): recipe is Recipe => Boolean(recipe)),
   };
 }
@@ -134,5 +136,27 @@ export const recipeMockService = {
       ...collection,
       recipeIds: collection.recipeIds.filter(id => id !== recipeId),
     }));
+  },
+
+  async createCollectionShareLink(collectionId: string): Promise<CollectionShareLink> {
+    await simulate('Không tạo được liên kết chia sẻ, vui lòng thử lại.');
+    updateCollection(collectionId, collection => ({
+      ...collection,
+      shareToken: collection.shareToken ?? `share-${Date.now().toString(36)}`,
+    }));
+    const shareToken = useFavoritesStore.getState().collections.find(item => item.id === collectionId)?.shareToken;
+    if (!shareToken) throw new Error('Không tìm thấy bộ sưu tập.');
+    return { shareToken, sharedAtIso: new Date().toISOString() };
+  },
+
+  async revokeCollectionShareLink(collectionId: string): Promise<void> {
+    await simulate('Không tắt được liên kết chia sẻ, vui lòng thử lại.');
+    updateCollection(collectionId, collection => ({ ...collection, shareToken: null }));
+  },
+
+  async getSharedCollection(shareToken: string): Promise<RecipeCollection | undefined> {
+    await simulate('Không mở được bộ sưu tập được chia sẻ, vui lòng thử lại.');
+    const collection = useFavoritesStore.getState().collections.find(item => item.shareToken === shareToken);
+    return collection ? toCollection(collection) : undefined;
   },
 };

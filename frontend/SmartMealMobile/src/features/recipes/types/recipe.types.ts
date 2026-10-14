@@ -84,11 +84,19 @@ export interface RecipeCollection {
   name: string;
   description?: string;
   coverImageUrl?: string;
-  /** Công khai = ai có liên kết cũng xem được (chỉ xem). */
+  /** Công khai = mọi người dùng thấy trong danh sách bộ sưu tập (chỉ xem). */
   isPublic: boolean;
   /** Chỉ chủ sở hữu được đổi tên/xóa/thêm-bớt món (BR-152). */
   isOwner: boolean;
+  /** Mã liên kết chia sẻ đang bật (chỉ chủ sở hữu thấy); null = chưa chia sẻ bằng liên kết. */
+  shareToken: string | null;
   recipes: Recipe[];
+}
+
+/** Liên kết chia sẻ chỉ đọc: ai có mã đều xem được, kể cả khi bộ sưu tập riêng tư; chủ sở hữu tắt được. */
+export interface CollectionShareLink {
+  shareToken: string;
+  sharedAtIso: string;
 }
 
 export interface NewCollectionInput {

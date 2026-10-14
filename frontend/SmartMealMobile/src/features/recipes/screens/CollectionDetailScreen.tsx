@@ -11,22 +11,29 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { RecipeImage } from '../components/RecipeImage';
 import {
   useCollection,
+  useCreateCollectionShareLink,
   useDeleteCollection,
   useRemoveRecipeFromCollection,
+  useRevokeCollectionShareLink,
   useUpdateCollection,
 } from '../hooks/useFavorites';
 import { RECIPE_TAG_OPTIONS } from '../types/recipe.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CollectionDetail'>;
 
-/** Liên kết mở thẳng bộ sưu tập trong app (deep link, xem linking ở App.tsx). */
+/** Liên kết mở thẳng bộ sưu tập công khai theo id (deep link, xem src/navigation/linking.ts). */
 export function collectionShareUrl(collectionId: string): string {
   return Linking.createURL(`collections/${collectionId}`);
 }
 
+/** Liên kết chia sẻ chỉ đọc theo mã — mở được cả bộ sưu tập riêng tư, chủ sở hữu tắt được. */
+export function sharedCollectionUrl(shareToken: string): string {
+  return Linking.createURL(`shared/collections/${shareToken}`);
+}
+
 // design/CollectionDetail.dc.html (BR-150→152). Chỉ chủ sở hữu đổi tên/xóa/bỏ món (`isOwner` do BE
-// trả). "Chia sẻ" bật chế độ công khai rồi mở hộp chia sẻ của hệ điều hành với liên kết mở thẳng màn
-// này; người nhận (đã đăng nhập) chỉ xem được.
+// trả). "Chia sẻ" tạo liên kết chỉ đọc có mã (bộ sưu tập vẫn riêng tư) rồi mở hộp chia sẻ của hệ điều
+// hành; "Tắt liên kết" làm liên kết cũ hết hiệu lực. Người nhận (đã đăng nhập) chỉ xem được.
 export function CollectionDetailScreen({ navigation, route }: Props) {
   const { collectionId } = route.params;
   const { colors } = useTheme();
@@ -34,6 +41,8 @@ export function CollectionDetailScreen({ navigation, route }: Props) {
   const updateCollection = useUpdateCollection(collectionId);
   const deleteCollection = useDeleteCollection();
   const removeRecipe = useRemoveRecipeFromCollection();
+  const createShareLink = useCreateCollectionShareLink(collectionId);
+  const revokeShareLink = useRevokeCollectionShareLink(collectionId);
 
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftName, setDraftName] = useState('');
@@ -71,7 +80,12 @@ export function CollectionDetailScreen({ navigation, route }: Props) {
   }
 
   const isOwner = collection.isOwner;
-  const busy = updateCollection.isPending || deleteCollection.isPending || removeRecipe.isPending;
+  const busy =
+    updateCollection.isPending ||
+    deleteCollection.isPending ||
+    removeRecipe.isPending ||
+    createShareLink.isPending ||
+    revokeShareLink.isPending;
 
   const handleDelete = () => {
     if (!confirmingDelete) {
@@ -88,12 +102,11 @@ export function CollectionDetailScreen({ navigation, route }: Props) {
   const handleShare = async () => {
     setActionError(null);
     try {
-      if (isOwner && !collection.isPublic) {
-        await updateCollection.mutateAsync({ isPublic: true });
-      }
-      await Share.share({
-        message: `Bộ sưu tập "${collection.name}" trên SmartMeal: ${collectionShareUrl(collection.id)}`,
-      });
+      // Chủ sở hữu chia sẻ bằng liên kết có mã (không cần công khai); người xem bộ sưu tập công khai chia sẻ lại theo id.
+      const url = isOwner
+        ? sharedCollectionUrl(collection.shareToken ?? (await createShareLink.mutateAsync()).shareToken)
+        : collectionShareUrl(collection.id);
+      await Share.share({ message: `Bộ sưu tập "${collection.name}" trên SmartMeal: ${url}` });
     } catch (shareError) {
       setActionError(shareError instanceof Error ? shareError.message : 'Không chia sẻ được, vui lòng thử lại.');
     }
@@ -101,8 +114,19 @@ export function CollectionDetailScreen({ navigation, route }: Props) {
 
   const stopSharing = () => {
     setActionError(null);
+    revokeShareLink.mutate(undefined, { onError: mutationError => setActionError(mutationError.message) });
+  };
+
+  const stopPublic = () => {
+    setActionError(null);
     updateCollection.mutate({ isPublic: false }, { onError: mutationError => setActionError(mutationError.message) });
   };
+
+  const ownerStatus = collection.shareToken
+    ? 'Đang chia sẻ bằng liên kết, chỉ mình bạn chỉnh sửa được'
+    : collection.isPublic
+      ? 'Công khai, chỉ mình bạn chỉnh sửa được'
+      : 'Chỉ mình bạn chỉnh sửa được';
 
   const submitRename = () => {
     const name = draftName.trim();
@@ -147,7 +171,7 @@ export function CollectionDetailScreen({ navigation, route }: Props) {
             <AppText variant="h1">{collection.name}</AppText>
             <AppText variant="body" color="secondary">
               {`${collection.recipes.length} món · ${
-                isOwner ? (collection.isPublic ? 'Đang chia sẻ, chỉ mình bạn chỉnh sửa được' : 'Chỉ mình bạn chỉnh sửa được') : 'Bộ sưu tập được chia sẻ — chỉ xem'
+                isOwner ? ownerStatus : 'Bộ sưu tập được chia sẻ — chỉ xem'
               }`}
             </AppText>
           </View>
@@ -162,11 +186,9 @@ export function CollectionDetailScreen({ navigation, route }: Props) {
                 setIsRenaming(true);
               }}
             />
-            {collection.isPublic ? (
-              <AppChip label="Ngừng chia sẻ" onPress={stopSharing} />
-            ) : (
-              <AppChip label="Chia sẻ" onPress={() => void handleShare()} />
-            )}
+            <AppChip label="Chia sẻ" onPress={() => void handleShare()} />
+            {collection.shareToken ? <AppChip label="Tắt liên kết" onPress={stopSharing} /> : null}
+            {collection.isPublic ? <AppChip label="Ngừng công khai" onPress={stopPublic} /> : null}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={confirmingDelete ? 'Xác nhận xóa bộ sưu tập' : 'Xóa bộ sưu tập'}
@@ -239,7 +261,7 @@ export function CollectionDetailScreen({ navigation, route }: Props) {
 
         <InlineBanner
           icon={<Info size={20} color={colors.info} />}
-          description="Chia sẻ tạo liên kết chỉ xem. Người nhận không chỉnh sửa hay xóa được bộ sưu tập của bạn."
+          description="Chia sẻ tạo liên kết chỉ xem, bộ sưu tập vẫn riêng tư. Người nhận không chỉnh sửa hay xóa được; tắt liên kết thì liên kết cũ không mở được nữa."
         />
       </ScrollView>
     </ScreenContainer>

@@ -63,6 +63,7 @@ import {
   FavoritesScreen,
   FilterSheetScreen,
   RecipeDetailScreen,
+  SharedCollectionScreen,
 } from '@/features/recipes';
 import {
   BarcodeScreen,
@@ -115,6 +116,7 @@ export function MainNavigator() {
       <Stack.Screen name={MAIN_STACK_ROUTES.RECIPE_DETAIL} component={RecipeDetailScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.FAVORITES} component={FavoritesScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.COLLECTION_DETAIL} component={CollectionDetailScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.SHARED_COLLECTION} component={SharedCollectionScreen} />
 
       {/* Đợt 6 — meal-planner + grocery. */}
       <Stack.Screen name={MAIN_STACK_ROUTES.SLOT_PICKER} component={SlotPickerScreen} />

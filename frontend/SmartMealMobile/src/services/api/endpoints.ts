@@ -62,6 +62,10 @@ export const ENDPOINTS = {
     collectionItems: (id: string) => `/recipes/collections/${id}/items`,
     collectionItem: (collectionId: string, recipeId: string) =>
       `/recipes/collections/${collectionId}/items/${recipeId}`,
+    /** POST bật / DELETE tắt liên kết chia sẻ (chỉ chủ sở hữu). */
+    collectionShare: (id: string) => `/recipes/collections/${id}/share`,
+    /** GET bộ sưu tập qua liên kết chia sẻ (không cần đăng nhập). */
+    sharedCollection: (token: string) => `/recipes/collections/shared/${encodeURIComponent(token)}`,
   },
   mealPlanner: {
     week: '/mealplanner/week',

@@ -142,6 +142,8 @@ export type MainStackParamList = {
   ChallengeComplete: { challengeId: string };
   Badges: undefined;
   CollectionDetail: { collectionId: string };
+  /** `token` — mã trong liên kết chia sẻ (deep link shared/collections/:token). */
+  SharedCollection: { token: string };
   /** `recipeId` khi mở từ AddToCollection — tạo xong thêm luôn món đang xem. */
   CreateCollection: { recipeId?: string } | undefined;
   AddToCollection: { recipeId: string };

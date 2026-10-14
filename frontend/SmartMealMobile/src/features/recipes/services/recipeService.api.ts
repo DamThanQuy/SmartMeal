@@ -4,6 +4,7 @@ import { useAuthStore } from '@/state/auth/authStore';
 import { getCurrentUserAllergyIds } from '@/state/user/userProfileStore';
 import type {
   AddRecipeToCollectionRequest,
+  CollectionShareApiDto,
   CreateCollectionRequest,
   FavoriteToggleApiDto,
   PantrySuggestionRequest,
@@ -12,6 +13,7 @@ import type {
   UpdateCollectionRequest,
 } from '../types/recipe.api.types';
 import type {
+  CollectionShareLink,
   CollectionUpdate,
   NewCollectionInput,
   Recipe,
@@ -130,5 +132,25 @@ export const recipeApiService: Partial<typeof recipeMockService> = {
 
   async removeRecipeFromCollection(collectionId: string, recipeId: string) {
     await api.delete<boolean>(ENDPOINTS.recipes.collectionItem(collectionId, recipeId));
+  },
+
+  // POST /recipes/collections/{id}/share — bật liên kết chỉ đọc (đã bật thì trả lại mã cũ); bộ sưu tập vẫn riêng tư.
+  async createCollectionShareLink(collectionId: string): Promise<CollectionShareLink> {
+    const dto = await api.post<CollectionShareApiDto>(ENDPOINTS.recipes.collectionShare(collectionId));
+    return { shareToken: dto.shareToken, sharedAtIso: dto.sharedAt };
+  },
+
+  // DELETE /recipes/collections/{id}/share — liên kết cũ không mở được nữa.
+  async revokeCollectionShareLink(collectionId: string): Promise<void> {
+    await api.delete<boolean>(ENDPOINTS.recipes.collectionShare(collectionId));
+  },
+
+  // GET /recipes/collections/shared/{token} — chỉ đọc; mã sai hoặc đã tắt → undefined (404).
+  async getSharedCollection(shareToken: string): Promise<RecipeCollection | undefined> {
+    const dto = await orUndefinedWhenMissing(() =>
+      api.get<RecipeCollectionApiDto>(ENDPOINTS.recipes.sharedCollection(shareToken)),
+    );
+    if (!dto) return undefined;
+    return fromCollectionDto(dto, await getMetaCatalog());
   },
 };

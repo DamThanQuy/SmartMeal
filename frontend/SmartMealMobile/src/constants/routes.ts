@@ -106,6 +106,8 @@ export const MAIN_STACK_ROUTES = {
   CHALLENGE_COMPLETE: 'ChallengeComplete',
   BADGES: 'Badges',
   COLLECTION_DETAIL: 'CollectionDetail',
+  /** Bộ sưu tập mở từ liên kết chia sẻ (chỉ xem). */
+  SHARED_COLLECTION: 'SharedCollection',
   CREATE_COLLECTION: 'CreateCollection',
   /** Sheet "Lưu vào bộ sưu tập" mở từ RecipeDetail (không có artboard riêng). */
   ADD_TO_COLLECTION: 'AddToCollection',
