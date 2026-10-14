@@ -30,7 +30,6 @@ export function setUnauthorizedHandler(handler: () => void): void {
 const PUBLIC_AUTH_PATHS = [
   '/auth/login',
   '/auth/register',
-  '/auth/google',
   '/auth/refresh',
   '/auth/logout',
   '/auth/forgot-password',

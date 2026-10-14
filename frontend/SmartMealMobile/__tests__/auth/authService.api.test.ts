@@ -278,28 +278,6 @@ describe('ảnh đại diện và xóa dữ liệu', () => {
   });
 });
 
-describe('loginWithGoogle', () => {
-  test('POST /auth/google { idToken }, lưu cặp token và trả user', async () => {
-    const { service, apiMock, tokenStorageMock } = loadService();
-    apiMock.post.mockResolvedValue({ ...AUTH_RESPONSE, user: { ...USER_DTO, hasCompletedSurvey: true } });
-
-    const result = await service.loginWithGoogle?.({ idToken: 'google-id-token' });
-
-    expect(apiMock.post).toHaveBeenCalledWith('/auth/google', { idToken: 'google-id-token' });
-    expect(tokenStorageMock.set).toHaveBeenCalledWith(expect.objectContaining({ token: 'jwt-token', refreshToken: 'refresh-token' }));
-    expect(result?.user).toMatchObject({ id: USER_DTO.id, hasCompletedSurvey: true });
-  });
-
-  test('token bị từ chối → ném lỗi và KHÔNG lưu token', async () => {
-    const { service, apiMock, tokenStorageMock } = loadService();
-    const error = new Error('Google ID token không hợp lệ hoặc đã hết hạn.');
-    apiMock.post.mockRejectedValue(error);
-
-    await expect(service.loginWithGoogle?.({ idToken: 'x' })).rejects.toBe(error);
-    expect(tokenStorageMock.set).not.toHaveBeenCalled();
-  });
-});
-
 describe('deleteAccount', () => {
   test('tài khoản có mật khẩu → DELETE /auth/account kèm mật khẩu trong body', async () => {
     const { service, apiMock } = loadService();

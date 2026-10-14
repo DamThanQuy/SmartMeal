@@ -24,8 +24,8 @@ const ITEMS_TO_DELETE = [
 ];
 
 // Xóa vĩnh viễn tài khoản (BR-271, DELETE /auth/account) — khác "Xóa dữ liệu cá nhân" (giữ tài khoản). Dựng
-// cùng bố cục DeleteDataScreen (design/DeleteData.dc.html). Xác nhận bằng mật khẩu; tài khoản chỉ đăng nhập
-// Google (không có mật khẩu) thì nhập lại email. Lịch sử thanh toán được giữ ẩn danh để đối soát.
+// cùng bố cục DeleteDataScreen (design/DeleteData.dc.html). Xác nhận bằng mật khẩu; tài khoản không có mật khẩu
+// (tạo bằng đăng nhập Google trước đây) thì nhập lại email. Lịch sử thanh toán được giữ ẩn danh để đối soát.
 export function DeleteAccountScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const user = useAuthStore(state => state.user);

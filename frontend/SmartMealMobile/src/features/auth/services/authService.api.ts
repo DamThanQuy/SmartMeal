@@ -5,7 +5,6 @@ import type {
   AuthResponseDto,
   DeleteAccountRequestDto,
   ForgotPasswordRequestDto,
-  GoogleLoginRequestDto,
   LoginRequestDto,
   OtpPurposeDto,
   RegisterRequestDto,
@@ -35,16 +34,6 @@ export const authApiService: Partial<typeof authMockService> = {
     const dto = await api.post<AuthResponseDto, LoginRequestDto>(ENDPOINTS.auth.login, {
       email: payload.email.trim(),
       password: payload.password,
-    });
-    await saveSessionTokens(dto);
-    return { user: fromUserDto(dto.user) };
-  },
-
-  // POST /auth/google { idToken } — máy chủ xác minh ID token với Google rồi tạo/liên kết tài khoản.
-  // 503 khi máy chủ chưa cấu hình Google; 401 khi token sai/hết hạn; 409 khi email đã gắn Google khác.
-  async loginWithGoogle(payload) {
-    const dto = await api.post<AuthResponseDto, GoogleLoginRequestDto>(ENDPOINTS.auth.google, {
-      idToken: payload.idToken,
     });
     await saveSessionTokens(dto);
     return { user: fromUserDto(dto.user) };

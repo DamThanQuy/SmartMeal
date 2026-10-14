@@ -33,11 +33,11 @@ export interface UserDto {
   role: string;
   /** BE tính bằng `user.HealthProfile != null`. */
   hasCompletedSurvey: boolean;
-  /** false = tài khoản chỉ đăng nhập Google. */
+  /** false = tài khoản không có mật khẩu (tạo bằng đăng nhập Google trước khi app bỏ tính năng này). */
   hasPassword?: boolean;
 }
 
-/** DELETE /auth/account — `password` với tài khoản có mật khẩu, `confirmEmail` với tài khoản chỉ có Google. */
+/** DELETE /auth/account — `password` với tài khoản có mật khẩu, `confirmEmail` với tài khoản không có mật khẩu. */
 export interface DeleteAccountRequestDto {
   password?: string;
   confirmEmail?: string;
@@ -52,10 +52,6 @@ export interface AuthResponseDto {
   refreshToken: string;
   refreshTokenExpiresAt: string;
   user: UserDto;
-}
-
-export interface GoogleLoginRequestDto {
-  idToken: string;
 }
 
 export interface ForgotPasswordRequestDto {

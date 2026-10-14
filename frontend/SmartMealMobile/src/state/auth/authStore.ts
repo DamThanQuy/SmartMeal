@@ -12,7 +12,8 @@ export interface AuthUser {
   /** false → tài khoản mới, phải làm Health Profile (wizard 7 bước) trước khi vào Main. */
   hasCompletedSurvey: boolean;
   /**
-   * false → tài khoản chỉ đăng nhập Google (không có mật khẩu): xóa tài khoản xác nhận bằng email. Không có
+   * false → tài khoản không có mật khẩu (tạo bằng đăng nhập Google trước khi app bỏ tính năng này): xóa tài khoản
+   * xác nhận bằng email, đặt mật khẩu qua "Quên mật khẩu". Không có
    * (BE cũ) thì coi như có mật khẩu.
    */
   hasPassword?: boolean;

@@ -190,14 +190,6 @@ describeLive('auth (backend thật)', () => {
     expect((await authService.getMe()).email).toBe(email);
   });
 
-  test('đăng nhập Google khi máy chủ chưa cấu hình → UNAVAILABLE (503), không phải hết phiên', async () => {
-    await expect(authService.loginWithGoogle({ idToken: 'khong-phai-token-that' })).rejects.toMatchObject({
-      code: 'UNAVAILABLE',
-      status: 503,
-    });
-    expect(onUnauthorized).not.toHaveBeenCalled();
-  });
-
   test('forgot-password với email chưa đăng ký vẫn thành công (không lộ tài khoản)', async () => {
     await expect(authService.requestPasswordReset({ email: uniqueEmail('khong-co') })).resolves.toBeUndefined();
   });

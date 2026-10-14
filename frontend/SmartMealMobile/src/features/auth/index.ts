@@ -13,4 +13,3 @@ export * from './hooks/useUpdateProfile';
 export * from './hooks/useUploadAvatar';
 export * from './hooks/useDeleteMyData';
 export * from './hooks/useDeleteAccount';
-export * from './hooks/useGoogleLogin';

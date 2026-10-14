@@ -13,15 +13,10 @@ export interface LoginResult {
   user: AuthUser;
 }
 
-/** Xác nhận xóa tài khoản: mật khẩu, hoặc email của tài khoản với tài khoản chỉ đăng nhập Google. */
+/** Xác nhận xóa tài khoản: mật khẩu, hoặc email của tài khoản với tài khoản không có mật khẩu. */
 export interface DeleteAccountConfirmation {
   password?: string;
   confirmEmail?: string;
-}
-
-/** Đăng nhập Google: gửi Google ID token để máy chủ tự xác minh chữ ký/audience (không gửi email do client tự khai). */
-export interface GoogleLoginPayload {
-  idToken: string;
 }
 
 export interface RegisterPayload {

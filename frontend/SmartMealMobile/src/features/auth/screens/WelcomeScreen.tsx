@@ -8,8 +8,6 @@ import { AUTH_ROUTES } from '@/constants/routes';
 import type { AuthStackParamList } from '@/navigation/types';
 import { useAuthStore } from '@/state/auth/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
-import { GoogleSignInButton } from '../components/GoogleSignInButton';
-import { AuthSocialDivider } from '../components/AuthSocialDivider';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Welcome'>;
 
@@ -100,8 +98,6 @@ export function WelcomeScreen({ navigation }: Props) {
           variant="outline"
           onPress={() => navigation.navigate(AUTH_ROUTES.LOGIN)}
         />
-        <AuthSocialDivider />
-        <GoogleSignInButton label="Tiếp tục với Google" />
       </View>
 
       <Pressable

@@ -4,7 +4,6 @@ import type {
   AuthUser,
   DeleteAccountConfirmation,
   ForgotPasswordPayload,
-  GoogleLoginPayload,
   LoginPayload,
   LoginResult,
   RegisterPayload,
@@ -55,16 +54,6 @@ export const authMockService = {
     }
     const fullName = payload.email.split('@')[0] || 'Người dùng SmartMeal';
     return { user: buildMockUser(fullName, payload.email, true) };
-  },
-
-  // Đăng nhập Google: mock không kiểm tra token, giống đăng nhập thường.
-  async loginWithGoogle(_payload: GoogleLoginPayload): Promise<LoginResult> {
-    const scenario = getCurrentMockScenario();
-    await wait(getMockDelayMs(scenario));
-    if (scenario === 'error') {
-      throw new Error('Đăng nhập Google không thành công, vui lòng thử lại.');
-    }
-    return { user: { ...buildMockUser('Người dùng Google', 'google.user@gmail.com', true), hasPassword: false } };
   },
 
   // BR-010, BR-011 — Đăng ký Email/Password. Scenario 'error' mô phỏng đúng trạng thái
