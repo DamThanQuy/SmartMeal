@@ -126,6 +126,33 @@ describeLive('công thức & bộ sưu tập (backend thật)', () => {
     await expect(recipeService.updateCollection(shared.id, { name: 'Của tôi' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
+  test('liên kết chia sẻ: người khác xem được bộ sưu tập riêng tư (chỉ đọc); tắt liên kết thì hết hiệu lực', async () => {
+    const owner = await signInWith([]);
+    const recipe = (await recipeService.getRecommended({})).recipes[0];
+    const mine = await recipeService.createCollection({ name: 'Bữa tối gia đình', isPublic: false });
+    await recipeService.addRecipeToCollection(mine.id, recipe.id);
+
+    const link = await recipeService.createCollectionShareLink(mine.id);
+    expect(link.shareToken).toMatch(/^[A-Za-z0-9_-]{32}$/);
+    expect((await recipeService.createCollectionShareLink(mine.id)).shareToken).toBe(link.shareToken);
+    expect((await recipeService.getCollection(mine.id))?.shareToken).toBe(link.shareToken);
+
+    await signInWith([]);
+    const viewed = await recipeService.getSharedCollection(link.shareToken);
+    expect(viewed).toMatchObject({ id: mine.id, isOwner: false, isPublic: false, shareToken: null });
+    expect(viewed?.recipes.map(item => item.id)).toEqual([recipe.id]);
+    // Không có liên kết thì vẫn không thấy (bộ sưu tập riêng tư), và không tắt hộ được.
+    expect(await recipeService.getCollection(mine.id)).toBeUndefined();
+    await expect(recipeService.revokeCollectionShareLink(mine.id)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+
+    // Chủ sở hữu tắt liên kết → người giữ liên kết không mở được nữa.
+    const { user } = await authService.login({ email: owner.email, password: 'Passw0rd!' });
+    useAuthStore.setState({ pendingUser: null, user, isAuthenticated: true });
+    await recipeService.revokeCollectionShareLink(mine.id);
+    expect((await recipeService.getCollection(mine.id))?.shareToken).toBeNull();
+    expect(await recipeService.getSharedCollection(link.shareToken)).toBeUndefined();
+  });
+
   test('gợi ý theo tủ lạnh tính số nguyên liệu khớp, không phân biệt dấu', async () => {
     await signInWith([]);
     const matches = await recipeService.getRecipesForIngredients(['uc ga', 'Cà chua']);

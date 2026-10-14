@@ -14,6 +14,7 @@ const USER_DTO: UserDto = {
   proExpiresAt: null,
   role: 'User',
   hasCompletedSurvey: false,
+  hasPassword: true,
 };
 
 const AUTH_RESPONSE: AuthResponseDto = {
@@ -67,6 +68,7 @@ describe('login', () => {
         isPro: true,
         role: 'User',
         hasCompletedSurvey: true,
+        hasPassword: true,
       },
     });
   });
@@ -295,5 +297,36 @@ describe('loginWithGoogle', () => {
 
     await expect(service.loginWithGoogle?.({ idToken: 'x' })).rejects.toBe(error);
     expect(tokenStorageMock.set).not.toHaveBeenCalled();
+  });
+});
+
+describe('deleteAccount', () => {
+  test('tài khoản có mật khẩu → DELETE /auth/account kèm mật khẩu trong body', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.delete.mockResolvedValue(true);
+
+    await service.deleteAccount?.({ password: 'matkhau123' });
+
+    expect(apiMock.delete).toHaveBeenCalledWith('/auth/account', {
+      data: { password: 'matkhau123', confirmEmail: undefined },
+    });
+  });
+
+  test('tài khoản chỉ có Google → xác nhận bằng email (đã cắt khoảng trắng)', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.delete.mockResolvedValue(true);
+
+    await service.deleteAccount?.({ confirmEmail: '  an@smartmeal.vn ' });
+
+    expect(apiMock.delete).toHaveBeenCalledWith('/auth/account', {
+      data: { password: undefined, confirmEmail: 'an@smartmeal.vn' },
+    });
+  });
+
+  test('UserDto.hasPassword=false (chỉ Google) được giữ khi quy đổi', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.get.mockResolvedValue({ ...USER_DTO, hasPassword: false });
+
+    expect((await service.getMe?.())?.hasPassword).toBe(false);
   });
 });

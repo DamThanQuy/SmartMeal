@@ -91,8 +91,28 @@ describe('recipe.mapper', () => {
       catalog,
     );
 
-    expect(collection).toMatchObject({ id: 'c1', isPublic: true, isOwner: false });
+    expect(collection).toMatchObject({ id: 'c1', isPublic: true, isOwner: false, shareToken: null });
     expect(collection.recipes[0].allergenIds).toEqual(['seafood']);
+  });
+
+  test('chủ sở hữu thấy mã liên kết chia sẻ đang bật', () => {
+    const collection = fromCollectionDto(
+      {
+        id: 'c2',
+        name: 'Món tuần này',
+        description: null,
+        coverImageUrl: null,
+        recipeCount: 0,
+        isPublic: false,
+        ownerId: 'u1',
+        isOwner: true,
+        shareToken: 'Abc_123-xyz',
+        recipes: [],
+      },
+      catalog,
+    );
+
+    expect(collection).toMatchObject({ isPublic: false, isOwner: true, shareToken: 'Abc_123-xyz' });
   });
 
   test('bộ lọc → tham số GET /recipes; chỉ yêu cầu loại dị ứng khi đã đăng nhập', () => {
@@ -105,5 +125,59 @@ describe('recipe.mapper', () => {
     });
     expect(toRecipeQueryParams({ calorie: '300to500' }, false)).toMatchObject({ maxCalories: 500, excludeMyAllergens: undefined });
     expect(toRecipeQueryParams({ calorie: 'over500' }, true).maxCalories).toBeUndefined();
+  });
+});
+
+describe('recipeService.api — liên kết chia sẻ bộ sưu tập', () => {
+  function load() {
+    const apiMock = { get: jest.fn(), post: jest.fn(), delete: jest.fn() };
+    jest.resetModules();
+    jest.doMock('@/services/api', () => ({
+      api: apiMock,
+      ENDPOINTS: jest.requireActual('@/services/api/endpoints').ENDPOINTS,
+      isApiError: jest.requireActual('@/services/api/errors').isApiError,
+    }));
+    jest.doMock('@/features/health', () => ({ getMetaCatalog: jest.fn().mockResolvedValue(createTestCatalog()) }));
+    const { recipeApiService } =
+      require('@/features/recipes/services/recipeService.api') as typeof import('@/features/recipes/services/recipeService.api');
+    const errors = jest.requireActual('@/services/api/errors') as typeof import('@/services/api/errors');
+    return { service: recipeApiService, apiMock, ApiError: errors.ApiError };
+  }
+
+  test('bật / tắt liên kết gọi đúng endpoint của chủ sở hữu', async () => {
+    const { service, apiMock } = load();
+    apiMock.post.mockResolvedValue({ shareToken: 'tok_1', sharedAt: '2026-10-14T01:00:00Z' });
+    apiMock.delete.mockResolvedValue(true);
+
+    await expect(service.createCollectionShareLink?.('c1')).resolves.toEqual({
+      shareToken: 'tok_1',
+      sharedAtIso: '2026-10-14T01:00:00Z',
+    });
+    await service.revokeCollectionShareLink?.('c1');
+
+    expect(apiMock.post).toHaveBeenCalledWith('/recipes/collections/c1/share');
+    expect(apiMock.delete).toHaveBeenCalledWith('/recipes/collections/c1/share');
+  });
+
+  test('mở liên kết: đọc bộ sưu tập theo mã; liên kết đã tắt (404) → undefined', async () => {
+    const { service, apiMock, ApiError } = load();
+    apiMock.get.mockResolvedValueOnce({
+      id: 'c1',
+      name: 'Món tuần này',
+      description: null,
+      coverImageUrl: null,
+      recipeCount: 0,
+      isPublic: false,
+      ownerId: 'u1',
+      isOwner: false,
+      shareToken: null,
+      recipes: [],
+    });
+
+    await expect(service.getSharedCollection?.('tok_1')).resolves.toMatchObject({ id: 'c1', isOwner: false });
+    expect(apiMock.get).toHaveBeenCalledWith('/recipes/collections/shared/tok_1');
+
+    apiMock.get.mockRejectedValueOnce(new ApiError('Liên kết chia sẻ không tồn tại hoặc đã bị tắt.', 'NOT_FOUND', 404));
+    await expect(service.getSharedCollection?.('tok_old')).resolves.toBeUndefined();
   });
 });

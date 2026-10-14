@@ -43,6 +43,23 @@ describeLive('auth (backend thật)', () => {
     expect(await authService.getMe()).toMatchObject({ email, fullName: 'Người Thử' });
   });
 
+  test('xóa tài khoản: sai mật khẩu bị từ chối; đúng mật khẩu thì xóa hẳn, không đăng nhập lại được', async () => {
+    const email = uniqueEmail('delete');
+    const { user } = await authService.register({ fullName: 'Người Xóa', email, password: 'Passw0rd!' });
+    expect(user?.hasPassword).toBe(true);
+
+    await expect(authService.deleteAccount({ password: 'SaiMatKhau1!' })).rejects.toMatchObject({
+      code: 'BUSINESS',
+      message: 'Mật khẩu không đúng.',
+    });
+    expect(onUnauthorized).not.toHaveBeenCalled();
+
+    await authService.deleteAccount({ password: 'Passw0rd!' });
+
+    await storage.clearSessionTokens();
+    await expect(authService.login({ email, password: 'Passw0rd!' })).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  });
+
   test('email trùng → lỗi nghiệp vụ tiếng Việt của BE, không lưu token', async () => {
     const email = uniqueEmail();
     await authService.register({ fullName: 'Người Thử', email, password: 'Passw0rd!' });
