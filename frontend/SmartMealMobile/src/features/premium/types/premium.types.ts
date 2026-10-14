@@ -40,8 +40,28 @@ export interface FeatureComparisonRow {
   proValueLabel?: string;
 }
 
+export interface CheckoutSessionData {
+  sessionId: string;
+  orderCode?: number;
+  paymentUrl: string;
+  qrCodeUrl: string | null;
+  amountVnd: number;
+}
+
+export interface PaymentStatusResult {
+  orderCode: number;
+  status: string;
+  isPaid: boolean;
+  amount: number;
+  planId: string;
+  paidAt: string | null;
+}
+
 export interface CheckoutResult {
   transactionId: string;
+  orderCode?: number;
+  paymentUrl?: string;
+  qrCodeUrl?: string | null;
   amountVnd: number;
   planId: BillingPlanId;
   paymentMethodId: PaymentMethodId;

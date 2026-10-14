@@ -19,4 +19,5 @@ public class User
     public ICollection<NutritionDiary> NutritionDiaries { get; set; } = new List<NutritionDiary>();
     public ICollection<MealPlan> MealPlans { get; set; } = new List<MealPlan>();
     public ICollection<UserFavorite> Favorites { get; set; } = new List<UserFavorite>();
+    public ICollection<PaymentTransaction> PaymentTransactions { get; set; } = new List<PaymentTransaction>();
 }

@@ -19,8 +19,20 @@ public class CreateCheckoutSessionRequestDto
 public class CheckoutSessionResponseDto
 {
     public string SessionId { get; set; } = string.Empty;
+    public long? OrderCode { get; set; }
     public string PaymentUrl { get; set; } = string.Empty;
     public string? QrCodeUrl { get; set; }
     public decimal AmountVnd { get; set; }
     public string Message { get; set; } = string.Empty;
 }
+
+public class PaymentTransactionStatusDto
+{
+    public long OrderCode { get; set; }
+    public string Status { get; set; } = "PENDING";
+    public bool IsPaid { get; set; }
+    public decimal Amount { get; set; }
+    public string PlanId { get; set; } = string.Empty;
+    public DateTime? PaidAt { get; set; }
+}
+

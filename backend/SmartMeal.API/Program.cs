@@ -16,7 +16,8 @@ builder.Configuration.AddEnvironmentVariables();
 // 1. Add Database Context (PostgreSQL)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(connectionString)
+           .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
 // 2. Add Dependency Injection Services
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();

@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using SmartMeal.Domain.Entities;
 
 namespace SmartMeal.Infrastructure.Data;
@@ -6,6 +7,33 @@ public static class DbInitializer
 {
     public static async Task SeedAsync(ApplicationDbContext db)
     {
+        try
+        {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS ""PaymentTransactions"" (
+                    ""Id"" uuid NOT NULL,
+                    ""UserId"" uuid NOT NULL,
+                    ""OrderCode"" bigint NOT NULL,
+                    ""Amount"" numeric NOT NULL,
+                    ""PlanId"" text NOT NULL,
+                    ""PaymentMethod"" text NOT NULL,
+                    ""Status"" text NOT NULL,
+                    ""PaymentUrl"" text NULL,
+                    ""QrCode"" text NULL,
+                    ""CreatedAt"" timestamp with time zone NOT NULL,
+                    ""PaidAt"" timestamp with time zone NULL,
+                    CONSTRAINT ""PK_PaymentTransactions"" PRIMARY KEY (""Id""),
+                    CONSTRAINT ""FK_PaymentTransactions_Users_UserId"" FOREIGN KEY (""UserId"") REFERENCES ""Users"" (""Id"") ON DELETE CASCADE
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_PaymentTransactions_OrderCode"" ON ""PaymentTransactions"" (""OrderCode"");
+                CREATE INDEX IF NOT EXISTS ""IX_PaymentTransactions_UserId"" ON ""PaymentTransactions"" (""UserId"");
+            ");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Database] PaymentTransactions table creation note: {ex.Message}");
+        }
+
         if (!db.Recipes.Any())
         {
 
@@ -242,13 +270,13 @@ public static class DbInitializer
                 TargetWeightKg = 65,
                 ActivityLevel = "Moderate",
                 Goal = "FatLoss",
-                DailyCalorieTarget = 2000,
-                CarbsRatio = 45,
-                ProteinRatio = 30,
-                FatRatio = 25,
-                Bmr = 1680,
-                Tdee = 2300,
-                Bmi = 22.2
+                DailyCaloriesTarget = 2000,
+                DailyCarbsTargetGrams = 225,
+                DailyProteinTargetGrams = 150,
+                DailyFatTargetGrams = 55,
+                BMR = 1680,
+                TDEE = 2300,
+                BMI = 22.2
             };
             db.HealthProfiles.Add(healthProfile);
             await db.SaveChangesAsync();

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Net.payOS.Types;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.Subscription;
 using SmartMeal.Application.Services;
@@ -34,6 +35,22 @@ public class SubscriptionController : ControllerBase
             return Unauthorized(ApiResponse<CheckoutSessionResponseDto>.Fail("Phiên đăng nhập không hợp lệ."));
 
         var result = await _subscriptionService.CreateCheckoutSessionAsync(userId, dto);
+        if (!result.Success) return BadRequest(result);
+        return Ok(result);
+    }
+
+    [HttpGet("check-status/{orderCode}")]
+    public async Task<ActionResult<ApiResponse<PaymentTransactionStatusDto>>> CheckPaymentStatus([FromRoute] long orderCode)
+    {
+        var result = await _subscriptionService.CheckPaymentStatusAsync(orderCode);
+        if (!result.Success) return NotFound(result);
+        return Ok(result);
+    }
+
+    [HttpPost("payos-webhook")]
+    public async Task<ActionResult<ApiResponse<bool>>> PayOSWebhook([FromBody] WebhookType webhookBody)
+    {
+        var result = await _subscriptionService.HandlePayOSWebhookAsync(webhookBody);
         if (!result.Success) return BadRequest(result);
         return Ok(result);
     }

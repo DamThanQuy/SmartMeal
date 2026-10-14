@@ -34,6 +34,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<UserChallenge> UserChallenges => Set<UserChallenge>();
     public DbSet<RecipeCollection> RecipeCollections => Set<RecipeCollection>();
     public DbSet<CollectionRecipe> CollectionRecipes => Set<CollectionRecipe>();
+    public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -57,6 +58,17 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Email)
             .IsUnique();
+
+        // PaymentTransaction
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasIndex(pt => pt.OrderCode)
+            .IsUnique();
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasOne(pt => pt.User)
+            .WithMany(u => u.PaymentTransactions)
+            .HasForeignKey(pt => pt.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // User - HealthProfile (1-1)
         modelBuilder.Entity<HealthProfile>()
