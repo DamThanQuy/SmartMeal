@@ -83,4 +83,10 @@ public class UserDto
 
     public string Role { get; set; } = "User";
     public bool HasCompletedSurvey { get; set; }
+
+    /// <summary>
+    /// Tài khoản có mật khẩu (đăng ký bằng email). false = chỉ đăng nhập Google: xóa tài khoản xác nhận bằng email thay vì
+    /// mật khẩu, và không có "đổi mật khẩu".
+    /// </summary>
+    public bool HasPassword { get; set; }
 }

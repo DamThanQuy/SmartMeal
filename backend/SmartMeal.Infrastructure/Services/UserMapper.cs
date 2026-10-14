@@ -19,7 +19,8 @@ internal static class UserMapper
             SubscriptionStatus = user.EffectiveSubscriptionStatus(at),
             ProExpiresAt = user.ProExpiresAt,
             Role = user.Role,
-            HasCompletedSurvey = hasCompletedSurvey
+            HasCompletedSurvey = hasCompletedSurvey,
+            HasPassword = !string.IsNullOrEmpty(user.PasswordHash)
         };
     }
 }
