@@ -105,6 +105,8 @@ Theo quyết định của nhóm, app chỉ đăng nhập bằng email + mật k
 
 ## 4. Cách kiểm chứng lại
 
+**Chạy cả backend bằng Docker:** một lệnh `docker compose up -d --build` ở thư mục gốc dựng PostgreSQL, API (migrate và seed tự động) và pgAdmin. API đọc `backend/.env`, sao chép từ `backend/.env.example`. Mỗi phần có `.env.example` riêng (`backend/`, `frontend/SmartMealMobile/`); thư mục gốc không còn file env. Xem README §2–3.
+
 **Backend:** cần PostgreSQL và .NET 9. Chi tiết xem [`backend/SmartMeal.Tests/README.md`](../backend/SmartMeal.Tests/README.md).
 
 ```bash

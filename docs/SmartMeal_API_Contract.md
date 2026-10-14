@@ -1114,7 +1114,7 @@ Hủy gia hạn: vẫn dùng Pro tới hết hạn.
 
 ## 4. Cấu hình (biến môi trường / appsettings)
 
-Khóa bí mật chỉ đặt qua biến môi trường (`Muc__Khoa`, dùng `__` thay cho `:`), file `.env` (đã bị `.gitignore`) hoặc User Secrets — **không** commit. Xem `.env.example`.
+Khóa bí mật chỉ đặt qua biến môi trường (`Muc__Khoa`, dùng `__` thay cho `:`), file `backend/.env` (đã bị `.gitignore`; mẫu ở `backend/.env.example`) hoặc User Secrets — **không** commit. Chạy bằng Docker (`docker compose up -d --build` ở thư mục gốc): compose đọc `backend/.env` cho API và tự trỏ chuỗi kết nối tới container `postgres`. Biến môi trường đặt khi chạy được ưu tiên hơn `backend/.env`.
 
 | Khóa | Mặc định | Ý nghĩa |
 |---|---|---|
