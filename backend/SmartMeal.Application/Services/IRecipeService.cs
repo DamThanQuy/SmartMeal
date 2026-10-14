@@ -23,4 +23,7 @@ public interface IRecipeService
     Task<ApiResponse<bool>> DeleteCollectionAsync(Guid userId, Guid collectionId);
     Task<ApiResponse<bool>> AddRecipeToCollectionAsync(Guid userId, Guid collectionId, Guid recipeId);
     Task<ApiResponse<bool>> RemoveRecipeFromCollectionAsync(Guid userId, Guid collectionId, Guid recipeId);
+    Task<ApiResponse<CollectionShareDto>> CreateShareLinkAsync(Guid userId, Guid collectionId, bool regenerate);
+    Task<ApiResponse<bool>> RevokeShareLinkAsync(Guid userId, Guid collectionId);
+    Task<ApiResponse<RecipeCollectionDto>> GetSharedCollectionAsync(string shareToken, Guid? userId);
 }

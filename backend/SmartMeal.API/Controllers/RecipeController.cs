@@ -137,4 +137,34 @@ public class RecipeController : ControllerBase
         if (!this.TryGetUserId(out var userId)) return this.InvalidSession<bool>();
         return this.ToActionResult(await _recipeService.RemoveRecipeFromCollectionAsync(userId, collectionId, recipeId));
     }
+
+    /// <summary>
+    /// Bật liên kết chia sẻ chỉ đọc — chỉ chủ sở hữu (403/404 như khi sửa). Đã có mã thì trả lại mã cũ; <c>regenerate=true</c>
+    /// tạo mã mới và liên kết cũ hết hiệu lực.
+    /// </summary>
+    [Authorize]
+    [HttpPost("collections/{collectionId:guid}/share")]
+    public async Task<ActionResult<ApiResponse<CollectionShareDto>>> CreateShareLink(Guid collectionId, [FromQuery] bool regenerate = false)
+    {
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<CollectionShareDto>();
+        return this.ToActionResult(await _recipeService.CreateShareLinkAsync(userId, collectionId, regenerate));
+    }
+
+    /// <summary>Tắt liên kết chia sẻ (idempotent) — chỉ chủ sở hữu.</summary>
+    [Authorize]
+    [HttpDelete("collections/{collectionId:guid}/share")]
+    public async Task<ActionResult<ApiResponse<bool>>> RevokeShareLink(Guid collectionId)
+    {
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<bool>();
+        return this.ToActionResult(await _recipeService.RevokeShareLinkAsync(userId, collectionId));
+    }
+
+    /// <summary>
+    /// Xem bộ sưu tập qua liên kết chia sẻ (chỉ đọc, kể cả bộ sưu tập riêng tư). Không cần đăng nhập; có token thì cá nhân hóa
+    /// <c>isFavorite</c>/<c>healthWarnings</c>. Mã sai hoặc đã tắt → 404.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("collections/shared/{shareToken}")]
+    public async Task<ActionResult<ApiResponse<RecipeCollectionDto>>> GetSharedCollection(string shareToken) =>
+        this.ToActionResult(await _recipeService.GetSharedCollectionAsync(shareToken, OptionalUserId()));
 }

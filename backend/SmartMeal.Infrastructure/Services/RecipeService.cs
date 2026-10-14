@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SmartMeal.Application.Common;
@@ -342,6 +343,64 @@ public class RecipeService : IRecipeService
         return ApiResponse<bool>.Ok(true, "Đã bỏ món ăn khỏi bộ sưu tập.");
     }
 
+    // ───────────────────────────── Chia sẻ bộ sưu tập ─────────────────────────────
+
+    /// <summary>
+    /// Bật liên kết chia sẻ (chỉ chủ sở hữu). Đã có mã thì trả lại mã cũ; <paramref name="regenerate"/> = true thì tạo mã mới và
+    /// liên kết cũ hết hiệu lực. Liên kết xem được cả khi bộ sưu tập để riêng tư.
+    /// </summary>
+    public async Task<ApiResponse<CollectionShareDto>> CreateShareLinkAsync(Guid userId, Guid collectionId, bool regenerate)
+    {
+        var (collection, error) = await FindOwnedCollectionAsync<CollectionShareDto>(userId, collectionId);
+        if (error is not null) return error;
+
+        if (collection!.ShareToken is null || regenerate)
+        {
+            collection.ShareToken = NewShareToken();
+            collection.SharedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+        }
+
+        return ApiResponse<CollectionShareDto>.Ok(
+            new CollectionShareDto { ShareToken = collection.ShareToken!, SharedAt = DateTime.SpecifyKind(collection.SharedAt ?? DateTime.UtcNow, DateTimeKind.Utc) },
+            "Đã bật liên kết chia sẻ.");
+    }
+
+    /// <summary>Thu hồi liên kết chia sẻ (idempotent): mã cũ không còn mở được.</summary>
+    public async Task<ApiResponse<bool>> RevokeShareLinkAsync(Guid userId, Guid collectionId)
+    {
+        var (collection, error) = await FindOwnedCollectionAsync<bool>(userId, collectionId);
+        if (error is not null) return error;
+
+        if (collection!.ShareToken is not null)
+        {
+            collection.ShareToken = null;
+            collection.SharedAt = null;
+            await _db.SaveChangesAsync();
+        }
+
+        return ApiResponse<bool>.Ok(true, "Đã tắt liên kết chia sẻ.");
+    }
+
+    /// <summary>Xem bộ sưu tập qua liên kết chia sẻ (chỉ đọc). Mã sai hoặc đã thu hồi → 404.</summary>
+    public async Task<ApiResponse<RecipeCollectionDto>> GetSharedCollectionAsync(string shareToken, Guid? userId)
+    {
+        var token = shareToken?.Trim() ?? string.Empty;
+        var collection = token.Length is > 0 and <= 64
+            ? await CollectionsWithRecipes().FirstOrDefaultAsync(c => c.ShareToken == token)
+            : null;
+        if (collection is null)
+        {
+            return ApiResponse<RecipeCollectionDto>.Fail("Liên kết chia sẻ không tồn tại hoặc đã bị tắt.", null, ApiErrorKind.NotFound);
+        }
+
+        return ApiResponse<RecipeCollectionDto>.Ok(ToCollectionDto(collection, userId ?? Guid.Empty, await GetViewerAsync(userId)));
+    }
+
+    /// <summary>24 byte ngẫu nhiên, base64url (32 ký tự) — không đoán được.</summary>
+    private static string NewShareToken() =>
+        Convert.ToBase64String(RandomNumberGenerator.GetBytes(24)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
     // ───────────────────────────── Nội bộ ─────────────────────────────
 
     private IQueryable<RecipeCollection> CollectionsWithRecipes() => _db.RecipeCollections
@@ -439,6 +498,7 @@ public class RecipeService : IRecipeService
         IsPublic = c.IsPublic,
         OwnerId = c.UserId,
         IsOwner = c.UserId == userId,
+        ShareToken = c.UserId == userId ? c.ShareToken : null,
         Recipes = c.CollectionRecipes.Select(cr => ToDto(cr.Recipe, favorites)).ToList()
     };
 }

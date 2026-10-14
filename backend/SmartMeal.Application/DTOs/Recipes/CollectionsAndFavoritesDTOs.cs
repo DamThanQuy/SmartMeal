@@ -47,7 +47,19 @@ public class RecipeCollectionDto
     /// <summary>Người dùng đang đăng nhập là chủ sở hữu.</summary>
     public bool IsOwner { get; set; }
 
+    /// <summary>Mã liên kết chia sẻ đang bật — chỉ trả cho chủ sở hữu; null = chưa chia sẻ (hoặc người xem không phải chủ).</summary>
+    public string? ShareToken { get; set; }
+
     public List<RecipeDto> Recipes { get; set; } = new();
+}
+
+/// <summary>Liên kết chia sẻ của bộ sưu tập: ai có mã đều xem được (chỉ đọc) qua <c>GET /recipes/collections/shared/{shareToken}</c>.</summary>
+public class CollectionShareDto
+{
+    public string ShareToken { get; set; } = string.Empty;
+
+    /// <summary>Lúc tạo mã hiện tại (UTC).</summary>
+    public DateTime SharedAt { get; set; }
 }
 
 public class AddRecipeToCollectionDto
