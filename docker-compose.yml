@@ -1,18 +1,25 @@
-# Chạy:  docker compose up -d postgres pgadmin     (chỉ DB)   |   docker compose up --build -d   (cả hệ thống)
-# Biến ${...} lấy từ file `.env` ở thư mục gốc (xem .env.example). Jwt__Key là BẮT BUỘC và phải tự sinh.
+# SmartMeal backend — MỘT lệnh chạy cả PostgreSQL và API (tại thư mục gốc repo):
+#
+#   docker compose up -d --build        → API: http://localhost:5000 (Swagger: /swagger), DB: localhost:5432,
+#                                          pgAdmin: http://localhost:5050
+#   docker compose down                 → dừng (dữ liệu DB và ảnh đại diện vẫn giữ trong volume)
+#
+# Cấu hình của API (JWT, Gemini, SMTP…) lấy từ `backend/.env` — tạo bằng cách sao chép `backend/.env.example`.
+# Không cần file .env ở thư mục gốc. App (Expo) chạy riêng trong frontend/SmartMealMobile.
+# Chỉ muốn DB để chạy API bằng `dotnet run`: docker compose up -d postgres
 
 services:
-  # 1. PostgreSQL Database (chỉ mở cổng trên localhost)
+  # 1. PostgreSQL (cổng 5432 chỉ mở trên localhost)
   postgres:
     image: postgres:16-alpine
     container_name: smartmeal_postgres
-    restart: always
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
-      POSTGRES_DB: ${POSTGRES_DB:-SmartMealDb}
+      POSTGRES_DB: SmartMealDb
     ports:
-      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,40 +29,47 @@ services:
       retries: 10
       start_period: 5s
 
-  # 2. pgAdmin (Web GUI for Database) — chỉ dùng khi phát triển, chỉ mở cổng trên localhost
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: smartmeal_pgadmin
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@smartmeal.com
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
-    ports:
-      - "127.0.0.1:${PGADMIN_PORT:-5050}:80"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  # 3. ASP.NET Core API
+  # 2. ASP.NET Core API — build từ backend/Dockerfile, chạy sau khi PostgreSQL sẵn sàng, tự migrate + seed khi khởi động
   backend-api:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: smartmeal_api
-    restart: always
+    restart: unless-stopped
+    env_file:
+      - path: ./backend/.env
+        required: true
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-SmartMealDb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgrespassword}
-      - Jwt__Key=${Jwt__Key:?Hãy đặt Jwt__Key trong file .env (xem .env.example)}
-      - Jwt__Issuer=${Jwt__Issuer:-SmartMealBackend}
-      - Jwt__Audience=${Jwt__Audience:-SmartMealMobile}
-      - Gemini__ApiKey=${Gemini__ApiKey:-}
-      - Gemini__Model=${Gemini__Model:-gemini-1.5-flash}
+      # Các giá trị dưới đây ghi đè backend/.env (vd. chuỗi kết nối localhost dùng khi chạy tay).
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=SmartMealDb;Username=postgres;Password=${POSTGRES_PASSWORD:-postgrespassword}
+      Storage__Root: /app/uploads
+      # Expo web (npx expo start --web) gọi API từ trình duyệt.
+      Cors__AllowedOrigins: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081,http://localhost:19006}
     ports:
-      - "${API_PORT:-5000}:8080"
+      # Mở trên mọi địa chỉ để điện thoại cùng Wi-Fi gọi được http://<IP-máy>:5000/api
+      - "5000:8080"
+    volumes:
+      - api_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # 3. pgAdmin (giao diện quản trị DB, chỉ mở trên localhost) — đăng nhập admin@smartmeal.com / admin
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: smartmeal_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@smartmeal.com
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+    ports:
+      - "127.0.0.1:5050:80"
     depends_on:
       postgres:
         condition: service_healthy
 
 volumes:
   postgres_data:
+  api_uploads:
