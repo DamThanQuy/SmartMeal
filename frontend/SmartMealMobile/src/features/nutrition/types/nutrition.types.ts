@@ -105,7 +105,7 @@ export interface DiaryDaySummary {
   /** ISO date yyyy-MM-dd. */
   date: string;
   calorieTarget: number;
-  /** Calo cộng thêm từ vận động (Health Connect mock) — design/Dashboard.dc.html "+ Vận động". */
+  /** Calo cộng thêm từ vận động (health-sync của backend) — design/Dashboard.dc.html "+ Vận động". */
   activityCalories: number;
   entriesByMeal: Record<MealType, MealLogEntry[]>;
   macroTargets: {

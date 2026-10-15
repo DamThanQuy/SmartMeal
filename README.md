@@ -65,7 +65,7 @@ SmartMeal/
 │   ├── .env.example                # Mẫu biến môi trường của BE → sao chép thành backend/.env
 │   └── SmartMeal.sln               # Solution file
 ├── frontend/SmartMealMobile/       # Mã nguồn app React Native / Expo
-│   ├── src/features/<feature>/     # screens, components, hooks, services (mock/api/mapper), types
+│   ├── src/features/<feature>/     # screens, components, hooks, services (api/mapper), types
 │   ├── src/services/api/           # Axios client, endpoints, interceptors (refresh token)
 │   ├── src/navigation/, src/state/ # React Navigation, Zustand stores
 │   ├── docs/                       # business_rule, design, structure_system, tech_stack, ui-progress
@@ -120,7 +120,7 @@ Mở `backend/.env` và điền:
 
 Khi chạy AI thật, chỉ cần điền `Gemini__ApiKey` và **không** đặt `Ai__AllowDemoFallback=true`. Nếu thiếu key, Development trả dữ liệu mẫu có `isDemo=true`; staging/production trả lỗi 503 thay vì giả kết quả. Đã có key mà Gemini lỗi (model bị ngừng, quá tải, sai key…) thì API trả lỗi 502 ở mọi môi trường — xem nguyên nhân trong log của API (`docker compose logs backend-api`).
 
-Mở `frontend/SmartMealMobile/.env` và đặt `EXPO_PUBLIC_USE_MOCK_API=false`, `EXPO_PUBLIC_API_URL` theo mục 5 bên dưới. Đây là URL công khai của backend, không phải Gemini URL và không chứa API key.
+Mở `frontend/SmartMealMobile/.env` và đặt `EXPO_PUBLIC_API_URL` theo mục 5 bên dưới (app luôn gọi backend thật, không có chế độ dữ liệu giả lập). Đây là URL công khai của backend, không phải Gemini URL và không chứa API key.
 
 > Các file `.env` đã được `.gitignore` — **không commit**, không chép khóa thật vào file `.env.example`.
 

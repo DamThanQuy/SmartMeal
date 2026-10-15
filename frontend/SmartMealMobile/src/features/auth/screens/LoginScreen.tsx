@@ -30,9 +30,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 /** Mã lỗi BE khi đăng nhập đúng mật khẩu nhưng email chưa xác minh (đã gửi mã OTP mới). */
 const EMAIL_NOT_VERIFIED = 'email_not_verified';
 
-// design/Main.dc.html (BR-013, BR-014). Mock (EXPO_PUBLIC_USE_MOCK_API=true): đăng nhập không
-// kiểm tra thật — mọi email/mật khẩu hợp lệ định dạng đều thành công, trừ khi Dev bật
-// MOCK_SCENARIO='error'. API thật: POST /auth/login rồi nạp hồ sơ sức khỏe (useLogin).
+// design/Main.dc.html (BR-013, BR-014). POST /auth/login rồi nạp hồ sơ sức khỏe (useLogin).
 export function LoginScreen({ navigation, route }: Props) {
   const verifiedEmail = route.params?.verifiedEmail;
   const { colors } = useTheme();

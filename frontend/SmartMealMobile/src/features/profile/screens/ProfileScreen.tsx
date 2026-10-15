@@ -24,6 +24,8 @@ import { isProMembership, usePremiumStore } from '@/state/premium/premiumStore';
 import { useUserProfileStore } from '@/state/user/userProfileStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { ProfileMenuRow } from '../components/ProfileMenuRow';
+import { useHealthConnectStatus } from '../hooks/useHealthConnect';
+import { summarizeReminders, useRemindersSettings } from '../hooks/useReminders';
 
 // design/Profile.dc.html (BR-001→BR-003). Là MAIN_TAB_ROUTES.PROFILE. Icon "Cài đặt" mở
 // SettingsScreen (Đợt 9, design v2) — ThemePreviewScreen (MAIN_STACK_ROUTES.DEV) nay nằm trong
@@ -36,6 +38,8 @@ export function ProfileScreen() {
   const profile = useUserProfileStore();
   const membershipStatus = usePremiumStore(state => state.status);
   const isPremium = isProMembership(membershipStatus);
+  const { data: healthConnect } = useHealthConnectStatus();
+  const { data: reminders } = useRemindersSettings();
 
   const allergyLabels = [
     ...profile.allergyIds
@@ -109,13 +113,13 @@ export function ProfileScreen() {
         <ProfileMenuRow
           icon={<Activity size={20} color={colors.primary} />}
           label="Health Connect"
-          valueLabel="Đã kết nối"
+          valueLabel={healthConnect ? (healthConnect.connected ? 'Đã kết nối' : 'Chưa kết nối') : undefined}
           onPress={() => navigation.navigate(MAIN_STACK_ROUTES.HEALTH_CONNECT)}
         />
         <ProfileMenuRow
           icon={<Bell size={20} color={colors.primary} />}
           label="Nhắc nhở"
-          valueLabel="Bữa ăn, uống nước"
+          valueLabel={summarizeReminders(reminders)}
           onPress={() => navigation.navigate(MAIN_STACK_ROUTES.REMINDERS)}
         />
         <ProfileMenuRow

@@ -8,8 +8,7 @@ import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useSubscriptionPlans } from '../hooks/useSubscription';
-import { PAYMENT_METHOD_OPTIONS } from '../mocks/premium.mock';
-import type { SelectablePaymentMethodId } from '../types/premium.types';
+import { PAYMENT_METHOD_OPTIONS, type SelectablePaymentMethodId } from '../types/premium.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PaymentMethod'>;
 

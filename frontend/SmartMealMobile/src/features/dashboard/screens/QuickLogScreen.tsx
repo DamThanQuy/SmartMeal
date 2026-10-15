@@ -65,8 +65,8 @@ export function QuickLogScreen({ navigation, route }: Props) {
     route.params?.mealType ?? getMealTypeForHour(new Date().getHours()),
   );
 
-  // BR-233 — hết quota AI chặn cả 2 luồng. BR-252 — mic chưa cấp quyền (mock luôn giả lập chưa
-  // cấp) thì "Nói để ghi" phải qua VoicePermission trước, không vào thẳng VoiceLog.
+  // BR-233 — hết quota AI chặn cả 2 luồng. BR-252 — mic chưa cấp quyền trong phiên này thì "Nói để
+  // ghi" phải qua VoicePermission trước (màn đó tự chuyển tiếp nếu máy đã cấp quyền).
   const goToAiFlow = (kind: 'photo' | 'voice') => {
     if (!hasRemaining) {
       navigation.navigate(MAIN_STACK_ROUTES.STATE_AI_LIMIT, { mealType });

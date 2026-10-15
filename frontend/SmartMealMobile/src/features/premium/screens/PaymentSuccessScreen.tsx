@@ -8,8 +8,7 @@ import { AppButton, AppCard, AppText } from '@/components/ui';
 import { MAIN_STACK_ROUTES, MAIN_TAB_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
-import { BILLING_PLAN_OPTIONS } from '../mocks/premium.mock';
-import { PAYMENT_METHOD_LABEL } from '../types/premium.types';
+import { BILLING_PLAN_OPTIONS, PAYMENT_METHOD_LABEL } from '../types/premium.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PaymentSuccess'>;
 

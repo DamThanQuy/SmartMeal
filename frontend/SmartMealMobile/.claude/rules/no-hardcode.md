@@ -37,7 +37,6 @@ const styles = useThemedStyles((t) => ({ box: { backgroundColor: t.colors.surfac
 src/config/
 ├── env.ts   ← đọc qua expo-constants (Constants.expoConfig.extra), KHÔNG default cứng URL production
 ├── api.ts   ← base URL, timeout, version — đọc từ env.ts
-├── mock.ts  ← MOCK_SCENARIO (nhánh feat/mock-ui)
 └── app.ts
 ```
 
@@ -98,11 +97,10 @@ navigation.navigate(ROUTES.MEAL_DETAIL);
 - Không hard-code dữ liệu động lẽ ra phải đến từ Backend (danh sách món ăn, giá nguyên liệu...) vào
   `constants/` — constants chỉ chứa giá trị tĩnh của hệ thống.
 
-## 6. Mock data (giai đoạn `feat/mock-ui`)
+## 6. Không có mock data
 
-Mock data được phép tồn tại tạm thời nhưng phải cô lập trong `src/features/<feature>/mocks/` (xem
-`CLAUDE.md` mục 8), có type rõ ràng, không hard-code trực tiếp trong JSX của Screen/component dùng
-chung, và không import mock ở tầng Screen/Hook — chỉ Service được đọc `mocks/`.
+App không có dữ liệu giả lập (xem `CLAUDE.md` mục 8): không tạo `mocks/`, `*.mock.ts`, không seed số liệu
+mẫu của design vào store/service. Dữ liệu giả chỉ được có trong test (`__tests__/`, `test-utils/`).
 
 ## 7. Checklist nhanh trước khi commit
 
@@ -112,5 +110,5 @@ chung, và không import mock ở tầng Screen/Hook — chỉ Service được 
 - [ ] Không có URL, base path API viết tay ngoài `src/config/`.
 - [ ] Không có API key/secret/token trong source.
 - [ ] Không có route string viết tay ngoài `src/constants/routes.ts`.
-- [ ] Không có mock data hard-code trong Screen/UI component.
+- [ ] Không có dữ liệu giả lập/mock trong `src/` (Screen, component, service, store).
 - [ ] Kiểm tra hiển thị đúng ở cả light và dark mode.

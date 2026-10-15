@@ -26,7 +26,7 @@ Giao việc cho agent `ui-consistency-reviewer` (chỉ review, KHÔNG sửa code
 
 3. **Layering sai**
    - `axios` / `fetch` trực tiếp trong screen/component thay vì qua feature service → API client.
-   - Screen/component import thẳng từ `mocks/` hoặc hard-code mock data trong UI.
+   - Có dữ liệu giả lập/mock trong `src/` (thư mục `mocks/`, file `*.mock.ts`, số liệu mẫu hard-code).
    - Import vào ruột feature khác thay vì qua `index.ts`; server data để trong Zustand.
 
 4. **Package không tương thích Expo Go**
@@ -36,8 +36,7 @@ Giao việc cho agent `ui-consistency-reviewer` (chỉ review, KHÔNG sửa code
      `@react-native-async-storage/async-storage`).
 
 5. **Thiếu state**
-   - Màn có dữ liệu bất đồng bộ nhưng thiếu Loading / Empty / Error, hoặc service mock không
-     xử lý `MOCK_SCENARIO`.
+   - Màn có dữ liệu bất đồng bộ nhưng thiếu Loading / Empty / Error.
 
 Tham chiếu: `CLAUDE.md` §6–8, `.claude/rules/component-reuse.md`, `.claude/rules/no-hardcode.md`,
 `.claude/rules/architecture.md`, `.claude/rules/state-and-api.md`, `docs/structure_system.md` §2/§11.

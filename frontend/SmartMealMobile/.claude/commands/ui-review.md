@@ -34,7 +34,7 @@ Với mỗi screen thay đổi: mở artboard tương ứng trong `design/*.dc.h
 ### State
 - Đủ Loading (skeleton) / Empty / Error / Success / Disabled cho dữ liệu bất đồng bộ,
   dùng `LoadingState` / `EmptyState` / `ErrorState` thay vì viết tay.
-- Service mock xử lý đúng `MOCK_SCENARIO` để xem được mọi trạng thái.
+- Không có dữ liệu giả lập/mock: tài khoản mới thấy Empty state, không thấy số liệu mẫu của design.
 - Error message thân thiện, có hành động ("Thử lại"), không hiện lỗi kỹ thuật.
 
 ### Nghiệp vụ trên UI
@@ -46,7 +46,7 @@ Với mỗi screen thay đổi: mở artboard tương ứng trong `design/*.dc.h
 ### Native / Expo Go
 - Không dùng package cần native linking thủ công (Vision Camera, ML Kit, MMKV, Keychain, Notifee) —
   chỉ Expo SDK (`expo-camera`, `expo-image-picker`, `expo-av`, `expo-notifications`, `expo-secure-store`).
-- Camera/mic/barcode/Health Connect chỉ mô phỏng kết quả trên nhánh mock-ui, chưa gọi native thật.
+- Native chưa chạy được trên Expo Go (Health Connect…) báo rõ "chưa hỗ trợ", không trả kết quả giả.
 
 ### Accessibility
 - Text đủ contrast (caption dùng `text-text-secondary`, không dùng `text-text-muted`).

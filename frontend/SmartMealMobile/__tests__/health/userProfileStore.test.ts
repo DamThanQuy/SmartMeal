@@ -1,15 +1,14 @@
 /**
- * userProfileStore (docs/fetch-api/part1 §6.5): chạy mock → hồ sơ mẫu; gọi API thật → bắt đầu
- * rỗng rồi được nạp bằng hydrateFromServer (store là bản sao đồng bộ của hồ sơ trên server).
+ * userProfileStore (docs/fetch-api/part1 §6.5): bắt đầu rỗng rồi được nạp bằng hydrateFromServer
+ * (store là bản sao đồng bộ của hồ sơ trên server).
  */
 import type {
   HealthProfileExtras,
   HealthProfileSnapshot,
 } from '@/features/health/types/health.types';
 
-function loadStore(useMockApi: boolean) {
+function loadStore() {
   jest.resetModules();
-  jest.doMock('@/config/env', () => ({ ENV: { useMockApi } }));
   const { useUserProfileStore } =
     require('@/state/user/userProfileStore') as typeof import('@/state/user/userProfileStore');
   // resetUserData phải lấy registry của đúng lần nạp module này.
@@ -46,17 +45,8 @@ const EXTRAS: HealthProfileExtras = {
 };
 
 describe('trạng thái ban đầu', () => {
-  test('chạy mock → hồ sơ mẫu của design', () => {
-    const { useUserProfileStore } = loadStore(true);
-
-    const state = useUserProfileStore.getState();
-
-    expect(state.weightKg).toBe(68);
-    expect(state.allergyIds).toEqual(['dairy', 'peanut']);
-  });
-
-  test('gọi API thật → rỗng, không hiện số liệu giả', () => {
-    const { useUserProfileStore } = loadStore(false);
+  test('bắt đầu rỗng, không có số liệu giả', () => {
+    const { useUserProfileStore } = loadStore();
 
     const state = useUserProfileStore.getState();
 
@@ -80,7 +70,7 @@ describe('hydrateFromServer', () => {
   });
 
   test('đổ hồ sơ từ BE vào store, ghép với phần giữ cục bộ', () => {
-    const { useUserProfileStore } = loadStore(false);
+    const { useUserProfileStore } = loadStore();
 
     useUserProfileStore.getState().hydrateFromServer(SNAPSHOT, EXTRAS);
 
@@ -99,7 +89,7 @@ describe('hydrateFromServer', () => {
   });
 
   test('mục tiêu nước của BE được nạp; không có thì giữ giá trị đang dùng', () => {
-    const { useUserProfileStore } = loadStore(false);
+    const { useUserProfileStore } = loadStore();
     const hydrate = useUserProfileStore.getState().hydrateFromServer;
 
     hydrate({ ...SNAPSHOT, waterGoalMl: 2400 }, EXTRAS);
@@ -110,7 +100,7 @@ describe('hydrateFromServer', () => {
   });
 
   test('hồ sơ cũ BE chưa có ngày sinh → ước lượng = 01/01 của (năm nay − tuổi)', () => {
-    const { useUserProfileStore } = loadStore(false);
+    const { useUserProfileStore } = loadStore();
 
     useUserProfileStore.getState().hydrateFromServer(SNAPSHOT, EXTRAS);
 
@@ -118,7 +108,7 @@ describe('hydrateFromServer', () => {
   });
 
   test('ngày sinh đang có vẫn khớp tuổi BE → giữ nguyên (không đánh mất ngày sinh vừa nhập)', () => {
-    const { useUserProfileStore } = loadStore(false);
+    const { useUserProfileStore } = loadStore();
     const typedDob = new Date(1996, 5, 15); // 30 tuổi vào 02/10/2026
     useUserProfileStore.setState({ dateOfBirth: typedDob });
 
@@ -128,7 +118,7 @@ describe('hydrateFromServer', () => {
   });
 
   test('BE đã lưu ngày sinh → dùng đúng ngày đó, không ước lượng', () => {
-    const { useUserProfileStore } = loadStore(false);
+    const { useUserProfileStore } = loadStore();
     const typedDob = new Date(1995, 2, 8);
 
     useUserProfileStore
@@ -139,7 +129,7 @@ describe('hydrateFromServer', () => {
   });
 
   test('hydrate lần sau thay hẳn dữ liệu cũ (không cộng dồn dị ứng)', () => {
-    const { useUserProfileStore } = loadStore(false);
+    const { useUserProfileStore } = loadStore();
     const hydrate = useUserProfileStore.getState().hydrateFromServer;
 
     hydrate(SNAPSHOT, EXTRAS);
@@ -156,7 +146,7 @@ describe('hydrateFromServer', () => {
   });
 
   test('đăng xuất/xóa dữ liệu (resetUserData) đưa store về rỗng', () => {
-    const { useUserProfileStore, resetUserData: reset } = loadStore(false);
+    const { useUserProfileStore, resetUserData: reset } = loadStore();
     useUserProfileStore.getState().hydrateFromServer(SNAPSHOT, EXTRAS);
 
     reset();

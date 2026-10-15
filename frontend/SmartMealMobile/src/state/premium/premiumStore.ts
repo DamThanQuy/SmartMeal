@@ -57,19 +57,15 @@ interface PremiumState {
   expiresAtIso: string | null;
   /** Nạp trạng thái gói do server báo (đăng nhập, mở màn Gói của tôi, sau khi thanh toán/hủy). */
   hydrateMembership: (snapshot: MembershipSnapshot) => void;
-  // BR-241/242 — chỉ gọi khi Backend (mock: sau khi "webhook" xác nhận) báo thành công, không
-  // bao giờ gọi ngay khi user bấm "Nâng cấp Pro" (xem features/premium PaymentPendingScreen).
-  activatePremium: (planId: BillingPlanId, expiresAtIso: string) => void;
   // BR-232 — hết hạn → về Free Access, dữ liệu cá nhân giữ nguyên (chỉ đổi status ở đây).
   expireMembership: () => void;
-  /** Về Free — đăng xuất/đổi tài khoản (gói là của từng tài khoản) và công tắc Free/Pro ở màn Dev
-   * (ThemePreviewScreen) để demo PlannerRegenerate/Fridge Scanner gate (BR-230/231) mà không cần
-   * đi hết luồng thanh toán. Khác `expireMembership` (status luôn về 'free', không phải 'expired'). */
+  /** Về Free — đăng xuất/đổi tài khoản (gói là của từng tài khoản). Khác `expireMembership` (status
+   * luôn về 'free', không phải 'expired'). */
   resetToFree: () => void;
 }
 
 // Danh sách giao dịch KHÔNG nằm ở đây: là dữ liệu của server (GET /subscription/transactions, đọc qua
-// TanStack Query) và không bị xóa bởi DeleteDataScreen (BR-271) — bản mock tự giữ danh sách của nó.
+// TanStack Query) và không bị xóa bởi DeleteDataScreen (BR-271).
 export const usePremiumStore = create<PremiumState>()(set => ({
   status: 'free',
   planId: null,
@@ -80,24 +76,11 @@ export const usePremiumStore = create<PremiumState>()(set => ({
       planId: snapshot.planId,
       expiresAtIso: snapshot.expiresAtIso,
     }),
-  activatePremium: (planId, expiresAtIso) => set({ status: 'premium', planId, expiresAtIso }),
   expireMembership: () => set({ status: 'expired', planId: null, expiresAtIso: null }),
   resetToFree: () => set({ status: 'free', planId: null, expiresAtIso: null }),
 }));
 
-/** Đọc trạng thái Premium ngoài React tree (trong service, không dùng hook được) — dùng cho
- * BR-233 (giới hạn AI chỉ áp dụng khi Free). */
-export function isPremiumActive(): boolean {
-  return isProMembership(usePremiumStore.getState().status);
-}
-
 /** Hook: gói còn hiệu lực (gồm "đã hủy gia hạn" nhưng chưa hết hạn) — để mở khóa tính năng Pro. */
 export function useIsPro(): boolean {
   return usePremiumStore(state => isProMembership(state.status));
-}
-
-/** Đọc snapshot hiện tại ngoài React tree (bản mock dùng để trả "trạng thái từ server"). */
-export function getMembershipSnapshot(): MembershipSnapshot {
-  const { status, planId, expiresAtIso } = usePremiumStore.getState();
-  return { status, planId, expiresAtIso };
 }

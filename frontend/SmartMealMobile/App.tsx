@@ -18,7 +18,6 @@ import { linking } from '@/navigation/linking';
 import { navigationRef } from '@/navigation/navigationRef';
 import { getNavigationTheme } from '@/navigation/navigationTheme';
 import { queryClient } from '@/services/api';
-import { hydrateMockScenario } from '@/state/app/appStore';
 import { useAuthStore } from '@/state/auth/authStore';
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
 
@@ -55,10 +54,7 @@ function AppContent() {
 }
 
 function App() {
-  // Công tắc dev/QA, không phải dữ liệu người dùng — hydrate không cần chặn splash screen
-  // như theme mode (xem ThemeProvider bên dưới).
   useEffect(() => {
-    void hydrateMockScenario();
     // Phiên đăng nhập: đăng ký handler 401 + tự dọn khi đăng xuất, rồi khôi phục phiên đã lưu.
     const stopSessionLifecycle = startSessionLifecycle();
     void bootstrapSession();

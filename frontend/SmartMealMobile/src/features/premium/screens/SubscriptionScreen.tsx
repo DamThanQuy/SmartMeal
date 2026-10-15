@@ -21,8 +21,7 @@ import {
   useSubscriptionStatus,
   useSubscriptionTransactions,
 } from '../hooks/useSubscription';
-import { BILLING_PLAN_OPTIONS } from '../mocks/premium.mock';
-import { MEMBERSHIP_BADGE_LABEL, PAYMENT_METHOD_LABEL } from '../types/premium.types';
+import { BILLING_PLAN_OPTIONS, MEMBERSHIP_BADGE_LABEL, PAYMENT_METHOD_LABEL } from '../types/premium.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'Subscription'>;
 

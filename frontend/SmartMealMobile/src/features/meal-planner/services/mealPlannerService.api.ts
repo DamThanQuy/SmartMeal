@@ -10,7 +10,6 @@ import type {
 } from '../types/mealPlanner.api.types';
 import type { WeekPlanGeneration } from '../types/mealPlanner.types';
 import { fromPlannedMealDto, fromWeeklyPlanDto } from './mealPlanner.mapper';
-import type { mealPlannerMockService } from './mealPlannerService.mock';
 
 // Bản gọi backend thật cho /mealplanner/* (docs/SmartMeal_API_Contract.md). Dị ứng là ràng buộc của
 // server: POST assign từ chối món chứa dị ứng (errors: allergen_conflict), auto-generate không bao giờ
@@ -29,7 +28,7 @@ async function generate(weekStartIso: string, keepExisting: boolean, targetDaily
   return { plan: fromWeeklyPlanDto(data), note: message || undefined };
 }
 
-export const mealPlannerApiService: Partial<typeof mealPlannerMockService> = {
+export const mealPlannerApiService = {
   // GET /mealplanner/week?startDate=<Thứ Hai>
   async getWeekPlan(weekStartIso: string) {
     return fromWeeklyPlanDto(

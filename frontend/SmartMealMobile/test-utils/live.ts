@@ -133,11 +133,10 @@ export function createMemorySecureStore() {
 }
 
 /**
- * Chuẩn bị môi trường: app gọi API thật (EXPO_PUBLIC_USE_MOCK_API=false) tới LIVE_API_URL, axios dùng
+ * Chuẩn bị môi trường: app gọi API thật tới LIVE_API_URL, axios dùng
  * adapter Node, SecureStore/AsyncStorage chạy trong bộ nhớ. Gọi TRƯỚC khi require service của app.
  */
 export function installLiveBackend(): void {
-  process.env.EXPO_PUBLIC_USE_MOCK_API = 'false';
   process.env.EXPO_PUBLIC_API_URL = LIVE_API_URL;
   jest.resetModules();
   jest.doMock('expo-secure-store', () => createMemorySecureStore());

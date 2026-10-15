@@ -12,26 +12,22 @@ Screen → Hook → Feature Service → API Client / Native Service → Backend 
 // Sai — gọi Axios trực tiếp trong Screen
 const response = await axios.get('/meals');
 
-// Sai — gọi mock trực tiếp trong Screen (nhánh feat/mock-ui)
-import { mealsMock } from '../mocks/meals.mock';
+// Sai — dữ liệu mẫu hard-code trong Screen/service thay cho dữ liệu thật
+const meals = [{ name: 'Bún bò', calories: 520 }];
 
 // Đúng
 const { data } = useMeals();          // hook
-// useMeals() → mealService.getMeals() → apiClient.get(endpoints.meals)
-//   (nhánh feat/mock-ui: mealService.getMeals() tạm trả mocks/meals.mock.ts,
-//    có đúng 1 comment // TODO: replace mock with real API)
+// useMeals() → mealService.getMeals() → api.get(ENDPOINTS.meals)
 ```
 
 - Screen: chỉ render UI + gọi hook + xử lý navigation + loading/error/empty. Không chứa business logic phức tạp.
-- Hook (`features/<feature>/hooks/`): kết nối UI với service/state (TanStack Query, Zustand). Không import
-  thẳng file trong `mocks/`.
+- Hook (`features/<feature>/hooks/`): kết nối UI với service/state (TanStack Query, Zustand).
 - Service (`features/<feature>/services/`): business/data logic, gọi API client chung (`src/services/api/`)
-  — không gọi Axios trực tiếp bên ngoài đó. Trên nhánh `feat/mock-ui`, service là nơi DUY NHẤT được đọc
-  `mocks/`.
+  — không gọi Axios trực tiếp bên ngoài đó. Không có dữ liệu giả lập (mock): mọi số liệu đến từ backend.
 - Native service (`services/permissions`, hoặc `features/<feature>/services/` cho camera/OCR/health): cô lập
   toàn bộ native API qua **Expo SDK** (`expo-camera`, `expo-notifications`, `expo-av`, `expo-image-picker`...),
-  không gọi native API trực tiếp từ nhiều Screen khác nhau. Trên nhánh mock-ui, service này chỉ trả kết quả
-  giả lập, chưa gọi native thật. Không dùng package yêu cầu native linking thủ công (Vision Camera, ML Kit,
+  không gọi native API trực tiếp từ nhiều Screen khác nhau. Native chưa dùng được trên Expo Go (Health Connect…)
+  thì báo rõ "chưa hỗ trợ", không trả kết quả giả. Không dùng package yêu cầu native linking thủ công (Vision Camera, ML Kit,
   MMKV, Keychain, Notifee) khi còn chạy Expo Go — xem `docs/structure_system.md` §2/§11.
 
 ## Feature module chuẩn
@@ -41,8 +37,7 @@ features/<feature>/
 ├── components/   # component chỉ phục vụ feature này
 ├── hooks/
 ├── screens/
-├── services/
-├── mocks/        # dữ liệu giả lập, khớp docs/SmartMeal_API_Contract.md (nhánh feat/mock-ui)
+├── services/     # xService.api.ts (gọi API) + x.mapper.ts (DTO → type FE) + xService.ts
 ├── types/
 └── index.ts      # public entry point
 ```
@@ -76,8 +71,7 @@ Chỉ đưa vào global store khi **nhiều feature thực sự cần** — khô
 1. Xác định nghiệp vụ trong `docs/business_rule.md`.
 2. Xác định UI/UX trong `docs/design.md` và artboard tương ứng trong `design/*.dc.html`.
 3. Tạo `src/features/<feature-name>/` theo cấu trúc chuẩn ở trên.
-4. Kết nối navigation (`src/navigation/`), service (mock trên nhánh `feat/mock-ui`, sau này là
-   `src/services/api/`), xử lý loading/error/empty.
+4. Kết nối navigation (`src/navigation/`), service (gọi `src/services/api/`), xử lý loading/error/empty.
 5. Test flow chính.
 
 Có thể dùng command `/new-feature` hoặc agent `rn-feature-scaffolder` để dựng khung nhanh, nhưng vẫn phải
@@ -86,7 +80,7 @@ Có thể dùng command `/new-feature` hoặc agent `rn-feature-scaffolder` đ�
 ## Checklist kiến trúc trước khi merge
 
 - [ ] Code nằm đúng feature, không lẫn sang feature khác.
-- [ ] Không gọi API/mock trực tiếp từ UI/component.
+- [ ] Không gọi API trực tiếp từ UI/component; không có dữ liệu giả lập trong `src/`.
 - [ ] Không có circular dependency, không import sâu xuyên feature.
 - [ ] Global store chỉ chứa state thực sự dùng chung.
 - [ ] Native API được cô lập qua service, dùng đúng Expo SDK, không rải rác trong Screen.
