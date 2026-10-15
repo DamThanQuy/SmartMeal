@@ -2,7 +2,7 @@
 // import file này, hook/screen chỉ biết type FE trong premium.types.ts.
 
 export type ApiPlanId = 'PRO_MONTHLY' | 'PRO_YEARLY';
-export type ApiPaymentMethod = 'VNPAY' | 'MOMO' | 'STRIPE' | 'PAYOS';
+export type ApiPaymentMethod = 'SEPAY' | 'PAYOS';
 
 /** GET /subscription/plans — nguồn duy nhất cho giá và chu kỳ. */
 export interface SubscriptionPlanDto {
@@ -23,7 +23,7 @@ export interface CreateCheckoutSessionRequestDto {
 
 export interface CheckoutSessionResponseDto {
   sessionId: string;
-  /** Mã đơn PayOS — chỉ có với PAYOS, dùng cho GET /subscription/check-status/{orderCode}. */
+  /** Mã đơn (SEPAY, PAYOS) — dùng cho GET /subscription/check-status/{orderCode}. */
   orderCode?: number | null;
   paymentUrl: string;
   qrCodeUrl: string | null;
@@ -31,9 +31,17 @@ export interface CheckoutSessionResponseDto {
   qrCode?: string | null;
   amountVnd: number;
   message: string;
+  /** SEPAY: tài khoản nhận tiền (đã liên kết SePay) để chuyển tay nếu không quét được QR. */
+  bankCode?: string | null;
+  accountNumber?: string | null;
+  accountName?: string | null;
+  /** SEPAY: nội dung chuyển khoản bắt buộc (mã thanh toán). */
+  transferContent?: string | null;
+  /** SEPAY: hết thời gian hiển thị mã (ISO 8601 UTC); tiền tới sau hạn vẫn được ghi nhận. */
+  expiresAt?: string | null;
 }
 
-/** GET /subscription/check-status/{orderCode} — máy chủ hỏi PayOS và kích hoạt Pro nếu đã nhận đủ tiền. */
+/** GET /subscription/check-status/{orderCode} — máy chủ hỏi PayOS/SePay và kích hoạt Pro nếu đã nhận đủ tiền. */
 export interface PaymentTransactionStatusDto {
   orderCode: number;
   /** Pending | Paid | Failed. */
@@ -60,7 +68,7 @@ export interface PaymentTransactionDto {
   sessionId: string;
   planId: string;
   amountVnd: number;
-  /** VNPAY | MOMO | STRIPE | PAYOS | MOCK (kích hoạt thử ở môi trường phát triển). */
+  /** SEPAY | PAYOS; giao dịch cũ có thể là VNPAY | MOMO | STRIPE (cổng giả lập trước đây) | MOCK (kích hoạt thử ở dev). */
   paymentMethod: string;
   /** Pending | Paid | Failed. */
   status: string;

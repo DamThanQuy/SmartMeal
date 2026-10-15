@@ -1,6 +1,6 @@
+using System.Collections.Concurrent;
+using System.Globalization;
 using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -24,6 +24,7 @@ public class SubscriptionService : ISubscriptionService
     private readonly SubscriptionOptions _options;
     private readonly IHostEnvironment _environment;
     private readonly IPayOSGateway _payOS;
+    private readonly ISePayGateway _sePay;
     private readonly ILogger<SubscriptionService> _logger;
 
     public SubscriptionService(
@@ -31,12 +32,14 @@ public class SubscriptionService : ISubscriptionService
         IOptions<SubscriptionOptions> options,
         IHostEnvironment environment,
         IPayOSGateway payOS,
+        ISePayGateway sePay,
         ILogger<SubscriptionService> logger)
     {
         _db = db;
         _options = options.Value;
         _environment = environment;
         _payOS = payOS;
+        _sePay = sePay;
         _logger = logger;
     }
 
@@ -80,27 +83,9 @@ public class SubscriptionService : ISubscriptionService
             return ApiResponse<CheckoutSessionResponseDto>.Fail("Không tìm thấy thông tin tài khoản.", null, ApiErrorKind.NotFound);
         }
 
-        if (method == SubscriptionCatalog.PayOS)
-        {
-            return await CreatePayOSCheckoutAsync(userId, plan);
-        }
-
-        var sessionId = $"SES_{Guid.NewGuid():N}";
-        _db.PaymentTransactions.Add(NewTransaction(userId, plan, method, sessionId));
-        await _db.SaveChangesAsync();
-
-        // Đường dẫn thanh toán sandbox (chưa tích hợp cổng thật). Cổng thật sẽ gọi webhook với sessionId này.
-        var paymentUrl = $"https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Session={sessionId}&vnp_Amount={plan.PriceVnd * 100}&vnp_OrderInfo={plan.Id}";
-        var qrCodeUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={Uri.EscapeDataString(paymentUrl)}";
-
-        return ApiResponse<CheckoutSessionResponseDto>.Ok(new CheckoutSessionResponseDto
-        {
-            SessionId = sessionId,
-            PaymentUrl = paymentUrl,
-            QrCodeUrl = qrCodeUrl,
-            AmountVnd = plan.PriceVnd,
-            Message = "Tạo phiên thanh toán thành công. Gói Pro chỉ được kích hoạt sau khi cổng thanh toán xác nhận giao dịch."
-        });
+        return method == SubscriptionCatalog.PayOS
+            ? await CreatePayOSCheckoutAsync(userId, plan)
+            : await CreateSePayCheckoutAsync(userId, plan);
     }
 
     public async Task<ApiResponse<bool>> ActivateProPlanAsync(Guid userId, string planId)
@@ -137,65 +122,171 @@ public class SubscriptionService : ISubscriptionService
         return ApiResponse<bool>.Ok(true, "Kích hoạt gói Pro thành công (chế độ phát triển).");
     }
 
-    public async Task<ApiResponse<bool>> HandleWebhookAsync(string rawBody, string? signature)
+    // ───────────────────────────── SePay (chuyển khoản VietQR) ─────────────────────────────
+
+    /// <summary>Ký tự của mã thanh toán: bỏ 0/O/1/I dễ nhầm khi người dùng phải gõ tay nội dung chuyển khoản.</summary>
+    private const string SePayCodeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private const int SePayCodeLength = 8;
+
+    /// <summary>Lần cuối hỏi API giao dịch SePay cho từng đơn — app hỏi trạng thái mỗi 3 giây, không gọi SePay dồn dập.</summary>
+    private static readonly ConcurrentDictionary<Guid, DateTime> SePayLastQueriedAt = new();
+
+    private async Task<ApiResponse<CheckoutSessionResponseDto>> CreateSePayCheckoutAsync(Guid userId, SubscriptionCatalog.Plan plan)
     {
-        var secret = _options.WebhookSecret;
-        if (string.IsNullOrWhiteSpace(secret))
+        if (!_sePay.IsConfigured)
         {
-            return ApiResponse<bool>.Fail("Webhook thanh toán chưa được cấu hình.", null, ApiErrorKind.Unavailable);
+            return ApiResponse<CheckoutSessionResponseDto>.Fail(
+                "Thanh toán chuyển khoản (SePay) chưa được cấu hình trên máy chủ.", new List<string> { "sepay_not_configured" }, ApiErrorKind.Unavailable);
         }
 
-        if (!IsValidSignature(rawBody, signature, secret))
+        for (var attempt = 0; attempt < 5; attempt++)
         {
-            return ApiResponse<bool>.Fail("Chữ ký webhook không hợp lệ.", null, ApiErrorKind.Unauthorized);
+            var code = _sePay.PaymentCodePrefix + RandomNumberGenerator.GetString(SePayCodeAlphabet, SePayCodeLength);
+            var orderCode = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 100 + Random.Shared.Next(0, 100);
+            if (await _db.PaymentTransactions.AnyAsync(t => t.SessionId == code || t.OrderCode == orderCode))
+            {
+                continue;
+            }
+
+            var transfer = _sePay.BuildTransferInfo(plan.PriceVnd, code);
+            // Mã thanh toán chính là nội dung chuyển khoản; SessionId duy nhất nên mỗi mã chỉ khớp một đơn.
+            var transaction = NewTransaction(userId, plan, SubscriptionCatalog.SePay, code);
+            transaction.OrderCode = orderCode;
+            transaction.CheckoutUrl = transfer.QrImageUrl;
+            _db.PaymentTransactions.Add(transaction);
+            await _db.SaveChangesAsync();
+
+            var amount = plan.PriceVnd.ToString("N0", CultureInfo.GetCultureInfo("vi-VN"));
+            return ApiResponse<CheckoutSessionResponseDto>.Ok(new CheckoutSessionResponseDto
+            {
+                SessionId = code,
+                OrderCode = orderCode,
+                PaymentUrl = transfer.QrImageUrl,
+                QrCodeUrl = transfer.QrImageUrl,
+                AmountVnd = plan.PriceVnd,
+                BankCode = transfer.BankCode,
+                AccountNumber = transfer.AccountNumber,
+                AccountName = transfer.AccountName,
+                TransferContent = code,
+                ExpiresAt = transaction.CreatedAt.AddMinutes(_sePay.ExpiryMinutes),
+                Message = $"Quét mã VietQR bằng app ngân hàng, hoặc chuyển {amount}đ với nội dung {code}. Gói Pro được kích hoạt ngay khi nhận được tiền."
+            });
         }
 
-        PaymentWebhookDto? payload;
-        try
+        return ApiResponse<CheckoutSessionResponseDto>.Fail("Không tạo được mã thanh toán, vui lòng thử lại.");
+    }
+
+    public async Task<ApiResponse<bool>> HandleSePayWebhookAsync(string? authorizationHeader, string rawBody)
+    {
+        if (!_sePay.IsConfigured)
         {
-            payload = JsonSerializer.Deserialize<PaymentWebhookDto>(rawBody, JsonSerializerOptions.Web);
-        }
-        catch (JsonException)
-        {
-            return ApiResponse<bool>.Fail("Nội dung webhook không phải JSON hợp lệ.");
+            return ApiResponse<bool>.Fail("Thanh toán SePay chưa được cấu hình.", null, ApiErrorKind.Unavailable);
         }
 
-        if (payload is null || string.IsNullOrWhiteSpace(payload.SessionId) ||
-            !(string.Equals(payload.Status, "paid", StringComparison.OrdinalIgnoreCase) ||
-              string.Equals(payload.Status, "failed", StringComparison.OrdinalIgnoreCase)))
+        var webhook = _sePay.ReadWebhook(authorizationHeader, rawBody);
+        if (!webhook.Authorized)
         {
-            return ApiResponse<bool>.Fail("Webhook cần sessionId và status là paid hoặc failed.");
+            return ApiResponse<bool>.Fail("API key webhook SePay không hợp lệ.", null, ApiErrorKind.Unauthorized);
         }
 
-        var transaction = await _db.PaymentTransactions.FirstOrDefaultAsync(t => t.SessionId == payload.SessionId);
+        // Mọi trường hợp đã xử lý xong đều trả {"success": true} để SePay không gửi lại (tiền ra, nội dung lạ, chuyển thiếu...).
+        if (webhook.Transfer is not { } transfer)
+        {
+            return ApiResponse<bool>.Ok(true, "Bỏ qua giao dịch không phải tiền vào.");
+        }
+
+        var candidates = SePayCodeCandidates(transfer);
+        var transaction = candidates.Count == 0
+            ? null
+            : await _db.PaymentTransactions.FirstOrDefaultAsync(t =>
+                t.PaymentMethod == SubscriptionCatalog.SePay && candidates.Contains(t.SessionId));
         if (transaction is null)
         {
-            return ApiResponse<bool>.Fail("Không tìm thấy phiên thanh toán.", null, ApiErrorKind.NotFound);
+            _logger.LogInformation("SePay transfer {TransferId} ({Amount}đ) does not match any SePay order.", transfer.Id, transfer.Amount);
+            return ApiResponse<bool>.Ok(true, "Không có đơn nào khớp nội dung chuyển khoản.");
         }
 
-        // Cổng thanh toán có thể gửi lại cùng một thông báo: xử lý idempotent.
+        return await ApplySePayTransferAsync(transaction, transfer);
+    }
+
+    /// <summary>Đơn SePay còn chờ: hỏi API giao dịch của SePay (giới hạn tần suất) và xác nhận nếu đã có tiền vào đúng mã.</summary>
+    private async Task CheckSePayTransferAsync(PaymentTransaction transaction)
+    {
+        var now = DateTime.UtcNow;
+        if (SePayLastQueriedAt.TryGetValue(transaction.Id, out var last) &&
+            now - last < TimeSpan.FromSeconds(_sePay.StatusCheckIntervalSeconds))
+        {
+            return;
+        }
+
+        SePayLastQueriedAt[transaction.Id] = now;
+        if (SePayLastQueriedAt.Count > 1000)
+        {
+            foreach (var stale in SePayLastQueriedAt.Where(entry => now - entry.Value > TimeSpan.FromHours(1)).Select(entry => entry.Key).ToList())
+            {
+                SePayLastQueriedAt.TryRemove(stale, out _);
+            }
+        }
+
+        try
+        {
+            var transfers = await _sePay.GetIncomingTransfersAsync(transaction.CreatedAt);
+            var match = transfers.FirstOrDefault(transfer => SePayCodeCandidates(transfer).Contains(transaction.SessionId));
+            if (match is not null)
+            {
+                await ApplySePayTransferAsync(transaction, match);
+            }
+        }
+        catch (Exception ex)
+        {
+            // SePay tạm lỗi: trả trạng thái đang có, lần hỏi sau thử lại.
+            _logger.LogWarning(ex, "Could not query SePay transactions for order {OrderCode}.", transaction.OrderCode);
+        }
+    }
+
+    /// <summary>Đủ tiền → Paid + kích hoạt Pro (idempotent); thiếu tiền → giữ chờ, ghi log để đối soát thủ công.</summary>
+    private async Task<ApiResponse<bool>> ApplySePayTransferAsync(PaymentTransaction transaction, SePayIncomingTransfer transfer)
+    {
         if (transaction.Status == PaymentStatuses.Paid)
         {
             return ApiResponse<bool>.Ok(true, "Giao dịch đã được xác nhận trước đó.");
         }
 
-        if (string.Equals(payload.Status, "failed", StringComparison.OrdinalIgnoreCase))
+        if (transfer.Amount < transaction.AmountVnd)
         {
-            transaction.Status = PaymentStatuses.Failed;
-            transaction.ProviderTransactionId = payload.ProviderTransactionId;
-            await _db.SaveChangesAsync();
-            return ApiResponse<bool>.Ok(true, "Đã ghi nhận giao dịch thất bại.");
+            _logger.LogWarning("SePay transfer {TransferId} for {Code}: received {Amount}đ, expected {Expected}đ — Pro not activated.",
+                transfer.Id, transaction.SessionId, transfer.Amount, transaction.AmountVnd);
+            return ApiResponse<bool>.Ok(true, "Số tiền chuyển chưa đủ — chưa kích hoạt gói Pro.");
         }
 
-        if (payload.AmountVnd != transaction.AmountVnd)
-        {
-            return ApiResponse<bool>.Fail("Số tiền thanh toán không khớp với phiên.");
-        }
-
-        var confirmError = await ConfirmPaidAsync(transaction, payload.ProviderTransactionId);
+        var confirmError = await ConfirmPaidAsync(transaction, $"SEPAY-{transfer.Id}");
         return confirmError is null
             ? ApiResponse<bool>.Ok(true, "Đã xác nhận thanh toán và kích hoạt gói Pro.")
             : ApiResponse<bool>.Fail(confirmError);
+    }
+
+    /// <summary>
+    /// Các mã thanh toán có thể có trong một khoản tiền vào: mã SePay tự nhận ra (<c>code</c>) và mọi chuỗi "tiền tố + 8 ký tự"
+    /// trong nội dung chuyển khoản. Ngân hàng hay chèn thêm chữ/dấu chấm hoặc viết hoa, nên so trên chuỗi chỉ còn chữ-số in hoa.
+    /// </summary>
+    private List<string> SePayCodeCandidates(SePayIncomingTransfer transfer)
+    {
+        var prefix = _sePay.PaymentCodePrefix;
+        var candidates = new List<string>();
+        if (transfer.Code is { } code)
+        {
+            candidates.Add(code.Trim().ToUpperInvariant());
+        }
+
+        var normalized = new string(transfer.Content.ToUpperInvariant().Where(char.IsAsciiLetterOrDigit).ToArray());
+        for (var index = normalized.IndexOf(prefix, StringComparison.Ordinal);
+             index >= 0 && index + prefix.Length + SePayCodeLength <= normalized.Length;
+             index = normalized.IndexOf(prefix, index + 1, StringComparison.Ordinal))
+        {
+            candidates.Add(normalized.Substring(index, prefix.Length + SePayCodeLength));
+        }
+
+        return candidates.Distinct().ToList();
     }
 
     // ───────────────────────────── PayOS ─────────────────────────────
@@ -289,6 +380,12 @@ public class SubscriptionService : ISubscriptionService
                 // PayOS tạm lỗi: trả trạng thái đang có, lần hỏi sau thử lại.
                 _logger.LogWarning(ex, "Không hỏi được PayOS trạng thái đơn {OrderCode}.", orderCode);
             }
+        }
+
+        // SePay: dự phòng khi webhook không tới được máy chủ (vd. máy dev) — tự hỏi API giao dịch của SePay.
+        if (transaction.Status == PaymentStatuses.Pending && transaction.PaymentMethod == SubscriptionCatalog.SePay && _sePay.CanQueryTransactions)
+        {
+            await CheckSePayTransferAsync(transaction);
         }
 
         return ApiResponse<PaymentTransactionStatusDto>.Ok(new PaymentTransactionStatusDto
@@ -480,24 +577,4 @@ public class SubscriptionService : ISubscriptionService
         PlanId = user.ProPlanId,
         ProExpiresAt = user.ProExpiresAt
     };
-
-    private static bool IsValidSignature(string body, string? signature, string secret)
-    {
-        if (string.IsNullOrWhiteSpace(signature))
-        {
-            return false;
-        }
-
-        var provided = signature.Trim();
-        if (provided.StartsWith("sha256=", StringComparison.OrdinalIgnoreCase))
-        {
-            provided = provided["sha256=".Length..];
-        }
-
-        var expected = Convert.ToHexString(HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), Encoding.UTF8.GetBytes(body)));
-        return provided.Length == expected.Length &&
-               CryptographicOperations.FixedTimeEquals(
-                   Encoding.ASCII.GetBytes(provided.ToUpperInvariant()),
-                   Encoding.ASCII.GetBytes(expected));
-    }
 }

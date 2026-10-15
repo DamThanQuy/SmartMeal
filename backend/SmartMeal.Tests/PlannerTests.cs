@@ -150,6 +150,7 @@ public class PlannerTests : IClassFixture<ApiFactory>
     public async Task Auto_generate_fills_every_slot_once_with_dishes_that_suit_the_meal()
     {
         var user = await _factory.RegisterUserAsync();
+        await _factory.GrantProAsync(user);
         var recipes = await RecipesAsync(user.Client);
 
         var week = await GenerateAsync(user.Client, new { startDate = Monday });
@@ -173,6 +174,7 @@ public class PlannerTests : IClassFixture<ApiFactory>
     public async Task Auto_generate_adds_a_snack_each_day_only_when_asked()
     {
         var user = await _factory.RegisterUserAsync();
+        await _factory.GrantProAsync(user);
 
         var without = await GenerateAsync(user.Client, new { startDate = Monday });
         var with = await GenerateAsync(user.Client, new { startDate = Monday, includeSnack = true });
@@ -186,6 +188,7 @@ public class PlannerTests : IClassFixture<ApiFactory>
     public async Task Auto_generate_replaces_the_week_by_default_but_keeps_chosen_dishes_with_keepExisting()
     {
         var user = await _factory.RegisterUserAsync();
+        await _factory.GrantProAsync(user);
         var recipes = await RecipesAsync(user.Client);
         // Canh đậu hũ chỉ hợp bữa trưa/tối nên tạo tự động sẽ không bao giờ xếp nó vào bữa sáng.
         var soup = recipes.Single(r => r.Title.Contains("Canh đậu hũ"));
@@ -211,7 +214,9 @@ public class PlannerTests : IClassFixture<ApiFactory>
     public async Task Auto_generate_only_touches_the_requested_week_and_the_callers_own_plan()
     {
         var user = await _factory.RegisterUserAsync();
+        await _factory.GrantProAsync(user);
         var other = await _factory.RegisterUserAsync();
+        await _factory.GrantProAsync(other);
         var recipe = (await RecipesAsync(user.Client)).First();
         await AssignAsync(user.Client, "2026-08-12", "Lunch", recipe.Id); // tuần sau
         await AssignAsync(other.Client, Monday, "Lunch", recipe.Id);
@@ -259,6 +264,7 @@ public class PlannerTests : IClassFixture<ApiFactory>
     public async Task Auto_generate_leaves_out_dishes_above_the_limits_of_the_users_conditions_and_says_so()
     {
         var user = await _factory.RegisterUserAsync();
+        await _factory.GrantProAsync(user);
         await SetProfileAsync(user.Client, conditionIds: new[] { DyslipidemiaConditionId, GoutConditionId });
         var recipes = await RecipesAsync(user.Client);
         var tooFatty = recipes.Where(r => r.FatPerServing > 20).Select(r => r.Id).ToHashSet();
@@ -278,6 +284,7 @@ public class PlannerTests : IClassFixture<ApiFactory>
     {
         await using var strict = new ApiFactory().WithSetting("HealthConditionLimits:DyslipidemiaMaxFatGrams", "0");
         var user = await strict.RegisterUserAsync();
+        await strict.GrantProAsync(user);
         await SetProfileAsync(user.Client, conditionIds: new[] { DyslipidemiaConditionId });
         var recipes = await RecipesAsync(user.Client);
         var kept = (await (await AssignAsync(user.Client, Monday, "Lunch", recipes[0].Id)).ReadEnvelopeAsync<PlannedMealPayload>()).Data!;
@@ -293,6 +300,7 @@ public class PlannerTests : IClassFixture<ApiFactory>
     public async Task Auto_generate_follows_the_daily_calorie_target()
     {
         var user = await _factory.RegisterUserAsync();
+        await _factory.GrantProAsync(user);
 
         static double AverageDay(WeeklyPlanPayload week) => week.Days.Average(d => d.Meals.Sum(m => m.Calories));
         var low = AverageDay(await GenerateAsync(user.Client, new { startDate = Monday, targetDailyCalories = 600 }));

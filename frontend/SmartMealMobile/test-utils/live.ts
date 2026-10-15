@@ -151,6 +151,19 @@ export function installLiveBackend(): void {
   axios.default.defaults.adapter = nodeHttpAdapter;
 }
 
+/**
+ * Bật Pro cho người dùng đang đăng nhập bằng công tắc kích hoạt thử của backend Development
+ * (POST /subscription/activate-mock, cần Subscription:AllowMockActivation). App không còn đường tắt này — thanh toán thật
+ * phải chuyển khoản qua SePay/PayOS — nên chỉ test dùng để có tài khoản Pro. Gọi sau installLiveBackend().
+ */
+export async function activateProForTesting(planId: 'monthly' | 'yearly' = 'monthly'): Promise<void> {
+  const { api, ENDPOINTS } = require('@/services/api') as typeof import('@/services/api');
+  await api.post(ENDPOINTS.subscription.activateMock, {
+    planId: planId === 'yearly' ? 'PRO_YEARLY' : 'PRO_MONTHLY',
+    paymentMethod: 'SEPAY',
+  });
+}
+
 /** Email duy nhất cho mỗi lần chạy để test không dẫm lên dữ liệu của lần trước. */
 export function uniqueEmail(prefix = 'live'): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}@example.com`;

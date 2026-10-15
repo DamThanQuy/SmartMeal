@@ -93,6 +93,13 @@ builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 // PayOS (chuyển khoản VietQR): khóa chỉ đặt qua biến môi trường PayOS__* — thiếu khóa thì phương thức PAYOS trả 503.
 builder.Services.Configure<PayOSOptions>(builder.Configuration.GetSection(PayOSOptions.SectionName));
 builder.Services.AddSingleton<IPayOSGateway, PayOSGateway>();
+// SePay (chuyển khoản VietQR vào tài khoản ngân hàng đã liên kết): cấu hình SePay__* — thiếu thì phương thức SEPAY trả 503.
+builder.Services
+    .AddOptions<SePayOptions>()
+    .Bind(builder.Configuration.GetSection(SePayOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddHttpClient<ISePayGateway, SePayGateway>(client => client.Timeout = TimeSpan.FromSeconds(15));
 builder.Services.AddScoped<IFoodService, FoodService>();
 // Mã vạch chưa có trong CSDL: tra Open Food Facts (công khai, không cần khóa) rồi lưu lại (BR-120).
 builder.Services

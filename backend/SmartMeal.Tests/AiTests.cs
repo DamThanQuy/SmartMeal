@@ -98,6 +98,21 @@ public class AiTests : IClassFixture<ApiFactory>
     // ───────────────────────────── Không còn "luôn thành công" bằng dữ liệu mẫu ─────────────────────────────
 
     [DbFact]
+    public async Task Pro_only_features_are_refused_to_free_accounts_by_the_server_not_just_hidden_in_the_app()
+    {
+        var free = await _factory.RegisterUserAsync();
+
+        var fridge = await free.Client.PostAsync("/api/ai/fridge-scanner", Image(Jpeg));
+        var plan = await free.Client.PostJsonAsync("/api/mealplanner/auto-generate", new { startDate = "2026-07-06" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, fridge.StatusCode);
+        Assert.Contains("pro_required", (await fridge.ReadEnvelopeAsync<object>()).Errors!);
+        Assert.Equal(HttpStatusCode.Forbidden, plan.StatusCode);
+        Assert.Contains("pro_required", (await plan.ReadEnvelopeAsync<object>()).Errors!);
+        Assert.Equal(0, (await QuotaAsync(free.Client)).Used);   // bị chặn thì không tốn lượt AI
+    }
+
+    [DbFact]
     public async Task Without_a_gemini_key_the_api_reports_it_instead_of_returning_fake_data_and_uses_no_quota()
     {
         var user = await _factory.RegisterUserAsync();
@@ -374,6 +389,7 @@ public class AiTests : IClassFixture<ApiFactory>
         var stub = new StubGeminiHandler { ModelText = """{"detectedIngredients":["Trứng"],"suggestedRecipes":[]}""" };
         using var factory = StubbedFactory(new ApiFactory().WithSetting("Gemini:ApiKey", "test-gemini-key"), stub);
         var user = await factory.RegisterUserAsync();
+        await factory.GrantProAsync(user);
 
         var response = await user.Client.PostAsync("/api/ai/fridge-scanner", Image(Jpeg));
 

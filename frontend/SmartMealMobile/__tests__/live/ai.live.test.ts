@@ -5,24 +5,21 @@
  * (adapter live đọc file `file://` như app trên máy).
  * Chỉ chạy khi có LIVE_API_URL (xem test-utils/live.ts).
  */
-import { describeLive, installLiveBackend, uniqueEmail, writeLiveFixture } from '../../test-utils/live';
+import { activateProForTesting, describeLive, installLiveBackend, uniqueEmail, writeLiveFixture } from '../../test-utils/live';
 
 type AuthModule = typeof import('@/features/auth/services/authService');
 type AiModule = typeof import('@/features/ai/services/aiService');
-type PremiumModule = typeof import('@/features/premium/services/premiumService');
 type StoreModule = typeof import('@/state/auth/authStore');
 
 describeLive('AI (backend thật)', () => {
   let authService: AuthModule['authService'];
   let ai: AiModule;
-  let premiumService: PremiumModule['premiumService'];
   let useAuthStore: StoreModule['useAuthStore'];
 
   beforeAll(() => {
     installLiveBackend();
     ({ authService } = require('@/features/auth/services/authService') as AuthModule);
     ai = require('@/features/ai/services/aiService') as AiModule;
-    ({ premiumService } = require('@/features/premium/services/premiumService') as PremiumModule);
     ({ useAuthStore } = require('@/state/auth/authStore') as StoreModule);
   });
 
@@ -100,7 +97,7 @@ describeLive('AI (backend thật)', () => {
     expect((blocked as Error).message).toContain('5 lượt AI miễn phí');
     expect(await ai.aiService.getQuota()).toMatchObject({ used: 5, remaining: 0 });
 
-    await premiumService.checkout('monthly', 'vnpay');
+    await activateProForTesting('monthly');
 
     expect(await ai.aiService.getQuota()).toMatchObject({ isUnlimited: true, limit: null, remaining: null });
     await expect(ai.aiService.transcribeVoice('lunch', MEAL_TEXT)).resolves.toBeDefined();

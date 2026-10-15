@@ -27,10 +27,8 @@ export const BILLING_PLAN_OPTIONS: BillingPlanOption[] = [
 
 // PayOS đứng đầu: là cổng thật duy nhất đã tích hợp (chuyển khoản VietQR); các phương thức còn lại chưa có cổng thật.
 export const PAYMENT_METHOD_OPTIONS: PaymentMethodOption[] = [
+  { id: 'sepay', label: 'Chuyển khoản ngân hàng (VietQR)' },
   { id: 'payos', label: 'PayOS – chuyển khoản VietQR' },
-  { id: 'vnpay', label: 'VNPAY' },
-  { id: 'momo', label: 'MoMo' },
-  { id: 'card', label: 'Thẻ quốc tế' },
 ];
 
 export const FEATURE_COMPARISON_MOCK: FeatureComparisonRow[] = [
@@ -40,9 +38,9 @@ export const FEATURE_COMPARISON_MOCK: FeatureComparisonRow[] = [
     freeIncluded: true,
     proValueLabel: 'Không giới hạn',
   },
-  { label: 'Fridge Scanner', freeIncluded: false },
-  { label: 'Meal Plan nâng cao', freeIncluded: false },
-  { label: 'Gợi ý theo bệnh lý', freeIncluded: false },
+  { label: 'Quét tủ lạnh bằng AI', freeIncluded: false },
+  { label: 'Tự tạo thực đơn tuần bằng AI', freeIncluded: false },
+  { label: 'Gợi ý theo bệnh lý & dị ứng', freeIncluded: true },
   { label: 'Nhật ký, công thức, đi chợ', freeIncluded: true },
 ];
 

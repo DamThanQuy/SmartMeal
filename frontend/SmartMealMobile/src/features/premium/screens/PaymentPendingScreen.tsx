@@ -1,4 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { format } from 'date-fns';
 import { QrCode, X } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, View } from 'react-native';
@@ -15,6 +16,32 @@ import type { CheckoutSession } from '../types/premium.types';
 type Props = NativeStackScreenProps<MainStackParamList, 'PaymentPending'>;
 
 const QR_SIZE = 220;
+
+interface TransferRowProps {
+  label: string;
+  value: string;
+  /** Nhấn giữ để sao chép (số tài khoản, nội dung chuyển khoản). */
+  copyable?: boolean;
+  emphasize?: boolean;
+}
+
+function TransferRow({ label, value, copyable = false, emphasize = false }: TransferRowProps) {
+  return (
+    <View className="w-full flex-row items-center justify-between gap-sm">
+      <AppText variant="caption" color="secondary">
+        {label}
+      </AppText>
+      <AppText
+        variant={emphasize ? 'h3' : 'bodyMedium'}
+        color={emphasize ? 'onPrimarySoft' : 'primary'}
+        selectable={copyable}
+        className="flex-shrink text-right"
+      >
+        {value}
+      </AppText>
+    </View>
+  );
+}
 
 // design/PaymentPending.dc.html (BR-241/242 — Payment Verification: chỉ xác thực Premium khi
 // "Backend" xác nhận, không tin client-side callback). Màn này chỉ bắt đầu thanh toán rồi chờ
@@ -82,6 +109,65 @@ export function PaymentPendingScreen({ navigation, route }: Props) {
           <AppButton label="Thử lại" onPress={handleRetry} />
           <AppButton label="Đổi phương thức" variant="outline" onPress={changeMethod} />
         </View>
+      </ScreenContainer>
+    );
+  }
+
+  // SePay: chuyển khoản thẳng vào tài khoản ngân hàng — quét QR (số tiền + nội dung điền sẵn) hoặc chuyển tay đúng nội dung.
+  // Server xác nhận khi SePay báo tiền vào (webhook) hoặc khi tự hỏi API giao dịch của SePay.
+  if (session?.bankTransfer) {
+    const plan = BILLING_PLAN_OPTIONS.find(option => option.id === planId);
+    const transfer = session.bankTransfer;
+    const expiresAt = transfer.expiresAtIso ? format(new Date(transfer.expiresAtIso), 'HH:mm') : null;
+    return (
+      <ScreenContainer>
+        <ScreenHeader title="Chuyển khoản ngân hàng" onBack={changeMethod} />
+        <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerClassName="gap-md py-sm">
+          <AppCard className="items-center gap-sm">
+            <AppText variant="caption" color="secondary" className="text-center">
+              Quét mã VietQR bằng ứng dụng ngân hàng — số tiền và nội dung đã được điền sẵn
+            </AppText>
+            {session.qrCodeUrl ? (
+              <View className="overflow-hidden rounded-md border border-border bg-surface p-xs">
+                <Image
+                  source={{ uri: session.qrCodeUrl }}
+                  accessibilityLabel="Mã VietQR chuyển khoản"
+                  style={{ width: QR_SIZE, height: QR_SIZE }}
+                  resizeMode="contain"
+                />
+              </View>
+            ) : (
+              <View
+                className="items-center justify-center rounded-md bg-primary-soft"
+                style={{ width: QR_SIZE, height: QR_SIZE }}
+              >
+                <QrCode size={64} color={colors.primary} />
+              </View>
+            )}
+            <View className="w-full gap-xs border-t border-border pt-xs">
+              <TransferRow label="Gói" value={plan?.label ?? ''} />
+              <TransferRow label="Số tiền" value={`${session.amountVnd.toLocaleString('vi-VN')}đ`} emphasize />
+              <TransferRow label="Ngân hàng" value={transfer.bankCode} />
+              <TransferRow label="Số tài khoản" value={transfer.accountNumber} copyable />
+              {transfer.accountName ? <TransferRow label="Chủ tài khoản" value={transfer.accountName} /> : null}
+              <TransferRow label="Nội dung chuyển khoản" value={transfer.transferContent} copyable emphasize />
+            </View>
+          </AppCard>
+
+          <AppText variant="caption" color="secondary" className="text-center">
+            {`Chuyển tay thì ghi ĐÚNG nội dung ${transfer.transferContent} để hệ thống tự nhận ra. Nhấn giữ số tài khoản hoặc nội dung để sao chép.`}
+            {expiresAt ? ` Mã QR dùng đến ${expiresAt}.` : ''}
+          </AppText>
+
+          <View className="flex-row items-center justify-center gap-xs">
+            <ActivityIndicator size="small" color={colors.primary} />
+            <AppText variant="caption" color="secondary">
+              Đang chờ nhận tiền — Pro tự kích hoạt khi tiền vào tài khoản
+            </AppText>
+          </View>
+
+          <AppButton label="Đổi phương thức" variant="outline" onPress={changeMethod} />
+        </ScrollView>
       </ScreenContainer>
     );
   }

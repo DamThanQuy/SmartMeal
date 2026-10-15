@@ -99,7 +99,7 @@ describe('useCheckoutPremium', () => {
     transactionId: 'SES_1',
     amountVnd: 79000,
     planId: 'monthly' as const,
-    paymentMethodId: 'vnpay' as const,
+    paymentMethodId: 'sepay' as const,
     expiresAtIso: '2026-11-02',
     membership: PRO,
   };
@@ -109,9 +109,9 @@ describe('useCheckoutPremium', () => {
     const hook = await renderHookWithQuery(() => useCheckoutPremium());
     const invalidate = jest.spyOn(hook.queryClient, 'invalidateQueries');
 
-    await hook.run(() => hook.current.mutateAsync({ planId: 'monthly', paymentMethodId: 'vnpay' }));
+    await hook.run(() => hook.current.mutateAsync({ planId: 'monthly', paymentMethodId: 'sepay' }));
 
-    expect(service.checkout).toHaveBeenCalledWith('monthly', 'vnpay', {});
+    expect(service.checkout).toHaveBeenCalledWith('monthly', 'sepay', {});
     expect(usePremiumStore.getState()).toMatchObject(PRO);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: SUBSCRIPTION_QUERY_KEY });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: AI_QUOTA_QUERY_KEY });
@@ -125,7 +125,7 @@ describe('useCheckoutPremium', () => {
     const invalidate = jest.spyOn(hook.queryClient, 'invalidateQueries');
 
     await expect(
-      hook.run(() => hook.current.mutateAsync({ planId: 'monthly', paymentMethodId: 'vnpay' })),
+      hook.run(() => hook.current.mutateAsync({ planId: 'monthly', paymentMethodId: 'sepay' })),
     ).rejects.toBe(error);
 
     expect(usePremiumStore.getState().status).toBe('free');

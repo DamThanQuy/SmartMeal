@@ -81,7 +81,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
                 // này ưu tiên hơn biến môi trường; test cần giá trị thật thì ghi đè bằng WithSetting.
                 ["Gemini:ApiKey"] = "",
                 ["Smtp:Host"] = "",
-                ["Subscription:WebhookSecret"] = "",
+                ["SePay:BankCode"] = "",
+                ["SePay:AccountNumber"] = "",
+                ["SePay:WebhookApiKey"] = "",
+                ["SePay:ApiToken"] = "",
                 ["PayOS:ClientId"] = "",
                 ["PayOS:ApiKey"] = "",
                 ["PayOS:ChecksumKey"] = "",

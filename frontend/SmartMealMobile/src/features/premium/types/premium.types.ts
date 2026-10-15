@@ -23,20 +23,22 @@ export const MEMBERSHIP_STATUS_LABEL: Record<MembershipStatus, string> = {
 };
 
 /**
- * 'payos' = chuyển khoản VietQR qua cổng PayOS (cổng thật duy nhất đã tích hợp). 'mock' chỉ xuất hiện trong lịch
- * sử: giao dịch do công tắc kích hoạt thử của backend ở môi trường phát triển.
+ * 'sepay' = chuyển khoản VietQR thẳng vào tài khoản ngân hàng (SePay báo tiền vào); 'payos' = chuyển khoản VietQR qua
+ * cổng PayOS. 'vnpay' | 'momo' | 'card' | 'mock' chỉ còn trong lịch sử: giao dịch của các cổng giả lập trước đây và của
+ * công tắc kích hoạt thử ở môi trường phát triển.
  */
-export type PaymentMethodId = 'vnpay' | 'momo' | 'card' | 'payos' | 'mock';
+export type PaymentMethodId = 'sepay' | 'payos' | 'vnpay' | 'momo' | 'card' | 'mock';
 
-/** Phương thức người dùng có thể chọn khi thanh toán (không gồm 'mock'). */
-export type SelectablePaymentMethodId = Exclude<PaymentMethodId, 'mock'>;
+/** Phương thức người dùng có thể chọn khi thanh toán — chỉ các cổng thật. */
+export type SelectablePaymentMethodId = 'sepay' | 'payos';
 
-/** Nhãn hiển thị của mọi phương thức, gồm cả 'mock' (không nằm trong danh sách để chọn). */
+/** Nhãn hiển thị của mọi phương thức, gồm cả các giá trị chỉ có trong lịch sử. */
 export const PAYMENT_METHOD_LABEL: Record<PaymentMethodId, string> = {
+  sepay: 'Chuyển khoản ngân hàng',
+  payos: 'PayOS (VietQR)',
   vnpay: 'VNPAY',
   momo: 'MoMo',
   card: 'Thẻ quốc tế',
-  payos: 'PayOS (VietQR)',
   mock: 'Kích hoạt thử (dev)',
 };
 
@@ -61,8 +63,8 @@ export interface FeatureComparisonRow {
 }
 
 /**
- * Phiên thanh toán vừa tạo — với PayOS, màn hình hiện mã QR/nút mở trang PayOS trong lúc chờ server xác nhận.
- * `orderCode` chỉ có với PayOS.
+ * Phiên thanh toán vừa tạo — màn hình hiện mã VietQR (và thông tin chuyển khoản với SePay) trong lúc chờ server xác
+ * nhận theo `orderCode`.
  */
 export interface CheckoutSession {
   sessionId: string;
@@ -71,6 +73,17 @@ export interface CheckoutSession {
   /** Ảnh mã QR (URL) để hiển thị; null nếu cổng không có QR. */
   qrCodeUrl: string | null;
   amountVnd: number;
+  /** SePay: tài khoản nhận và nội dung chuyển khoản bắt buộc — để chuyển tay nếu không quét được QR. */
+  bankTransfer?: BankTransferInfo;
+}
+
+export interface BankTransferInfo {
+  bankCode: string;
+  accountNumber: string;
+  accountName: string | null;
+  transferContent: string;
+  /** ISO 8601 — hết thời gian hiển thị mã (tiền tới sau hạn vẫn được ghi nhận); null nếu server không đặt hạn. */
+  expiresAtIso: string | null;
 }
 
 export interface CheckoutOptions {

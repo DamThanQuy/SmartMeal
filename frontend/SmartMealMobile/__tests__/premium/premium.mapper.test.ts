@@ -28,14 +28,17 @@ describe('mã gói và phương thức thanh toán', () => {
     expect(fromApiPlanId(null)).toBeNull();
   });
 
-  test('phương thức FE ↔ BE; MOCK (kích hoạt thử) → "mock"; giá trị lạ → mặc định VNPAY', () => {
-    expect(toApiPaymentMethod('vnpay')).toBe('VNPAY');
-    expect(toApiPaymentMethod('momo')).toBe('MOMO');
-    expect(toApiPaymentMethod('card')).toBe('STRIPE');
-    expect(fromApiPaymentMethod('STRIPE')).toBe('card');
+  test('phương thức FE ↔ BE: chỉ SePay/PayOS để chọn; giao dịch cũ giữ nhãn cũ; giá trị lạ → mặc định SePay', () => {
+    expect(toApiPaymentMethod('sepay')).toBe('SEPAY');
+    expect(toApiPaymentMethod('payos')).toBe('PAYOS');
+    expect(fromApiPaymentMethod('sepay')).toBe('sepay');
+    expect(fromApiPaymentMethod('PAYOS')).toBe('payos');
+    // Lịch sử: cổng giả lập trước đây và kích hoạt thử ở môi trường phát triển.
+    expect(fromApiPaymentMethod('VNPAY')).toBe('vnpay');
     expect(fromApiPaymentMethod('momo')).toBe('momo');
+    expect(fromApiPaymentMethod('STRIPE')).toBe('card');
     expect(fromApiPaymentMethod('MOCK')).toBe('mock');
-    expect(fromApiPaymentMethod('PAYPAL')).toBe('vnpay');
+    expect(fromApiPaymentMethod('PAYPAL')).toBe('sepay');
   });
 });
 

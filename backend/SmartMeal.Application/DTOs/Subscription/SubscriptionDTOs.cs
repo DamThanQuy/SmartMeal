@@ -9,30 +9,29 @@ public static class SubscriptionCatalog
     public const string ProMonthly = "PRO_MONTHLY";
     public const string ProYearly = "PRO_YEARLY";
 
-    /// <summary>PayOS: chuyển khoản VietQR qua cổng PayOS (thật). VNPAY/MOMO/STRIPE: chưa tích hợp cổng thật.</summary>
+    /// <summary>PayOS: chuyển khoản VietQR qua cổng PayOS.</summary>
     public const string PayOS = "PAYOS";
 
-    public static readonly string[] PaymentMethods = { "VNPAY", "MOMO", "STRIPE", PayOS };
+    /// <summary>SePay: chuyển khoản VietQR thẳng vào tài khoản ngân hàng đã liên kết SePay; SePay báo tiền vào.</summary>
+    public const string SePay = "SEPAY";
+
+    public static readonly string[] PaymentMethods = { SePay, PayOS };
 
     public sealed record Plan(string Id, string Name, decimal PriceVnd, string BillingCycle, int DurationDays, bool IsPopular, string[] Features);
 
+    // Quyền lợi chỉ ghi những gì Pro thật sự mở khóa (máy chủ kiểm tra): người dùng trả tiền theo danh sách này.
     public static readonly IReadOnlyList<Plan> Plans = new[]
     {
         new Plan(ProMonthly, "Gói Tháng (Pro Monthly)", 79000, "Monthly", 30, false, new[]
         {
-            "Quét tủ lạnh & gợi ý món ăn không giới hạn với Gemini AI",
-            "Ghi chép bữa ăn bằng giọng nói & chụp ảnh AI Vision",
-            "Tự động tạo thực đơn tuần cá nhân hóa theo TDEE",
-            "Truy cập toàn bộ công thức Premium & Video hướng dẫn",
-            "Tạo danh sách đi chợ thông minh tự động",
-            "Đồng bộ Apple Health / Google Fit nâng cao"
+            "Dùng AI không giới hạn: chụp ảnh món ăn, ghi bữa ăn bằng giọng nói (gói Free: 5 lượt/ngày)",
+            "Quét tủ lạnh bằng AI và gợi ý món nấu được ngay",
+            "Tự động tạo thực đơn cả tuần bằng AI theo mục tiêu calo của bạn"
         }),
         new Plan(ProYearly, "Gói Năm (Pro Yearly - Tiết kiệm 25%)", 699000, "Yearly", 365, true, new[]
         {
-            "Toàn bộ đặc quyền của gói Pro Monthly",
-            "Tiết kiệm 25% chi phí so với trả hàng tháng",
-            "Mở khóa pet độc quyền & huy hiệu Pro VIP",
-            "Hỗ trợ ưu tiên 24/7 từ chuyên gia dinh dưỡng"
+            "Toàn bộ quyền lợi của gói Tháng",
+            "Tiết kiệm hơn 25% so với trả theo tháng (699.000đ thay vì 948.000đ)"
         })
     };
 
@@ -55,15 +54,15 @@ public class CreateCheckoutSessionRequestDto
     [Required(ErrorMessage = "planId là bắt buộc.")]
     public string PlanId { get; set; } = SubscriptionCatalog.ProMonthly;
 
-    [OneOfIgnoreCase("VNPAY", "MOMO", "STRIPE", "PAYOS")]
-    public string PaymentMethod { get; set; } = "VNPAY"; // VNPAY, MOMO, STRIPE, PAYOS
+    [OneOfIgnoreCase("SEPAY", "PAYOS")]
+    public string PaymentMethod { get; set; } = SubscriptionCatalog.SePay; // SEPAY, PAYOS
 }
 
 public class CheckoutSessionResponseDto
 {
     public string SessionId { get; set; } = string.Empty;
 
-    /// <summary>Mã đơn PayOS (chỉ có với PAYOS) — dùng cho <c>GET /subscription/check-status/{orderCode}</c>.</summary>
+    /// <summary>Mã đơn (PAYOS, SEPAY) — dùng cho <c>GET /subscription/check-status/{orderCode}</c>.</summary>
     public long? OrderCode { get; set; }
 
     public string PaymentUrl { get; set; } = string.Empty;
@@ -76,6 +75,17 @@ public class CheckoutSessionResponseDto
 
     public decimal AmountVnd { get; set; }
     public string Message { get; set; } = string.Empty;
+
+    /// <summary>SEPAY: ngân hàng, số tài khoản, tên chủ tài khoản nhận tiền — để người dùng chuyển tay nếu không quét được QR.</summary>
+    public string? BankCode { get; set; }
+    public string? AccountNumber { get; set; }
+    public string? AccountName { get; set; }
+
+    /// <summary>SEPAY: nội dung chuyển khoản bắt buộc (mã thanh toán) — sai nội dung thì máy chủ không khớp được đơn.</summary>
+    public string? TransferContent { get; set; }
+
+    /// <summary>SEPAY: hết thời gian hiển thị mã (UTC). Tiền tới sau hạn vẫn được ghi nhận.</summary>
+    public DateTime? ExpiresAt { get; set; }
 }
 
 /// <summary>Trạng thái một giao dịch của chính người dùng (<c>GET /subscription/check-status/{orderCode}</c>).</summary>
@@ -90,23 +100,6 @@ public class PaymentTransactionStatusDto
     public string PlanId { get; set; } = string.Empty;
     public decimal AmountVnd { get; set; }
     public DateTime? PaidAt { get; set; }
-}
-
-/// <summary>Thông báo kết quả thanh toán từ cổng thanh toán (webhook, có chữ ký HMAC).</summary>
-public class PaymentWebhookDto
-{
-    [Required]
-    public string SessionId { get; set; } = string.Empty;
-
-    /// <summary>"paid" hoặc "failed".</summary>
-    [Required]
-    [OneOfIgnoreCase("paid", "failed")]
-    public string Status { get; set; } = string.Empty;
-
-    public string? ProviderTransactionId { get; set; }
-
-    /// <summary>Số tiền cổng thanh toán đã thu; phải khớp số tiền của phiên.</summary>
-    public decimal AmountVnd { get; set; }
 }
 
 public class SubscriptionStatusDto

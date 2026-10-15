@@ -54,7 +54,7 @@ public class AiController : ControllerBase
         return await RunWithQuotaAsync("snap", userId => _aiVisionService.SnapAndTrackAsync(bytes!, mime!, userId));
     }
 
-    /// <summary>Fridge Scanner: ảnh nguyên liệu trong tủ lạnh (multipart, trường <c>image</c>).</summary>
+    /// <summary>Fridge Scanner (chỉ Pro, BR-080/230): ảnh nguyên liệu trong tủ lạnh (multipart, trường <c>image</c>).</summary>
     [HttpPost("fridge-scanner")]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(8 * 1024 * 1024)]
@@ -63,7 +63,7 @@ public class AiController : ControllerBase
         var (bytes, mime, error) = await ReadImageAsync(image);
         if (error is not null) return BadRequest(ApiResponse<FridgeScannerResponseDto>.Fail(error));
 
-        return await RunWithQuotaAsync("fridge", _ => _aiVisionService.ScanFridgeAsync(bytes!, mime!));
+        return await RunWithQuotaAsync("fridge", _ => _aiVisionService.ScanFridgeAsync(bytes!, mime!), requiresPro: true);
     }
 
     /// <summary>Voice Log: văn bản (đã nhận dạng giọng nói trên máy) → món ăn kèm dinh dưỡng.</summary>
@@ -181,12 +181,22 @@ public class AiController : ControllerBase
             : (bytes, mime, null);
     }
 
-    /// <summary>Kiểm hạn mức (BR-233) trước khi chạy; chỉ ghi nhận lượt dùng khi AI trả kết quả thành công.</summary>
-    private async Task<ActionResult<ApiResponse<T>>> RunWithQuotaAsync<T>(string kind, Func<Guid, Task<ApiResponse<T>>> action)
+    /// <summary>
+    /// Kiểm hạn mức (BR-233) trước khi chạy; chỉ ghi nhận lượt dùng khi AI trả kết quả thành công. Tính năng chỉ dành cho Pro
+    /// (<paramref name="requiresPro"/>) bị chặn ở máy chủ với tài khoản Free (403 <c>pro_required</c>), không chỉ ẩn trên app.
+    /// </summary>
+    private async Task<ActionResult<ApiResponse<T>>> RunWithQuotaAsync<T>(string kind, Func<Guid, Task<ApiResponse<T>>> action, bool requiresPro = false)
     {
         if (!this.TryGetUserId(out var userId)) return this.InvalidSession<T>();
 
+        // Hạn mức không giới hạn đúng khi tài khoản đang có Pro còn hiệu lực.
         var quota = await _quota.GetAsync(userId);
+        if (requiresPro && !quota.IsUnlimited)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<T>.Fail(
+                ProRequired.Message, new List<string> { ProRequired.Code }, ApiErrorKind.Forbidden));
+        }
+
         if (!quota.IsUnlimited && quota.Remaining <= 0)
         {
             return StatusCode(StatusCodes.Status429TooManyRequests, ApiResponse<T>.Fail(

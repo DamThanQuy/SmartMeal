@@ -30,13 +30,13 @@ describe('premiumMockService.checkout', () => {
   test('thành công: Pro theo tháng hết hạn sau 1 tháng, ghi một giao dịch thành công đầu danh sách', async () => {
     const { service } = load();
 
-    const result = await service.checkout('monthly', 'momo');
+    const result = await service.checkout('monthly', 'sepay');
     const history = await service.getTransactions();
 
     expect(result).toMatchObject({
       amountVnd: 79000,
       planId: 'monthly',
-      paymentMethodId: 'momo',
+      paymentMethodId: 'sepay',
       expiresAtIso: '2026-11-02',
       membership: { status: 'premium', planId: 'monthly', expiresAtIso: '2026-11-02' },
     });
@@ -44,7 +44,7 @@ describe('premiumMockService.checkout', () => {
       id: result.transactionId,
       status: 'success',
       planId: 'monthly',
-      paymentMethodId: 'momo',
+      paymentMethodId: 'sepay',
       amountVnd: 79000,
     });
   });
@@ -52,7 +52,7 @@ describe('premiumMockService.checkout', () => {
   test('gói năm hết hạn sau 1 năm, giá 699.000đ', async () => {
     const { service } = load();
 
-    const result = await service.checkout('yearly', 'vnpay');
+    const result = await service.checkout('yearly', 'payos');
 
     expect(result.amountVnd).toBe(699000);
     expect(result.expiresAtIso).toBe('2027-10-02');
@@ -61,14 +61,14 @@ describe('premiumMockService.checkout', () => {
   test('kịch bản lỗi: ném lỗi và không kích hoạt gói nào', async () => {
     const { service, usePremiumStore } = load('error');
 
-    await expect(service.checkout('monthly', 'vnpay')).rejects.toThrow('Thanh toán không thành công');
+    await expect(service.checkout('monthly', 'payos')).rejects.toThrow('Thanh toán không thành công');
 
     expect(usePremiumStore.getState().status).toBe('free');
   });
 
   test('giao dịch thất bại vẫn xuất hiện trong lịch sử khi đọc lại', async () => {
     const { service, scenarioRef } = load('error');
-    await expect(service.checkout('monthly', 'vnpay')).rejects.toBeDefined();
+    await expect(service.checkout('monthly', 'payos')).rejects.toBeDefined();
     scenarioRef.value = 'success';
 
     const history = await service.getTransactions();

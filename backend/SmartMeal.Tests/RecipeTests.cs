@@ -334,6 +334,7 @@ public class RecipeTests : IClassFixture<ApiFactory>
     public async Task Auto_generated_plans_never_contain_my_allergens_and_do_not_fall_back_when_nothing_is_safe()
     {
         var user = await _factory.RegisterUserAsync();
+        await _factory.GrantProAsync(user);
         var recipes = await ListAsync(user.Client);
         await SetAllergiesAsync(user.Client, Seafood, Sesame, 4, 5, 6); // chỉ còn "Cơm gạo lứt bò xào ớt chuông" an toàn
         var safeId = ByTitle(recipes, "Cơm gạo lứt").Id;
@@ -359,6 +360,8 @@ public class RecipeTests : IClassFixture<ApiFactory>
         }
 
         var user = await factory.RegisterUserAsync();
+
+        await factory.GrantProAsync(user);
         await SetAllergiesAsync(user.Client, Seafood, 3, 4, 5, 6, Sesame);
 
         var response = await user.Client.PostJsonAsync("/api/mealplanner/auto-generate", new { startDate = "2026-07-01" });
