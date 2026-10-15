@@ -158,19 +158,15 @@ describeLive('đồng bộ vận động (backend thật)', () => {
     expect(excluded.activityCalories).toBe(0);
   });
 
-  test('"Đồng bộ ngay" (DEV): gửi số liệu mẫu nguồn Manual; bấm lặp không nhân đôi; trạng thái hiện số liệu thật', async () => {
+  test('"Đồng bộ ngay": chưa đọc được Health Connect thật nên báo rõ, không gửi số liệu mẫu lên server', async () => {
     await newUser();
     const dateIso = nutrition.todayIso();
     expect((await healthConnectService.getStatus()).lastSyncedLabel).toBe('Chưa đồng bộ');
 
-    await healthConnectService.syncNow();
-    await healthConnectService.syncNow();
+    await expect(healthConnectService.syncNow()).rejects.toThrow('Dev Client');
 
-    const activity = await nutrition.healthSyncService.getDailySummary(dateIso);
-    const status = await healthConnectService.getStatus();
-    expect(activity).toMatchObject({ steps: 6240, caloriesBurned: 180, sources: ['Manual'] });
-    expect(status.lastSyncedLabel).toMatch(/^Hôm nay, \d{2}:\d{2}$/);
-    expect(status.sources[0].todayValueLabel).toContain('6.240');
+    expect((await nutrition.healthSyncService.getDailySummary(dateIso)).hasSyncedData).toBe(false);
+    expect((await healthConnectService.getStatus()).connected).toBe(false);
   });
 
   test('số liệu vận động của mỗi người dùng tách biệt', async () => {

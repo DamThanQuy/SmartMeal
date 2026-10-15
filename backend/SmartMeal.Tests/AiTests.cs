@@ -1,10 +1,14 @@
 using System.Net;
 using System.Net.Http.Headers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.Services;
 using SmartMeal.Domain.Entities;
 using SmartMeal.Infrastructure.Data;
+using SmartMeal.Infrastructure.Options;
 using SmartMeal.Infrastructure.Services;
 using SmartMeal.Tests.Infrastructure;
 using Xunit;
@@ -137,6 +141,135 @@ public class AiTests : IClassFixture<ApiFactory>
         using var demo = StubbedFactory(new ApiFactory().WithSetting("Gemini:ApiKey", "test-gemini-key").WithSetting("Ai:AllowDemoFallback", "true"), stub);
         var demoUser = await demo.RegisterUserAsync();
         Assert.True((await (await SnapAsync(demoUser.Client)).ReadEnvelopeAsync<SnapPayload>()).Data!.IsDemo);
+    }
+
+    [Fact]
+    public async Task In_development_a_configured_key_reports_gemini_failures_instead_of_returning_demo_data()
+    {
+        // Gọi thẳng service, không cần database: userId = null nên không đọc hồ sơ sức khỏe.
+        var retired = new StubGeminiHandler { Status = HttpStatusCode.NotFound };
+
+        var withKey = await DevelopmentService(retired, apiKey: "test-gemini-key").SnapAndTrackAsync(Jpeg, "image/jpeg");
+        var withoutKey = await DevelopmentService(retired, apiKey: "").SnapAndTrackAsync(Jpeg, "image/jpeg");
+
+        Assert.False(withKey.Success);
+        Assert.Equal(ApiErrorKind.UpstreamFailure, withKey.ErrorKind);
+        Assert.Contains("ai_upstream_error", withKey.Errors!);
+        Assert.True(withoutKey.Data!.IsDemo);   // chưa có khóa: Development vẫn demo được như trước
+    }
+
+    // ───────────────────────────── Model bị ngừng / quá tải, câu trả lời lệch định dạng ─────────────────────────────
+
+    private const string SnapJson = """{"dishName":"Salad đậu hũ","estimatedGrams":350,"calories":380,"detectedIngredients":["Đậu hũ"],"allergyWarnings":[]}""";
+
+    [DbFact]
+    public async Task A_retired_or_overloaded_model_falls_back_to_the_next_configured_model()
+    {
+        var stub = new StubGeminiHandler { ModelText = SnapJson };
+        stub.StatusByModel["retired-model"] = HttpStatusCode.NotFound;
+        stub.StatusByModel["busy-model"] = HttpStatusCode.ServiceUnavailable;
+        using var factory = StubbedFactory(new ApiFactory()
+            .WithSetting("Gemini:ApiKey", "test-gemini-key")
+            .WithSetting("Gemini:Model", "retired-model")
+            .WithSetting("Gemini:FallbackModels", "busy-model, working-model"), stub);
+        var user = await factory.RegisterUserAsync();
+
+        var response = await SnapAsync(user.Client);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = (await response.ReadEnvelopeAsync<SnapPayload>()).Data!;
+        Assert.Equal("Salad đậu hũ", result.DishName);
+        Assert.False(result.IsDemo);
+        Assert.Equal(new[] { "retired-model", "busy-model", "working-model" }, stub.Calls.Select(c => c.Model));
+        Assert.All(stub.Calls, call => Assert.Equal("test-gemini-key", call.ApiKeyHeader));
+    }
+
+    [DbFact]
+    public async Task A_model_that_answers_too_slowly_gives_way_to_the_next_model()
+    {
+        var stub = new StubGeminiHandler { ModelText = SnapJson };
+        stub.DelayByModel["slow-model"] = TimeSpan.FromSeconds(30);
+        using var factory = StubbedFactory(new ApiFactory()
+            .WithSetting("Gemini:ApiKey", "test-gemini-key")
+            .WithSetting("Gemini:Model", "slow-model")
+            .WithSetting("Gemini:FallbackModels", "fast-model")
+            .WithSetting("Gemini:AttemptTimeoutSeconds", "1"), stub);
+        var user = await factory.RegisterUserAsync();
+
+        var response = await SnapAsync(user.Client);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Salad đậu hũ", (await response.ReadEnvelopeAsync<SnapPayload>()).Data!.DishName);
+        Assert.Equal(new[] { "slow-model", "fast-model" }, stub.Calls.Select(c => c.Model));
+    }
+
+    [Fact]
+    public async Task A_label_without_some_numbers_is_still_read_when_the_model_answers_null()
+    {
+        // Nhãn không ghi đường/natri: model trả null thay vì 0 — trước đây làm hỏng cả kết quả ("AI không phân tích được").
+        var stub = new StubGeminiHandler
+        {
+            ModelText = """
+                {"isSafe":true,"alerts":[],"ocrText":"Bánh quy. Khẩu phần 30 g: 150 kcal, chất béo 7,5 g","productName":"Bánh quy",
+                 "detectedIngredients":["Bột mì"],
+                 "extractedNutrition":{"basis":"perServing","servingSize":"30 g","servingGrams":30,"caloriesPerServing":"150",
+                  "proteinGrams":null,"carbsGrams":null,"sugarGrams":null,"sodiumMg":null,"totalFatGrams":7.5}}
+                """
+        };
+
+        var result = await DevelopmentService(stub, apiKey: "test-gemini-key").ScanLabelAsync(Jpeg, "image/jpeg");
+
+        Assert.True(result.Success, result.Message);
+        var nutrition = result.Data!.ExtractedNutrition!;
+        Assert.Equal(150, nutrition.CaloriesPerServing);
+        Assert.Equal(7.5, nutrition.TotalFatGrams);
+        Assert.Equal(0, nutrition.SugarGrams);
+        Assert.Equal(0, nutrition.SodiumMg);
+        Assert.Null(nutrition.ProteinGrams);   // trường cho phép trống vẫn là "không có trên nhãn"
+        Assert.Null(nutrition.CarbsGrams);
+    }
+
+    [Fact]
+    public async Task Gemini_is_asked_to_think_less_by_default_so_answers_come_back_faster()
+    {
+        var stub = new StubGeminiHandler { ModelText = SnapJson };
+
+        var result = await DevelopmentService(stub, apiKey: "test-gemini-key").SnapAndTrackAsync(Jpeg, "image/jpeg");
+
+        Assert.True(result.Success);
+        Assert.Contains("\"thinkingConfig\":{\"thinkingLevel\":\"low\"}", Assert.Single(stub.Calls).Body);
+    }
+
+    [DbFact]
+    public async Task A_rejected_request_is_not_retried_on_other_models()
+    {
+        var stub = new StubGeminiHandler { Status = HttpStatusCode.BadRequest };
+        using var factory = StubbedFactory(new ApiFactory()
+            .WithSetting("Gemini:ApiKey", "test-gemini-key")
+            .WithSetting("Gemini:Model", "main-model")
+            .WithSetting("Gemini:FallbackModels", "other-model"), stub);
+        var user = await factory.RegisterUserAsync();
+
+        var response = await SnapAsync(user.Client);
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        Assert.Equal("main-model", Assert.Single(stub.Calls).Model);
+    }
+
+    [DbFact]
+    public async Task An_answer_wrapped_in_an_array_or_a_code_fence_is_still_read()
+    {
+        var stub = new StubGeminiHandler { ModelText = $"[{SnapJson}]" };
+        using var factory = StubbedFactory(new ApiFactory().WithSetting("Gemini:ApiKey", "test-gemini-key"), stub);
+        var user = await factory.RegisterUserAsync();
+
+        var wrapped = (await (await SnapAsync(user.Client)).ReadEnvelopeAsync<SnapPayload>()).Data!;
+        stub.ModelText = $"```json\n{SnapJson}\n```";
+        var fenced = (await (await SnapAsync(user.Client)).ReadEnvelopeAsync<SnapPayload>()).Data!;
+
+        Assert.Equal("Salad đậu hũ", wrapped.DishName);
+        Assert.Equal("Salad đậu hũ", fenced.DishName);
+        Assert.False(wrapped.IsDemo || fenced.IsDemo);
     }
 
     // ───────────────────────────── Hạn mức (BR-233) ─────────────────────────────
@@ -401,4 +534,14 @@ public class AiTests : IClassFixture<ApiFactory>
     private static ApiFactory StubbedFactory(ApiFactory factory, StubGeminiHandler stub) =>
         factory.WithServices(services =>
             services.AddHttpClient<IAiVisionService, GeminiAiVisionService>().ConfigurePrimaryHttpMessageHandler(() => stub));
+
+    /// <summary>Service đứng riêng ở môi trường Development (Ai:AllowDemoFallback để trống), gọi "Gemini" giả.</summary>
+    private static GeminiAiVisionService DevelopmentService(StubGeminiHandler stub, string apiKey) =>
+        new(new HttpClient(stub),
+            new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Gemini:ApiKey"] = apiKey }).Build(),
+            new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>().UseNpgsql("Host=localhost").Options),
+            NullLogger<GeminiAiVisionService>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new AiOptions()),
+            Microsoft.Extensions.Options.Options.Create(new ProductSafetyOptions()),
+            new Microsoft.Extensions.Hosting.Internal.HostingEnvironment { EnvironmentName = "Development" });
 }

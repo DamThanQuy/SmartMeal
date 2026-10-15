@@ -14,8 +14,8 @@ import {
 import { loadReminderPreferences as loadPreferences, resyncReminders, saveReminderPreferences } from './reminderSync';
 
 // design/Reminders.dc.html. Nhắc nhở là tính năng CỤC BỘ: cài đặt lưu ở máy (AsyncStorage, theo từng
-// user), thông báo lên lịch bằng expo-notifications. Backend không có API nhắc nhở và không cần — báo
-// cáo gap mục Reminders (P2). Banner "Thông báo đang tắt" theo quyền thông báo thật của hệ thống.
+// user), thông báo lên lịch bằng expo-notifications trong development/production build. Expo Go SDK 53+
+// không hỗ trợ remote push trên Android nên localNotificationService sẽ báo chưa cấp quyền ở Expo Go.
 
 function toSettings(preferences: ReminderPreferences, permissionGranted: boolean): RemindersSettings {
   const cupsPerDay = Math.round(getWaterGoalMl() / CUP_ML);

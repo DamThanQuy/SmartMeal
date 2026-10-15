@@ -34,4 +34,11 @@ public sealed class AuthOptions
     /// <summary>Hiệu lực của mã đặt lại mật khẩu sau khi xác minh OTP (phút).</summary>
     [Range(1, 120)]
     public int ResetTokenMinutes { get; set; } = 10;
+
+    /// <summary>
+    /// Bắt xác minh email sau khi đăng ký (mã OTP gửi qua email, POST /auth/verify-otp purpose "verify-email"): chưa xác
+    /// minh thì không đăng nhập bằng mật khẩu hay gia hạn phiên được. Để trống = chỉ bật khi đã cấu hình SMTP — không gửi
+    /// được mã thì không bắt người dùng nhập mã.
+    /// </summary>
+    public bool? RequireEmailVerification { get; set; }
 }

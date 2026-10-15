@@ -64,6 +64,12 @@ export function OtpScreen({ navigation, route }: OtpScreenProps) {
       {
         onSuccess: ({ resetToken }) => {
           if (purpose === 'register') {
+            // Từ màn Đăng nhập (chưa có phiên): xác minh xong quay lại đăng nhập. Ngay sau đăng ký thì đã
+            // có phiên → sang Health Profile.
+            if (returnTo === 'Login') {
+              navigation.navigate(AUTH_ROUTES.LOGIN, { verifiedEmail: email });
+              return;
+            }
             navigation.navigate(AUTH_ROUTES.HEALTH_PROFILE_BASIC_INFO);
             return;
           }

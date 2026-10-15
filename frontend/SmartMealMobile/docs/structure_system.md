@@ -342,7 +342,7 @@ Bao gồm:
 | Barcode | `expo-camera` (barcode scanning) hoặc `expo-barcode-scanner` | Đủ dùng trên Expo Go |
 | OCR nhãn dinh dưỡng | — (ML Kit không chạy trên Expo Go) | Tạm mock, chưa gọi OCR thật cho tới khi chuyển Dev Client |
 | Health Connect / HealthKit | — (cần Dev Client) | Tạm mock, native module ngoài Expo SDK |
-| Notifications | `expo-notifications` | Đủ dùng trên Expo Go, riêng push token thật cần Dev Client/EAS |
+| Notifications | `expo-notifications` | Local reminders cần development/production build trên Android; Expo Go SDK 53+ không hỗ trợ remote push |
 | Microphone (Voice Logging) | `expo-av` (ghi âm) | Gửi audio lên Backend để xử lý, không nhận diện trên máy |
 | Photo Library | `expo-image-picker` | Dùng khi chọn ảnh từ thư viện thay vì chụp trực tiếp |
 

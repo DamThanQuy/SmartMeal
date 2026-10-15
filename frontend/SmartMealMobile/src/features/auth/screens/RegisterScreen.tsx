@@ -38,8 +38,8 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 type Props = NativeStackScreenProps<AuthStackParamList, 'Register'>;
 
 // design/Register.dc.html (BR-010, BR-011). Health Profile thu thập SAU khi tạo tài khoản
-// (docs/design.md mục 39), nên submit thành công điều hướng sang Otp (mock) hoặc thẳng Health
-// Profile (API thật — backend không có OTP).
+// (docs/design.md mục 39), nên submit thành công điều hướng sang Otp khi cần xác minh email (mock,
+// hoặc API thật khi server đã cấu hình SMTP) hoặc thẳng Health Profile.
 export function RegisterScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const registerMutation = useRegister();
@@ -83,7 +83,7 @@ export function RegisterScreen({ navigation }: Props) {
             });
             return;
           }
-          // Backend không có OTP: tài khoản đã tạo xong → vào thẳng Health Profile và bỏ Register
+          // Không cần xác minh email: tài khoản đã tạo xong → vào thẳng Health Profile và bỏ Register
           // khỏi stack (quay lại sẽ chỉ báo "Email đã được sử dụng").
           navigation.reset({
             index: 0,

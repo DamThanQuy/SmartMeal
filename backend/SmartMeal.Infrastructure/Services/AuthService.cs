@@ -16,6 +16,8 @@ public class AuthService : IAuthService
 {
     private const string InvalidCredentialsMessage = "Email hoặc mật khẩu không chính xác.";
     private const string InvalidSessionMessage = "Phiên đăng nhập không hợp lệ hoặc đã hết hạn, vui lòng đăng nhập lại.";
+    private const string EmailNotVerifiedMessage = "Email chưa được xác minh. Mã xác thực đã được gửi tới email của bạn.";
+    private const string EmailNotVerifiedCode = "email_not_verified";
 
     // Băm của một chuỗi ngẫu nhiên: kiểm tra mật khẩu giả khi email không tồn tại để thời gian phản hồi
     // gần như giống nhau, tránh lộ email nào đã đăng ký.
@@ -27,24 +29,37 @@ public class AuthService : IAuthService
     private readonly JwtOptions _jwt;
     private readonly AuthOptions _auth;
     private readonly IGoogleIdTokenValidator _googleTokenValidator;
+    private readonly IPasswordService _passwords;
+    private readonly SmtpOptions _smtp;
 
     public AuthService(
         ApplicationDbContext db,
         IJwtTokenService jwtService,
         ILoginAttemptTracker attempts,
         IGoogleIdTokenValidator googleTokenValidator,
+        IPasswordService passwords,
         IOptions<JwtOptions> jwt,
-        IOptions<AuthOptions> auth)
+        IOptions<AuthOptions> auth,
+        IOptions<SmtpOptions> smtp)
     {
         _db = db;
         _jwtService = jwtService;
         _attempts = attempts;
         _googleTokenValidator = googleTokenValidator;
+        _passwords = passwords;
         _jwt = jwt.Value;
         _auth = auth.Value;
+        _smtp = smtp.Value;
     }
 
     // ───────────────────────────── Đăng ký / đăng nhập ─────────────────────────────
+
+    /// <summary>Có bắt xác minh email không — mặc định chỉ khi gửi được email thật (xem <see cref="AuthOptions.RequireEmailVerification"/>).</summary>
+    private bool EmailVerificationRequired => _auth.RequireEmailVerification ?? _smtp.IsConfigured;
+
+    /// <summary>Gửi (lại) mã xác minh email — tôn trọng thời gian chờ gửi lại; lỗi gửi mail chỉ ghi log.</summary>
+    private Task SendEmailVerificationCodeAsync(string email) =>
+        _passwords.ResendOtpAsync(new ResendOtpRequestDto { Email = email, Purpose = OtpPurposes.VerifyEmail });
 
     public async Task<ApiResponse<AuthResponseDto>> RegisterAsync(RegisterRequestDto dto)
     {
@@ -54,6 +69,7 @@ public class AuthService : IAuthService
             return ApiResponse<AuthResponseDto>.Fail("Email đã được sử dụng.");
         }
 
+        var requiresVerification = EmailVerificationRequired;
         var user = new User
         {
             Email = email,
@@ -76,7 +92,17 @@ public class AuthService : IAuthService
             return ApiResponse<AuthResponseDto>.Fail("Email đã được sử dụng.");
         }
 
-        return ApiResponse<AuthResponseDto>.Ok(await IssueTokensAsync(user, hasCompletedSurvey: false), "Đăng ký tài khoản thành công.");
+        // Vẫn cấp phiên để app đi tiếp sang màn nhập mã (rồi Health Profile); chưa xác minh thì lần đăng nhập/gia hạn
+        // phiên sau bị từ chối nên không thể bỏ qua bước này.
+        var response = await IssueTokensAsync(user, hasCompletedSurvey: false);
+        if (!requiresVerification)
+        {
+            return ApiResponse<AuthResponseDto>.Ok(response, "Đăng ký tài khoản thành công.");
+        }
+
+        await SendEmailVerificationCodeAsync(email);
+        response.RequiresEmailVerification = true;
+        return ApiResponse<AuthResponseDto>.Ok(response, $"Đăng ký thành công. Mã xác thực đã được gửi tới {email}.");
     }
 
     public async Task<ApiResponse<AuthResponseDto>> LoginAsync(LoginRequestDto dto)
@@ -108,6 +134,13 @@ public class AuthService : IAuthService
         }
 
         await _attempts.ResetAsync(user);
+
+        // Chỉ báo sau khi mật khẩu đúng (không giúp dò tài khoản); gửi mã mới để người dùng xác minh rồi đăng nhập lại.
+        if (EmailVerificationRequired && !user.IsEmailVerified)
+        {
+            await SendEmailVerificationCodeAsync(user.Email);
+            return ApiResponse<AuthResponseDto>.Fail(EmailNotVerifiedMessage, new List<string> { EmailNotVerifiedCode }, ApiErrorKind.Forbidden);
+        }
 
         var hasSurvey = await _db.HealthProfiles.AnyAsync(hp => hp.UserId == user.Id);
         return ApiResponse<AuthResponseDto>.Ok(await IssueTokensAsync(user, hasSurvey), "Đăng nhập thành công.");
@@ -226,6 +259,15 @@ public class AuthService : IAuthService
         if (user is null)
         {
             return ApiResponse<AuthResponseDto>.Fail(InvalidSessionMessage, null, ApiErrorKind.Unauthorized);
+        }
+
+        // Phiên cấp lúc đăng ký mà chưa nhập mã xác minh: không gia hạn, người dùng phải đăng nhập lại để nhận mã.
+        if (EmailVerificationRequired && !user.IsEmailVerified)
+        {
+            return ApiResponse<AuthResponseDto>.Fail(
+                "Email chưa được xác minh, vui lòng đăng nhập lại để nhận mã xác thực.",
+                new List<string> { EmailNotVerifiedCode },
+                ApiErrorKind.Unauthorized);
         }
 
         var hasSurvey = await _db.HealthProfiles.AnyAsync(hp => hp.UserId == user.Id);

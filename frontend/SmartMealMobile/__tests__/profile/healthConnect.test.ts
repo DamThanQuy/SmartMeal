@@ -1,7 +1,7 @@
 /**
- * Health Connect (docs/fetch-api/part1 §9): "đã kết nối"/nguồn nào bật là tùy chọn cục bộ, số liệu
- * hôm nay lấy từ backend (health-sync). Nút "Đồng bộ ngay" chỉ gửi số liệu mẫu (nguồn Manual) ở DEV;
- * BE thay thế số liệu của (ngày, nguồn) nên bấm lặp không làm số bước nhân đôi.
+ * Health Connect (docs/fetch-api/part1 §9): nguồn nào bật là tùy chọn cục bộ, số liệu hôm nay lấy từ
+ * backend (health-sync). App chưa tích hợp đọc Health Connect thật nên không báo "đã kết nối" và không
+ * gửi số liệu mẫu lên server (số mẫu sẽ bị lưu thật như số của người dùng).
  */
 import { format } from 'date-fns';
 import { toHealthConnectState } from '@/features/profile/services/healthConnect.mapper';
@@ -31,7 +31,7 @@ const ACTIVITY: DailyActivity = {
 };
 
 describe('parseHealthConnectPreferences', () => {
-  test('chưa lưu / dữ liệu hỏng → mặc định (đã kết nối, bật mọi nguồn)', () => {
+  test('chưa lưu / dữ liệu hỏng → mặc định (chưa kết nối, bật mọi nguồn)', () => {
     expect(parseHealthConnectPreferences(undefined)).toEqual(DEFAULT_HEALTH_CONNECT_PREFERENCES);
     expect(parseHealthConnectPreferences('{không phải json')).toEqual(
       DEFAULT_HEALTH_CONNECT_PREFERENCES,
@@ -49,7 +49,7 @@ describe('parseHealthConnectPreferences', () => {
   });
 
   test('connected sai kiểu → dùng mặc định', () => {
-    expect(parseHealthConnectPreferences(JSON.stringify({ connected: 'no' })).connected).toBe(true);
+    expect(parseHealthConnectPreferences(JSON.stringify({ connected: 'no' })).connected).toBe(false);
   });
 });
 
@@ -170,7 +170,7 @@ describe('healthConnectApiService', () => {
     (globalThis as unknown as DevFlag).__DEV__ = true;
   });
 
-  test('getStatus: tùy chọn cục bộ + số liệu hôm nay từ health-sync', async () => {
+  test('getStatus: tùy chọn cục bộ + số liệu hôm nay từ health-sync, không báo "đã kết nối" khi chưa đọc được thật', async () => {
     const { service, healthSync, preferences } = load();
     preferences.load.mockResolvedValue({ connected: true, disabledSources: ['steps'] });
     healthSync.getDailySummary.mockResolvedValue(ACTIVITY);
@@ -178,7 +178,7 @@ describe('healthConnectApiService', () => {
     const status = await service.getStatus?.();
 
     expect(healthSync.getDailySummary).toHaveBeenCalledTimes(1);
-    expect(status?.connected).toBe(true);
+    expect(status?.connected).toBe(false);
     expect(status?.sources.map(source => source.enabled)).toEqual([false, true, true]);
   });
 
@@ -196,45 +196,20 @@ describe('healthConnectApiService', () => {
     });
   });
 
-  test('connect / disconnect đổi cờ "đã kết nối", giữ nguồn đã tắt', async () => {
+  test('disconnect lưu cờ "chưa kết nối", giữ nguồn đã tắt; connect báo rõ chưa hỗ trợ, không giả vờ kết nối', async () => {
     const { service, preferences } = load();
     preferences.load.mockResolvedValue({ connected: true, disabledSources: ['steps'] });
 
     await service.disconnect?.();
     expect(preferences.save).toHaveBeenLastCalledWith({ connected: false, disabledSources: ['steps'] });
 
-    await service.connect?.();
-    expect(preferences.save).toHaveBeenLastCalledWith({ connected: true, disabledSources: ['steps'] });
+    await expect(service.connect?.()).rejects.toThrow('Dev Client');
+    expect(preferences.save).toHaveBeenCalledTimes(1);
   });
 
-  test('syncNow ở DEV: gửi số liệu mẫu (nguồn "Manual") với ngày giờ máy', async () => {
+  test.each([true, false])('syncNow (__DEV__=%s): báo rõ cần Dev Client, không gửi số liệu mẫu lên server', async isDev => {
     const { service, healthSync } = load();
-
-    await service.syncNow?.();
-
-    expect(healthSync.syncMetrics).toHaveBeenCalledTimes(1);
-    expect(healthSync.syncMetrics).toHaveBeenCalledWith({
-      dateIso: format(new Date(), 'yyyy-MM-dd'),
-      steps: 6240,
-      burnedCalories: 180,
-      distanceMeters: 4300,
-      source: 'Manual',
-    });
-  });
-
-  test('syncNow ở DEV: bấm lặp vẫn gửi (BE thay thế số liệu cũ) và không cần đọc số liệu hôm nay trước', async () => {
-    const { service, healthSync } = load();
-
-    await service.syncNow?.();
-    await service.syncNow?.();
-
-    expect(healthSync.syncMetrics).toHaveBeenCalledTimes(2);
-    expect(healthSync.getDailySummary).not.toHaveBeenCalled();
-  });
-
-  test('syncNow ngoài DEV: báo rõ cần Dev Client, không gọi API', async () => {
-    const { service, healthSync } = load();
-    (globalThis as unknown as DevFlag).__DEV__ = false;
+    (globalThis as unknown as DevFlag).__DEV__ = isDev;
 
     await expect(service.syncNow?.()).rejects.toThrow('Dev Client');
     expect(healthSync.getDailySummary).not.toHaveBeenCalled();

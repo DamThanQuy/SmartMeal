@@ -32,7 +32,7 @@ public sealed class SmtpEmailSender : IEmailSender
             client.Credentials = new NetworkCredential(_options.User, _options.Password);
         }
 
-        var from = new MailAddress(_options.From, _options.FromName, Encoding.UTF8);
+        var from = new MailAddress(_options.SenderAddress, _options.FromName, Encoding.UTF8);
         using var mail = new MailMessage(from, new MailAddress(message.To))
         {
             Subject = message.Subject,

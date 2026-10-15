@@ -125,7 +125,7 @@ Chỉ dùng module nằm trong Expo SDK, cô lập qua service (`services/permis
 | OCR nhãn dinh dưỡng | — (ML Kit không chạy trên Expo Go) | Tạm mock, chưa gọi OCR thật |
 | Health Connect / HealthKit | — (cần Dev Client) | Tạm mock |
 | Notifications | `expo-notifications` | Push token thật cần Dev Client/EAS |
-| Ghi âm (Voice Logging) | `expo-av` | Gửi audio lên Backend xử lý |
+| Ghi âm (Voice Logging) | `expo-audio` | Gửi audio lên Backend xử lý |
 | Secure storage | `expo-secure-store` | Access/refresh token |
 | Storage thường | AsyncStorage | Preference, cache không nhạy cảm |
 

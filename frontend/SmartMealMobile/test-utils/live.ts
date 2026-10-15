@@ -195,7 +195,7 @@ function silentWav(): Buffer {
   return Buffer.concat([header, Buffer.alloc(samples * 2)]);
 }
 
-/** Ghi file mẫu ra thư mục tạm, trả `file://` URI như expo-image-picker/expo-av trả trên máy. */
+/** Ghi file mẫu ra thư mục tạm, trả `file://` URI như expo-image-picker/expo-audio trả trên máy. */
 export function writeLiveFixture(kind: 'image' | 'audio'): string {
   const path = join(tmpdir(), `smartmeal-live-${kind}-${process.pid}.${kind === 'image' ? 'png' : 'wav'}`);
   writeFileSync(path, kind === 'image' ? Buffer.from(TINY_PNG_BASE64, 'base64') : silentWav());

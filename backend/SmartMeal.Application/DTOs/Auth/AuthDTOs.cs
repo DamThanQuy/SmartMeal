@@ -62,6 +62,12 @@ public class AuthResponseDto
 
     public DateTime RefreshTokenExpiresAt { get; set; }
 
+    /// <summary>
+    /// True khi tài khoản vừa đăng ký phải nhập mã OTP đã gửi qua email (POST /auth/verify-otp, purpose "verify-email")
+    /// — chưa xác minh thì đăng nhập lại/gia hạn phiên bị từ chối với lỗi <c>email_not_verified</c>.
+    /// </summary>
+    public bool RequiresEmailVerification { get; set; }
+
     public UserDto User { get; set; } = null!;
 }
 

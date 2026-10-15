@@ -10,6 +10,8 @@ namespace SmartMeal.Tests;
 
 public sealed record VerifyOtpPayload(bool Verified, string? ResetToken, DateTime? ResetTokenExpiresAt);
 
+public sealed record RegisterPayload(string Token, string RefreshToken, bool RequiresEmailVerification);
+
 /// <summary>P1-BE-02: quên / xác minh OTP / đặt lại / đổi mật khẩu.</summary>
 public class PasswordTests : IClassFixture<ApiFactory>
 {
@@ -289,5 +291,48 @@ public class PasswordTests : IClassFixture<ApiFactory>
         var resetToken = await VerifiedResetTokenAsync(_factory, email);
         Assert.Equal(HttpStatusCode.OK, (await ResetAsync(_factory.CreateClient(), email, resetToken, "First-password-1")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await _factory.CreateClient().PostJsonAsync("/api/auth/login", new { email, password = "First-password-1" })).StatusCode);
+    }
+
+    // ───────────────────────────── Xác minh email khi đăng ký ─────────────────────────────
+
+    [DbFact]
+    public async Task With_email_verification_a_new_account_must_enter_the_emailed_code_before_signing_in_again()
+    {
+        using var factory = new ApiFactory().WithSetting("Auth:RequireEmailVerification", "true");
+        var client = factory.CreateClient();
+        var email = $"verify-{Guid.NewGuid():N}@example.com";
+
+        var register = await client.PostJsonAsync("/api/auth/register", new { email, password = "Passw0rd!", fullName = "Tester" });
+
+        Assert.Equal(HttpStatusCode.OK, register.StatusCode);
+        var auth = (await register.ReadEnvelopeAsync<RegisterPayload>()).Data!;
+        Assert.True(auth.RequiresEmailVerification);
+        Assert.Contains("Mã xác minh email", Assert.Single(factory.Email.To(email)).Subject);
+        var code = factory.Email.LastCodeFor(email)!;
+
+        // Chưa nhập mã: mật khẩu sai vẫn chỉ là 401 (không lộ trạng thái); mật khẩu đúng thì đăng nhập lại và gia hạn phiên bị chặn.
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostJsonAsync("/api/auth/login", new { email, password = "Wrong-pass-1" })).StatusCode);
+        var login = await client.PostJsonAsync("/api/auth/login", new { email, password = "Passw0rd!" });
+        Assert.Equal(HttpStatusCode.Forbidden, login.StatusCode);
+        Assert.Contains("email_not_verified", (await login.ReadEnvelopeAsync<object>()).Errors!);
+        var refresh = await client.PostJsonAsync("/api/auth/refresh", new { refreshToken = auth.RefreshToken });
+        Assert.Equal(HttpStatusCode.Unauthorized, refresh.StatusCode);
+        Assert.Contains("email_not_verified", (await refresh.ReadEnvelopeAsync<object>()).Errors!);
+
+        Assert.Equal(HttpStatusCode.OK, (await VerifyAsync(client, email, code, "verify-email")).StatusCode);
+
+        Assert.Equal(HttpStatusCode.OK, (await client.PostJsonAsync("/api/auth/login", new { email, password = "Passw0rd!" })).StatusCode);
+    }
+
+    [DbFact]
+    public async Task Without_smtp_new_accounts_are_not_asked_for_a_code_they_could_never_receive()
+    {
+        var email = $"no-smtp-{Guid.NewGuid():N}@example.com";
+
+        var register = await _factory.CreateClient().PostJsonAsync("/api/auth/register", new { email, password = "Passw0rd!", fullName = "Tester" });
+
+        Assert.False((await register.ReadEnvelopeAsync<RegisterPayload>()).Data!.RequiresEmailVerification);
+        Assert.Empty(_factory.Email.To(email));
+        Assert.Equal(HttpStatusCode.OK, (await _factory.CreateClient().PostJsonAsync("/api/auth/login", new { email, password = "Passw0rd!" })).StatusCode);
     }
 }

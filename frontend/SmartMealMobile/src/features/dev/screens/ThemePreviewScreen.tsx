@@ -19,6 +19,7 @@ import {
   AppSwitch,
   AppText,
 } from '@/components/ui';
+import { ENV } from '@/config/env';
 import { MOCK_SCENARIOS, type MockScenario } from '@/config/mock';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
@@ -117,21 +118,24 @@ export function ThemePreviewScreen() {
         />
       </View>
 
-      <View className="gap-sm">
-        <SectionHeader title="Free/Pro (Đợt 11)" />
-        <AppText variant="caption" color="muted">
-          Demo gate Premium (Fridge Scanner, Gợi ý thực đơn AI — BR-230/231) không cần đi hết luồng
-          thanh toán.
-        </AppText>
-        <View className="flex-row gap-sm">
-          <AppChip label="Free" selected={premiumStatus !== 'premium'} onPress={() => resetToFree()} />
-          <AppChip
-            label="Pro"
-            selected={premiumStatus === 'premium'}
-            onPress={() => activatePremium('monthly', '2099-12-31')}
-          />
+      {/* Bật Pro giả chỉ đổi trạng thái trên máy — chỉ dùng ở chế độ mock; gọi API thật thì gói do server quyết định. */}
+      {ENV.useMockApi ? (
+        <View className="gap-sm">
+          <SectionHeader title="Free/Pro (Đợt 11)" />
+          <AppText variant="caption" color="muted">
+            Demo gate Premium (Fridge Scanner, Gợi ý thực đơn AI — BR-230/231) không cần đi hết luồng
+            thanh toán.
+          </AppText>
+          <View className="flex-row gap-sm">
+            <AppChip label="Free" selected={premiumStatus !== 'premium'} onPress={() => resetToFree()} />
+            <AppChip
+              label="Pro"
+              selected={premiumStatus === 'premium'}
+              onPress={() => activatePremium('monthly', '2099-12-31')}
+            />
+          </View>
         </View>
-      </View>
+      ) : null}
 
       <View className="gap-sm">
         <SectionHeader title="Offline (Đợt 11)" />

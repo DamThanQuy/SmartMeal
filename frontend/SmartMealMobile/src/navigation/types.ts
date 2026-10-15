@@ -20,7 +20,8 @@ export type ForgotPasswordReturnTo = 'Login' | 'Settings';
 
 export type AuthStackParamList = {
   Welcome: undefined;
-  Login: undefined;
+  /** verifiedEmail: vừa xác minh email từ luồng đăng nhập (OtpScreen) → báo đăng nhập lại. */
+  Login: { verifiedEmail?: string } | undefined;
   Register: undefined;
   Otp: { email: string; purpose: OtpPurpose; returnTo?: ForgotPasswordReturnTo };
   ForgotPassword: { returnTo?: ForgotPasswordReturnTo } | undefined;

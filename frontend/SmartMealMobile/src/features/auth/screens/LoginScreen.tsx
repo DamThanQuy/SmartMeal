@@ -9,6 +9,7 @@ import { ScreenContainer } from '@/components/common';
 import { AppButton, AppInput, AppText } from '@/components/ui';
 import { AUTH_ROUTES } from '@/constants/routes';
 import type { AuthStackParamList } from '@/navigation/types';
+import { isApiError } from '@/services/api';
 import { useAuthStore } from '@/state/auth/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { AuthGoogleButton } from '../components/AuthGoogleButton';
@@ -26,10 +27,14 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
+/** Mã lỗi BE khi đăng nhập đúng mật khẩu nhưng email chưa xác minh (đã gửi mã OTP mới). */
+const EMAIL_NOT_VERIFIED = 'email_not_verified';
+
 // design/Main.dc.html (BR-013, BR-014). Mock (EXPO_PUBLIC_USE_MOCK_API=true): đăng nhập không
 // kiểm tra thật — mọi email/mật khẩu hợp lệ định dạng đều thành công, trừ khi Dev bật
 // MOCK_SCENARIO='error'. API thật: POST /auth/login rồi nạp hồ sơ sức khỏe (useLogin).
-export function LoginScreen({ navigation }: Props) {
+export function LoginScreen({ navigation, route }: Props) {
+  const verifiedEmail = route.params?.verifiedEmail;
   const { colors } = useTheme();
   const login = useAuthStore(state => state.login);
   const setPendingUser = useAuthStore(state => state.setPendingUser);
@@ -50,10 +55,9 @@ export function LoginScreen({ navigation }: Props) {
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    // Tài khoản dùng thử chỉ có khi backend chạy Development; bản phát hành không được điền sẵn mật khẩu.
-    defaultValues: __DEV__
-      ? { email: 'smartmealuser@gmail.com', password: 'Smartmeal@123' }
-      : { email: '', password: '' },
+    // Không điền sẵn tài khoản dùng thử: tài khoản đó có hồ sơ sức khỏe mẫu và gói Pro không qua thanh toán,
+    // nên số liệu sẽ không phải của người dùng. Đăng ký/đăng nhập bằng tài khoản thật.
+    defaultValues: { email: '', password: '' },
   });
 
   const onSubmit = handleSubmit(values => {
@@ -70,6 +74,17 @@ export function LoginScreen({ navigation }: Props) {
           index: 0,
           routes: [{ name: AUTH_ROUTES.HEALTH_PROFILE_BASIC_INFO }],
         });
+      },
+      onError: error => {
+        // Mật khẩu đúng nhưng email chưa xác minh: server vừa gửi mã → sang màn nhập mã, xong quay lại đây.
+        if (isApiError(error) && error.details.includes(EMAIL_NOT_VERIFIED)) {
+          loginMutation.reset();
+          navigation.navigate(AUTH_ROUTES.OTP, {
+            email: values.email.trim(),
+            purpose: 'register',
+            returnTo: 'Login',
+          });
+        }
       },
     });
   });
@@ -153,6 +168,10 @@ export function LoginScreen({ navigation }: Props) {
         {loginMutation.isError ? (
           <AppText variant="caption" color="error" className="text-center">
             {loginMutation.error.message}
+          </AppText>
+        ) : verifiedEmail ? (
+          <AppText variant="caption" color="secondary" className="text-center">
+            Email đã được xác minh. Hãy đăng nhập lại.
           </AppText>
         ) : null}
         {googleLogin.isAvailable ? (

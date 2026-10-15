@@ -57,7 +57,7 @@ export const aiApiService: Partial<typeof aiMockService> = {
     return fromVoiceResponse(mealType, text, dto);
   },
 
-  // POST /ai/voice-log/audio (multipart, trường `audio`; expo-av ghi .m4a). AI vừa chép lời vừa bóc món;
+  // POST /ai/voice-log/audio (multipart, trường `audio`; expo-audio ghi .m4a). AI vừa chép lời vừa bóc món;
   // câu hiển thị lấy từ bản chép lời của server. Không nghe ra món nào → 400 voice_unrecognized.
   async transcribeVoiceAudio(mealType, audioUri) {
     if (!audioUri) throw new Error(NO_AUDIO_MESSAGE);

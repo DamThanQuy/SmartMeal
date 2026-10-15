@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Audio } from 'expo-av';
+import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync } from 'expo-audio';
 import { MicOff } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Linking, View } from 'react-native';
@@ -30,8 +30,8 @@ export function VoicePermissionScreen({ navigation, route }: Props) {
     let isMounted = true;
     (async () => {
       try {
-        const { status } = await Audio.getPermissionsAsync();
-        if (status === 'granted' && isMounted) {
+        const { granted } = await getRecordingPermissionsAsync();
+        if (granted && isMounted) {
           grantMicPermission();
           navigation.replace(MAIN_STACK_ROUTES.VOICE_LOG, { mealType });
         }
@@ -48,7 +48,7 @@ export function VoicePermissionScreen({ navigation, route }: Props) {
     if (isRequesting) return;
     try {
       setIsRequesting(true);
-      const res = await Audio.requestPermissionsAsync();
+      const res = await requestRecordingPermissionsAsync();
       if (res.granted) {
         grantMicPermission();
         navigation.replace(MAIN_STACK_ROUTES.VOICE_LOG, { mealType });

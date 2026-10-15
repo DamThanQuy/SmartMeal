@@ -16,7 +16,7 @@ interface AiQuotaState {
   consumeQuota: () => void;
   reset: () => void;
   /** VoicePermissionScreen (Đợt 10, BR-252) — mock luôn mô phỏng "chưa cấp quyền micro" lúc vào
-   * app; bấm "Cho phép micro" mới bật true. Không gọi expo-av thật, không phải dữ liệu người
+   * app; bấm "Cho phép micro" mới bật true. Không gọi expo-audio thật, không phải dữ liệu người
    * dùng nên không đăng ký resetUserData (giống lý do appStore/authStore không đăng ký). */
   micPermissionGranted: boolean;
   grantMicPermission: () => void;

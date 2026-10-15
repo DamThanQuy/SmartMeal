@@ -18,7 +18,7 @@
 - **AI Snap & Track**: Chụp ảnh đĩa thức ăn -> AI tự động nhận diện món, bóc tách hàm lượng Calories, Carbs, Fat, Protein.
 - **Fridge Scanner (Quét tủ lạnh)**: Chụp ảnh các nguyên liệu sẵn có trong tủ lạnh -> AI gợi ý 3 món ăn có thể nấu ngay để tránh lãng phí.
 - **AI Voice Logging**: Ghi nhận bữa ăn bằng giọng nói tự nhiên qua Speech-to-Text và xử lý ngôn ngữ tự nhiên.
-- **OCR Nutrition Facts & Barcode Scanner**: Quét mã vạch và bảng thành phần dinh dưỡng trên bao bì sản phẩm qua Google ML Kit, tự động cảnh báo chất gây dị ứng hoặc vượt mức đường/muối.
+- **Nutrition Label & Barcode Scanner**: Quét mã vạch bằng `expo-camera` để tra sản phẩm trong database; chụp bảng thành phần dinh dưỡng và gửi qua backend để Gemini đọc nhãn, sau đó tự động cảnh báo chất gây dị ứng hoặc vượt mức đường/muối.
 
 ### 2. 📊 Theo dõi dinh dưỡng & Sức khỏe
 - **Smart Dashboard**: Tổng quan Calo và Macros nạp trong ngày.
@@ -46,7 +46,7 @@
 | **Backend API** | ASP.NET Core (.NET 9), Entity Framework Core 9, RESTful Architecture |
 | **Database** | PostgreSQL 16 |
 | **Authentication** | JWT + refresh token, đăng nhập email + mật khẩu, OTP qua email (quên mật khẩu) |
-| **AI & Machine Learning** | Google Gemini (ảnh món ăn, nhãn dinh dưỡng, tủ lạnh, giọng nói) qua backend; quét mã vạch bằng `expo-camera` |
+| **AI & Machine Learning** | Google Gemini (ảnh món ăn, nhãn dinh dưỡng, tủ lạnh, giọng nói) qua backend; quét mã vạch bằng `expo-camera` và tra database |
 | **Health Integration** | Google Health Connect / Apple HealthKit |
 | **DevOps / Containers** | Docker & Docker Compose |
 
@@ -112,10 +112,14 @@ Copy-Item frontend/SmartMealMobile/.env.example frontend/SmartMealMobile/.env   
 
 Mở `backend/.env` và điền:
 - `Jwt__Key`: tự sinh khóa ngẫu nhiên ≥ 32 ký tự (lệnh mẫu có trong file). Giá trị `CHANGE_ME…` chỉ chạy được ở Development.
-- `Gemini__ApiKey`: nếu muốn AI thật. Lấy miễn phí tại https://aistudio.google.com/app/apikey. Để trống thì AI trả dữ liệu mẫu (isDemo).
+- `Gemini__ApiKey`: API key chỉ đặt ở backend (không đặt trong mobile). Lấy key tại https://aistudio.google.com/app/apikey và lưu trong `backend/.env` hoặc secret manager.
+- `Gemini__Model`: mặc định `gemini-3.8-flash`, model multimodal dùng cho ảnh, text và audio. Có thể thay bằng model được bật trong Google AI Studio mà không cần build lại mobile.
+- `Gemini__FallbackModels`: mặc định `gemini-flash-lite-latest` — model dự phòng (cách nhau bằng dấu phẩy) khi model chính bị Google ngừng (404) hoặc quá tải (429/5xx).
 - `PayOS__ClientId`, `PayOS__ApiKey`, `PayOS__ChecksumKey`: nếu muốn thanh toán Pro bằng PayOS (VietQR). Lấy ở https://my.payos.vn → Kênh thanh toán. Để trống thì phương thức PayOS bị tắt.
 
-Mở `frontend/SmartMealMobile/.env` và đặt `EXPO_PUBLIC_USE_MOCK_API=false`, `EXPO_PUBLIC_API_URL` theo mục 5 bên dưới.
+Khi chạy AI thật, chỉ cần điền `Gemini__ApiKey` và **không** đặt `Ai__AllowDemoFallback=true`. Nếu thiếu key, Development trả dữ liệu mẫu có `isDemo=true`; staging/production trả lỗi 503 thay vì giả kết quả. Đã có key mà Gemini lỗi (model bị ngừng, quá tải, sai key…) thì API trả lỗi 502 ở mọi môi trường — xem nguyên nhân trong log của API (`docker compose logs backend-api`).
+
+Mở `frontend/SmartMealMobile/.env` và đặt `EXPO_PUBLIC_USE_MOCK_API=false`, `EXPO_PUBLIC_API_URL` theo mục 5 bên dưới. Đây là URL công khai của backend, không phải Gemini URL và không chứa API key.
 
 > Các file `.env` đã được `.gitignore` — **không commit**, không chép khóa thật vào file `.env.example`.
 
