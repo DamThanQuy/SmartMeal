@@ -13,11 +13,15 @@ public class FoodService : IFoodService
     private const int MaxCustomFoodsPerUser = 200;
     private const int MaxRecentFoods = 50;
 
-    private readonly ApplicationDbContext _db;
+    private const string PackagedCategory = "Packaged";
 
-    public FoodService(ApplicationDbContext db)
+    private readonly ApplicationDbContext _db;
+    private readonly IProductCatalogLookup _catalog;
+
+    public FoodService(ApplicationDbContext db, IProductCatalogLookup catalog)
     {
         _db = db;
+        _catalog = catalog;
     }
 
     // ───────────────────────────── Đọc ─────────────────────────────
@@ -114,10 +118,84 @@ public class FoodService : IFoodService
         // Món của chính người dùng ưu tiên hơn thực phẩm chung.
         var matches = await WithDetails(Visible(userId)).Where(f => f.Barcode == code).ToListAsync();
         var food = matches.FirstOrDefault(f => f.OwnerUserId != null) ?? matches.FirstOrDefault();
+
+        // CSDL chưa có: tra nguồn ngoài (Open Food Facts) rồi lưu thành thực phẩm chung "chưa kiểm chứng" để lần sau
+        // không phải gọi ra ngoài nữa (BR-120).
+        food ??= await ImportExternalProductAsync(code);
         if (food == null)
             return ApiResponse<FoodItemDto>.Fail("Chưa có sản phẩm với mã vạch này.", null, ApiErrorKind.NotFound);
 
         return ApiResponse<FoodItemDto>.Ok(ToDto(food, await FavoriteIdsAsync(userId)));
+    }
+
+    private async Task<Ingredient?> ImportExternalProductAsync(string barcode)
+    {
+        var product = await _catalog.FindByBarcodeAsync(barcode);
+        if (product is null)
+        {
+            return null;
+        }
+
+        var allergyIdByCode = await _db.Allergies.AsNoTracking().ToDictionaryAsync(a => a.Code, a => a.Id, StringComparer.OrdinalIgnoreCase);
+        var allergyIds = product.AllergenCodes
+            .Select(code => allergyIdByCode.TryGetValue(code, out var id) ? id : (int?)null)
+            .OfType<int>()
+            .Distinct()
+            .OrderBy(id => id)
+            .ToList();
+
+        var description = product.Brand is null ? $"Nguồn: {product.Source}" : $"{product.Brand} · Nguồn: {product.Source}";
+        var food = new Ingredient
+        {
+            Name = product.Name,
+            Description = description,
+            ImageUrl = product.ImageUrl,
+            Category = PackagedCategory,
+            DefaultUnit = "g",
+            CaloriesPer100g = product.CaloriesPer100g,
+            CarbsPer100g = product.CarbsPer100g,
+            FatPer100g = product.FatPer100g,
+            ProteinPer100g = product.ProteinPer100g,
+            FiberPer100g = product.FiberPer100g,
+            SugarPer100g = product.SugarPer100g,
+            SodiumMgPer100g = product.SodiumMgPer100g,
+            AllergyId = allergyIds.Count > 0 ? allergyIds[0] : null,
+            OwnerUserId = null,
+            IsVerified = false,
+            Barcode = barcode,
+            SearchText = BuildSearchText(product.Name, description)
+        };
+
+        foreach (var allergyId in allergyIds)
+        {
+            food.IngredientAllergies.Add(new IngredientAllergy { IngredientId = food.Id, AllergyId = allergyId });
+        }
+
+        var hasServing = product.ServingGrams is { } grams && Math.Abs(grams - 100) > 0.05;
+        if (hasServing)
+        {
+            food.Servings.Add(new FoodServing
+            {
+                IngredientId = food.Id,
+                Label = $"1 phần ({product.ServingGrams!.Value.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)} g)",
+                Grams = product.ServingGrams.Value,
+                IsDefault = true
+            });
+        }
+
+        food.Servings.Add(new FoodServing { IngredientId = food.Id, Label = "100 g", Grams = 100, IsDefault = !hasServing });
+
+        // Hai người quét cùng mã một lúc: bản kia đã lưu thì dùng bản đó, không tạo trùng.
+        var existing = await WithDetails(_db.Ingredients.AsNoTracking())
+            .FirstOrDefaultAsync(f => f.Barcode == barcode && f.OwnerUserId == null);
+        if (existing is not null)
+        {
+            return existing;
+        }
+
+        _db.Ingredients.Add(food);
+        await _db.SaveChangesAsync();
+        return await WithDetails(_db.Ingredients.AsNoTracking()).FirstAsync(f => f.Id == food.Id);
     }
 
     // ───────────────────────────── Ghi ─────────────────────────────

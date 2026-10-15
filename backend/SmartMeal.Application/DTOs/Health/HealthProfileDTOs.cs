@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using SmartMeal.Application.Common;
 using SmartMeal.Application.Common.Validation;
 
 namespace SmartMeal.Application.DTOs.Health;
@@ -76,6 +77,10 @@ public class HealthSurveyRequestDto
     /// <summary>Mục tiêu nước uống mỗi ngày (ml). Bỏ trống = giữ giá trị hiện có (mặc định 2000).</summary>
     [Range(500, 10000, ErrorMessage = "Mục tiêu nước uống phải từ 500 đến 10000 ml.")]
     public int? WaterGoalMl { get; set; }
+
+    /// <summary>Dị ứng ngoài danh mục, phân tách bằng dấu phẩy (vd. "dứa, kiwi"). Bỏ trống = không có.</summary>
+    [StringLength(CustomAllergens.MaxLength, ErrorMessage = "Dị ứng khác tối đa 200 ký tự.")]
+    public string? OtherAllergies { get; set; }
 }
 
 /// <summary>Cập nhật từng phần hồ sơ đã có. Trường không gửi (null) giữ nguyên; danh sách gửi <c>[]</c> nghĩa là xóa hết.</summary>
@@ -110,6 +115,10 @@ public class UpdateHealthProfileRequestDto
 
     [Range(500, 10000, ErrorMessage = "Mục tiêu nước uống phải từ 500 đến 10000 ml.")]
     public int? WaterGoalMl { get; set; }
+
+    /// <summary>Dị ứng ngoài danh mục. null = giữ nguyên; chuỗi rỗng = xóa.</summary>
+    [StringLength(CustomAllergens.MaxLength, ErrorMessage = "Dị ứng khác tối đa 200 ký tự.")]
+    public string? OtherAllergies { get; set; }
 }
 
 public class HealthProfileDto
@@ -144,4 +153,7 @@ public class HealthProfileDto
     public List<int> AllergyIds { get; set; } = new();
     public List<int> MedicalConditionIds { get; set; } = new();
     public List<int> DietaryPreferenceIds { get; set; } = new();
+
+    /// <summary>Dị ứng ngoài danh mục người dùng tự nhập (vd. "dứa, kiwi"); null = không có.</summary>
+    public string? OtherAllergies { get; set; }
 }

@@ -89,6 +89,9 @@ public class ApplicationDbContext : DbContext
             .HasForeignKey<HealthProfile>(hp => hp.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Chuỗi đã chuẩn hóa (", " giữa các mục) có thể dài hơn đầu vào 200 ký tự một chút.
+        modelBuilder.Entity<HealthProfile>().Property(hp => hp.OtherAllergies).HasMaxLength(300);
+
         // UserAllergy (N-N)
         modelBuilder.Entity<UserAllergy>()
             .HasKey(ua => new { ua.HealthProfileId, ua.AllergyId });

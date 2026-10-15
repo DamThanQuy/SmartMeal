@@ -484,6 +484,10 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.Property<double>("HeightCm")
                         .HasColumnType("double precision");
 
+                    b.Property<string>("OtherAllergies")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
                     b.Property<double>("TDEE")
                         .HasColumnType("double precision");
 

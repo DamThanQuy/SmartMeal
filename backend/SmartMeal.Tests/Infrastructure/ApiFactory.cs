@@ -83,7 +83,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
                 ["Smtp:Host"] = "",
                 ["Subscription:WebhookSecret"] = "",
                 ["Subscription:AllowMockActivation"] = "false",
-                ["Ai:AllowDemoFallback"] = "false"
+                ["Ai:AllowDemoFallback"] = "false",
+                // Không gọi Open Food Facts thật trong test; test tra mã vạch ngoài tự bật và thay HttpClient bằng stub.
+                ["OpenFoodFacts:Enabled"] = "false"
             };
 
             foreach (var (key, value) in _overrides)

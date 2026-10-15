@@ -86,6 +86,13 @@ builder.Services.AddScoped<IGamificationService, GamificationService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddScoped<IFoodService, FoodService>();
+// Mã vạch chưa có trong CSDL: tra Open Food Facts (công khai, không cần khóa) rồi lưu lại (BR-120).
+builder.Services
+    .AddOptions<OpenFoodFactsOptions>()
+    .Bind(builder.Configuration.GetSection(OpenFoodFactsOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddHttpClient<IProductCatalogLookup, OpenFoodFactsLookup>();
 builder.Services.AddHttpClient<IAiVisionService, GeminiAiVisionService>(client => client.Timeout = TimeSpan.FromSeconds(45));
 // Tra mã vạch bằng CSDL (không dùng AI đoán) + ngưỡng cảnh báo đường/natri/chất béo/calo của sản phẩm (BR-120/140).
 builder.Services.AddScoped<IProductSafetyService, ProductSafetyService>();

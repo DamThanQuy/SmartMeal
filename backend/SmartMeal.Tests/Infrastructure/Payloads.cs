@@ -32,7 +32,7 @@ public sealed record HealthProfilePayload(
     string ActivityLevel, string Goal, int WaterGoalMl, double Bmi, string BmiClassification, double Bmr, double Tdee,
     double DailyCaloriesTarget, double DailyCarbsTargetGrams, double DailyFatTargetGrams, double DailyProteinTargetGrams,
     List<string> Allergies, List<string> MedicalConditions, List<string> DietaryPreferences,
-    List<int> AllergyIds, List<int> MedicalConditionIds, List<int> DietaryPreferenceIds);
+    List<int> AllergyIds, List<int> MedicalConditionIds, List<int> DietaryPreferenceIds, string? OtherAllergies = null);
 
 public sealed record WeightPointPayload(Guid Id, double WeightKg, DateTime RecordedAt, double DiffFromTargetKg);
 

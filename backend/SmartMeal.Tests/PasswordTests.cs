@@ -215,14 +215,10 @@ public class PasswordTests : IClassFixture<ApiFactory>
     [DbFact]
     public async Task Verify_email_purpose_marks_the_email_verified_and_is_a_no_op_when_already_verified()
     {
-        var user = await _factory.RegisterUserAsync();   // đăng ký hiện chưa bắt xác minh OTP nên email đã được coi là xác minh
+        // Đăng ký bằng mật khẩu chưa chứng minh được người đăng ký sở hữu email.
+        var user = await _factory.RegisterUserAsync();
+        await WithDbAsync(_factory, async db => Assert.False((await db.Users.SingleAsync(u => u.Id == user.Id)).IsEmailVerified));
 
-        var resend = await _factory.CreateClient().PostJsonAsync("/api/auth/resend-otp", new { email = user.Email, purpose = "verify-email" });
-        Assert.Equal(HttpStatusCode.OK, resend.StatusCode);
-        Assert.Empty(_factory.Email.To(user.Email));
-
-        // Đặt lại cờ chưa xác minh để kiểm đường xác minh thật.
-        await WithDbAsync(_factory, db => db.Users.Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsEmailVerified, false)));
         (await _factory.CreateClient().PostJsonAsync("/api/auth/resend-otp", new { email = user.Email, purpose = "verify-email" })).EnsureSuccessStatusCode();
         var code = _factory.Email.LastCodeFor(user.Email)!;
 
@@ -231,6 +227,12 @@ public class PasswordTests : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.OK, verify.StatusCode);
         Assert.Null((await verify.ReadEnvelopeAsync<VerifyOtpPayload>()).Data!.ResetToken);
         await WithDbAsync(_factory, async db => Assert.True((await db.Users.SingleAsync(u => u.Id == user.Id)).IsEmailVerified));
+
+        // Đã xác minh: yêu cầu mã xác minh email nữa không gửi thêm email nào.
+        var sentBefore = _factory.Email.To(user.Email).Count;
+        var resend = await _factory.CreateClient().PostJsonAsync("/api/auth/resend-otp", new { email = user.Email, purpose = "verify-email" });
+        Assert.Equal(HttpStatusCode.OK, resend.StatusCode);
+        Assert.Equal(sentBefore, _factory.Email.To(user.Email).Count);
     }
 
     // ───────────────────────────── Đổi mật khẩu ─────────────────────────────
