@@ -4,7 +4,7 @@
  * thực đơn, tick theo trạng thái đích, món tự thêm, "Hoàn tất mua sắm" lưu chi phí thực tế và giữ món
  * chưa mua sang tuần sau (BR-170→174). Chỉ chạy khi có LIVE_API_URL (xem test-utils/live.ts).
  */
-import { describeLive, installLiveBackend, uniqueEmail } from '../../test-utils/live';
+import { activateProForTesting, describeLive, installLiveBackend, uniqueEmail } from '../../test-utils/live';
 
 type AuthModule = typeof import('@/features/auth/services/authService');
 type HealthModule = typeof import('@/features/health/services/healthProfileService');
@@ -59,6 +59,8 @@ describeLive('thực đơn & đi chợ (backend thật)', () => {
     if (!profile) throw new Error('Không đọc lại được hồ sơ vừa tạo');
     useUserProfileStore.getState().hydrateFromServer(profile.snapshot, profile.extras);
     useAuthStore.setState({ pendingUser: null, user, isAuthenticated: true });
+    // Thực đơn tuần/gợi ý ô là tính năng Pro — máy chủ chặn tài khoản Free.
+    await activateProForTesting();
   }
 
   test('xếp, đánh dấu đã nấu và xóa một món; server từ chối món chứa dị ứng', async () => {
