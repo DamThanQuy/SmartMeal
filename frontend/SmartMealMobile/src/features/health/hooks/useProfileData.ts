@@ -124,6 +124,7 @@ export function useUpdateHealthSettings() {
         store.setAllergyIds(selection.allergyIds);
         store.setHealthConditionIds(selection.healthConditionIds);
         store.setDietaryPreferenceIds(selection.dietaryPreferenceIds);
+        if (selection.otherAllergies !== undefined) store.setOtherAllergies(selection.otherAllergies.trim());
       }
       // Dị ứng/bệnh lý đổi ảnh hưởng gợi ý công thức, thực đơn, cảnh báo sản phẩm... — làm mới mọi
       // query đang hiển thị thay vì liệt kê từng key của các feature khác.

@@ -38,6 +38,8 @@ interface UserProfileState {
   allergyIds: string[];
   healthConditionIds: string[];
   dietaryPreferenceIds: string[];
+  /** Dị ứng ngoài danh mục tự gõ ("dứa, kiwi") — BE lọc món/cảnh báo theo; '' = không có. */
+  otherAllergies: string;
   result: HealthProfileResult;
   /** CalorieBudgetScreen (Đợt 11, BR-040→042) — "Cộng calo vận động vào ngân sách", mặc định bật. */
   includeActivityCalories: boolean;
@@ -51,6 +53,7 @@ interface UserProfileState {
   setAllergyIds: (ids: string[]) => void;
   setHealthConditionIds: (ids: string[]) => void;
   setDietaryPreferenceIds: (ids: string[]) => void;
+  setOtherAllergies: (text: string) => void;
 }
 
 function toDateOfBirth(data: HealthProfileFormData['dateOfBirth']): Date | null {
@@ -73,6 +76,7 @@ type ProfileInitialState = Pick<
   | 'allergyIds'
   | 'healthConditionIds'
   | 'dietaryPreferenceIds'
+  | 'otherAllergies'
   | 'result'
   | 'includeActivityCalories'
   | 'waterGoalMl'
@@ -96,6 +100,7 @@ const SEED_PROFILE_STATE: ProfileInitialState = {
   allergyIds: ['dairy', 'peanut'],
   healthConditionIds: [],
   dietaryPreferenceIds: ['eatClean'],
+  otherAllergies: '',
   result: {
     bmi: 23.0,
     bmr: 1655,
@@ -121,6 +126,7 @@ const EMPTY_PROFILE_STATE: ProfileInitialState = {
   allergyIds: [],
   healthConditionIds: [],
   dietaryPreferenceIds: [],
+  otherAllergies: '',
   result: {
     bmi: 0,
     bmr: 0,
@@ -153,6 +159,7 @@ export const useUserProfileStore = create<UserProfileState>()((set, get) => ({
       allergyIds: data.noAllergies ? [] : data.allergyIds,
       healthConditionIds: data.noHealthConditions ? [] : data.healthConditionIds,
       dietaryPreferenceIds: data.noDietaryPreference ? [] : data.dietaryPreferenceIds,
+      otherAllergies: data.noAllergies ? '' : data.otherAllergyText.trim(),
       result,
     });
   },
@@ -171,6 +178,7 @@ export const useUserProfileStore = create<UserProfileState>()((set, get) => ({
       allergyIds: selection.allergyIds,
       healthConditionIds: selection.healthConditionIds,
       dietaryPreferenceIds: selection.dietaryPreferenceIds,
+      otherAllergies: selection.otherAllergies ?? '',
       waterGoalMl: snapshot.waterGoalMl ?? get().waterGoalMl,
       result: snapshot.result,
     });
@@ -179,6 +187,7 @@ export const useUserProfileStore = create<UserProfileState>()((set, get) => ({
   setAllergyIds: ids => set({ allergyIds: ids }),
   setHealthConditionIds: ids => set({ healthConditionIds: ids }),
   setDietaryPreferenceIds: ids => set({ dietaryPreferenceIds: ids }),
+  setOtherAllergies: text => set({ otherAllergies: text }),
   setIncludeActivityCalories: value => set({ includeActivityCalories: value }),
   setWaterGoalMl: value => set({ waterGoalMl: value }),
 }));

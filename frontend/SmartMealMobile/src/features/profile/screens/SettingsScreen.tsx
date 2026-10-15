@@ -18,7 +18,6 @@ import { AppButton, AppCard, AppSegmentedControl, AppText } from '@/components/u
 import { MEMBERSHIP_STATUS_LABEL } from '@/features/premium';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
-import { useAppStore, type AppLanguage } from '@/state/app/appStore';
 import { useAuthStore } from '@/state/auth/authStore';
 import { usePremiumStore } from '@/state/premium/premiumStore';
 import { useTheme, type ThemeMode } from '@/theme/ThemeProvider';
@@ -33,24 +32,18 @@ const THEME_MODE_OPTIONS: { id: ThemeMode; label: string }[] = [
   { id: 'dark', label: 'Tối' },
 ];
 
-const LANGUAGE_OPTIONS: { id: AppLanguage; label: string }[] = [
-  { id: 'vi', label: 'Tiếng Việt' },
-  { id: 'en', label: 'English' },
-];
-
 // design/Settings.dc.html (design v2, Đợt 9). Đích mới cho icon "Cài đặt" ở ProfileScreen (Đợt
-// 7 trỏ tạm MAIN_STACK_ROUTES.DEV — xem ProfileScreen.tsx). "Đổi mật khẩu" mở ForgotPasswordScreen
-// (đăng ký thêm ở MainNavigator, sửa lệch sau Đợt 9 — xem ForgotPasswordScreen.tsx/OtpScreen.tsx)
-// với returnTo='Settings' để quay lại đây sau khi xác thực OTP xong, không còn là nút chết.
-// "Điều khoản sử dụng"/"Chính sách quyền riêng tư" vẫn no-op — đúng href="#" trong design (chủ
-// ý). "Gói của tôi" trỏ SubscriptionScreen (Đợt 13). Mục "Dev" không có trong artboard — thêm để
+// 7 trỏ tạm MAIN_STACK_ROUTES.DEV — xem ProfileScreen.tsx). "Đổi mật khẩu" mở ChangePasswordScreen
+// (xác nhận bằng mật khẩu hiện tại, không cần email OTP); tài khoản chưa có mật khẩu (tạo bằng
+// Google) thấy "Tạo mật khẩu" và đi luồng ForgotPassword/OTP với returnTo='Settings'.
+// "Điều khoản sử dụng"/"Chính sách quyền riêng tư" mở LegalScreen (văn bản tĩnh). "Gói của tôi" trỏ SubscriptionScreen (Đợt 13). Mục "Dev" không có trong artboard — thêm để
 // chứa ThemePreviewScreen (đã tạm trỏ từ icon Cài đặt suốt Đợt 0-8, nay dời vào đây theo đúng yêu
 // cầu Đợt 9).
 export function SettingsScreen({ navigation }: Props) {
   const { colors, mode, setMode } = useTheme();
-  const language = useAppStore(state => state.language);
-  const setLanguage = useAppStore(state => state.setLanguage);
   const user = useAuthStore(state => state.user);
+  // Tài khoản tạo bằng Google chưa có mật khẩu: "Tạo mật khẩu" qua email OTP thay vì đổi mật khẩu.
+  const hasPassword = user?.hasPassword !== false;
   const logout = useAuthStore(state => state.logout);
   const membershipStatus = usePremiumStore(state => state.status);
   const { data: healthConnect } = useHealthConnectStatus();
@@ -81,9 +74,11 @@ export function SettingsScreen({ navigation }: Props) {
           <AppText variant="h3">Tài khoản</AppText>
           <ProfileMenuRow
             icon={<Lock size={20} color={colors.primary} />}
-            label="Đổi mật khẩu"
+            label={hasPassword ? 'Đổi mật khẩu' : 'Tạo mật khẩu'}
             onPress={() =>
-              navigation.navigate(MAIN_STACK_ROUTES.FORGOT_PASSWORD, { returnTo: 'Settings' })
+              hasPassword
+                ? navigation.navigate(MAIN_STACK_ROUTES.CHANGE_PASSWORD)
+                : navigation.navigate(MAIN_STACK_ROUTES.FORGOT_PASSWORD, { returnTo: 'Settings' })
             }
           />
           <ProfileMenuRow
@@ -100,23 +95,8 @@ export function SettingsScreen({ navigation }: Props) {
         </AppCard>
 
         <AppCard className="gap-md">
-          <AppText variant="h3">Giao diện và ngôn ngữ</AppText>
-          <View className="gap-xs">
-            <AppText variant="body" color="secondary">
-              Giao diện
-            </AppText>
-            <AppSegmentedControl options={THEME_MODE_OPTIONS} value={mode} onChange={setMode} />
-          </View>
-          <View className="gap-xs">
-            <AppText variant="body" color="secondary">
-              Ngôn ngữ
-            </AppText>
-            <AppSegmentedControl
-              options={LANGUAGE_OPTIONS}
-              value={language}
-              onChange={setLanguage}
-            />
-          </View>
+          <AppText variant="h3">Giao diện</AppText>
+          <AppSegmentedControl options={THEME_MODE_OPTIONS} value={mode} onChange={setMode} />
         </AppCard>
 
         <AppCard className="gap-xxs">
@@ -140,12 +120,12 @@ export function SettingsScreen({ navigation }: Props) {
           <ProfileMenuRow
             icon={<FileText size={20} color={colors.primary} />}
             label="Điều khoản sử dụng"
-            onPress={() => {}}
+            onPress={() => navigation.navigate(MAIN_STACK_ROUTES.LEGAL, { document: 'terms' })}
           />
           <ProfileMenuRow
             icon={<ShieldCheck size={20} color={colors.primary} />}
             label="Chính sách quyền riêng tư"
-            onPress={() => {}}
+            onPress={() => navigation.navigate(MAIN_STACK_ROUTES.LEGAL, { document: 'privacy' })}
           />
           <ProfileMenuRow
             icon={<Trash2 size={20} color={colors.error} />}

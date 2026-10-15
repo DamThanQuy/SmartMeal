@@ -10,6 +10,7 @@ import {
   VoicePermissionScreen,
 } from '@/features/ai';
 import {
+  ChangePasswordScreen,
   ForgotPasswordScreen,
   GuestPromptScreen,
   OtpScreen,
@@ -45,6 +46,7 @@ import {
   EditProfileScreen,
   HealthConnectScreen,
   HealthSettingsScreen,
+  LegalScreen,
   NotificationsScreen,
   RemindersScreen,
   SettingsScreen,
@@ -157,6 +159,8 @@ export function MainNavigator() {
       <Stack.Screen name={MAIN_STACK_ROUTES.FORGOT_PASSWORD} component={ForgotPasswordScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.OTP} component={OtpScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.RESET_PASSWORD} component={ResetPasswordScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.CHANGE_PASSWORD} component={ChangePasswordScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.LEGAL} component={LegalScreen} />
 
       {/* Bottom sheet / dialog — CLAUDE.md mục 10: QuickLog, StateAILimit, DeleteConfirm,
           FilterSheet, GuestPrompt (Đợt 9), AddToMealPlan (Đợt 10), GroceryAdd/GroceryDone/

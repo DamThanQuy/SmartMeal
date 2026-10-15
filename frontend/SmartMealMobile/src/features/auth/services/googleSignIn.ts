@@ -1,67 +1,84 @@
 /**
- * Google Sign-In (Web only) ΓÇö Google Identity Services (GSI).
+ * Google Sign-In (Web only) — Google Identity Services (GSI).
  *
- * Chß╗ë chß║íy ─æ╞░ß╗úc tr├¬n Web (Expo Web / tr├¼nh duyß╗çt). Tr├¬n native (Android/iOS) cß║ºn
- * `expo-auth-session` + Expo Dev Client ΓÇö ch╞░a implement ß╗ƒ ─æ├óy.
+ * Chỉ chạy được trên Web (Expo Web / trình duyệt). Trên native (Android/iOS) cần
+ * `expo-auth-session` + Expo Dev Client — chưa implement ở đây.
  *
- * C├ích hoß║ít ─æß╗Öng:
- * 1. Load script `https://accounts.google.com/gsi/client` (chß╗ë load mß╗Öt lß║ºn).
- * 2. Gß╗ìi `google.accounts.id.initialize({ client_id, ... })`.
- * 3. Gß╗ìi `google.accounts.id.prompt()` ΓÇö Google render n├║t "Continue with Google"
- *    cß╗ºa ch├¡nh Google. Ng╞░ß╗¥i d├╣ng bß║Ñm ΓåÆ Google trß║ú vß╗ü ID token (credential)
+ * Cách hoạt động:
+ * 1. Load script `https://accounts.google.com/gsi/client` (chỉ load một lần).
+ * 2. Gọi `google.accounts.id.initialize({ client_id, ... })`.
+ * 3. Gọi `google.accounts.id.prompt()` — Google render nút "Continue with Google"
+ *    của chính Google. Người dùng bấm → Google trả về ID token (credential)
  *    qua callback `success`.
- * 4. `getGoogleIdToken()` trß║ú vß╗ü Promise<string> ΓÇö ID token (JWT) sß║╜ ─æ╞░ß╗úc gß╗¡i
- *    l├¬n backend `POST /auth/google { idToken }` ─æß╗â m├íy chß╗º x├íc minh.
+ * 4. `getGoogleIdToken()` trả về Promise<string> — ID token (JWT) sẽ được gửi
+ *    lên backend `POST /auth/google { idToken }` để máy chủ xác minh.
  *
- * Y├èU Cß║ªU Cß║ñU H├îNH (Google Cloud Console ΓÇö Project: zinc-night-511604-v9):
- *   - OAuth consent screen: External, app name "SmartMeal",
- *     support email damthanchiem@gmail.com, test user damthanchiem@gmail.com.
- *   - Web OAuth 2.0 Client:
- *       Name: Web client 1
- *       Authorized JavaScript origin: http://localhost:8082
- *   - EXPO_PUBLIC_GOOGLE_CLIENT_ID trong `.env`
+ * YÊU CẦU CẤU HÌNH (Google Cloud Console của nhóm):
+ *   - OAuth consent screen (External). Khi còn ở chế độ "Testing", chỉ tài khoản Google có
+ *     trong danh sách test user mới đăng nhập được.
+ *   - Web OAuth 2.0 Client: "Authorized JavaScript origins" phải có đúng origin đang chạy
+ *     Expo Web (vd. http://localhost:8081) — origin đó cũng phải nằm trong Cors__AllowedOrigins của BE.
+ *   - Cùng một Client ID cho EXPO_PUBLIC_GOOGLE_CLIENT_ID (FE) và Google__ClientId (BE).
  *
- * L╞»U ├¥ Bß║óO Mß║¼T (P1-BE-01): Backend PHß║óI tß╗▒ x├íc minh ID token vß╗¢i Google
- * (th╞░ viß╗çn `Google.Identity` / token endpoint), KH├öNG tin email do client tß╗▒ gß╗¡i.
+ * LƯU Ý BẢO MẬT (P1-BE-01): Backend tự xác minh ID token với Google (Google.Apis.Auth), không
+ * tin email do client tự gửi.
  *
- * Native (Android/iOS): ch╞░a support ΓÇö xem task "Native" trong
- * docs/SmartMeal_GoogleSignIn_Tasks.md.
+ * Native (Android/iOS): chưa hỗ trợ — cần expo-auth-session, Client ID Android/iOS và BE nhận
+ * thêm các Client ID đó làm audience. Màn hình ẩn nút Google trên native (`isGoogleSignInAvailable`).
  */
 
 import { Platform } from 'react-native';
 
-// EXPO_PUBLIC_ prefix ΓÇö Expo inline v├áo bundle l├║c build.
-// undefined nß║┐u ch╞░a ─æß║╖t trong .env ΓåÆ Google Sign-In tß║»t (n├║t sß║╜ hiß╗çn
-// "Google Client ID ch╞░a cß║Ñu h├¼nh").
+// EXPO_PUBLIC_ prefix — Expo inline vào bundle lúc build.
+// undefined nếu chưa đặt trong .env → Google Sign-In tắt (nút sẽ hiện
+// "Google Client ID chưa cấu hình").
 const GOOGLE_CLIENT_ID: string | undefined =
   process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
 
-// Web-only: Google Identity Services script chß╗ë load ─æ╞░ß╗úc tr├¬n tr├¼nh duyß╗çt.
+function hasClientId(clientId: string | undefined): clientId is string {
+  return Boolean(clientId) && !clientId?.includes('your-google-oauth');
+}
+
+/**
+ * Có hiển thị đăng nhập Google không: chỉ trên Web và khi đã cấu hình Client ID. Trên native nút
+ * chưa làm được gì (cần expo-auth-session + Dev Client) nên màn hình ẩn hẳn thay vì để nút chết.
+ */
+export function isGoogleSignInAvailable(): boolean {
+  return Platform.OS === 'web' && hasClientId(GOOGLE_CLIENT_ID);
+}
+
+// Web-only: Google Identity Services script chỉ load được trên trình duyệt.
 const GSI_SCRIPT_URL = 'https://accounts.google.com/gsi/client';
+
+type GsiWindow = Window & { google?: { accounts?: { id?: GsiAccountsId } } };
+
+function gsiAccountsId(): GsiAccountsId | undefined {
+  return (window as GsiWindow).google?.accounts?.id;
+}
 
 let gsiReady: Promise<void> | null = null;
 let activeCredentialHandler: ((credential: string) => void) | null = null;
 let gsiInitialized = false;
 
 /**
- * Load script GSI mß╗Öt lß║ºn. Resolve khi window.google.accounts.id khß║ú dß╗Ñng.
- * Reject nß║┐u ─æang chß║íy tr├¬n native (kh├┤ng c├│ window/document).
+ * Load script GSI một lần. Resolve khi window.google.accounts.id khả dụng.
+ * Reject nếu đang chạy trên native (không có window/document).
  */
 function ensureGsiScript(): Promise<void> {
   if (!gsiReady) {
     gsiReady = new Promise<void>((resolve, reject) => {
-      // Platform.select kh├┤ng chß║íy tr├¬n web ΓåÆ Platform.OS === 'web'.
+      // Platform.select không chạy trên web → Platform.OS === 'web'.
       if (Platform.OS !== 'web' || typeof window === 'undefined' || typeof document === 'undefined') {
         reject(
           new Error(
-            'Google Sign-In chß╗ë hoß║ít ─æß╗Öng tr├¬n Web. Tr├¬n native cß║ºn expo-auth-session + Dev Client.',
+            'Google Sign-In chỉ hoạt động trên Web. Trên native cần expo-auth-session + Dev Client.',
           ),
         );
         return;
       }
 
-      // Script ─æ├ú load tr╞░ß╗¢c ─æ├│ ΓåÆ resolve ngay.
-      if ((window as any).google?.accounts?.id) {
+      // Script đã load trước đó → resolve ngay.
+      if (gsiAccountsId()) {
         resolve();
         return;
       }
@@ -71,14 +88,14 @@ function ensureGsiScript(): Promise<void> {
       script.async = true;
       script.defer = true;
       script.onload = () => {
-        if ((window as any).google?.accounts?.id) {
+        if (gsiAccountsId()) {
           resolve();
         } else {
-          reject(new Error('Kh├┤ng thß╗â tß║úi Google Identity Services.'));
+          reject(new Error('Không thể tải Google Identity Services.'));
         }
       };
       script.onerror = () => {
-        reject(new Error('Kh├┤ng thß╗â tß║úi Google Identity Services (network error).'));
+        reject(new Error('Không thể tải Google Identity Services (network error).'));
       };
       document.head.appendChild(script);
     });
@@ -87,9 +104,9 @@ function ensureGsiScript(): Promise<void> {
 }
 
 export interface GoogleSignInOptions {
-  /** Hiß╗ân thß╗ï n├║t cß╗ºa Google thay v├¼ n├║t cß╗ºa app. Mß║╖c ─æß╗ïnh false. */
+  /** Hiển thị nút của Google thay vì nút của app. Mặc định false. */
   usePromptButton?: boolean;
-  /** Email ─æ├ú biß║┐t tr╞░ß╗¢c ─æß╗â gß╗úi ├╜ (kh├┤ng bß║»t buß╗Öc). */
+  /** Email đã biết trước để gợi ý (không bắt buộc). */
   hintEmail?: string;
 }
 
@@ -114,30 +131,30 @@ type GsiAccountsId = {
 };
 
 function getGsi(): GsiAccountsId {
-  const accounts = (window as any).google?.accounts?.id;
+  const accounts = gsiAccountsId();
   if (!accounts) {
     throw new Error(
-      'Google Identity Services ch╞░a sß║╡n s├áng. Kiß╗âm tra EXPO_PUBLIC_GOOGLE_CLIENT_ID v├á kß║┐t nß╗æi mß║íng.',
+      'Google Identity Services chưa sẵn sàng. Kiểm tra EXPO_PUBLIC_GOOGLE_CLIENT_ID và kết nối mạng.',
     );
   }
-  return accounts as GsiAccountsId;
+  return accounts;
 }
 
 /**
- * Lß║Ñy Google ID token (JWT) tß╗½ Google Sign-In.
+ * Lấy Google ID token (JWT) từ Google Sign-In.
  *
- * C├ích 1 (prompt button): Google render n├║t ΓåÆ ng╞░ß╗¥i d├╣ng bß║Ñm ΓåÆ callback nhß║¡n credential.
- * C├ích 2 (headless, d├╣ng vß╗¢i n├║t App tß╗▒ build): initialize rß╗ôi gß╗ìi prompt()
- * ─æß╗â Google hiß╗ân thß╗ï popup/n├║t cß╗ºa Google.
+ * Cách 1 (prompt button): Google render nút → người dùng bấm → callback nhận credential.
+ * Cách 2 (headless, dùng với nút App tự build): initialize rồi gọi prompt()
+ * để Google hiển thị popup/nút của Google.
  *
- * Trß║ú vß╗ü Promise<string> (ID token). Reject nß║┐u ng╞░ß╗¥i d├╣ng hß╗ºy hoß║╖c Client ID
- * ch╞░a cß║Ñu h├¼nh.
+ * Trả về Promise<string> (ID token). Reject nếu người dùng hủy hoặc Client ID
+ * chưa cấu hình.
  */
 export function getGoogleIdToken(options?: GoogleSignInOptions): Promise<string> {
   return (async () => {
-    if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes('your-google-oauth')) {
+    if (!hasClientId(GOOGLE_CLIENT_ID)) {
       throw new Error(
-        'Google Client ID ch╞░a ─æ╞░ß╗úc cß║Ñu h├¼nh. ─Éß║╖t EXPO_PUBLIC_GOOGLE_CLIENT_ID trong .env rß╗ôi restart Metro.',
+        'Google Client ID chưa được cấu hình. Đặt EXPO_PUBLIC_GOOGLE_CLIENT_ID trong .env rồi restart Metro.',
       );
     }
 
@@ -149,7 +166,7 @@ export function getGoogleIdToken(options?: GoogleSignInOptions): Promise<string>
       const timeoutId = setTimeout(() => {
         if (settled) return;
         settled = true;
-        reject(new Error('─É─âng nhß║¡p Google hß║┐t thß╗¥i gian chß╗¥. Vui l├▓ng thß╗¡ lß║íi.'));
+        reject(new Error('Đăng nhập Google hết thời gian chờ. Vui lòng thử lại.'));
       }, 20_000);
 
       const fail = (message: string) => {
@@ -176,11 +193,11 @@ export function getGoogleIdToken(options?: GoogleSignInOptions): Promise<string>
       // Google says the prompt was dismissed, skipped, or could not be displayed.
       gsi.prompt(notification => {
         if (notification.isNotDisplayed()) {
-          fail(`Google Sign-In kh├┤ng hiß╗ân thß╗ï ─æ╞░ß╗úc (${notification.getNotDisplayedReason?.() ?? 'unknown'}).`);
+          fail(`Google Sign-In không hiển thị được (${notification.getNotDisplayedReason?.() ?? 'unknown'}).`);
         } else if (notification.isSkippedMoment()) {
-          fail(`Bß║ín ─æ├ú bß╗Å qua ─æ─âng nhß║¡p Google (${notification.getSkippedReason?.() ?? 'skipped'}).`);
+          fail(`Bạn đã bỏ qua đăng nhập Google (${notification.getSkippedReason?.() ?? 'skipped'}).`);
         } else if (notification.isDismissedMoment()) {
-          fail(`─É─âng nhß║¡p Google ─æ├ú bß╗ï hß╗ºy (${notification.getDismissedReason?.() ?? 'dismissed'}).`);
+          fail(`Đăng nhập Google đã bị hủy (${notification.getDismissedReason?.() ?? 'dismissed'}).`);
         }
       });
     });
@@ -188,16 +205,16 @@ export function getGoogleIdToken(options?: GoogleSignInOptions): Promise<string>
 }
 
 /**
- * Render n├║t Google (styled button cß╗ºa Google) v├áo element DOM.
- * Chß╗ë d├╣ng khi muß╗æn hiß╗ân thß╗ï ch├¡nh n├║t Google thay v├¼ n├║t App.
+ * Render nút Google (styled button của Google) vào element DOM.
+ * Chỉ dùng khi muốn hiển thị chính nút Google thay vì nút App.
  */
 export function renderGoogleButton(
   container: HTMLElement,
   onCredential: (credential: string) => void,
   options?: { theme?: 'outline' | 'filled_black' | 'filled_white'; text?: 'sign_in' | 'continue' },
 ): () => void {
-  if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes('your-google-oauth')) {
-    console.warn('[googleSignIn] EXPO_PUBLIC_GOOGLE_CLIENT_ID ch╞░a cß║Ñu h├¼nh ΓÇö kh├┤ng thß╗â render n├║t.');
+  if (!hasClientId(GOOGLE_CLIENT_ID)) {
+    console.warn('[googleSignIn] EXPO_PUBLIC_GOOGLE_CLIENT_ID chưa cấu hình — không thể render nút.');
     return () => undefined;
   }
   let disposed = false;
@@ -224,7 +241,7 @@ export function renderGoogleButton(
         shape: 'rectangular',
       });
     } catch (error) {
-      console.error('[googleSignIn] Kh├┤ng thß╗â render n├║t Google:', error);
+      console.error('[googleSignIn] Không thể render nút Google:', error);
     }
   })();
   return () => {

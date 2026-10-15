@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// AsyncStorage — preference, theme, language, onboarding, cache không nhạy cảm.
+// AsyncStorage — preference, theme, onboarding, cache không nhạy cảm.
 // Access/refresh token KHÔNG được lưu ở đây — dùng src/services/storage/secureStorage.ts
 // (expo-secure-store) khi cần.
 // API bất đồng bộ (khác MMKV) — nơi gọi (ThemeProvider, appStore...) phải await/hydrate đúng cách,

@@ -1,14 +1,15 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { BarChart } from 'react-native-gifted-charts';
 import { EmptyState, ErrorState, LoadingState, ScreenContainer, ScreenHeader } from '@/components/common';
-import { AppCard, AppText } from '@/components/ui';
+import { AppText } from '@/components/ui';
 import type { MainStackParamList } from '@/navigation/types';
-import { useTheme } from '@/theme/ThemeProvider';
-import { MacroProgressList } from '../components/MacroProgressList';
-import { useWeeklyProgress } from '../hooks/useProgress';
+import { DayProgressView } from '../components/DayProgressView';
+import { RangeProgressView } from '../components/RangeProgressView';
+import { useDiaryDay } from '../hooks/useDiary';
+import { useMonthlyProgress, useWeeklyProgress } from '../hooks/useProgress';
 import { todayIso } from '../services/nutritionService';
+import { buildDayProgress } from '../utils/progress';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ProgressChart'>;
 
@@ -20,17 +21,37 @@ const PERIOD_OPTIONS: { id: Period; label: string }[] = [
   { id: 'month', label: 'Tháng' },
 ];
 
-function formatNumber(value: number): string {
-  return value.toLocaleString('vi-VN');
-}
-
-// design/ProgressChart.dc.html (BR-050). Chỉ đợt "Tuần" có dữ liệu mock 7 ngày theo yêu cầu
-// Phase 3 (docs/ui-mock-prompts.md) — "Ngày"/"Tháng" chưa có nguồn dữ liệu, hiện EmptyState.
+// design/ProgressChart.dc.html (BR-050). "Ngày" tính từ nhật ký hôm nay (GET /nutritiondiary/daily),
+// "Tuần" 7 ngày (GET /nutritiondiary/weekly-progress), "Tháng" 30 ngày (GET /nutritiondiary/progress).
 export function ProgressChartScreen({ navigation }: Props) {
-  const { colors } = useTheme();
   const [period, setPeriod] = useState<Period>('week');
   const dateIso = todayIso();
-  const { data: summary, isLoading, isError, error, refetch } = useWeeklyProgress(dateIso);
+  const diary = useDiaryDay(dateIso);
+  const weekly = useWeeklyProgress(dateIso, period === 'week');
+  const monthly = useMonthlyProgress(dateIso, period === 'month');
+  const daySummary = useMemo(() => (diary.data ? buildDayProgress(diary.data) : null), [diary.data]);
+
+  const active = period === 'day' ? diary : period === 'week' ? weekly : monthly;
+
+  const renderContent = () => {
+    if (active.isLoading) return <LoadingState lines={6} />;
+    if (active.isError) {
+      return <ErrorState description={active.error?.message} onRetry={() => void active.refetch()} />;
+    }
+    if (period === 'day') {
+      if (!daySummary) return null;
+      return daySummary.totalCalories > 0 ? (
+        <DayProgressView summary={daySummary} />
+      ) : (
+        <EmptyState
+          title="Hôm nay chưa ghi món nào"
+          description="Ghi bữa ăn trong Nhật ký để xem calo theo bữa và macro của ngày."
+        />
+      );
+    }
+    const summary = period === 'week' ? weekly.data : monthly.data;
+    return summary ? <RangeProgressView summary={summary} dense={period === 'month'} /> : null;
+  };
 
   return (
     <ScreenContainer scroll>
@@ -58,107 +79,7 @@ export function ProgressChartScreen({ navigation }: Props) {
         ))}
       </View>
 
-      {isLoading ? (
-        <LoadingState lines={6} />
-      ) : isError ? (
-        <ErrorState description={error.message} onRetry={refetch} />
-      ) : period !== 'week' ? (
-        <EmptyState
-          title="Chưa hỗ trợ"
-          description={`Xem tiến độ theo ${period === 'day' ? 'Ngày' : 'Tháng'} sẽ có ở đợt sau.`}
-        />
-      ) : summary ? (
-        <View className="gap-lg">
-          <AppCard className="gap-sm">
-            <View className="flex-row items-baseline justify-between">
-              <AppText variant="h3">{`Calo · ${summary.rangeLabel}`}</AppText>
-              <AppText variant="caption" color="secondary">
-                {`Mục tiêu ${formatNumber(summary.calorieTarget)}`}
-              </AppText>
-            </View>
-
-            <BarChart
-              data={summary.days.map(day => ({
-                value: day.calories,
-                label: day.label,
-                frontColor: day.calories > summary.calorieTarget ? colors.warning : colors.primary,
-                labelTextStyle: {
-                  color: day.isToday ? colors.textPrimary : colors.textSecondary,
-                  fontWeight: day.isToday ? '700' : '400',
-                  fontSize: 12,
-                },
-                topLabelComponent: () => (
-                  <AppText variant="caption" color="secondary" className="mb-xxs">
-                    {formatNumber(day.calories)}
-                  </AppText>
-                ),
-              }))}
-              height={140}
-              barWidth={24}
-              spacing={20}
-              initialSpacing={12}
-              endSpacing={12}
-              barBorderRadius={6}
-              hideYAxisText
-              yAxisThickness={0}
-              xAxisThickness={0}
-              hideRules
-              disableScroll
-              showReferenceLine1
-              referenceLine1Position={summary.calorieTarget}
-              referenceLine1Config={{
-                color: colors.primary,
-                dashWidth: 6,
-                dashGap: 4,
-                thickness: 1.5,
-              }}
-            />
-
-            <View className="flex-row gap-md">
-              <View className="flex-row items-center gap-xxs">
-                <View className="h-[10px] w-[10px] rounded-sm bg-primary" />
-                <AppText variant="caption" color="secondary">
-                  Trong mục tiêu
-                </AppText>
-              </View>
-              <View className="flex-row items-center gap-xxs">
-                <View className="h-[10px] w-[10px] rounded-sm bg-warning" />
-                <AppText variant="caption" color="secondary">
-                  Vượt mục tiêu
-                </AppText>
-              </View>
-            </View>
-          </AppCard>
-
-          <View className="flex-row gap-sm">
-            <AppCard className="flex-1 gap-xxs">
-              <AppText variant="caption" color="secondary">
-                Trung bình / ngày
-              </AppText>
-              <AppText variant="h2">{`${formatNumber(summary.averageCalories)} kcal`}</AppText>
-            </AppCard>
-            <AppCard className="flex-1 gap-xxs">
-              <AppText variant="caption" color="secondary">
-                Ngày đạt mục tiêu
-              </AppText>
-              <AppText variant="h2">{`${summary.daysOnTarget} / ${summary.days.length}`}</AppText>
-            </AppCard>
-          </View>
-
-          {summary.averageMacros.length > 0 ? (
-            <AppCard className="gap-md">
-              <AppText variant="h3">Macro trung bình</AppText>
-              <MacroProgressList
-                macros={summary.averageMacros.map(macro => ({
-                  label: macro.label,
-                  consumedG: macro.consumedG,
-                  targetG: macro.targetG,
-                }))}
-              />
-            </AppCard>
-          ) : null}
-        </View>
-      ) : null}
+      {renderContent()}
     </ScreenContainer>
   );
 }

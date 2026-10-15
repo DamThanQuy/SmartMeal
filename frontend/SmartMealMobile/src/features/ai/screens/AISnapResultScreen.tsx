@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Clock, Plus, Sparkles } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { EmptyState, ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppBadge, AppButton, AppCard, AppText } from '@/components/ui';
 import {
@@ -52,6 +52,27 @@ export function AISnapResultScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
   const [items, setItems] = useState<AIRecognizedItem[]>(result.items);
   const [uncertainSelections, setUncertainSelections] = useState<Record<string, UncertainSelection>>({});
+  // Món người dùng tự thêm (FoodSearch chế độ chọn): id dòng → id thực phẩm, để ghi đúng nguồn.
+  const [manualFoodIds, setManualFoodIds] = useState<Record<string, string>>({});
+  const [lastPickedKey, setLastPickedKey] = useState<string | null>(null);
+  const pickedFood = route.params.pickedFood;
+
+  // Món vừa chọn ở FoodSearch về qua route params: thêm một lần vào danh sách đang duyệt (điều chỉnh
+  // state theo params ngay khi render, không cần effect).
+  if (pickedFood && pickedFood.key !== lastPickedKey) {
+    setLastPickedKey(pickedFood.key);
+    setItems(current => [
+      ...current,
+      {
+        id: pickedFood.key,
+        name: pickedFood.foodName,
+        servingLabel: pickedFood.servingLabel,
+        grams: pickedFood.grams,
+        nutrition: pickedFood.nutrition,
+      },
+    ]);
+    setManualFoodIds(current => ({ ...current, [pickedFood.key]: pickedFood.foodId }));
+  }
   const addMealLogEntries = useAddMealLogEntries(todayIso());
   const mealTitle = MEAL_TYPE_TITLES[mealType];
 
@@ -116,14 +137,25 @@ export function AISnapResultScreen({ navigation, route }: Props) {
       {
         mealType,
         entries: [
-          ...certainItems.map(item => ({
-            foodName: item.name,
-            servingLabel: item.servingLabel,
-            grams: item.grams,
-            nutrition: item.nutrition,
-            source: 'ai' as const,
-            aiConfirmed: true,
-          })),
+          ...certainItems.map(item =>
+            manualFoodIds[item.id]
+              ? {
+                  foodName: item.name,
+                  ingredientId: manualFoodIds[item.id],
+                  servingLabel: item.servingLabel,
+                  grams: item.grams,
+                  nutrition: item.nutrition,
+                  source: 'database' as const,
+                }
+              : {
+                  foodName: item.name,
+                  servingLabel: item.servingLabel,
+                  grams: item.grams,
+                  nutrition: item.nutrition,
+                  source: 'ai' as const,
+                  aiConfirmed: true,
+                },
+          ),
           ...resolvedUncertainEntries.map(entry => ({
             ...entry,
             source: 'ai' as const,
@@ -229,13 +261,19 @@ export function AISnapResultScreen({ navigation, route }: Props) {
             ))
           )}
           <View className="border-t border-border pt-xs">
-            {/* TODO: chưa nối luồng thêm món bị AI bỏ sót vào danh sách đang review (Đợt sau). */}
-            <View className="min-h-[44px] flex-row items-center gap-xxs opacity-40">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Thêm món AI bỏ sót"
+              onPress={() =>
+                navigation.navigate(MAIN_STACK_ROUTES.FOOD_SEARCH, { mealType, pickFor: route.key })
+              }
+              className="min-h-[44px] flex-row items-center gap-xxs"
+            >
               <AppText variant="bodyMedium" color="onPrimarySoft">
                 Thêm món AI bỏ sót
               </AppText>
               <Plus size={16} color={colors.onPrimarySoft} />
-            </View>
+            </Pressable>
           </View>
         </AppCard>
 

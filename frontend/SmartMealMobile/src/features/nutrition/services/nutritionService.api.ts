@@ -21,6 +21,7 @@ import {
   fromDailyDiaryDto,
   fromDiaryItemDto,
   fromFoodDto,
+  fromMonthlyProgressDto,
   fromWeeklyProgressDto,
   toCreateFoodRequest,
   toLogMealBatchRequest,
@@ -33,6 +34,7 @@ import type { nutritionMockService } from './nutritionService.mock';
 
 const FOOD_PAGE_SIZE = 20;
 const WEEK_LENGTH_DAYS = 7;
+const MONTH_LENGTH_DAYS = 30;
 
 function getDailyDto(dateIso: string): Promise<DailyDiarySummaryDto> {
   return api.get<DailyDiarySummaryDto>(ENDPOINTS.nutritionDiary.daily, { params: { date: dateIso } });
@@ -151,5 +153,13 @@ export const nutritionApiService: Partial<typeof nutritionMockService> = {
       params: { startDate: addDaysIso(dateIso, -(WEEK_LENGTH_DAYS - 1)) },
     });
     return fromWeeklyProgressDto(dto, dateIso);
+  },
+
+  // GET /nutritiondiary/progress?startDate=&endDate= — 30 ngày kết thúc ở `dateIso` (tab "Tháng").
+  async getMonthlyProgress(dateIso) {
+    const dto = await api.get<WeeklyProgressDto>(ENDPOINTS.nutritionDiary.progress, {
+      params: { startDate: addDaysIso(dateIso, -(MONTH_LENGTH_DAYS - 1)), endDate: dateIso },
+    });
+    return fromMonthlyProgressDto(dto, dateIso);
   },
 };

@@ -80,6 +80,12 @@ export const groceryApiService: Partial<typeof groceryMockService> = {
     await api.delete<boolean>(ENDPOINTS.grocery.item(itemId));
   },
 
+  // DELETE /grocery/clear-checked — bỏ các món đã mua khỏi danh sách (không lưu chuyến đi chợ như
+  // "Hoàn tất mua sắm"; món chưa mua và món tự thêm chưa mua giữ nguyên).
+  async clearPurchased() {
+    await api.delete<boolean>(ENDPOINTS.grocery.clearChecked);
+  },
+
   // "Hoàn tất mua sắm" — một request: lưu chi phí thực tế, bỏ món đã mua, giữ/bỏ món chưa mua và (khi
   // giữ) cộng luôn thực đơn tuần sau, trong một transaction phía server.
   async completeShopping(weekStartIso: string, input: CompleteShoppingInput) {

@@ -59,6 +59,12 @@ export interface ResetPasswordPayload {
   newPassword: string;
 }
 
+/** Settings → "Đổi mật khẩu" khi đang đăng nhập và tài khoản đã có mật khẩu. */
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+}
+
 /** EditProfileScreen — chỉ họ tên đổi được (email gắn 1 tài khoản, BR-011). */
 export interface UpdateProfilePayload {
   fullName: string;

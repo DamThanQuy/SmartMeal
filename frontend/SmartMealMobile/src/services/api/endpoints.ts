@@ -36,6 +36,8 @@ export const ENDPOINTS = {
     logBatch: '/nutritiondiary/log/batch',
     daily: '/nutritiondiary/daily',
     weeklyProgress: '/nutritiondiary/weekly-progress',
+    /** Tiến độ theo khoảng ngày bất kỳ (tối đa 31 ngày) — biểu đồ "Tháng". */
+    progress: '/nutritiondiary/progress',
     item: (id: string) => `/nutritiondiary/items/${id}`,
     water: '/nutritiondiary/water',
     waterEntry: (id: string) => `/nutritiondiary/water/${id}`,

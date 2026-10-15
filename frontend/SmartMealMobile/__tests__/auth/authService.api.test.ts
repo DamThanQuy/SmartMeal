@@ -245,6 +245,34 @@ describe('quên / xác thực OTP / đặt lại mật khẩu', () => {
   });
 });
 
+describe('changePassword', () => {
+  test('POST /auth/change-password rồi lưu ngay cặp token mới (BE thu hồi phiên cũ)', async () => {
+    const { service, apiMock, tokenStorageMock } = loadService();
+    apiMock.post.mockResolvedValue({ ...AUTH_RESPONSE, token: 'jwt-new', refreshToken: 'refresh-new' });
+
+    await service.changePassword?.({ currentPassword: 'MatKhauCu1!', newPassword: 'MatKhauMoi1!' });
+
+    expect(apiMock.post).toHaveBeenCalledWith('/auth/change-password', {
+      currentPassword: 'MatKhauCu1!',
+      newPassword: 'MatKhauMoi1!',
+    });
+    expect(tokenStorageMock.set).toHaveBeenCalledWith(
+      expect.objectContaining({ token: 'jwt-new', refreshToken: 'refresh-new' }),
+    );
+  });
+
+  test('sai mật khẩu hiện tại → ném lỗi và KHÔNG đổi token đang có', async () => {
+    const { service, apiMock, tokenStorageMock } = loadService();
+    const error = new Error('Mật khẩu hiện tại không đúng.');
+    apiMock.post.mockRejectedValue(error);
+
+    await expect(
+      service.changePassword?.({ currentPassword: 'sai', newPassword: 'MatKhauMoi1!' }),
+    ).rejects.toBe(error);
+    expect(tokenStorageMock.set).not.toHaveBeenCalled();
+  });
+});
+
 describe('ảnh đại diện và xóa dữ liệu', () => {
   test('uploadAvatar: POST /auth/avatar dạng multipart với trường file, trả avatarUrl mới', async () => {
     const { service, apiMock } = loadService();

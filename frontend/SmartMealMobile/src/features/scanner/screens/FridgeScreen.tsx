@@ -8,6 +8,7 @@ import { RecipeCard, useFridgeRecipes } from '@/features/recipes';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
+import { AddIngredientRow } from '../components/AddIngredientRow';
 import { useScanFridge } from '../hooks/useScanner';
 import { CameraPermissionDeniedError } from '../services/scannerService';
 import type { FridgeScanResult } from '../types/scanner.types';
@@ -52,6 +53,18 @@ export function FridgeScreen({ route, navigation }: Props) {
     confirmedNames,
     hasConfirmedForRecipes,
   );
+
+  // Nguyên liệu tự thêm: người dùng tự khai nên tính là đã xác nhận (BR-082).
+  const addIngredient = (name: string): string | undefined => {
+    if (!result) return undefined;
+    const exists = result.ingredients.some(item => item.name.toLocaleLowerCase('vi') === name.toLocaleLowerCase('vi'));
+    if (exists) return 'Nguyên liệu này đã có trong danh sách';
+    const id = `manual-${Date.now()}`;
+    setResult({ ...result, ingredients: [...result.ingredients, { id, name, quantityLabel: 'Bạn tự thêm', status: 'confirmed' }] });
+    setConfirmedIds(current => new Set(current).add(id));
+    setHasConfirmedForRecipes(false);
+    return undefined;
+  };
 
   const toggleIngredient = (id: string) => {
     setConfirmedIds(current => {
@@ -133,10 +146,13 @@ export function FridgeScreen({ route, navigation }: Props) {
         ) : null}
 
         {ingredients.length === 0 ? (
-          <EmptyState
-            title="Không nhận diện được nguyên liệu"
-            description="Thử chụp lại ảnh tủ lạnh rõ hơn."
-          />
+          <View className="gap-md">
+            <EmptyState
+              title="Không nhận diện được nguyên liệu"
+              description="Thử chụp lại ảnh rõ hơn, hoặc tự thêm nguyên liệu bạn đang có."
+            />
+            <AddIngredientRow onAdd={addIngredient} />
+          </View>
         ) : (
           <>
             <AppCard className="gap-0">
@@ -183,13 +199,8 @@ export function FridgeScreen({ route, navigation }: Props) {
                   </Pressable>
                 );
               })}
-              <View className="border-t border-border pt-xs">
-                {/* TODO: chưa có luồng thêm nguyên liệu thủ công — để đợt sau. */}
-                <View className="min-h-[44px] flex-row items-center opacity-40">
-                  <AppText variant="bodyMedium" color="onPrimarySoft">
-                    Thêm nguyên liệu
-                  </AppText>
-                </View>
+              <View className="border-t border-border pt-sm">
+                <AddIngredientRow onAdd={addIngredient} />
               </View>
             </AppCard>
 

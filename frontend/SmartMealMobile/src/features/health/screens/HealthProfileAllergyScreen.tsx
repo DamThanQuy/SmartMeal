@@ -10,7 +10,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { HealthProfileProgressHeader } from '../components/HealthProfileProgressHeader';
 import { HealthProfileStepFooter } from '../components/HealthProfileStepFooter';
 import { useHealthProfileForm } from '../hooks/useHealthProfileForm';
-import { ALLERGY_OPTIONS } from '../types/health.types';
+import { ALLERGY_OPTIONS, OTHER_ALLERGIES_MAX_LENGTH } from '../types/health.types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'HealthProfileAllergy'>;
 
@@ -94,6 +94,7 @@ export function HealthProfileAllergyScreen({ navigation }: Props) {
           placeholder="VD: dứa, kiwi…"
           leftIcon={<Plus size={20} color={colors.textSecondary} />}
           value={otherText}
+          maxLength={OTHER_ALLERGIES_MAX_LENGTH}
           onChangeText={handleOtherTextChange}
         />
 

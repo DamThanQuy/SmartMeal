@@ -20,4 +20,11 @@ export const badgeApiService: Partial<typeof badgeMockService> = {
       params: { date: todayIso() },
     });
   },
+
+  // DELETE /gamification/costumes/equipped — tháo trang phục đang mặc.
+  async unequipCostume(): Promise<void> {
+    await api.delete<BadgesSummaryDto>(ENDPOINTS.gamification.unequipCostume, {
+      params: { date: todayIso() },
+    });
+  },
 };

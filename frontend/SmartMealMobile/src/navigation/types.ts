@@ -1,6 +1,8 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { AIAnalysisResult, VoiceLogResult } from '@/features/ai';
 import type { OtpPurpose } from '@/features/auth';
+import type { PickedFood } from '@/features/nutrition';
+import type { LegalDocumentId } from '@/features/profile';
 import type { CheckoutResult, SelectablePaymentMethodId } from '@/features/premium';
 import type { RecipeFilters } from '@/features/recipes';
 import type { BillingPlanId } from '@/state/premium/premiumStore';
@@ -62,14 +64,16 @@ export type MainStackParamList = {
   QuickLog: { mealType?: MealType } | undefined;
   AICamera: { mealType: MealType };
   AIAnalyzing: { mealType: MealType; imageUri?: string };
-  AISnapResult: { mealType: MealType; result: AIAnalysisResult };
+  /** `pickedFood`: món vừa chọn ở FoodSearch (chế độ chọn) để thêm vào danh sách đang duyệt. */
+  AISnapResult: { mealType: MealType; result: AIAnalysisResult; pickedFood?: PickedFood };
   /** `initialResult` — set khi đến từ VoicePermission "Hoặc gõ bữa ăn của bạn" (BR-252): bỏ qua
    * bước ghi âm, vào thẳng phase reviewing với kết quả đã có. */
   VoiceLog: { mealType: MealType; initialResult?: VoiceLogResult };
   /** `source` đổi copy/CTA cho đúng luồng thất bại (Chụp lại vs Nói lại). */
   StateAIFailed: { mealType: MealType; source: 'photo' | 'voice'; message?: string };
   StateAILimit: { mealType?: MealType } | undefined;
-  FoodSearch: { mealType: MealType };
+  /** `pickFor`: key của màn AISnapResult cần nhận món chọn — khi có, chọn món không ghi nhật ký. */
+  FoodSearch: { mealType: MealType; pickFor?: string };
   FoodDetail: { foodId: string; mealType: MealType };
   /** `dateIso` — ngày của nhật ký chứa bản ghi (mặc định hôm nay); cần khi sửa/xóa món của ngày khác. */
   EditMealLog: { logId: string; dateIso?: string };
@@ -120,6 +124,8 @@ export type MainStackParamList = {
   ForgotPassword: { returnTo?: ForgotPasswordReturnTo } | undefined;
   Otp: { email: string; purpose: OtpPurpose; returnTo?: ForgotPasswordReturnTo };
   ResetPassword: { email: string; resetToken: string; returnTo?: ForgotPasswordReturnTo };
+  ChangePassword: undefined;
+  Legal: { document: LegalDocumentId };
 
   // Đợt 10 — ai/scanner (design v2, BR-072, BR-080→083, BR-121, BR-130→132, BR-162, BR-252,
   // BR-290/291). Không có bottom nav, sibling của MainTabs.

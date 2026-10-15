@@ -76,6 +76,7 @@ export function selectionFromForm(formData: HealthProfileFormData): HealthSelect
     allergyIds: formData.noAllergies ? [] : formData.allergyIds,
     healthConditionIds: formData.noHealthConditions ? [] : formData.healthConditionIds,
     dietaryPreferenceIds: formData.noDietaryPreference ? [] : formData.dietaryPreferenceIds,
+    otherAllergies: formData.noAllergies ? '' : formData.otherAllergyText.trim(),
   };
 }
 
@@ -96,6 +97,7 @@ export function profileInputFromForm(formData: HealthProfileFormData): HealthPro
     allergyIds: selection.allergyIds,
     healthConditionIds: selection.healthConditionIds,
     dietaryPreferenceIds: selection.dietaryPreferenceIds,
+    otherAllergies: selection.otherAllergies,
   };
 }
 
@@ -120,7 +122,7 @@ function unique(values: readonly string[]): string[] {
 export function selectionFromServer(
   snapshot: Pick<
     HealthProfileSnapshot,
-    'allergyIds' | 'healthConditionIds' | 'dietaryPreferenceIds'
+    'allergyIds' | 'healthConditionIds' | 'dietaryPreferenceIds' | 'otherAllergies'
   >,
   extras: HealthProfileExtras,
 ): HealthSelection {
@@ -128,6 +130,7 @@ export function selectionFromServer(
     allergyIds: unique([...snapshot.allergyIds, ...extras.localAllergyIds]),
     healthConditionIds: unique([...snapshot.healthConditionIds, ...extras.localHealthConditionIds]),
     dietaryPreferenceIds: snapshot.dietaryPreferenceIds,
+    otherAllergies: snapshot.otherAllergies ?? '',
   };
 }
 
@@ -144,6 +147,7 @@ export function toSurveyRequest(input: HealthProfileInput, catalog: MetaCatalog)
     allergyIds: toMetaIds(input.allergyIds, catalog.allergies),
     medicalConditionIds: toMetaIds(input.healthConditionIds, catalog.conditions),
     dietaryPreferenceIds: toMetaIds(input.dietaryPreferenceIds, catalog.tags),
+    otherAllergies: input.otherAllergies?.trim() || undefined,
   };
 }
 
@@ -168,6 +172,8 @@ export function toSelectionUpdateRequest(
     allergyIds: toMetaIds(selection.allergyIds, catalog.allergies),
     medicalConditionIds: toMetaIds(selection.healthConditionIds, catalog.conditions),
     dietaryPreferenceIds: toMetaIds(selection.dietaryPreferenceIds, catalog.tags),
+    // Chuỗi rỗng = xóa dị ứng khác trên BE; không có = giữ nguyên.
+    otherAllergies: selection.otherAllergies?.trim(),
   };
 }
 
@@ -206,6 +212,7 @@ export function fromHealthProfileDto(dto: HealthProfileDto, catalog: MetaCatalog
     allergyIds: toMetaCodes(dto.allergyIds, catalog.allergies),
     healthConditionIds: toMetaCodes(dto.medicalConditionIds, catalog.conditions),
     dietaryPreferenceIds: toMetaCodes(dto.dietaryPreferenceIds, catalog.tags),
+    otherAllergies: dto.otherAllergies ?? '',
     waterGoalMl: dto.waterGoalMl,
     result: toHealthProfileResult(dto),
   };
@@ -242,6 +249,7 @@ export function snapshotFromInput(
     allergyIds: input.allergyIds,
     healthConditionIds: input.healthConditionIds,
     dietaryPreferenceIds: input.dietaryPreferenceIds,
+    otherAllergies: input.otherAllergies,
     result,
   };
 }

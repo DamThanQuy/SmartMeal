@@ -11,7 +11,7 @@ import {
   TODAY_ACTIVITY_CALORIES_BURNED_MOCK,
 } from '../mocks/diary.mock';
 import { FOOD_DATABASE_MOCK } from '../mocks/foods.mock';
-import { createWeeklyProgressMock } from '../mocks/progress.mock';
+import { createMonthlyProgressMock, createWeeklyProgressMock } from '../mocks/progress.mock';
 import type {
   DiaryDaySummary,
   FoodItem,
@@ -264,6 +264,17 @@ export const nutritionMockService = {
     }
     const day = scenario === 'empty' ? emptyMealRecord() : getOrSeedDay(dateIso);
     return createWeeklyProgressMock(dateIso, totalCaloriesForDay(day));
+  },
+
+  // Tab "Tháng" của ProgressChart (30 ngày gần nhất).
+  async getMonthlyProgress(dateIso: string): Promise<WeeklyProgressSummary> {
+    const scenario = getCurrentMockScenario();
+    await wait(getMockDelayMs(scenario));
+    if (scenario === 'error') {
+      throw new Error('Không thể tải tiến độ, vui lòng thử lại.');
+    }
+    const day = scenario === 'empty' ? emptyMealRecord() : getOrSeedDay(dateIso);
+    return createMonthlyProgressMock(dateIso, totalCaloriesForDay(day));
   },
 };
 

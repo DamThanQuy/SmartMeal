@@ -30,7 +30,7 @@ const ITEMS_TO_ANONYMIZE = ['Số liệu thống kê tổng hợp, không gắn 
 // plan, grocery, gamification, AI usage cục bộ — mỗi store tự đăng ký hàm reset, xem
 // src/state/resetUserData.ts) và logout() để quay về Welcome. Máy chủ lỗi thì KHÔNG xóa cục bộ và
 // KHÔNG đăng xuất, để người dùng thử lại (không để lại dữ liệu trên máy chủ mà tưởng đã xóa).
-// KHÔNG reset authStore/appStore (theme, ngôn ngữ) và premiumStore/lịch sử giao dịch — dữ liệu
+// KHÔNG reset authStore/appStore (theme) và premiumStore/lịch sử giao dịch — dữ liệu
 // thanh toán được giữ lại đúng BR-271 (xem ITEMS_TO_KEEP ở trên).
 export function DeleteDataScreen({ navigation }: Props) {
   const { colors } = useTheme();

@@ -9,6 +9,7 @@ export * from './hooks/useHealthSync';
 export * from './mocks/diary.mock';
 export * from './state/offlineSyncStore';
 export * from './utils/nutritionMath';
+export * from './utils/pickedFood';
 export * from './components/MacroProgressList';
 export * from './components/MacroStatGrid';
 export * from './screens/FoodSearchScreen';

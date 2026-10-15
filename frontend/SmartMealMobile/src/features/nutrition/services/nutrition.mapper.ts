@@ -215,6 +215,9 @@ export function fromDailyDiaryDto(
   };
 }
 
+/** Biểu đồ tháng có ~30 cột: chỉ ghi nhãn mỗi 5 ngày và ngày cuối để trục X không chồng chữ. */
+const MONTH_LABEL_EVERY_DAYS = 5;
+
 /**
  * `dayOfWeek` của BE là tiếng Anh nên nhãn thứ tính từ `date`. Ngày chưa ghi gì (0 kcal) không
  * tính vào trung bình hay "ngày đạt mục tiêu". Macro trung bình tính trên các ngày đã ghi và so với
@@ -224,9 +227,28 @@ export function fromWeeklyProgressDto(
   dto: WeeklyProgressDto,
   todayDateIso: string,
 ): WeeklyProgressSummary {
-  const days = dto.days.map(point => ({
+  return fromProgressDto(dto, todayDateIso, date => WEEKDAY_SHORT_LABELS[parseDateIso(date).getDay()]);
+}
+
+/** GET /nutritiondiary/progress (30 ngày) — cùng cách tính với tuần, nhãn là ngày trong tháng. */
+export function fromMonthlyProgressDto(
+  dto: WeeklyProgressDto,
+  todayDateIso: string,
+): WeeklyProgressSummary {
+  const lastIndex = dto.days.length - 1;
+  return fromProgressDto(dto, todayDateIso, (date, index) =>
+    index % MONTH_LABEL_EVERY_DAYS === 0 || index === lastIndex ? String(parseDateIso(date).getDate()) : '',
+  );
+}
+
+function fromProgressDto(
+  dto: WeeklyProgressDto,
+  todayDateIso: string,
+  labelFor: (date: string, index: number) => string,
+): WeeklyProgressSummary {
+  const days = dto.days.map((point, index) => ({
     date: point.date,
-    label: WEEKDAY_SHORT_LABELS[parseDateIso(point.date).getDay()],
+    label: labelFor(point.date, index),
     calories: Math.round(point.calories),
     isToday: point.date === todayDateIso ? true : undefined,
   }));

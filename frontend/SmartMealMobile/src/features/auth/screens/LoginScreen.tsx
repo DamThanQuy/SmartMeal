@@ -15,6 +15,7 @@ import { AuthGoogleButton } from '../components/AuthGoogleButton';
 import { AuthSocialDivider } from '../components/AuthSocialDivider';
 import { useGoogleLogin } from '../hooks/useGoogleLogin';
 import { useLogin } from '../hooks/useLogin';
+import type { SessionOpenResult } from '../types/auth.types';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Email không hợp lệ' }),
@@ -34,7 +35,7 @@ export function LoginScreen({ navigation }: Props) {
   const setPendingUser = useAuthStore(state => state.setPendingUser);
   const continueAsGuest = useAuthStore(state => state.continueAsGuest);
   const loginMutation = useLogin();
-  const handleSessionOpen = ({ user, needsSurvey }: { user: import('@/state/auth/authStore').AuthUser; needsSurvey: boolean }) => {
+  const handleSessionOpen = ({ user, needsSurvey }: SessionOpenResult) => {
     if (!needsSurvey) {
       login(user);
       return;
@@ -154,14 +155,21 @@ export function LoginScreen({ navigation }: Props) {
             {loginMutation.error.message}
           </AppText>
         ) : null}
-        <AuthSocialDivider />
-        <AuthGoogleButton
-          label="Tiếp tục với Google"
-          onPress={googleLogin.start}
-          onCredential={googleLogin.acceptCredential}
-          disabled={googleLogin.isLoading || googleLogin.isPrompting}
-        />
-        {googleLogin.error ? <AppText variant="caption" color="error" className="text-center">{googleLogin.error.message}</AppText> : null}
+        {googleLogin.isAvailable ? (
+          <>
+            <AuthSocialDivider />
+            <AuthGoogleButton
+              label="Tiếp tục với Google"
+              onCredential={googleLogin.acceptCredential}
+              disabled={googleLogin.isLoading}
+            />
+            {googleLogin.error ? (
+              <AppText variant="caption" color="error" className="text-center">
+                {googleLogin.error.message}
+              </AppText>
+            ) : null}
+          </>
+        ) : null}
       </View>
 
       <View className="items-center gap-sm">

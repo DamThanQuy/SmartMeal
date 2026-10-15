@@ -89,6 +89,12 @@ export interface ResetPasswordRequestDto {
   newPassword: string;
 }
 
+/** POST /auth/change-password — trả AuthResponseDto (cặp token mới cho phiên hiện tại). */
+export interface ChangePasswordRequestDto {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export interface RefreshTokenRequestDto {
   refreshToken: string;
 }

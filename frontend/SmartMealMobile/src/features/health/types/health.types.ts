@@ -105,6 +105,9 @@ export interface ChipOption {
   label: string;
 }
 
+/** "Dị ứng khác" tự gõ — khớp giới hạn của BE (HealthProfile.OtherAllergies). */
+export const OTHER_ALLERGIES_MAX_LENGTH = 200;
+
 // design/HPAllergy.dc.html (bước 5/7).
 export const ALLERGY_OPTIONS: ChipOption[] = [
   { id: 'seafood', label: 'Hải sản' },
@@ -147,6 +150,8 @@ export interface HealthProfileInput {
   allergyIds: string[];
   healthConditionIds: string[];
   dietaryPreferenceIds: string[];
+  /** Dị ứng ngoài danh mục người dùng tự gõ ("dứa, kiwi"); '' = không có. */
+  otherAllergies?: string;
 }
 
 export interface WeightHistoryEntry {
@@ -189,6 +194,8 @@ export interface HealthProfileSnapshot {
   healthConditionIds: string[];
   /** Slug chế độ ăn (tag) BE lưu. */
   dietaryPreferenceIds: string[];
+  /** Dị ứng ngoài danh mục (BE lưu và dùng để lọc món/cảnh báo); '' hoặc không có = không có. */
+  otherAllergies?: string;
   /** Mục tiêu nước uống mỗi ngày (ml) — chỉ có khi nguồn dữ liệu là BE. */
   waterGoalMl?: number;
   result: HealthProfileResult;
@@ -199,6 +206,9 @@ export interface HealthSelection {
   allergyIds: string[];
   healthConditionIds: string[];
   dietaryPreferenceIds: string[];
+  /** Dị ứng ngoài danh mục, tự gõ ("dứa, kiwi") — BE lọc món theo từng mục. '' = xóa; không có =
+   * giữ nguyên khi cập nhật. */
+  otherAllergies?: string;
 }
 
 /**

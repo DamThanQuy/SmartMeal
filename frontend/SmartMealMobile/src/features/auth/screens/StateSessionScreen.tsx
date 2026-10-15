@@ -3,6 +3,7 @@ import { ShieldAlert } from 'lucide-react-native';
 import React from 'react';
 import { View } from 'react-native';
 import { AppButton, AppText } from '@/components/ui';
+import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useAuthStore } from '@/state/auth/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -19,7 +20,7 @@ type Props = NativeStackScreenProps<MainStackParamList, 'StateSession'>;
 // AuthNavigator đọc giá trị này và mở thẳng Login (không qua Welcome, đúng artboard gốc — xem
 // AuthNavigator.tsx). "Đăng xuất" vẫn gọi logout() mặc định ('logout') → về Welcome, giống
 // GuestPromptScreen.tsx/DeleteDataScreen.tsx.
-export function StateSessionScreen({ route }: Props) {
+export function StateSessionScreen({ navigation, route }: Props) {
   const { variant } = route.params;
   const { colors } = useTheme();
   const logout = useAuthStore(state => state.logout);
@@ -52,9 +53,14 @@ export function StateSessionScreen({ route }: Props) {
             <AppText variant="bodyMedium">Trạng thái khác (mẫu): Tài khoản đang bị khóa</AppText>
           </View>
           <AppText variant="caption" color="secondary">
-            Tài khoản tạm thời không thể đăng nhập. Vui lòng liên hệ hỗ trợ để được mở lại.
+            Tài khoản tạm thời bị khóa do nhập sai mật khẩu nhiều lần. Bạn có thể thử lại sau ít phút,
+            hoặc đặt lại mật khẩu để mở khóa ngay.
           </AppText>
-          <AppButton label="Liên hệ hỗ trợ" variant="outline" onPress={() => {}} />
+          <AppButton
+            label="Đặt lại mật khẩu"
+            variant="outline"
+            onPress={() => navigation.navigate(MAIN_STACK_ROUTES.FORGOT_PASSWORD, { returnTo: 'Settings' })}
+          />
         </View>
       ) : null}
     </View>

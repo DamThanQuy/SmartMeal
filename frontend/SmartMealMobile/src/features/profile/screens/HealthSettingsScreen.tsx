@@ -1,13 +1,14 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Info } from 'lucide-react-native';
+import { Info, Plus } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { InlineBanner, ScreenContainer, ScreenHeader } from '@/components/common';
-import { AppButton, AppCard, AppChip, AppText } from '@/components/ui';
+import { AppButton, AppCard, AppChip, AppInput, AppText } from '@/components/ui';
 import {
   ALLERGY_OPTIONS,
   DIETARY_PREFERENCE_OPTIONS,
   HEALTH_CONDITION_OPTIONS,
+  OTHER_ALLERGIES_MAX_LENGTH,
   useUpdateHealthSettings,
 } from '@/features/health';
 import type { MainStackParamList } from '@/navigation/types';
@@ -30,6 +31,7 @@ export function HealthSettingsScreen({ navigation }: Props) {
   const [dietaryPreferenceIds, setDietaryPreferenceIds] = useState<string[]>(
     profile.dietaryPreferenceIds,
   );
+  const [otherAllergies, setOtherAllergies] = useState(profile.otherAllergies);
 
   const toggle = (
     ids: string[],
@@ -37,11 +39,11 @@ export function HealthSettingsScreen({ navigation }: Props) {
     id: string,
   ) => setIds(ids.includes(id) ? ids.filter(item => item !== id) : [...ids, id]);
 
-  // Dị ứng/bệnh lý có id trên BE được lưu lên server; chế độ ăn và các mục không có id (vd. "Các
-  // loại hạt", "Khác") chỉ lưu ở máy — xem healthProfileService.updateHealthSettings.
+  // Dị ứng/bệnh lý/chế độ ăn và "Dị ứng khác" (tự gõ) lưu lên server; chỉ chip "Khác" không có mục
+  // tương ứng trên BE nên giữ ở máy — xem healthProfileService.updateHealthSettings.
   const handleSave = () => {
     updateSettings.mutate(
-      { allergyIds, healthConditionIds, dietaryPreferenceIds },
+      { allergyIds, healthConditionIds, dietaryPreferenceIds, otherAllergies },
       { onSuccess: () => navigation.goBack() },
     );
   };
@@ -66,6 +68,17 @@ export function HealthSettingsScreen({ navigation }: Props) {
               />
             ))}
           </View>
+          <AppInput
+            label="Dị ứng khác"
+            placeholder="VD: dứa, kiwi…"
+            leftIcon={<Plus size={20} color={colors.textSecondary} />}
+            value={otherAllergies}
+            maxLength={OTHER_ALLERGIES_MAX_LENGTH}
+            onChangeText={setOtherAllergies}
+          />
+          <AppText variant="caption" color="secondary">
+            Phân tách bằng dấu phẩy. Món có tên hoặc nguyên liệu trùng sẽ bị loại khỏi gợi ý và thực đơn.
+          </AppText>
         </AppCard>
 
         <AppCard className="gap-sm">

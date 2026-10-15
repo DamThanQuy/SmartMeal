@@ -118,11 +118,13 @@ export interface DiaryDaySummary {
 export interface WeeklyProgressDay {
   /** ISO date yyyy-MM-dd. */
   date: string;
+  /** Nhãn trục X: thứ ("T2") ở biểu đồ tuần; ngày trong tháng ("15") hoặc rỗng ở biểu đồ tháng. */
   label: string;
   calories: number;
   isToday?: boolean;
 }
 
+/** Tiến độ nhiều ngày — dùng cho cả tab "Tuần" (7 ngày) và "Tháng" (30 ngày). */
 export interface WeeklyProgressSummary {
   rangeLabel: string;
   calorieTarget: number;
@@ -131,4 +133,32 @@ export interface WeeklyProgressSummary {
   daysOnTarget: number;
   /** Trung bình macro các ngày đã ghi (rỗng nếu tuần chưa ghi gì — UI ẩn khối này). */
   averageMacros: MacroTargetProgress[];
+}
+
+export interface DayMealCalories {
+  mealType: MealType;
+  label: string;
+  calories: number;
+}
+
+/**
+ * Món người dùng tự chọn trong FoodSearch (chế độ chọn) để bổ sung vào danh sách đang duyệt của
+ * AI Snap — "Thêm món AI bỏ sót". Khẩu phần mặc định của món; user chỉnh gram ở màn kết quả.
+ */
+export interface PickedFood {
+  /** Duy nhất cho mỗi lần chọn (chọn cùng một món hai lần = hai dòng). */
+  key: string;
+  foodId: string;
+  foodName: string;
+  servingLabel: string;
+  grams: number;
+  nutrition: NutritionInfo;
+}
+
+/** Tab "Ngày" của ProgressChart — tính từ nhật ký một ngày (GET /nutritiondiary/daily). */
+export interface DayProgressSummary {
+  calorieBudget: number;
+  totalCalories: number;
+  meals: DayMealCalories[];
+  macros: MacroTargetProgress[];
 }

@@ -99,6 +99,8 @@ const manualItemsByWeek = new Map<string, GroceryItem[]>();
 // logic gộp khi tuần đó được build.
 const carriedOverByWeek = new Map<string, CarriedOverIngredient[]>();
 const tripsByWeek = new Map<string, GroceryTrip>();
+// "Xóa món đã mua" — id các món sinh từ thực đơn đã dọn khỏi danh sách tuần (tạo lại thì hiện lại).
+const clearedIdsByWeek = new Map<string, Set<string>>();
 let manualItemIdCounter = 0;
 
 function getStatusMap(weekStartIso: string): Map<string, GroceryItemStatus> {
@@ -145,7 +147,8 @@ async function buildGroceryList(weekStartIso: string): Promise<GroceryList> {
     ...item,
     status: statusMap.get(item.id) ?? item.status,
   }));
-  const items = [...aggregatedItems, ...manualItems];
+  const cleared = clearedIdsByWeek.get(weekStartIso);
+  const items = [...aggregatedItems, ...manualItems].filter(item => !cleared?.has(item.id));
 
   const hasPlan = aggregatedItems.length > 0;
   return {
@@ -172,6 +175,10 @@ export const groceryMockService = {
   /** Bản mock luôn tính "trực tiếp" từ thực đơn nên tạo lại = đọc lại. */
   async regenerateFromPlan(weekStartIso: string): Promise<GroceryList> {
     await simulate('Không tạo lại được danh sách, vui lòng thử lại.');
+    // Món đã dọn hiện lại như món mới (chưa mua), giống BE sinh lại dòng từ thực đơn.
+    const statusMap = getStatusMap(weekStartIso);
+    clearedIdsByWeek.get(weekStartIso)?.forEach(id => statusMap.delete(id));
+    clearedIdsByWeek.delete(weekStartIso);
     return buildGroceryList(weekStartIso);
   },
 
@@ -210,6 +217,17 @@ export const groceryMockService = {
   async deleteItem(itemId: string): Promise<void> {
     await simulate('Không xóa được, vui lòng thử lại.');
     manualItemsByWeek.forEach((items, week) => manualItemsByWeek.set(week, items.filter(item => item.id !== itemId)));
+  },
+
+  // Bỏ các món đã mua khỏi danh sách tuần (không ghi lại chuyến đi chợ).
+  async clearPurchased(weekStartIso: string): Promise<void> {
+    await simulate('Không xóa được món đã mua, vui lòng thử lại.');
+    const list = await buildGroceryList(weekStartIso);
+    const purchasedIds = list.groups.flatMap(group => group.items).filter(item => item.status === 'purchased').map(item => item.id);
+    const cleared = clearedIdsByWeek.get(weekStartIso) ?? new Set<string>();
+    purchasedIds.forEach(id => cleared.add(id));
+    clearedIdsByWeek.set(weekStartIso, cleared);
+    manualItemsByWeek.set(weekStartIso, (manualItemsByWeek.get(weekStartIso) ?? []).filter(item => !cleared.has(item.id)));
   },
 
   // design/GroceryDone.dc.html — ghi lại lần mua (chi phí thực tế), bỏ món đã mua, giữ món chưa mua
@@ -253,4 +271,5 @@ registerUserDataReset('grocery', () => {
   manualItemsByWeek.clear();
   carriedOverByWeek.clear();
   tripsByWeek.clear();
+  clearedIdsByWeek.clear();
 });
