@@ -8,11 +8,20 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { AppText, type AppTextColor } from './AppText';
 
 export type AppButtonVariant = 'primary' | 'secondary' | 'outline' | 'text';
+export type AppButtonShape = 'rounded' | 'pill';
+export type AppButtonSize = 'md' | 'lg';
 
 export interface AppButtonProps
   extends Omit<PressableProps, 'children' | 'disabled'> {
   label: string;
   variant?: AppButtonVariant;
+  /** 'rounded' = radius 12 (design.md mục 40); 'pill' = bo tròn hẳn (CTA màn Welcome). */
+  shape?: AppButtonShape;
+  /** 'md' cao 48 (mặc định); 'lg' cao 56 cho CTA chính. */
+  size?: AppButtonSize;
+  /** Icon trước/sau nhãn — màu lấy từ useTheme() ở nơi gọi, khớp màu chữ của variant. */
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
   loading?: boolean;
   disabled?: boolean;
   className?: string;
@@ -51,9 +60,23 @@ const VARIANT_STYLES: Record<AppButtonVariant, VariantStyle> = {
   },
 };
 
+const SHAPE_CLASSNAME: Record<AppButtonShape, string> = {
+  rounded: 'rounded-md',
+  pill: 'rounded-pill',
+};
+
+const SIZE_CLASSNAME: Record<AppButtonSize, string> = {
+  md: 'h-[48px] px-lg',
+  lg: 'h-[56px] px-xl',
+};
+
 export function AppButton({
   label,
   variant = 'primary',
+  shape = 'rounded',
+  size = 'md',
+  leftIcon,
+  rightIcon,
   loading = false,
   disabled = false,
   className = '',
@@ -71,15 +94,19 @@ export function AppButton({
       accessibilityLabel={label}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
-      className={`h-[48px] flex-row items-center justify-center rounded-md px-lg ${styleForVariant.className} ${className}`}
+      className={`flex-row items-center justify-center gap-xs ${SIZE_CLASSNAME[size]} ${SHAPE_CLASSNAME[shape]} ${styleForVariant.className} ${className}`}
       {...rest}
     >
       {loading ? (
         <ActivityIndicator color={spinnerColor} />
       ) : (
-        <AppText variant="button" color={styleForVariant.textColor}>
-          {label}
-        </AppText>
+        <>
+          {leftIcon}
+          <AppText variant="button" color={styleForVariant.textColor}>
+            {label}
+          </AppText>
+          {rightIcon}
+        </>
       )}
     </Pressable>
   );
