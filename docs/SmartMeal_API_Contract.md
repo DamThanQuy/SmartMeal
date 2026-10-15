@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Cập nhật | 2026-10-14 (bổ sung thông báo, chia sẻ bộ sưu tập, `hasPassword`; **bỏ đăng nhập Google** — chỉ còn email + mật khẩu) |
+| Cập nhật | 2026-10-14 (bổ sung thông báo, chia sẻ bộ sưu tập, `hasPassword`). Lần 2 cùng ngày: khôi phục `POST /auth/google` (xác minh ID token, chỉ liên kết vào tài khoản đã xác minh email); thêm `GET /nutritiondiary/progress`, `otherAllergies` trong hồ sơ sức khỏe, tra mã vạch qua Open Food Facts khi CSDL chưa có |
 | Nguồn | Swagger của backend (`/swagger/v1/swagger.json`, bật ở môi trường Development) + chú thích XML và thuộc tính trong `SmartMeal.API/Controllers` và `SmartMeal.Application/DTOs` @ `cc98da0` (bổ sung: thông báo trong app, liên kết chia sẻ bộ sưu tập, `UserDto.hasPassword`; scan-label, voice-log/audio, grocery/complete, Idempotency-Key, tra mã vạch bằng CSDL, ngưỡng bệnh lý) |
 | Thay thế | Bản V2.0 (2026-09-26) đã cũ: nhiều endpoint ghi "chưa làm" nhưng đã có, đường dẫn và field khác |
 | Nguồn sự thật | **Code backend.** Tài liệu này được sinh lại từ code mỗi khi API đổi; nếu lệch thì code thắng |
@@ -27,6 +27,7 @@
 |---|---|---|---|---|
 | Xác thực & tài khoản | POST | `/api/auth/register` | Công khai | Đăng ký bằng email + mật khẩu; trả cặp access/refresh token. |
 | Xác thực & tài khoản | POST | `/api/auth/login` | Công khai | Đăng nhập |
+| Xác thực & tài khoản | POST | `/api/auth/google` | Công khai | Đăng nhập/tạo tài khoản bằng Google ID token (máy chủ tự xác minh với Google). |
 | Xác thực & tài khoản | POST | `/api/auth/refresh` | Công khai | Đổi refresh token (dùng một lần) lấy cặp access + refresh token mới |
 | Xác thực & tài khoản | POST | `/api/auth/logout` | Công khai | Đăng xuất: thu hồi refresh token |
 | Xác thực & tài khoản | POST | `/api/auth/forgot-password` | Công khai | Gửi OTP đặt lại mật khẩu tới email |
@@ -53,6 +54,7 @@
 | Nhật ký dinh dưỡng & nước uống | POST | `/api/nutritiondiary/log/batch` | Cần đăng nhập | Ghi nhiều món vào cùng một bữa — hoặc tất cả được lưu, hoặc không món nào. |
 | Nhật ký dinh dưỡng & nước uống | GET | `/api/nutritiondiary/daily` | Cần đăng nhập | Nhật ký một ngày: luôn đủ 4 bữa (kể cả rỗng), tổng và mục tiêu calo/macro lấy từ hồ sơ sức khỏe. |
 | Nhật ký dinh dưỡng & nước uống | GET | `/api/nutritiondiary/weekly-progress` | Cần đăng nhập | 7 ngày liên tiếp kể từ `startDate`: calo, macro và mục tiêu từng ngày. |
+| Nhật ký dinh dưỡng & nước uống | GET | `/api/nutritiondiary/progress` | Cần đăng nhập | Như weekly-progress nhưng cho khoảng `[startDate, endDate]` bất kỳ, tối đa 31 ngày (biểu đồ "Tháng"). |
 | Nhật ký dinh dưỡng & nước uống | PUT | `/api/nutritiondiary/items/{itemId}` | Cần đăng nhập | Sửa một món đã ghi (khẩu phần, dinh dưỡng, chuyển bữa/ngày) |
 | Nhật ký dinh dưỡng & nước uống | DELETE | `/api/nutritiondiary/items/{itemId}` | Cần đăng nhập | Xóa một món đã ghi (chỉ món của chính người dùng). |
 | Nhật ký dinh dưỡng & nước uống | POST | `/api/nutritiondiary/water` | Cần đăng nhập | Ghi một lần uống nước |
@@ -124,7 +126,7 @@
 
 ### Xác thực & tài khoản
 
-> Đăng ký không bắt xác minh email: tài khoản dùng được ngay. OTP chỉ dùng cho quên mật khẩu (`purpose = reset-password`) và xác minh email (`verify-email`).
+> Đăng ký không bắt xác minh email: tài khoản dùng được ngay nhưng **chưa được coi là đã xác minh email**. Email được xác minh khi người dùng xác thực OTP (`verify-email`, hoặc đặt lại mật khẩu qua `reset-password`). OTP chỉ dùng cho hai mục đích đó.
 
 > OTP 6 chữ số, hiệu lực `Auth:OtpMinutes` (5 phút), tối đa `Auth:OtpMaxAttempts` (5) lần nhập sai, lưu dạng băm. Gửi lại cách nhau tối thiểu `Auth:OtpResendCooldownSeconds` (60 giây): trong thời gian chờ endpoint vẫn trả `200` nhưng **không** phát mã mới. `forgot-password` luôn trả `200` để không lộ email nào đã đăng ký.
 
@@ -132,7 +134,7 @@
 
 > Chưa cấu hình `Smtp:Host` thì không gửi email thật: backend chỉ ghi log, và ở Development ghi cả nội dung có mã OTP (`[DEV EMAIL …]`) để dev thử.
 
-> Đăng nhập chỉ bằng **email + mật khẩu**. Đăng nhập Google đã bỏ ngày 14/10/2026 (`POST /auth/google` không còn, trả 404); tài khoản tạo bằng Google trước đó không có mật khẩu (`hasPassword = false`) và đặt mật khẩu qua "Quên mật khẩu".
+> Đăng nhập bằng **email + mật khẩu** hoặc **Google** (`POST /auth/google { idToken }`, khôi phục sau khi bỏ ngày 14/10/2026). Máy chủ xác minh ID token với Google (audience = `Google:ClientId`), không tin email client gửi. Lần đầu: tạo tài khoản không mật khẩu (`hasPassword = false`, đặt mật khẩu qua "Quên mật khẩu"). Email đã có tài khoản mật khẩu: chỉ liên kết khi email đó **đã được xác minh** — chưa xác minh trả `409` (chặn việc ai đó đăng ký trước bằng email của người khác rồi chiếm tài khoản khi chủ thật đăng nhập Google). Chưa cấu hình `Google:ClientId` → `503`; token sai/hết hạn → `401`.
 
 > `DELETE /auth/account` cần `password` hiện tại; tài khoản không có mật khẩu (tạo bằng đăng nhập Google trước đây) phải gửi `confirmEmail` đúng bằng email của chính mình. Sai mật khẩu nhiều lần cũng bị khóa tạm thời (trả 400 chứ không phải 401, để app không hiểu nhầm là phiên hết hạn). Giao dịch thanh toán được giữ lại ở dạng ẩn danh (BR-271).
 
@@ -150,6 +152,14 @@
 
 - **Quyền**: Công khai · giới hạn tần suất (policy `auth`)
 - **Body (JSON)**: [LoginRequestDto](#schema-loginrequestdto)
+- **Response `data`**: [AuthResponseDto](#schema-authresponsedto)
+
+#### `POST /api/auth/google`
+
+Đăng nhập hoặc tạo tài khoản bằng Google ID token; máy chủ tự xác minh token với Google. `401` token sai/hết hạn, `409` email đã có tài khoản mật khẩu chưa xác minh email, `503` chưa cấu hình `Google:ClientId`.
+
+- **Quyền**: Công khai · giới hạn tần suất (policy `auth`)
+- **Body (JSON)**: [GoogleAuthRequestDto](#schema-googleauthrequestdto)
 - **Response `data`**: [AuthResponseDto](#schema-authresponsedto)
 
 #### `POST /api/auth/refresh`
@@ -253,6 +263,8 @@ Xóa dữ liệu cá nhân (nhật ký, nước, hồ sơ sức khỏe và cân 
 ### Hồ sơ sức khỏe
 
 > Hồ sơ lưu **ngày sinh** (tuổi tính từ ngày sinh, tối thiểu 13), chế độ ăn (`dietaryPreferenceIds`) và `waterGoalMl` (500–10000, mặc định 2000). `GET` trả danh sách dị ứng/bệnh lý/chế độ ăn dưới dạng cả **tên** lẫn **id**.
+
+> `otherAllergies`: dị ứng **ngoài danh mục** người dùng tự gõ, phân tách bằng dấu phẩy (vd. `"dứa, kiwi"`, tối đa 200 ký tự; trả về dạng đã chuẩn hóa `"dứa, kiwi"`, `null` khi không có). Mỗi mục là một từ khóa khớp theo ranh giới từ với tên công thức/nguyên liệu/sản phẩm: có dấu thì khớp đúng dấu, không dấu thì khớp mọi cách viết có dấu. Dùng để loại món ở `GET /recipes?excludeMyAllergens=true`, `suggest-by-pantry`, `auto-generate`; `assign` trả `400 allergen_conflict`; chi tiết công thức có `healthWarnings`; quét mã vạch có cảnh báo `ALLERGY`. Trong `PUT`: không gửi = giữ nguyên, `""` = xóa.
 
 > `POST /survey` ghi đè toàn bộ; `PUT` cập nhật **từng phần** (trường không gửi giữ nguyên, danh sách gửi `[]` nghĩa là xóa hết) và chỉ thêm dòng lịch sử cân nặng khi cân nặng đổi. Cả hai tính lại BMI/BMR/TDEE/mục tiêu calo/macro (BR-022).
 
@@ -389,6 +401,18 @@ Nhật ký một ngày: luôn đủ 4 bữa (kể cả rỗng), tổng và mục
 |---|---|---|---|---|
 | `startDate` | query | date (yyyy-MM-dd) |  |  |
 
+#### `GET /api/nutritiondiary/progress`
+
+Calo, macro và mục tiêu từng ngày trong khoảng `[startDate, endDate]` (tối đa 31 ngày). Bỏ trống `endDate` = hôm nay (UTC); bỏ trống `startDate` = 29 ngày trước `endDate` (tức 30 ngày). `endDate` trước `startDate` hoặc quá 31 ngày → `400`.
+
+- **Quyền**: Cần đăng nhập
+- **Response `data`**: [WeeklyProgressDto](#schema-weeklyprogressdto) (`days` có đúng một phần tử cho mỗi ngày trong khoảng)
+
+| Tham số | Vị trí | Kiểu | Bắt buộc | Ràng buộc |
+|---|---|---|---|---|
+| `startDate` | query | date (yyyy-MM-dd) |  |  |
+| `endDate` | query | date (yyyy-MM-dd) |  | ≤ startDate + 30 ngày |
+
 #### `PUT /api/nutritiondiary/items/{itemId}`
 
 Sửa một món đã ghi (khẩu phần, dinh dưỡng, chuyển bữa/ngày). Chỉ các trường có mặt mới đổi.
@@ -498,7 +522,7 @@ Xóa món do chính mình tự nhập; nhật ký đã ghi giữ nguyên số li
 
 #### `GET /api/foods/barcode/{code}`
 
-Tra mã vạch (8–14 chữ số). 404 nếu chưa có sản phẩm — không đoán số liệu (BR-120/130).
+Tra mã vạch (8–14 chữ số). CSDL chưa có thì tra **Open Food Facts** (API công khai, không cần khóa; tắt bằng `OpenFoodFacts:Enabled=false`) và lưu sản phẩm thành thực phẩm chung `isVerified = false` (mô tả ghi nguồn), lần sau đọc từ CSDL. Chất gây dị ứng lấy từ `allergens_tags` và cả `traces_tags` (có thể chứa vết). Không tìm thấy, sản phẩm thiếu tên/năng lượng hoặc số liệu vô lý → `404` — không đoán số liệu (BR-120/130). `POST /ai/check-safety { barcode }` dùng cùng nguồn.
 
 - **Quyền**: Công khai (token tùy chọn: cá nhân hóa `isFavorite`, `scope`…)
 - **Response `data`**: [FoodItemDto](#schema-fooditemdto)
@@ -1131,6 +1155,8 @@ Khóa bí mật chỉ đặt qua biến môi trường (`Muc__Khoa`, dùng `__` 
 | `Storage:Root` / `Storage:PublicBaseUrl` / `Storage:MaxAvatarBytes` | `uploads` cạnh ứng dụng / theo request / 2 MB | Nơi lưu và URL công khai của ảnh đại diện. Chạy Docker cần gắn volume vào `Storage:Root`. |
 | `Subscription:AllowMockActivation` | (trống = chỉ Development) | Cho phép `activate-mock`. Môi trường thật phải để tắt. |
 | `Subscription:WebhookSecret` | (trống = tắt webhook) | Khóa HMAC dùng chung với cổng thanh toán. |
+| `Google:ClientId` | (trống = tắt đăng nhập Google, trả 503) | Web OAuth 2.0 Client ID dùng làm audience khi xác minh ID token; trùng `EXPO_PUBLIC_GOOGLE_CLIENT_ID` của app. Không phải bí mật. |
+| `OpenFoodFacts:Enabled` / `BaseUrl` / `UserAgent` / `TimeoutSeconds` | true / `https://world.openfoodfacts.org` / `SmartMeal/1.0 (PRM393 student project)` / 8 | Tra mã vạch chưa có trong CSDL qua Open Food Facts (không cần khóa). Lỗi mạng/timeout coi như không tìm thấy. |
 | `Gemini:ApiKey` / `Gemini:Model` | (trống) / `gemini-1.5-flash` | Khóa Gemini. Trống: AI trả dữ liệu mẫu ở Development, lỗi 503 ở nơi khác. |
 | `Ai:FreeDailyLimit` / `Ai:QuotaUtcOffsetHours` / `Ai:AllowDemoFallback` / `Ai:MaxImageBytes` / `Ai:MaxAudioBytes` | 5 / 7 / (trống = chỉ Development) / 5 MB / 10 MB | Hạn mức AI cho Free, múi giờ đổi ngày, cho phép dữ liệu mẫu, dung lượng ảnh và file ghi âm tối đa. |
 | `HealthConditionLimits:DiabetesMaxSugarGrams` / `DiabetesMaxCarbsGrams` / `HypertensionMaxSodiumMg` / `DyslipidemiaMaxFatGrams` / `GoutAvoidCategories` | 15 / 60 / 800 / 20 / `Seafood`, `Organ` | Ngưỡng tham khảo cho **một khẩu phần** theo bệnh lý (BR-110/111): loại món khỏi thực đơn tự tạo và sinh `healthWarnings`. Không thay thế tư vấn y khoa (BR-112). |
@@ -1639,6 +1665,13 @@ Một món ăn cần ghi vào nhật ký (dùng chung cho ghi đơn lẻ và ghi
 | `endDate` | date (yyyy-MM-dd) | có |  |  |
 | `clearExisting` | bool |  |  | true (mặc định) = thay danh sách đã tạo từ thực đơn trước đó bằng danh sách mới; các món người dùng tự thêm được giữ. false = giữ mọi dòng hiện có và cộng dồn vào dòng chưa mua cùng tên/đơn vị (chuyển phần còn lại sang tuần mới) — chỉ nên dùng khi tạo cho một khoảng ngày khác, vì tạo lại cùng khoảng sẽ cộng đôi. |
 
+<a id="schema-googleauthrequestdto"></a>
+#### GoogleAuthRequestDto
+
+| Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| `idToken` | string | có | 20–8192 ký tự | Google ID token (JWT) lấy từ Google Identity Services. |
+
 <a id="schema-grocerycategorydto"></a>
 #### GroceryCategoryDto
 
@@ -1740,6 +1773,7 @@ Một món ăn cần ghi vào nhật ký (dùng chung cho ghi đơn lẻ và ghi
 | `allergyIds` | int[]? |  |  |  |
 | `medicalConditionIds` | int[]? |  |  |  |
 | `dietaryPreferenceIds` | int[]? |  |  |  |
+| `otherAllergies` | string? |  |  | Dị ứng ngoài danh mục người dùng tự nhập (vd. "dứa, kiwi"); null = không có. |
 
 <a id="schema-healthsurveyrequestdto"></a>
 #### HealthSurveyRequestDto
@@ -1760,6 +1794,7 @@ Khảo sát sức khỏe: tạo mới hoặc ghi đè toàn bộ hồ sơ. Cần
 | `medicalConditionIds` | int[]? |  |  | Id trong /meta/medical-conditions. |
 | `dietaryPreferenceIds` | int[]? |  |  | Id trong /meta/tags (Eat Clean, Keto...). Bỏ trống = không có chế độ ăn ưu tiên. |
 | `waterGoalMl` | int? |  | 500–10000 | Mục tiêu nước uống mỗi ngày (ml). Bỏ trống = giữ giá trị hiện có (mặc định 2000). |
+| `otherAllergies` | string? |  | ≤ 200 ký tự | Dị ứng ngoài danh mục, phân tách bằng dấu phẩy (vd. "dứa, kiwi"). Bỏ trống = không có. |
 
 <a id="schema-logmealbatchrequestdto"></a>
 #### LogMealBatchRequestDto
@@ -2165,6 +2200,7 @@ Cập nhật từng phần hồ sơ đã có. Trường không gửi (null) gi�
 | `medicalConditionIds` | int[]? |  |  |  |
 | `dietaryPreferenceIds` | int[]? |  |  |  |
 | `waterGoalMl` | int? |  | 500–10000 |  |
+| `otherAllergies` | string? |  | ≤ 200 ký tự | Dị ứng ngoài danh mục. null = giữ nguyên; chuỗi rỗng = xóa. |
 
 <a id="schema-updateprofilerequestdto"></a>
 #### UpdateProfileRequestDto
