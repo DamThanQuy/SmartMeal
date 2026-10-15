@@ -45,7 +45,7 @@
         }
       ],
       [
-        "expo-av",
+        "expo-audio",
         {
           "microphonePermission": "SmartMeal cần quyền truy cập microphone để ghi âm và nhận diện món ăn bằng giọng nói."
         }

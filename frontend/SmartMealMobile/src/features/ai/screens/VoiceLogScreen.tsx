@@ -1,7 +1,14 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Audio } from 'expo-av';
+import {
+  getRecordingPermissionsAsync,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioPlayer,
+  useAudioPlayerStatus,
+  useAudioRecorder,
+} from 'expo-audio';
 import { HelpCircle, Mic, Pause, Play, Volume2 } from 'lucide-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppBadge, AppButton, AppCard, AppChip, AppIconButton, AppText } from '@/components/ui';
@@ -27,6 +34,10 @@ type Props = NativeStackScreenProps<MainStackParamList, 'VoiceLog'>;
 type Phase = 'recording' | 'processing' | 'reviewing';
 
 const DEFAULT_WAVEFORMS = [12, 20, 28, 16, 36, 24, 14, 28, 38, 22, 16, 26, 12];
+
+// Bật metering để sóng âm chạy theo cường độ giọng nói thật.
+const RECORDING_OPTIONS = { ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true };
+const RECORDER_STATUS_INTERVAL_MS = 100;
 
 function resolvePortionIdFor(result: VoiceLogResult): string | null {
   return (
@@ -59,47 +70,43 @@ export function VoiceLogScreen({ navigation, route }: Props) {
     initialResult ? resolvePortionIdFor(initialResult) : null,
   );
 
-  // Trạng thái ghi âm thật qua expo-av
+  // Trạng thái ghi âm thật qua expo-audio (expo-av không còn trong Expo Go SDK 57)
   const [durationMillis, setDurationMillis] = useState(0);
   const [waveHeights, setWaveHeights] = useState<number[]>(DEFAULT_WAVEFORMS);
   const [recordedUri, setRecordedUri] = useState<string | null>(null);
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
 
-  const recordingRef = useRef<Audio.Recording | null>(null);
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const recorder = useAudioRecorder(RECORDING_OPTIONS);
+  const player = useAudioPlayer(recordedUri);
+  const playerStatus = useAudioPlayerStatus(player);
+  const isPlayingAudio = playerStatus.playing;
+
+  // Cập nhật thời lượng + sóng âm theo trạng thái recorder trong lúc đang ghi.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const status = recorder.getStatus();
+      if (!status.isRecording) return;
+      setDurationMillis(status.durationMillis);
+      if (typeof status.metering === 'number') {
+        // Cường độ âm thanh dBFS từ -160 đến 0
+        const normalized = Math.min(Math.max((status.metering + 60) / 60, 0.15), 1);
+        setWaveHeights(prev => prev.map(() => Math.round(10 + Math.random() * normalized * 32)));
+      }
+    }, RECORDER_STATUS_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [recorder]);
 
   // Bắt đầu ghi âm thật
   const startRecording = async () => {
     try {
-      const { status } = await Audio.getPermissionsAsync();
-      if (status !== 'granted') {
+      const { granted } = await getRecordingPermissionsAsync();
+      if (!granted) {
         navigation.replace(MAIN_STACK_ROUTES.VOICE_PERMISSION, { mealType });
         return;
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY,
-        (statusUpdate: Audio.RecordingStatus) => {
-          if (statusUpdate.isRecording) {
-            setDurationMillis(statusUpdate.durationMillis);
-            if (typeof statusUpdate.metering === 'number') {
-              // Cường độ âm thanh dBFS từ -160 đến 0
-              const normalized = Math.min(Math.max((statusUpdate.metering + 60) / 60, 0.15), 1);
-              setWaveHeights(prev =>
-                prev.map((_, i) => Math.round(10 + Math.random() * normalized * 32))
-              );
-            }
-          }
-        },
-        100
-      );
-
-      recordingRef.current = recording;
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
     } catch {
       // Nếu có lỗi khởi tạo ghi âm (ví dụ chạy trên simulator không có mic)
     }
@@ -107,23 +114,18 @@ export function VoiceLogScreen({ navigation, route }: Props) {
 
   // Tự động kích hoạt ghi âm khi vào màn hình (nếu không có initialResult)
   useEffect(() => {
-    let isMounted = true;
     if (!initialResult) {
       void startRecording();
     }
 
     return () => {
-      isMounted = false;
-      // Dọn dẹp an toàn khi rời màn hình
-      if (recordingRef.current) {
-        void recordingRef.current.stopAndUnloadAsync().catch(() => {});
-        recordingRef.current = null;
+      // Dọn dẹp an toàn khi rời màn hình; recorder/player do hook expo-audio tự giải phóng.
+      try {
+        if (recorder.isRecording) void recorder.stop().catch(() => {});
+      } catch {
+        // Recorder có thể đã được giải phóng trước.
       }
-      if (soundRef.current) {
-        void soundRef.current.unloadAsync().catch(() => {});
-        soundRef.current = null;
-      }
-      void Audio.setAudioModeAsync({ allowsRecordingIOS: false }).catch(() => {});
+      void setAudioModeAsync({ allowsRecording: false }).catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -132,13 +134,11 @@ export function VoiceLogScreen({ navigation, route }: Props) {
   const stopAndTranscribe = async () => {
     let audioUri: string | null = null;
     try {
-      if (recordingRef.current) {
-        const recording = recordingRef.current;
-        recordingRef.current = null;
-        await recording.stopAndUnloadAsync();
-        audioUri = recording.getURI();
+      if (recorder.isRecording) {
+        await recorder.stop();
+        audioUri = recorder.uri;
         setRecordedUri(audioUri);
-        await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+        await setAudioModeAsync({ allowsRecording: false });
       }
     } catch {
       // Bỏ qua lỗi dừng ghi âm
@@ -181,29 +181,17 @@ export function VoiceLogScreen({ navigation, route }: Props) {
     if (!recordedUri) return;
 
     try {
-      if (soundRef.current) {
-        if (isPlayingAudio) {
-          await soundRef.current.pauseAsync();
-          setIsPlayingAudio(false);
-        } else {
-          await soundRef.current.playAsync();
-          setIsPlayingAudio(true);
-        }
-      } else {
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: recordedUri },
-          { shouldPlay: true },
-          status => {
-            if (status.isLoaded && status.didJustFinish) {
-              setIsPlayingAudio(false);
-            }
-          }
-        );
-        soundRef.current = sound;
-        setIsPlayingAudio(true);
+      if (isPlayingAudio) {
+        player.pause();
+        return;
       }
+      // Nghe hết rồi thì phát lại từ đầu.
+      if (playerStatus.didJustFinish || (playerStatus.duration > 0 && playerStatus.currentTime >= playerStatus.duration)) {
+        await player.seekTo(0);
+      }
+      player.play();
     } catch {
-      setIsPlayingAudio(false);
+      // Bỏ qua lỗi phát lại
     }
   };
 
@@ -227,11 +215,7 @@ export function VoiceLogScreen({ navigation, route }: Props) {
   };
 
   const handleRetry = async () => {
-    if (soundRef.current) {
-      await soundRef.current.unloadAsync().catch(() => {});
-      soundRef.current = null;
-      setIsPlayingAudio(false);
-    }
+    if (isPlayingAudio) player.pause();
     setDurationMillis(0);
     setRecordedUri(null);
     setWaveHeights(DEFAULT_WAVEFORMS);

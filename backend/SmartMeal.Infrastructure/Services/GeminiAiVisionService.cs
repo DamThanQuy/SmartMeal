@@ -1,5 +1,8 @@
+using System.Globalization;
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -23,14 +26,63 @@ public class GeminiAiVisionService : IAiVisionService
     private readonly ProductSafetyOptions _productLimits;
     private readonly IHostEnvironment _environment;
 
+    private const string DefaultModel = "gemini-3.8-flash";
+    private const string DefaultFallbackModels = "gemini-flash-lite-latest";
+    private const string DefaultThinkingLevel = "low";
+    private const int DefaultAttemptTimeoutSeconds = 25;
+    private const int DefaultTimeoutSeconds = 50;
+
     private readonly string _apiKey;
-    private readonly string _model;
+
+    /// <summary>Model chính rồi tới các model dự phòng, thử lần lượt (xem <see cref="ShouldTryNextModel"/>).</summary>
+    private readonly IReadOnlyList<string> _models;
+
+    /// <summary>Mức "suy nghĩ" của model (Gemini 2.5+): "low" trả lời nhanh gấp đôi mặc định. Rỗng = không gửi.</summary>
+    private readonly string _thinkingLevel;
+
+    /// <summary>Thời gian chờ mỗi model trước model cuối — quá thì chuyển sang model dự phòng thay vì chờ tiếp.</summary>
+    private readonly TimeSpan _attemptTimeout;
+
+    /// <summary>Tổng thời gian chờ Gemini cho một yêu cầu (gồm cả model dự phòng) — phải nhỏ hơn timeout AI của app (60 giây).</summary>
+    private readonly TimeSpan _timeout;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        NumberHandling = JsonNumberHandling.AllowReadingFromString,
+        Converters = { new LenientDoubleConverter(), new LenientIntConverter() }
     };
+
+    /// <summary>
+    /// Model đôi khi trả <c>null</c> (hoặc chuỗi số) cho trường số mà ảnh/nhãn không có, vd. <c>"sugarGrams": null</c> khi nhãn
+    /// không ghi đường. Trường số bắt buộc của DTO hiểu null là 0 như schema dặn ("không ghi thì 0") thay vì làm hỏng cả kết
+    /// quả; trường <c>double?</c> (protein, carbs, khẩu phần) vẫn giữ null.
+    /// </summary>
+    private sealed class LenientDoubleConverter : JsonConverter<double>
+    {
+        public override double Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.TokenType switch
+        {
+            JsonTokenType.Null => 0,
+            JsonTokenType.String => double.TryParse(reader.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : 0,
+            _ => reader.GetDouble()
+        };
+
+        public override void Write(Utf8JsonWriter writer, double value, JsonSerializerOptions options) => writer.WriteNumberValue(value);
+    }
+
+    /// <summary>Như <see cref="LenientDoubleConverter"/> cho trường số nguyên (vd. thời gian nấu); số lẻ được làm tròn.</summary>
+    private sealed class LenientIntConverter : JsonConverter<int>
+    {
+        public override int Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.TokenType switch
+        {
+            JsonTokenType.Null => 0,
+            JsonTokenType.String => double.TryParse(reader.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? (int)Math.Round(value) : 0,
+            _ => reader.TryGetInt32(out var number) ? number : (int)Math.Round(reader.GetDouble())
+        };
+
+        public override void Write(Utf8JsonWriter writer, int value, JsonSerializerOptions options) => writer.WriteNumberValue(value);
+    }
 
     private sealed record UserHealthContext(
         List<(string Code, string Name)> Allergies,
@@ -54,11 +106,33 @@ public class GeminiAiVisionService : IAiVisionService
         _environment = environment;
 
         _apiKey = config["Gemini:ApiKey"] ?? string.Empty;
-        _model = config["Gemini:Model"] ?? "gemini-1.5-flash";
+
+        // Google ngừng model cũ theo thời gian (gemini-1.5-flash, rồi gemini-2.5-flash với khóa mới): model dự phòng
+        // (Gemini:FallbackModels, cách nhau bằng dấu phẩy; để rỗng để tắt) giữ AI chạy khi model chính bị ngừng hoặc quá tải.
+        var primary = config["Gemini:Model"];
+        _models = new[] { string.IsNullOrWhiteSpace(primary) ? DefaultModel : primary }
+            .Concat((config["Gemini:FallbackModels"] ?? DefaultFallbackModels).Split(','))
+            .Select(model => model.Trim())
+            .Where(model => model.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        _thinkingLevel = (config["Gemini:ThinkingLevel"] ?? DefaultThinkingLevel).Trim();
+        _attemptTimeout = TimeSpan.FromSeconds(PositiveSeconds(config["Gemini:AttemptTimeoutSeconds"], DefaultAttemptTimeoutSeconds));
+        _timeout = TimeSpan.FromSeconds(PositiveSeconds(config["Gemini:TimeoutSeconds"], DefaultTimeoutSeconds));
     }
 
-    /// <summary>Dữ liệu mẫu (IsDemo) chỉ được trả khi cho phép — mặc định chỉ ở Development; môi trường thật báo lỗi rõ ràng.</summary>
+    private static int PositiveSeconds(string? value, int fallback) =>
+        int.TryParse(value, out var seconds) && seconds > 0 ? seconds : fallback;
+
+    /// <summary>Chưa có khóa Gemini: cho trả dữ liệu mẫu (IsDemo) để demo — mặc định chỉ ở Development; môi trường thật báo 503.</summary>
     private bool DemoAllowed => _ai.AllowDemoFallback ?? _environment.IsDevelopment();
+
+    /// <summary>
+    /// Đã có khóa mà Gemini lỗi: chỉ trả dữ liệu mẫu khi bật tường minh <c>Ai:AllowDemoFallback=true</c>. Mặc định báo lỗi thật
+    /// (502) kể cả ở Development — dữ liệu mẫu sẽ che mất lỗi cấu hình (model bị ngừng, sai khóa...) và vẫn bị trừ lượt AI.
+    /// </summary>
+    private bool DemoOnUpstreamFailure => _ai.AllowDemoFallback == true;
 
     private static ApiResponse<T> NotConfigured<T>() => ApiResponse<T>.Fail(
         "Tính năng AI chưa được cấu hình trên máy chủ (thiếu Gemini:ApiKey).",
@@ -111,7 +185,7 @@ Lưu ý quan trọng:
         try
         {
             var json = await CallGeminiVisionApiAsync(prompt, imageBytes, contentType);
-            var result = string.IsNullOrEmpty(json) ? null : JsonSerializer.Deserialize<SnapAndTrackResponseDto>(json, JsonOptions);
+            var result = ParseModelJson<SnapAndTrackResponseDto>(json);
             if (result != null)
             {
                 result.DetectedIngredients ??= new List<string>();
@@ -126,7 +200,7 @@ Lưu ý quan trọng:
             _logger.LogError(ex, "Lỗi khi gọi Gemini Vision API SnapAndTrack.");
         }
 
-        return DemoAllowed
+        return DemoOnUpstreamFailure
             ? DemoSnap(health, "AI nhận diện món ăn (Fallback mode).")
             : UpstreamFailed<SnapAndTrackResponseDto>();
     }
@@ -164,7 +238,7 @@ Trả về JSON chính xác theo schema sau:
         try
         {
             var json = await CallGeminiVisionApiAsync(prompt, imageBytes, contentType);
-            var result = string.IsNullOrEmpty(json) ? null : JsonSerializer.Deserialize<FridgeScannerResponseDto>(json, JsonOptions);
+            var result = ParseModelJson<FridgeScannerResponseDto>(json);
             if (result != null)
             {
                 result.DetectedIngredients ??= new List<string>();
@@ -178,7 +252,7 @@ Trả về JSON chính xác theo schema sau:
             _logger.LogError(ex, "Lỗi khi gọi Gemini Vision API ScanFridge.");
         }
 
-        return DemoAllowed
+        return DemoOnUpstreamFailure
             ? ApiResponse<FridgeScannerResponseDto>.Ok(GetMockFridgeScanner(), "Quét tủ lạnh thành công (Fallback mode).")
             : UpstreamFailed<FridgeScannerResponseDto>();
     }
@@ -225,7 +299,7 @@ Trả về JSON chính xác theo schema:
         try
         {
             var json = await CallGeminiTextApiAsync(prompt);
-            var result = string.IsNullOrEmpty(json) ? null : JsonSerializer.Deserialize<VoiceLogResponseDto>(json, JsonOptions);
+            var result = ParseModelJson<VoiceLogResponseDto>(json);
             if (result != null)
             {
                 result.ExtractedItems ??= new List<ExtractedMealItemDto>();
@@ -240,7 +314,7 @@ Trả về JSON chính xác theo schema:
             _logger.LogError(ex, "Lỗi khi gọi Gemini Text API ParseVoiceLog.");
         }
 
-        return DemoAllowed
+        return DemoOnUpstreamFailure
             ? ApiResponse<VoiceLogResponseDto>.Ok(GetMockVoiceLog(transcript), "Bóc tách giọng nói thành công (Fallback mode).")
             : UpstreamFailed<VoiceLogResponseDto>();
     }
@@ -281,7 +355,7 @@ Hãy phân tích thành phần sản phẩm, bóc tách dinh dưỡng và kiểm
         try
         {
             var json = await CallGeminiTextApiAsync(prompt);
-            var result = string.IsNullOrEmpty(json) ? null : JsonSerializer.Deserialize<CheckSafetyResponseDto>(json, JsonOptions);
+            var result = ParseModelJson<CheckSafetyResponseDto>(json);
             if (result != null)
             {
                 FinishSafetyResult(result, dto.OcrRawText, health);
@@ -293,7 +367,7 @@ Hãy phân tích thành phần sản phẩm, bóc tách dinh dưỡng và kiểm
             _logger.LogError(ex, "Lỗi khi gọi Gemini Text API CheckSafety.");
         }
 
-        return DemoAllowed
+        return DemoOnUpstreamFailure
             ? DemoSafety(dto, health, "Kiểm tra an toàn thực phẩm thành công (Fallback mode).")
             : UpstreamFailed<CheckSafetyResponseDto>();
     }
@@ -328,7 +402,7 @@ Thêm vào JSON hai trường ""ocrText"" và ""productName"" như mô tả ở 
         try
         {
             var json = await CallGeminiVisionApiAsync(prompt, imageBytes, contentType);
-            var result = string.IsNullOrEmpty(json) ? null : JsonSerializer.Deserialize<CheckSafetyResponseDto>(json, JsonOptions);
+            var result = ParseModelJson<CheckSafetyResponseDto>(json);
             if (result != null)
             {
                 if (string.IsNullOrWhiteSpace(result.OcrText) && result.ExtractedNutrition is null && (result.DetectedIngredients?.Count ?? 0) == 0)
@@ -347,7 +421,7 @@ Thêm vào JSON hai trường ""ocrText"" và ""productName"" như mô tả ở 
             _logger.LogError(ex, "Lỗi khi gọi Gemini Vision API ScanLabel.");
         }
 
-        return DemoAllowed
+        return DemoOnUpstreamFailure
             ? DemoLabel(health, "Đọc nhãn dinh dưỡng thành công (Fallback mode).")
             : UpstreamFailed<CheckSafetyResponseDto>();
     }
@@ -376,7 +450,7 @@ Thêm trường ""transcript"" (chuỗi) vào JSON.
         try
         {
             var json = await CallGeminiVisionApiAsync(prompt, audioBytes, contentType);
-            var result = string.IsNullOrEmpty(json) ? null : JsonSerializer.Deserialize<VoiceLogResponseDto>(json, JsonOptions);
+            var result = ParseModelJson<VoiceLogResponseDto>(json);
             if (result != null)
             {
                 result.ExtractedItems ??= new List<ExtractedMealItemDto>();
@@ -398,7 +472,7 @@ Thêm trường ""transcript"" (chuỗi) vào JSON.
             _logger.LogError(ex, "Lỗi khi gọi Gemini API ParseVoiceAudio.");
         }
 
-        return DemoAllowed
+        return DemoOnUpstreamFailure
             ? ApiResponse<VoiceLogResponseDto>.Ok(GetMockVoiceLog(DemoTranscript), "Bóc tách giọng nói thành công (Fallback mode).")
             : UpstreamFailed<VoiceLogResponseDto>();
     }
@@ -592,7 +666,7 @@ Thêm trường ""transcript"" (chuỗi) vào JSON.
                     }
                 }
             },
-            generationConfig = new { response_mime_type = "application/json" }
+            generationConfig = GenerationConfig()
         };
 
         return await PostToGeminiAsync(requestBody);
@@ -603,48 +677,131 @@ Thêm trường ""transcript"" (chuỗi) vào JSON.
         var requestBody = new
         {
             contents = new[] { new { parts = new object[] { new { text = prompt } } } },
-            generationConfig = new { response_mime_type = "application/json" }
+            generationConfig = GenerationConfig()
         };
 
         return await PostToGeminiAsync(requestBody);
     }
 
-    private async Task<string?> PostToGeminiAsync(object requestBody)
+    private Dictionary<string, object> GenerationConfig()
     {
-        // Khóa API gửi bằng header (không nằm trong URL) để không bị ghi vào log HTTP của .NET.
-        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent";
-        using var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = JsonContent.Create(requestBody) };
-        request.Headers.Add("x-goog-api-key", _apiKey);
-
-        using var response = await _httpClient.SendAsync(request);
-        if (!response.IsSuccessStatusCode)
+        var generationConfig = new Dictionary<string, object> { ["response_mime_type"] = "application/json" };
+        if (_thinkingLevel.Length > 0)
         {
-            var err = await response.Content.ReadAsStringAsync();
-            _logger.LogWarning("Gemini API returned error code {StatusCode}: {Error}", response.StatusCode, err);
-            return null;
+            generationConfig["thinkingConfig"] = new { thinkingLevel = _thinkingLevel };
         }
 
-        return await ExtractGeminiJsonTextAsync(response);
+        return generationConfig;
     }
+
+    private async Task<string?> PostToGeminiAsync(object requestBody)
+    {
+        // Hết tổng thời gian thì ném OperationCanceledException — nơi gọi ghi log và báo lỗi upstream.
+        using var total = new CancellationTokenSource(_timeout);
+        for (var i = 0; i < _models.Count; i++)
+        {
+            var model = _models[i];
+            using var attempt = CancellationTokenSource.CreateLinkedTokenSource(total.Token);
+            if (i < _models.Count - 1)
+            {
+                attempt.CancelAfter(_attemptTimeout);
+            }
+
+            // Khóa API gửi bằng header (không nằm trong URL) để không bị ghi vào log HTTP của .NET.
+            var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
+            using var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = JsonContent.Create(requestBody) };
+            request.Headers.Add("x-goog-api-key", _apiKey);
+
+            HttpResponseMessage response;
+            try
+            {
+                response = await _httpClient.SendAsync(request, attempt.Token);
+            }
+            catch (OperationCanceledException) when (!total.IsCancellationRequested)
+            {
+                // Model quá tải thường trả lời rất chậm thay vì báo lỗi: chuyển sang model dự phòng.
+                _logger.LogWarning("Gemini model {Model} did not answer within {Seconds}s; trying the next model.", model, _attemptTimeout.TotalSeconds);
+                continue;
+            }
+
+            using (response)
+            {
+                if (response.IsSuccessStatusCode)
+                {
+                    if (i > 0)
+                    {
+                        _logger.LogWarning("Gemini model {Model} answered because {Primary} is unavailable.", model, _models[0]);
+                    }
+
+                    return await ExtractGeminiJsonTextAsync(response);
+                }
+
+                var err = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("Gemini API returned error code {StatusCode} for model {Model}: {Error}", response.StatusCode, model, err);
+                if (!ShouldTryNextModel(response.StatusCode))
+                {
+                    return null;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Lỗi mà model khác có thể không gặp: model bị ngừng/không tồn tại (404), hết hạn mức riêng của model (429), quá tải hoặc
+    /// lỗi máy chủ (5xx). Yêu cầu sai hay khóa không hợp lệ (400/401/403) thì model nào cũng lỗi nên dừng luôn.
+    /// </summary>
+    private static bool ShouldTryNextModel(HttpStatusCode status) =>
+        status is HttpStatusCode.NotFound or HttpStatusCode.TooManyRequests || (int)status >= 500;
 
     private static async Task<string?> ExtractGeminiJsonTextAsync(HttpResponseMessage response)
     {
         var root = await response.Content.ReadFromJsonAsync<JsonElement>();
-        if (root.TryGetProperty("candidates", out var candidates) &&
-            candidates.GetArrayLength() > 0)
+        if (!root.TryGetProperty("candidates", out var candidates) ||
+            candidates.ValueKind != JsonValueKind.Array ||
+            candidates.GetArrayLength() == 0 ||
+            !candidates[0].TryGetProperty("content", out var content) ||
+            !content.TryGetProperty("parts", out var parts) ||
+            parts.ValueKind != JsonValueKind.Array)
         {
-            var first = candidates[0];
-            if (first.TryGetProperty("content", out var content) &&
-                content.TryGetProperty("parts", out var parts) &&
-                parts.GetArrayLength() > 0)
-            {
-                return parts[0].GetProperty("text").GetString();
-            }
+            return null;
         }
-        return null;
+
+        // Model có "suy nghĩ" (Gemini 2.5+) có thể tách câu trả lời thành nhiều phần hoặc kèm phần suy nghĩ (thought = true).
+        var text = string.Concat(parts.EnumerateArray()
+            .Where(part => !(part.TryGetProperty("thought", out var thought) && thought.ValueKind == JsonValueKind.True))
+            .Select(part => part.TryGetProperty("text", out var value) ? value.GetString() : null));
+        return string.IsNullOrWhiteSpace(text) ? null : text;
     }
 
-    // ───────────────────────────── Dữ liệu mẫu (chỉ khi AllowDemoFallback) ─────────────────────────────
+    /// <summary>
+    /// Đọc JSON của model thành DTO. Dù đã yêu cầu <c>application/json</c>, model đôi khi bọc đối tượng trong mảng
+    /// (<c>[{...}]</c>) hoặc trong khối <c>```json</c> — vẫn đọc được thay vì coi là lỗi.
+    /// </summary>
+    private static T? ParseModelJson<T>(string? json) where T : class
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+
+        var text = json.Trim();
+        if (text.StartsWith("```", StringComparison.Ordinal))
+        {
+            var bodyStart = text.IndexOf('\n');
+            var fenceEnd = text.LastIndexOf("```", StringComparison.Ordinal);
+            if (bodyStart > 0 && fenceEnd > bodyStart) text = text[(bodyStart + 1)..fenceEnd];
+        }
+
+        using var document = JsonDocument.Parse(text);
+        var element = document.RootElement;
+        if (element.ValueKind == JsonValueKind.Array)
+        {
+            element = element.EnumerateArray().FirstOrDefault(item => item.ValueKind == JsonValueKind.Object);
+        }
+
+        return element.ValueKind == JsonValueKind.Object ? element.Deserialize<T>(JsonOptions) : null;
+    }
+
+    // ───────────────────────────── Dữ liệu mẫu (chỉ khi DemoAllowed / DemoOnUpstreamFailure) ─────────────────────────────
 
     private static SnapAndTrackResponseDto GetMockSnapAndTrack() => new()
     {

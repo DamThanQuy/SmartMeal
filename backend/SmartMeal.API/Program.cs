@@ -63,12 +63,12 @@ builder.Services.Configure<SubscriptionOptions>(builder.Configuration.GetSection
 builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.SectionName));
 builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
 
-// Gửi email: SMTP thật khi có Smtp:Host, ngược lại chỉ ghi log (Development in cả mã OTP).
+// Gửi email: SMTP thật khi có Smtp:Host và địa chỉ gửi, ngược lại chỉ ghi log (Development in cả mã OTP).
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.SectionName));
 builder.Services.AddSingleton<IEmailSender>(sp =>
 {
     var smtp = sp.GetRequiredService<IOptions<SmtpOptions>>();
-    return string.IsNullOrWhiteSpace(smtp.Value.Host)
+    return !smtp.Value.IsConfigured
         ? ActivatorUtilities.CreateInstance<LogOnlyEmailSender>(sp)
         : ActivatorUtilities.CreateInstance<SmtpEmailSender>(sp, smtp);
 });
@@ -91,7 +91,8 @@ builder.Services.AddScoped<IGamificationService, GamificationService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddScoped<IFoodService, FoodService>();
-builder.Services.AddHttpClient<IAiVisionService, GeminiAiVisionService>(client => client.Timeout = TimeSpan.FromSeconds(45));
+// Thời gian chờ Gemini thật do Gemini:TimeoutSeconds / AttemptTimeoutSeconds quyết định (kèm model dự phòng); đây chỉ là chặn cuối.
+builder.Services.AddHttpClient<IAiVisionService, GeminiAiVisionService>(client => client.Timeout = TimeSpan.FromSeconds(60));
 // Tra mã vạch bằng CSDL (không dùng AI đoán) + ngưỡng cảnh báo đường/natri/chất béo/calo của sản phẩm (BR-120/140).
 builder.Services.AddScoped<IProductSafetyService, ProductSafetyService>();
 builder.Services

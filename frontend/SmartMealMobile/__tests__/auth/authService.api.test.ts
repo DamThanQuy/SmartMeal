@@ -107,6 +107,20 @@ describe('register', () => {
     expect(result?.user).toMatchObject({ id: USER_DTO.id, hasCompletedSurvey: false });
   });
 
+  test('server đã gửi mã xác minh email (requiresEmailVerification) → cần OTP trước Health Profile', async () => {
+    const { service, apiMock, tokenStorageMock } = loadService();
+    apiMock.post.mockResolvedValue({ ...AUTH_RESPONSE, requiresEmailVerification: true });
+
+    const result = await service.register?.({
+      fullName: 'Nguyễn An',
+      email: 'an@smartmeal.vn',
+      password: 'matkhau123',
+    });
+
+    expect(result?.requiresOtp).toBe(true);
+    expect(tokenStorageMock.set).toHaveBeenCalled();
+  });
+
   test('email trùng → ném lỗi của BE và KHÔNG lưu token', async () => {
     const { service, apiMock, tokenStorageMock } = loadService();
     const error = new Error('Email đã được sử dụng.');

@@ -16,8 +16,9 @@ public sealed class AiOptions
     public int QuotaUtcOffsetHours { get; set; } = 7;
 
     /// <summary>
-    /// Cho phép trả dữ liệu MẪU (IsDemo = true) khi chưa cấu hình Gemini hoặc Gemini lỗi. Để trống = chỉ bật ở môi trường
-    /// Development để demo; môi trường thật trả lỗi rõ ràng (503/502) thay vì giả vờ thành công.
+    /// Cho phép trả dữ liệu MẪU (IsDemo = true) thay cho kết quả thật. Để trống = chỉ khi CHƯA cấu hình khóa Gemini ở môi
+    /// trường Development (để demo); đã có khóa mà Gemini lỗi thì báo lỗi rõ ràng (502) — kể cả ở Development — trừ khi đặt
+    /// <c>true</c>. Môi trường thật thiếu khóa trả 503 thay vì giả vờ thành công.
     /// </summary>
     public bool? AllowDemoFallback { get; set; }
 

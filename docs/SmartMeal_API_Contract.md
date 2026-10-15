@@ -124,13 +124,13 @@
 
 ### Xác thực & tài khoản
 
-> Đăng ký không bắt xác minh email: tài khoản dùng được ngay. OTP chỉ dùng cho quên mật khẩu (`purpose = reset-password`) và xác minh email (`verify-email`).
+> Xác minh email khi đăng ký bật theo `Auth:RequireEmailVerification` (để trống = bật khi đã cấu hình SMTP). Khi bật: `register` vẫn trả token nhưng kèm `requiresEmailVerification = true` và gửi OTP `verify-email` tới email; trước khi `verify-otp` thành công, `login` đúng mật khẩu trả `403` (`errors` có `email_not_verified`, đồng thời gửi mã mới) và `refresh` trả `401` (`email_not_verified`). Khi tắt (chưa có SMTP): tài khoản dùng được ngay. OTP dùng cho quên mật khẩu (`purpose = reset-password`) và xác minh email (`verify-email`).
 
 > OTP 6 chữ số, hiệu lực `Auth:OtpMinutes` (5 phút), tối đa `Auth:OtpMaxAttempts` (5) lần nhập sai, lưu dạng băm. Gửi lại cách nhau tối thiểu `Auth:OtpResendCooldownSeconds` (60 giây): trong thời gian chờ endpoint vẫn trả `200` nhưng **không** phát mã mới. `forgot-password` luôn trả `200` để không lộ email nào đã đăng ký.
 
 > `verify-otp` trả `resetToken` (sống `Auth:ResetTokenMinutes` = 10 phút); `reset-password` và `change-password` thu hồi mọi phiên cũ (đổi mật khẩu trả cặp token mới cho phiên hiện tại).
 
-> Chưa cấu hình `Smtp:Host` thì không gửi email thật: backend chỉ ghi log, và ở Development ghi cả nội dung có mã OTP (`[DEV EMAIL …]`) để dev thử.
+> Chưa cấu hình SMTP (`Smtp:Host` và địa chỉ gửi `Smtp:From`/`Smtp:User`) thì không gửi email thật: backend chỉ ghi log, và ở Development ghi cả nội dung có mã OTP (`[DEV EMAIL …]`) để dev thử. Gmail: `Smtp:Host = smtp.gmail.com`, `Port = 587`, `User` = địa chỉ Gmail, `Password` = App Password.
 
 > Đăng nhập chỉ bằng **email + mật khẩu**. Đăng nhập Google đã bỏ ngày 14/10/2026 (`POST /auth/google` không còn, trả 404); tài khoản tạo bằng Google trước đó không có mật khẩu (`hasPassword = false`) và đặt mật khẩu qua "Quên mật khẩu".
 
@@ -138,7 +138,7 @@
 
 #### `POST /api/auth/register`
 
-Đăng ký bằng email + mật khẩu; trả cặp access/refresh token.
+Đăng ký bằng email + mật khẩu; trả cặp access/refresh token. `requiresEmailVerification = true` khi phải nhập mã OTP vừa gửi qua email (`verify-otp`, purpose `verify-email`).
 
 - **Quyền**: Công khai · giới hạn tần suất (policy `auth`)
 - **Body (JSON)**: [RegisterRequestDto](#schema-registerrequestdto)
@@ -146,7 +146,7 @@
 
 #### `POST /api/auth/login`
 
-Đăng nhập. Sai quá nhiều lần → 423 (khóa tạm thời); sai thông tin → 401.
+Đăng nhập. Sai quá nhiều lần → 423 (khóa tạm thời); sai thông tin → 401; đúng mật khẩu nhưng email chưa xác minh → 403 `email_not_verified` (đã gửi mã mới).
 
 - **Quyền**: Công khai · giới hạn tần suất (policy `auth`)
 - **Body (JSON)**: [LoginRequestDto](#schema-loginrequestdto)
@@ -867,7 +867,7 @@ Hoàn tất mua sắm: lưu chi phí thực tế (BR-174), bỏ các món đã m
 
 > Lượt chỉ bị trừ khi AI trả kết quả **thành công**. `check-safety` và `scan-label` không tính vào hạn mức (tính năng an toàn) nhưng có giới hạn tần suất (policy `scanner`).
 
-> Chưa cấu hình `Gemini:ApiKey`: ở Development trả dữ liệu **mẫu** với `isDemo: true` (cờ `Ai:AllowDemoFallback`); nơi khác trả `503` (chưa cấu hình) hoặc `502` (Gemini lỗi) thay vì giả vờ thành công.
+> Chưa cấu hình `Gemini:ApiKey`: ở Development trả dữ liệu **mẫu** với `isDemo: true` (cờ `Ai:AllowDemoFallback`); nơi khác trả `503` (chưa cấu hình). Đã có khóa mà Gemini lỗi thì trả `502` ở mọi môi trường (chỉ trả dữ liệu mẫu khi đặt `Ai:AllowDemoFallback=true`) thay vì giả vờ thành công. Model chính bị ngừng (404) hoặc quá tải (429/5xx) thì backend thử lần lượt các model trong `Gemini:FallbackModels`.
 
 > `voice-log` nhận **văn bản**; `voice-log/audio` nhận **file ghi âm** (≤ `Ai:MaxAudioBytes`, 10 MB) và trả thêm `transcript` — đoạn ghi âm không nghe ra món nào → `400` `voice_unrecognized` (không trừ lượt). Ảnh `snap-and-track`/`fridge-scanner`/`scan-label` ≤ `Ai:MaxImageBytes` (5 MB), chỉ JPG/PNG/WebP.
 
@@ -1125,14 +1125,16 @@ Khóa bí mật chỉ đặt qua biến môi trường (`Muc__Khoa`, dùng `__` 
 | `Auth:MaxFailedLoginAttempts` / `Auth:LockoutMinutes` | 5 / 15 | Khóa tài khoản tạm thời khi đăng nhập sai liên tiếp. |
 | `Auth:RefreshReuseGraceSeconds` | 10 | Dùng lại refresh token vừa thu hồi trong khoảng này được coi là gọi trùng song song, không phải bị đánh cắp. |
 | `Auth:OtpMinutes` / `Auth:OtpMaxAttempts` / `Auth:OtpResendCooldownSeconds` / `Auth:ResetTokenMinutes` | 5 / 5 / 60 / 10 | Chính sách OTP và mã đặt lại mật khẩu. |
+| `Auth:RequireEmailVerification` | (trống = bật khi đã cấu hình SMTP) | Bắt xác minh email bằng OTP sau khi đăng ký: chưa xác minh thì không đăng nhập/gia hạn phiên được. |
 | `RateLimiting:AuthPermitsPerMinute` | 30 | Số request/phút/IP cho nhóm endpoint đăng nhập/OTP (policy `auth`). |
 | `RateLimiting:ScannerPermitsPerMinute` | 20 | Số request/phút/người dùng cho `check-safety` và `scan-label` (policy `scanner`). |
-| `Smtp:Host`, `Port`, `EnableSsl`, `User`, `Password`, `From`, `FromName` | (trống) | Gửi email OTP. `Host` trống = chỉ ghi log (Development in cả mã OTP). |
+| `Smtp:Host`, `Port`, `EnableSsl`, `User`, `Password`, `From`, `FromName` | (trống) / 587 / true / … | Gửi email OTP. Cần `Host` và địa chỉ gửi (`From`, trống = dùng `User`); thiếu = chỉ ghi log (Development in cả mã OTP). Gmail cần App Password. |
 | `Storage:Root` / `Storage:PublicBaseUrl` / `Storage:MaxAvatarBytes` | `uploads` cạnh ứng dụng / theo request / 2 MB | Nơi lưu và URL công khai của ảnh đại diện. Chạy Docker cần gắn volume vào `Storage:Root`. |
 | `Subscription:AllowMockActivation` | (trống = chỉ Development) | Cho phép `activate-mock`. Môi trường thật phải để tắt. |
 | `Subscription:WebhookSecret` | (trống = tắt webhook) | Khóa HMAC dùng chung với cổng thanh toán. |
-| `Gemini:ApiKey` / `Gemini:Model` | (trống) / `gemini-1.5-flash` | Khóa Gemini. Trống: AI trả dữ liệu mẫu ở Development, lỗi 503 ở nơi khác. |
-| `Ai:FreeDailyLimit` / `Ai:QuotaUtcOffsetHours` / `Ai:AllowDemoFallback` / `Ai:MaxImageBytes` / `Ai:MaxAudioBytes` | 5 / 7 / (trống = chỉ Development) / 5 MB / 10 MB | Hạn mức AI cho Free, múi giờ đổi ngày, cho phép dữ liệu mẫu, dung lượng ảnh và file ghi âm tối đa. |
+| `Gemini:ApiKey` / `Gemini:Model` / `Gemini:FallbackModels` | (trống) / `gemini-3.8-flash` / `gemini-flash-lite-latest` | Khóa Gemini, model multimodal dùng cho ảnh, text, audio và các model dự phòng (cách nhau bằng dấu phẩy, rỗng = tắt) khi model chính bị ngừng (404) hoặc quá tải (429/5xx). Key chỉ đặt ở backend bằng biến môi trường/secret manager; trống: AI trả dữ liệu mẫu ở Development, lỗi 503 ở nơi khác. |
+| `Gemini:ThinkingLevel` / `Gemini:AttemptTimeoutSeconds` / `Gemini:TimeoutSeconds` | `low` / 25 / 50 | Mức "suy nghĩ" gửi cho model (rỗng = không gửi), thời gian chờ mỗi model trước khi chuyển sang model dự phòng (model quá tải thường trả lời rất chậm) và tổng thời gian chờ một yêu cầu AI — phải nhỏ hơn timeout AI của app (60 giây). |
+| `Ai:FreeDailyLimit` / `Ai:QuotaUtcOffsetHours` / `Ai:AllowDemoFallback` / `Ai:MaxImageBytes` / `Ai:MaxAudioBytes` | 5 / 7 / (trống = chỉ khi thiếu khóa ở Development) / 5 MB / 10 MB | Hạn mức AI cho Free, múi giờ đổi ngày, cho phép dữ liệu mẫu (`true` = cả khi Gemini lỗi), dung lượng ảnh và file ghi âm tối đa. |
 | `HealthConditionLimits:DiabetesMaxSugarGrams` / `DiabetesMaxCarbsGrams` / `HypertensionMaxSodiumMg` / `DyslipidemiaMaxFatGrams` / `GoutAvoidCategories` | 15 / 60 / 800 / 20 / `Seafood`, `Organ` | Ngưỡng tham khảo cho **một khẩu phần** theo bệnh lý (BR-110/111): loại món khỏi thực đơn tự tạo và sinh `healthWarnings`. Không thay thế tư vấn y khoa (BR-112). |
 | `ProductSafety:HighSugarGramsPer100g` / `HighSodiumMgPer100g` / `HighFatGramsPer100g` / `HighCaloriesPer100g` | 22.5 / 600 / 17.5 / 400 | Ngưỡng "cao" trên 100 g để cảnh báo sản phẩm quét được (mức "high" của nhãn UK FSA; calo là mức tham khảo). |
 | `Swagger:Enabled` | false (luôn bật ở Development) | Bật Swagger ngoài Development. |
@@ -1192,6 +1194,7 @@ Hạn mức AI trong ngày (BR-233). Tài khoản Pro không giới hạn.
 | `expiresAt` | datetime (ISO 8601 UTC) |  |  | Thời điểm access token hết hạn (UTC). |
 | `refreshToken` | string? |  |  | Refresh token dùng một lần để lấy cặp token mới ở POST /auth/refresh. |
 | `refreshTokenExpiresAt` | datetime (ISO 8601 UTC) |  |  |  |
+| `requiresEmailVerification` | bool |  |  | True khi tài khoản vừa đăng ký phải nhập mã OTP đã gửi qua email (POST /auth/verify-otp, purpose "verify-email") — chưa xác minh thì đăng nhập lại/gia hạn phiên bị từ chối với lỗi `email_not_verified`. |
 | `user` | [UserDto](#schema-userdto) |  |  |  |
 
 <a id="schema-autogenerateplanrequestdto"></a>

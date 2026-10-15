@@ -14,17 +14,22 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
-// expo-av nạp module native `ExponentAV` ngay khi import (VoiceLogScreen) mà môi trường Jest không có.
+// expo-audio nạp module native ngay khi import (VoiceLogScreen) mà môi trường Jest không có.
 // Smoke test chỉ cần cây component mount được, không ghi âm thật.
-jest.mock('expo-av', () => ({
-  Audio: {
-    requestPermissionsAsync: jest.fn(() => Promise.resolve({ granted: false, status: 'denied' })),
-    getPermissionsAsync: jest.fn(() => Promise.resolve({ granted: false, status: 'denied' })),
-    setAudioModeAsync: jest.fn(() => Promise.resolve()),
-    Sound: { createAsync: jest.fn() },
-    Recording: jest.fn(),
-    RecordingOptionsPresets: { HIGH_QUALITY: {} },
-  },
+jest.mock('expo-audio', () => ({
+  requestRecordingPermissionsAsync: jest.fn(() => Promise.resolve({ granted: false, status: 'denied' })),
+  getRecordingPermissionsAsync: jest.fn(() => Promise.resolve({ granted: false, status: 'denied' })),
+  setAudioModeAsync: jest.fn(() => Promise.resolve()),
+  RecordingPresets: { HIGH_QUALITY: {} },
+  useAudioRecorder: jest.fn(() => ({
+    isRecording: false,
+    uri: null,
+    getStatus: jest.fn(() => ({ isRecording: false, durationMillis: 0 })),
+    stop: jest.fn(),
+    record: jest.fn(),
+  })),
+  useAudioPlayer: jest.fn(() => ({ play: jest.fn(), pause: jest.fn(), seekTo: jest.fn() })),
+  useAudioPlayerStatus: jest.fn(() => ({ playing: false, currentTime: 0, duration: 0, didJustFinish: false })),
 }));
 
 // NativeWind.setColorScheme() cần config darkMode/CSS do Metro biên dịch lúc build — không có

@@ -144,11 +144,18 @@ export function HealthConnectScreen({ navigation }: Props) {
             />
           </>
         ) : (
-          <AppButton
-            label="Kết nối lại"
-            loading={connect.isPending}
-            onPress={() => connect.mutate()}
-          />
+          <>
+            <AppButton
+              label="Kết nối lại"
+              loading={connect.isPending}
+              onPress={() => connect.mutate()}
+            />
+            {connect.isError ? (
+              <AppText variant="caption" color="error">
+                {connect.error.message}
+              </AppText>
+            ) : null}
+          </>
         )}
       </ScrollView>
     </ScreenContainer>

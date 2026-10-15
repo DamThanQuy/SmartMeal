@@ -12,7 +12,7 @@ export interface HealthConnectPreferences {
 }
 
 export const DEFAULT_HEALTH_CONNECT_PREFERENCES: HealthConnectPreferences = {
-  connected: true,
+  connected: false,
   disabledSources: [],
 };
 
@@ -22,7 +22,7 @@ function keyFor(): string {
   return `${STORAGE_KEYS.HEALTH_CONNECT_PREFIX}${getCurrentUserId() ?? 'guest'}`;
 }
 
-/** Dữ liệu hỏng/thiếu field → dùng mặc định (đã kết nối, bật mọi nguồn), không ném lỗi. */
+/** Dữ liệu hỏng/thiếu field → dùng mặc định (chưa kết nối, bật mọi nguồn), không ném lỗi. */
 export function parseHealthConnectPreferences(raw: string | undefined): HealthConnectPreferences {
   if (!raw) return DEFAULT_HEALTH_CONNECT_PREFERENCES;
   try {

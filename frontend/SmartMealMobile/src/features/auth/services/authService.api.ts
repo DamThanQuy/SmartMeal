@@ -46,7 +46,8 @@ export const authApiService: Partial<typeof authMockService> = {
     return { user: fromUserDto(dto.user) };
   },
 
-  // POST /auth/register — BE trả token ngay (không có OTP) nên vào thẳng Health Profile.
+  // POST /auth/register — BE trả token ngay. Khi server gửi được email (đã cấu hình SMTP) thì kèm
+  // requiresEmailVerification: màn Register chuyển sang nhập mã OTP rồi mới tới Health Profile.
   async register(payload) {
     const dto = await api.post<AuthResponseDto, RegisterRequestDto>(ENDPOINTS.auth.register, {
       email: payload.email.trim(),
@@ -54,7 +55,11 @@ export const authApiService: Partial<typeof authMockService> = {
       fullName: payload.fullName.trim(),
     });
     await saveSessionTokens(dto);
-    return { email: dto.user.email, user: fromUserDto(dto.user), requiresOtp: false };
+    return {
+      email: dto.user.email,
+      user: fromUserDto(dto.user),
+      requiresOtp: dto.requiresEmailVerification === true,
+    };
   },
 
   // POST /auth/logout { refreshToken } — thu hồi phiên phía máy chủ (best effort: không cần access

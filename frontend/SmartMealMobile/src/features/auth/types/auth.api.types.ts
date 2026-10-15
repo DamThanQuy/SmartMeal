@@ -55,6 +55,8 @@ export interface AuthResponseDto {
   /** Dùng một lần ở POST /auth/refresh để lấy cặp token mới. */
   refreshToken: string;
   refreshTokenExpiresAt: string;
+  /** Đăng ký: true khi phải nhập mã OTP đã gửi qua email (POST /auth/verify-otp, purpose "verify-email"). */
+  requiresEmailVerification?: boolean;
   user: UserDto;
 }
 
