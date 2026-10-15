@@ -1,9 +1,9 @@
 /**
- * Live: gói thành viên với backend thật — bảng giá, trạng thái, thanh toán (kích hoạt thử ở Development),
- * lịch sử giao dịch, hủy gia hạn (vẫn dùng Pro tới hết hạn) và gia hạn khi còn hạn (cộng dồn thời gian).
- * Chỉ chạy khi có LIVE_API_URL (xem test-utils/live.ts).
+ * Live: gói thành viên với backend thật — bảng giá, trạng thái, kích hoạt Pro (công tắc kích hoạt thử của backend
+ * Development — app thanh toán thật bằng chuyển khoản SePay/PayOS), lịch sử giao dịch, hủy gia hạn (vẫn dùng Pro tới
+ * hết hạn) và gia hạn khi còn hạn (cộng dồn thời gian). Chỉ chạy khi có LIVE_API_URL (xem test-utils/live.ts).
  */
-import { describeLive, installLiveBackend, uniqueEmail } from '../../test-utils/live';
+import { activateProForTesting, describeLive, installLiveBackend, uniqueEmail } from '../../test-utils/live';
 
 type AuthModule = typeof import('@/features/auth/services/authService');
 type PremiumModule = typeof import('@/features/premium/services/premiumService');
@@ -58,23 +58,16 @@ describeLive('gói thành viên (backend thật)', () => {
     await expect(premiumService.getTransactions()).resolves.toEqual([]);
   });
 
-  test('thanh toán gói tháng (Development): server kích hoạt Pro 30 ngày và ghi lịch sử', async () => {
+  test('kích hoạt gói tháng (Development): server bật Pro 30 ngày và ghi lịch sử', async () => {
     await newUser();
 
-    const result = await premiumService.checkout('monthly', 'vnpay');
+    await activateProForTesting('monthly');
     const status = await premiumService.getStatus();
     const history = await premiumService.getTransactions();
 
-    expect(result).toMatchObject({ amountVnd: 79000, planId: 'monthly', paymentMethodId: 'vnpay' });
-    expect(result.transactionId).toMatch(/^SES_/);
     expect(status).toMatchObject({ status: 'premium', planId: 'monthly' });
     expect(status.expiresAtIso).toBe(inDays(30));
-    expect(result.membership).toEqual(status);
-    // Phiên thanh toán (đang chờ) và giao dịch kích hoạt thử (đã thanh toán).
-    expect(history.map(item => [item.status, item.paymentMethodId]).sort()).toEqual([
-      ['pending', 'vnpay'],
-      ['success', 'mock'],
-    ]);
+    expect(history.map(item => [item.status, item.paymentMethodId])).toEqual([['success', 'mock']]);
     expect(history.every(item => item.planId === 'monthly' && item.amountVnd === 79000)).toBe(true);
   });
 
@@ -84,7 +77,7 @@ describeLive('gói thành viên (backend thật)', () => {
       code: 'BUSINESS',
       message: expect.stringContaining('chưa có gói Pro'),
     });
-    await premiumService.checkout('yearly', 'momo');
+    await activateProForTesting('yearly');
     const before = await premiumService.getStatus();
 
     const cancelled = await premiumService.cancelRenewal();
@@ -96,29 +89,28 @@ describeLive('gói thành viên (backend thật)', () => {
 
   test('gia hạn khi còn hạn cộng thêm vào cuối kỳ hiện tại, không tính lại từ hôm nay', async () => {
     await newUser();
-    await premiumService.checkout('monthly', 'vnpay');
+    await activateProForTesting('monthly');
     const first = await premiumService.getStatus();
 
-    const renewed = await premiumService.checkout('monthly', 'vnpay');
+    await activateProForTesting('monthly');
 
     expect(first.expiresAtIso).toBe(inDays(30));
-    expect(renewed.expiresAtIso).toBe(inDays(60));
     expect((await premiumService.getStatus()).expiresAtIso).toBe(inDays(60));
   });
 
   test('gia hạn sau khi đã hủy gia hạn: gói Premium trở lại', async () => {
     await newUser();
-    await premiumService.checkout('monthly', 'vnpay');
+    await activateProForTesting('monthly');
     await premiumService.cancelRenewal();
 
-    await premiumService.checkout('monthly', 'card');
+    await activateProForTesting('monthly');
 
     expect(await premiumService.getStatus()).toMatchObject({ status: 'premium', expiresAtIso: inDays(60) });
   });
 
   test('gói của mỗi tài khoản tách biệt', async () => {
     await newUser();
-    await premiumService.checkout('monthly', 'vnpay');
+    await activateProForTesting('monthly');
 
     await newUser();
 

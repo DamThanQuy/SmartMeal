@@ -20,8 +20,8 @@ export function PaymentMethodScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
   const { planId } = route.params;
   const { data: plans, isLoading, isError, error, refetch } = useSubscriptionPlans();
-  // Mặc định PayOS: cổng thanh toán thật duy nhất đã tích hợp.
-  const [paymentMethodId, setPaymentMethodId] = useState<SelectablePaymentMethodId>('payos');
+  // Mặc định chuyển khoản qua SePay: tiền vào thẳng tài khoản ngân hàng, xác nhận tự động.
+  const [paymentMethodId, setPaymentMethodId] = useState<SelectablePaymentMethodId>('sepay');
 
   if (isLoading) {
     return (

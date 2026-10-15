@@ -28,10 +28,16 @@ const API_PLAN_ID: Record<BillingPlanId, ApiPlanId> = {
 };
 
 const API_PAYMENT_METHOD: Record<SelectablePaymentMethodId, ApiPaymentMethod> = {
-  vnpay: 'VNPAY',
-  momo: 'MOMO',
-  card: 'STRIPE',
+  sepay: 'SEPAY',
   payos: 'PAYOS',
+};
+
+/** Phương thức chỉ còn trong lịch sử giao dịch (cổng giả lập trước đây, kích hoạt thử ở môi trường phát triển). */
+const LEGACY_PAYMENT_METHOD: Record<string, PaymentMethodId> = {
+  VNPAY: 'vnpay',
+  MOMO: 'momo',
+  STRIPE: 'card',
+  MOCK: 'mock',
 };
 
 // Nhãn hiển thị theo chu kỳ — tên gói dài của BE ("Gói Tháng (Pro Monthly)") không dùng cho UI.
@@ -57,12 +63,11 @@ export function toApiPaymentMethod(paymentMethodId: SelectablePaymentMethodId): 
   return API_PAYMENT_METHOD[paymentMethodId];
 }
 
-/** VNPAY/MOMO/STRIPE/PAYOS → id FE; MOCK → 'mock'; giá trị lạ → 'vnpay' (phương thức mặc định của BE). */
+/** SEPAY/PAYOS → id FE; giá trị cũ (VNPAY/MOMO/STRIPE/MOCK) giữ nhãn cũ; giá trị lạ → 'sepay' (phương thức mặc định của BE). */
 export function fromApiPaymentMethod(value: string): PaymentMethodId {
   const normalized = value.trim().toUpperCase();
-  if (normalized === 'MOCK') return 'mock';
   const methodIds = Object.keys(API_PAYMENT_METHOD) as SelectablePaymentMethodId[];
-  return methodIds.find(methodId => API_PAYMENT_METHOD[methodId] === normalized) ?? 'vnpay';
+  return methodIds.find(methodId => API_PAYMENT_METHOD[methodId] === normalized) ?? LEGACY_PAYMENT_METHOD[normalized] ?? 'sepay';
 }
 
 function formatVnd(value: number): string {

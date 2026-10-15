@@ -99,7 +99,7 @@
 | Đi chợ | POST | `/api/grocery/complete` | Cần đăng nhập | Hoàn tất mua sắm: lưu chi phí thực tế, bỏ món đã mua, giữ/bỏ món chưa mua và có thể cộng thực đơn kỳ kế tiếp — một transaction. |
 | AI | GET | `/api/ai/quota` | Cần đăng nhập | Hạn mức AI còn lại hôm nay. |
 | AI | POST | `/api/ai/snap-and-track` | Cần đăng nhập | AI Snap & Track: ảnh đĩa thức ăn (multipart, trường `image`; JPG/PNG/WebP, tối đa 5 MB). |
-| AI | POST | `/api/ai/fridge-scanner` | Cần đăng nhập | Fridge Scanner: ảnh nguyên liệu trong tủ lạnh (multipart, trường `image`). |
+| AI | POST | `/api/ai/fridge-scanner` | Cần đăng nhập | Fridge Scanner (**chỉ Pro**, Free → `403 pro_required`): ảnh nguyên liệu trong tủ lạnh (multipart, trường `image`). |
 | AI | POST | `/api/ai/voice-log` | Cần đăng nhập | Voice Log: văn bản (người dùng gõ hoặc đã nhận dạng trên máy) → món ăn kèm dinh dưỡng. |
 | AI | POST | `/api/ai/voice-log/audio` | Cần đăng nhập | Voice Log từ file ghi âm (multipart, trường `audio`, tối đa 10 MB): AI chép lời rồi bóc tách món; trả `transcript`. |
 | AI | POST | `/api/ai/check-safety` | Cần đăng nhập | Kiểm tra an toàn sản phẩm theo dị ứng/bệnh lý của người dùng (BR-140); `barcode` tra trong CSDL (`404` `product_not_found` khi chưa có) |
@@ -117,9 +117,9 @@
 | Gói Pro & thanh toán | GET | `/api/subscription/plans` | Công khai | Bảng giá các gói Pro (giá, chu kỳ, quyền lợi) — nguồn duy nhất cho giá. |
 | Gói Pro & thanh toán | POST | `/api/subscription/create-checkout-session` | Cần đăng nhập | Tạo phiên thanh toán |
 | Gói Pro & thanh toán | POST | `/api/subscription/activate-mock` | Cần đăng nhập | Chỉ dùng khi phát triển: mô phỏng cổng thanh toán xác nhận |
-| Gói Pro & thanh toán | POST | `/api/subscription/webhook` | Công khai | Webhook của cổng thanh toán (server-to-server) |
+| Gói Pro & thanh toán | POST | `/api/subscription/sepay-webhook` | Công khai | Webhook của SePay (tiền vào tài khoản); xác thực bằng header `Authorization: Apikey ...` (`SePay:WebhookApiKey`). |
 | Gói Pro & thanh toán | POST | `/api/subscription/payos-webhook` | Công khai | Webhook của PayOS; chữ ký xác minh bằng `PayOS:ChecksumKey`. |
-| Gói Pro & thanh toán | GET | `/api/subscription/check-status/{orderCode}` | Cần đăng nhập | Trạng thái giao dịch PayOS của chính mình; còn chờ thì máy chủ hỏi PayOS và kích hoạt Pro khi đã nhận đủ tiền. |
+| Gói Pro & thanh toán | GET | `/api/subscription/check-status/{orderCode}` | Cần đăng nhập | Trạng thái giao dịch PayOS/SePay của chính mình; còn chờ thì máy chủ hỏi cổng thanh toán và kích hoạt Pro khi đã nhận đủ tiền. |
 | Gói Pro & thanh toán | GET | `/api/subscription/status` | Cần đăng nhập | Trạng thái gói: Free \| Premium \| Expired \| Cancelled, gói và hạn dùng. |
 | Gói Pro & thanh toán | GET | `/api/subscription/transactions` | Cần đăng nhập | Lịch sử giao dịch của người dùng (mới → cũ). |
 | Gói Pro & thanh toán | POST | `/api/subscription/cancel` | Cần đăng nhập | Hủy gia hạn: vẫn dùng Pro tới hết hạn. |
@@ -810,7 +810,7 @@ Xóa một món ăn khỏi thực đơn tuần.
 
 #### `POST /api/mealplanner/auto-generate`
 
-Tự động sinh thực đơn 7 ngày, loại hẳn món chứa chất gây dị ứng của người dùng. `keepExisting=true` chỉ điền các ô còn trống.
+Tự động sinh thực đơn 7 ngày, loại hẳn món chứa chất gây dị ứng của người dùng. `keepExisting=true` chỉ điền các ô còn trống. **Chỉ dành cho Pro**: tài khoản Free → `403` (`errors` có `pro_required`).
 
 - **Quyền**: Cần đăng nhập
 - **Body (JSON)**: [AutoGeneratePlanRequestDto](#schema-autogenerateplanrequestdto)
@@ -918,7 +918,7 @@ AI Snap & Track: ảnh đĩa thức ăn (multipart, trường `image`; JPG/PNG/W
 
 #### `POST /api/ai/fridge-scanner`
 
-Fridge Scanner: ảnh nguyên liệu trong tủ lạnh (multipart, trường `image`).
+Fridge Scanner: ảnh nguyên liệu trong tủ lạnh (multipart, trường `image`). **Chỉ dành cho Pro**: tài khoản Free → `403` (`errors` có `pro_required`), không tốn lượt AI.
 
 - **Quyền**: Cần đăng nhập
 - **Body (multipart/form-data)**: field `image` (file)
@@ -1081,9 +1081,11 @@ Thông báo của người dùng (mới → cũ) kèm số chưa đọc.
 
 ### Gói Pro & thanh toán
 
-> Gói: `PRO_MONTHLY` 79.000đ / 30 ngày, `PRO_YEARLY` 699.000đ / 365 ngày. Phương thức: `VNPAY`, `MOMO`, `STRIPE`.
+> Gói: `PRO_MONTHLY` 79.000đ / 30 ngày, `PRO_YEARLY` 699.000đ / 365 ngày. Phương thức: `SEPAY`, `PAYOS` (đều là chuyển khoản VietQR). Quyền lợi Pro (máy chủ kiểm tra): AI không giới hạn lượt (Free 5 lượt/ngày), quét tủ lạnh (`/ai/fridge-scanner`) và tự tạo thực đơn tuần (`/mealplanner/auto-generate`) — Free gọi hai tính năng này nhận `403 pro_required`.
 
-> Pro chỉ kích hoạt khi **cổng thanh toán xác nhận qua webhook** (`POST /subscription/webhook`, body `{ sessionId, status: "paid"|"failed", providerTransactionId, amountVnd }`, header `X-Signature` = HMAC-SHA256 hex của body với `Subscription:WebhookSecret`; số tiền phải khớp phiên; xử lý idempotent) — BR-241/242. VNPAY/MOMO/STRIPE chưa có cổng thật (URL trả về là sandbox).
+> Pro chỉ kích hoạt khi **cổng thanh toán xác nhận đã nhận tiền** (webhook của cổng hoặc máy chủ tự hỏi cổng) — BR-241/242. Mọi đường xác nhận dùng chung một bước idempotent nên Pro không bị cộng hạn hai lần. Các cổng giả lập trước đây (`VNPAY`/`MOMO`/`STRIPE` với URL tự dựng và webhook `/subscription/webhook` tự định nghĩa) đã bị bỏ.
+
+> **SePay** (`paymentMethod = SEPAY`): người dùng chuyển khoản thẳng vào tài khoản ngân hàng đã liên kết SePay. `create-checkout-session` trả `orderCode`, `qrCodeUrl` (ảnh VietQR đã điền sẵn số tiền và nội dung), `bankCode`, `accountNumber`, `accountName`, `transferContent` (mã thanh toán = `SePay:PaymentCodePrefix` + 8 ký tự, cũng là `sessionId`) và `expiresAt` (hạn hiển thị mã; tiền tới sau hạn vẫn được ghi nhận). Pro kích hoạt khi tiền vào đúng mã với số tiền đủ — qua `POST /subscription/sepay-webhook` (header `Authorization: Apikey {SePay:WebhookApiKey}`, sai → `401`) **hoặc** khi app gọi `check-status` và máy chủ tự hỏi API giao dịch của SePay (`SePay:ApiToken`, tối đa 1 lần / `SePay:StatusCheckIntervalSeconds` mỗi đơn). Mã được tìm cả trong trường `code` của SePay lẫn trong nội dung chuyển khoản (không phân biệt hoa thường, bỏ qua chữ/dấu ngân hàng chèn thêm). Chuyển thiếu tiền, tiền ra, nội dung không khớp đơn nào → `200 {"success": true}` nhưng không kích hoạt (ghi log để đối soát). Thiếu tài khoản nhận hoặc không có cách xác nhận nào → `503 sepay_not_configured`.
 
 > **PayOS** (`paymentMethod = PAYOS`, chuyển khoản VietQR) là cổng thật: `create-checkout-session` gọi PayOS tạo link và trả thêm `orderCode`, `qrCode` (chuỗi VietQR) và `qrCodeUrl` (ảnh QR). Pro chỉ kích hoạt khi PayOS xác nhận — qua `POST /subscription/payos-webhook` (chữ ký kiểm bằng `PayOS:ChecksumKey`, sai → `401`; webhook thử với mã đơn lạ → `200`) **hoặc** khi app gọi `GET /subscription/check-status/{orderCode}` và máy chủ hỏi thẳng PayOS thấy `PAID` với số tiền đủ (dùng được khi webhook không tới được máy chủ, vd. máy dev). Cả hai đường dùng chung một bước xác nhận idempotent nên Pro không bị cộng hạn hai lần. Thiếu khóa PayOS → `503 payos_not_configured`; PayOS lỗi khi tạo link → `502 payos_error`.
 
@@ -1100,7 +1102,7 @@ Bảng giá các gói Pro (giá, chu kỳ, quyền lợi) — nguồn duy nhất
 
 #### `POST /api/subscription/create-checkout-session`
 
-Tạo phiên thanh toán. Gói Pro chỉ được kích hoạt khi cổng thanh toán xác nhận qua webhook (BR-241/242).
+Tạo phiên thanh toán (`SEPAY` hoặc `PAYOS`). Gói Pro chỉ được kích hoạt khi cổng thanh toán xác nhận đã nhận tiền (BR-241/242).
 
 - **Quyền**: Cần đăng nhập
 - **Body (JSON)**: [CreateCheckoutSessionRequestDto](#schema-createcheckoutsessionrequestdto)
@@ -1114,9 +1116,9 @@ Chỉ dùng khi phát triển: mô phỏng cổng thanh toán xác nhận. Môi 
 - **Body (JSON)**: [CreateCheckoutSessionRequestDto](#schema-createcheckoutsessionrequestdto)
 - **Response `data`**: bool
 
-#### `POST /api/subscription/webhook`
+#### `POST /api/subscription/sepay-webhook`
 
-Webhook của cổng thanh toán (server-to-server). Body JSON `{ sessionId, status: "paid"|"failed", providerTransactionId, amountVnd }`, header `X-Signature` = HMAC-SHA256 (hex) của body với `Subscription:WebhookSecret`.
+Webhook của SePay (đăng ký ở my.sepay.vn → WebHooks, kiểu xác thực **API Key**, URL `https://<máy-chủ>/api/subscription/sepay-webhook`). Body là JSON SePay `{ id, gateway, transactionDate, accountNumber, code, content, transferType, transferAmount, accumulated, subAccount, referenceCode, description }`; chỉ xử lý `transferType = "in"`. Header `Authorization: Apikey {SePay:WebhookApiKey}` — sai/thiếu → `401`. Đã xử lý (kể cả không khớp đơn nào) → `200 {"success": true}` để SePay không gửi lại.
 
 - **Quyền**: Công khai
 - **Response `data`**: bool
@@ -1130,7 +1132,7 @@ Webhook của PayOS (đăng ký URL này ở my.payos.vn). Body là JSON PayOS `
 
 #### `GET /api/subscription/check-status/{orderCode}`
 
-Trạng thái giao dịch PayOS của chính bạn; còn chờ thì máy chủ hỏi PayOS và kích hoạt Pro khi PayOS báo `PAID` với số tiền đủ. Đơn bị hủy/hết hạn bên PayOS → `Failed`. Giao dịch của người khác → `404`.
+Trạng thái giao dịch PayOS/SePay của chính bạn; còn chờ thì máy chủ hỏi cổng thanh toán và kích hoạt Pro khi đã nhận đủ tiền (PayOS báo `PAID`; SePay có giao dịch tiền vào đúng mã). Đơn bị hủy/hết hạn bên PayOS → `Failed`. Giao dịch của người khác → `404`.
 
 - **Quyền**: Cần đăng nhập
 - **Response `data`**: [PaymentTransactionStatusDto](#schema-paymenttransactionstatusdto)
@@ -1179,7 +1181,9 @@ Khóa bí mật chỉ đặt qua biến môi trường (`Muc__Khoa`, dùng `__` 
 | `Smtp:Host`, `Port`, `EnableSsl`, `User`, `Password`, `From`, `FromName` | (trống) / 587 / true / … | Gửi email OTP. Cần `Host` và địa chỉ gửi (`From`, trống = dùng `User`); thiếu = chỉ ghi log (Development in cả mã OTP). Gmail cần App Password. |
 | `Storage:Root` / `Storage:PublicBaseUrl` / `Storage:MaxAvatarBytes` | `uploads` cạnh ứng dụng / theo request / 2 MB | Nơi lưu và URL công khai của ảnh đại diện. Chạy Docker cần gắn volume vào `Storage:Root`. |
 | `Subscription:AllowMockActivation` | (trống = chỉ Development) | Cho phép `activate-mock`. Môi trường thật phải để tắt. |
-| `Subscription:WebhookSecret` | (trống = tắt webhook) | Khóa HMAC dùng chung với cổng thanh toán. |
+| `SePay:BankCode` / `SePay:AccountNumber` / `SePay:AccountName` | (trống = tắt SEPAY, trả 503) | Tài khoản ngân hàng nhận tiền (đã liên kết SePay) để tạo VietQR; `BankCode` theo danh sách ngân hàng của SePay (vd. `MBBank`, `VCB`). |
+| `SePay:WebhookApiKey` / `SePay:ApiToken` | (trống) | **Bí mật** — chỉ đặt qua biến môi trường `SePay__*`. API Key xác thực webhook; API Token để máy chủ tự hỏi giao dịch khi webhook không tới được (máy dev). Cần ít nhất một trong hai. |
+| `SePay:PaymentCodePrefix` / `ExpiryMinutes` / `StatusCheckIntervalSeconds` | `SM` / 15 / 10 | Tiền tố mã thanh toán (đặt trùng "cấu trúc mã thanh toán" trên SePay), thời gian hiển thị mã QR, khoảng cách tối thiểu giữa hai lần hỏi API SePay cho một đơn. |
 | `PayOS:ClientId` / `PayOS:ApiKey` / `PayOS:ChecksumKey` | (trống = tắt PAYOS, trả 503) | Khóa PayOS (my.payos.vn → Kênh thanh toán). **Bí mật** — chỉ đặt qua biến môi trường `PayOS__*`. |
 | `PayOS:ReturnUrl` / `PayOS:CancelUrl` | `smartmeal://payment-success` / `smartmeal://payment-cancel` | Trang PayOS chuyển về sau khi thanh toán / khi hủy. |
 | `Google:ClientId` | (trống = tắt đăng nhập Google, trả 503) | Web OAuth 2.0 Client ID dùng làm audience khi xác minh ID token; trùng `EXPO_PUBLIC_GOOGLE_CLIENT_ID` của app. Không phải bí mật. |
@@ -1352,12 +1356,17 @@ Cần ít nhất một trong `barcode` hoặc `ocrRawText`.
 | Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
 |---|---|---|---|---|
 | `sessionId` | string? |  |  |  |
-| `orderCode` | int64? |  |  | Mã đơn PayOS (chỉ có với `PAYOS`). |
-| `paymentUrl` | string? |  |  | Với `PAYOS` là trang thanh toán PayOS. |
+| `orderCode` | int64? |  |  | Mã đơn (`SEPAY`, `PAYOS`) — dùng cho `check-status`. |
+| `paymentUrl` | string? |  |  | Với `PAYOS` là trang thanh toán PayOS; với `SEPAY` là ảnh VietQR. |
 | `qrCodeUrl` | string? |  |  | Ảnh mã QR để hiển thị. |
 | `qrCode` | string? |  |  | Chuỗi VietQR gốc (chỉ có với `PAYOS`). |
 | `amountVnd` | number |  |  |  |
 | `message` | string? |  |  |  |
+| `bankCode` | string? |  |  | `SEPAY`: ngân hàng nhận tiền. |
+| `accountNumber` | string? |  |  | `SEPAY`: số tài khoản nhận tiền. |
+| `accountName` | string? |  |  | `SEPAY`: tên chủ tài khoản (để người dùng đối chiếu). |
+| `transferContent` | string? |  |  | `SEPAY`: nội dung chuyển khoản bắt buộc (mã thanh toán). |
+| `expiresAt` | datetime (ISO 8601 UTC)? |  |  | `SEPAY`: hết thời gian hiển thị mã; tiền tới sau hạn vẫn được ghi nhận. |
 
 <a id="schema-collectionsharedto"></a>
 #### CollectionShareDto
@@ -1401,7 +1410,7 @@ Cần ít nhất một trong `barcode` hoặc `ocrRawText`.
 | Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
 |---|---|---|---|---|
 | `planId` | string | có | ≥1 ký tự |  |
-| `paymentMethod` | string? |  |  | Chỉ nhận (không phân biệt hoa/thường): `VNPAY`, `MOMO`, `STRIPE`, `PAYOS` |
+| `paymentMethod` | string? |  |  | Chỉ nhận (không phân biệt hoa/thường): `SEPAY`, `PAYOS` |
 
 <a id="schema-createcollectionrequestdto"></a>
 #### CreateCollectionRequestDto

@@ -70,7 +70,7 @@ export const premiumMockService = {
     const plan = BILLING_PLAN_OPTIONS.find(option => option.id === planId);
     const amountVnd = plan?.priceVnd ?? 0;
 
-    // PayOS: màn hình chờ hiện "mã QR" giả lập trong lúc mock giả vờ chờ ngân hàng xác nhận.
+    // Màn hình chờ hiện "mã QR" (SePay: kèm thông tin chuyển khoản) giả lập trong lúc mock giả vờ chờ ngân hàng xác nhận.
     if (paymentMethodId === 'payos') {
       options?.onSession?.({
         sessionId: `PAYOS_mock_${Date.now()}`,
@@ -78,6 +78,21 @@ export const premiumMockService = {
         paymentUrl: 'https://pay.payos.vn/web/mock',
         qrCodeUrl: null,
         amountVnd,
+      });
+    } else {
+      options?.onSession?.({
+        sessionId: 'SMMOCK2026',
+        orderCode: Date.now(),
+        paymentUrl: '',
+        qrCodeUrl: null,
+        amountVnd,
+        bankTransfer: {
+          bankCode: 'MBBank',
+          accountNumber: '0000000000',
+          accountName: 'SMARTMEAL (MOCK)',
+          transferContent: 'SMMOCK2026',
+          expiresAtIso: null,
+        },
       });
     }
 

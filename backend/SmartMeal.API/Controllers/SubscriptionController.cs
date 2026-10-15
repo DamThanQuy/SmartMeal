@@ -44,19 +44,20 @@ public class SubscriptionController : ControllerBase
     }
 
     /// <summary>
-    /// Webhook của cổng thanh toán (server-to-server). Body JSON <c>{ sessionId, status: "paid"|"failed", providerTransactionId, amountVnd }</c>,
-    /// header <c>X-Signature</c> = HMAC-SHA256 (hex) của body với <c>Subscription:WebhookSecret</c>.
+    /// Webhook của SePay (đăng ký URL này ở my.sepay.vn → WebHooks, kiểu xác thực "API Key"): SePay báo mỗi khoản tiền vào
+    /// tài khoản. Sai API key → 401; mọi khoản đã xử lý (kể cả không khớp đơn nào) trả 200 <c>{"success": true}</c> để SePay
+    /// không gửi lại.
     /// </summary>
     [AllowAnonymous]
-    [HttpPost("webhook")]
+    [HttpPost("sepay-webhook")]
     [RequestSizeLimit(64 * 1024)]
-    public async Task<ActionResult<ApiResponse<bool>>> Webhook()
+    public async Task<ActionResult<ApiResponse<bool>>> SePayWebhook()
     {
         using var reader = new StreamReader(Request.Body, Encoding.UTF8);
         var body = await reader.ReadToEndAsync();
-        var signature = Request.Headers["X-Signature"].FirstOrDefault();
+        var authorization = Request.Headers.Authorization.FirstOrDefault();
 
-        return this.ToActionResult(await _subscriptionService.HandleWebhookAsync(body, signature));
+        return this.ToActionResult(await _subscriptionService.HandleSePayWebhookAsync(authorization, body));
     }
 
     /// <summary>
@@ -75,8 +76,8 @@ public class SubscriptionController : ControllerBase
     }
 
     /// <summary>
-    /// Trạng thái giao dịch PayOS của chính bạn. Đang chờ thì máy chủ hỏi thẳng PayOS và kích hoạt Pro nếu đã nhận đủ tiền —
-    /// app gọi định kỳ khi đang hiện mã QR. Giao dịch của người khác → 404.
+    /// Trạng thái giao dịch PayOS/SePay của chính bạn. Đang chờ thì máy chủ hỏi thẳng cổng thanh toán và kích hoạt Pro nếu đã
+    /// nhận đủ tiền — app gọi định kỳ khi đang hiện mã QR. Giao dịch của người khác → 404.
     /// </summary>
     [Authorize]
     [HttpGet("check-status/{orderCode:long}")]
