@@ -198,6 +198,13 @@ public class MealPlannerService : IMealPlannerService
 
     public async Task<ApiResponse<WeeklyMealPlanDto>> AutoGenerateWeeklyPlanAsync(Guid userId, AutoGeneratePlanRequestDto dto)
     {
+        // "Tự tạo thực đơn tuần" là quyền lợi Pro (BR-230/231): chặn ở máy chủ, không chỉ ẩn nút trên app.
+        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        if (user is null || !user.IsProActive(DateTime.UtcNow))
+        {
+            return ApiResponse<WeeklyMealPlanDto>.Fail(ProRequired.Message, new List<string> { ProRequired.Code }, ApiErrorKind.Forbidden);
+        }
+
         var startDate = dto.StartDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
         var endDate = startDate.AddDays(6);
 

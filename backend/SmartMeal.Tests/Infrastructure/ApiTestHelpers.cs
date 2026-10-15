@@ -44,6 +44,21 @@ public static class ApiTestHelpers
         client.PutAsJsonAsync(url, body, Json);
 
     /// <summary>
+    /// Cho tài khoản thử gói Pro 30 ngày (ghi thẳng DB, không qua thanh toán) — để test các tính năng chỉ dành cho Pro
+    /// (quét tủ lạnh, tự tạo thực đơn tuần).
+    /// </summary>
+    public static async Task GrantProAsync(this ApiFactory factory, TestUser user)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await db.Users.Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s
+            .SetProperty(u => u.IsPro, true)
+            .SetProperty(u => u.ProPlanId, "PRO_MONTHLY")
+            .SetProperty(u => u.ProExpiresAt, DateTime.UtcNow.AddDays(30))
+            .SetProperty(u => u.SubscriptionStatus, "Premium"));
+    }
+
+    /// <summary>
     /// Tài khoản không có mật khẩu — như tài khoản tạo bằng đăng nhập Google trước khi app bỏ tính năng này. Đăng ký bình
     /// thường rồi xóa mật khẩu trong DB; token đã cấp vẫn dùng được.
     /// </summary>
