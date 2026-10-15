@@ -59,6 +59,34 @@ public class SubscriptionController : ControllerBase
         return this.ToActionResult(await _subscriptionService.HandleWebhookAsync(body, signature));
     }
 
+    /// <summary>
+    /// Webhook của PayOS (đăng ký URL này ở my.payos.vn). Chữ ký trong body được xác minh bằng <c>PayOS:ChecksumKey</c>;
+    /// sai chữ ký → 401. Webhook thử của PayOS (mã đơn không có trong hệ thống) trả 200.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("payos-webhook")]
+    [RequestSizeLimit(64 * 1024)]
+    public async Task<ActionResult<ApiResponse<bool>>> PayOSWebhook()
+    {
+        using var reader = new StreamReader(Request.Body, Encoding.UTF8);
+        var body = await reader.ReadToEndAsync();
+
+        return this.ToActionResult(await _subscriptionService.HandlePayOSWebhookAsync(body));
+    }
+
+    /// <summary>
+    /// Trạng thái giao dịch PayOS của chính bạn. Đang chờ thì máy chủ hỏi thẳng PayOS và kích hoạt Pro nếu đã nhận đủ tiền —
+    /// app gọi định kỳ khi đang hiện mã QR. Giao dịch của người khác → 404.
+    /// </summary>
+    [Authorize]
+    [HttpGet("check-status/{orderCode:long}")]
+    public async Task<ActionResult<ApiResponse<PaymentTransactionStatusDto>>> CheckPaymentStatus(long orderCode)
+    {
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<PaymentTransactionStatusDto>();
+
+        return this.ToActionResult(await _subscriptionService.CheckPaymentStatusAsync(userId, orderCode));
+    }
+
     [Authorize]
     [HttpGet("status")]
     public async Task<ActionResult<ApiResponse<SubscriptionStatusDto>>> GetStatus()

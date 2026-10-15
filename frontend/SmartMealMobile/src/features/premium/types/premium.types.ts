@@ -22,8 +22,11 @@ export const MEMBERSHIP_STATUS_LABEL: Record<MembershipStatus, string> = {
   cancelled: 'Đã hủy',
 };
 
-/** 'mock' chỉ xuất hiện trong lịch sử: giao dịch do công tắc kích hoạt thử của backend ở môi trường phát triển. */
-export type PaymentMethodId = 'vnpay' | 'momo' | 'card' | 'mock';
+/**
+ * 'payos' = chuyển khoản VietQR qua cổng PayOS (cổng thật duy nhất đã tích hợp). 'mock' chỉ xuất hiện trong lịch
+ * sử: giao dịch do công tắc kích hoạt thử của backend ở môi trường phát triển.
+ */
+export type PaymentMethodId = 'vnpay' | 'momo' | 'card' | 'payos' | 'mock';
 
 /** Phương thức người dùng có thể chọn khi thanh toán (không gồm 'mock'). */
 export type SelectablePaymentMethodId = Exclude<PaymentMethodId, 'mock'>;
@@ -33,6 +36,7 @@ export const PAYMENT_METHOD_LABEL: Record<PaymentMethodId, string> = {
   vnpay: 'VNPAY',
   momo: 'MoMo',
   card: 'Thẻ quốc tế',
+  payos: 'PayOS (VietQR)',
   mock: 'Kích hoạt thử (dev)',
 };
 
@@ -54,6 +58,26 @@ export interface FeatureComparisonRow {
   freeValueLabel?: string;
   freeIncluded: boolean;
   proValueLabel?: string;
+}
+
+/**
+ * Phiên thanh toán vừa tạo — với PayOS, màn hình hiện mã QR/nút mở trang PayOS trong lúc chờ server xác nhận.
+ * `orderCode` chỉ có với PayOS.
+ */
+export interface CheckoutSession {
+  sessionId: string;
+  orderCode: number | null;
+  paymentUrl: string;
+  /** Ảnh mã QR (URL) để hiển thị; null nếu cổng không có QR. */
+  qrCodeUrl: string | null;
+  amountVnd: number;
+}
+
+export interface CheckoutOptions {
+  /** Gọi ngay khi đã tạo phiên (trước khi chờ xác nhận). */
+  onSession?: (session: CheckoutSession) => void;
+  /** Hủy việc chờ xác nhận (vd. người dùng rời màn hình) — checkout ném PaymentCancelledError. */
+  signal?: AbortSignal;
 }
 
 export interface CheckoutResult {

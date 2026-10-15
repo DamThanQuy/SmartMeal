@@ -174,6 +174,14 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<PaymentTransaction>()
             .HasIndex(t => t.UserId);
 
+        // Mã đơn PayOS: duy nhất (PayOS từ chối tạo lại cùng mã) — null với phương thức khác.
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasIndex(t => t.OrderCode)
+            .IsUnique();
+
+        modelBuilder.Entity<PaymentTransaction>().Property(t => t.CheckoutUrl).HasMaxLength(500);
+        modelBuilder.Entity<PaymentTransaction>().Property(t => t.QrCode).HasMaxLength(1000);
+
         modelBuilder.Entity<PaymentTransaction>()
             .HasOne(t => t.User)
             .WithMany()

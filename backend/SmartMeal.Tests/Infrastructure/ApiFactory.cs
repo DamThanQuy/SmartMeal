@@ -82,6 +82,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
                 ["Gemini:ApiKey"] = "",
                 ["Smtp:Host"] = "",
                 ["Subscription:WebhookSecret"] = "",
+                ["PayOS:ClientId"] = "",
+                ["PayOS:ApiKey"] = "",
+                ["PayOS:ChecksumKey"] = "",
                 ["Subscription:AllowMockActivation"] = "false",
                 ["Ai:AllowDemoFallback"] = "false",
                 // Không gọi Open Food Facts thật trong test; test tra mã vạch ngoài tự bật và thay HttpClient bằng stub.

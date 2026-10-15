@@ -118,6 +118,8 @@ export const ENDPOINTS = {
     plans: '/subscription/plans',
     checkout: '/subscription/create-checkout-session',
     createCheckoutSession: '/subscription/create-checkout-session',
+    /** GET trạng thái giao dịch PayOS của chính mình (máy chủ hỏi PayOS khi còn chờ). */
+    checkStatus: (orderCode: number) => `/subscription/check-status/${orderCode}`,
     activateMock: '/subscription/activate-mock',
     status: '/subscription/status',
     transactions: '/subscription/transactions',

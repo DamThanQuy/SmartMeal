@@ -61,7 +61,7 @@ Chi tiết từng việc và cách kiểm chứng: [`docs/implementation_report.
 
 Mọi hàm của 17 service FE đều có bản gọi API; mọi endpoint FE gọi đều có route ở BE. Đợt này làm nốt các chỗ còn thiếu **không cần khóa bí mật**.
 
-Kiểm chứng: BE 243 test xUnit qua (PostgreSQL thật, gồm test mới cho tiến độ theo khoảng ngày, Open Food Facts dùng stub, dị ứng khác, liên kết Google); FE 514 test Jest qua, `tsc` và `expo lint` không lỗi. Chưa chạy test live/thiết bị thật cho đợt này.
+Kiểm chứng: BE 248 test xUnit qua (PostgreSQL thật, gồm test mới cho tiến độ theo khoảng ngày, Open Food Facts dùng stub, dị ứng khác, liên kết Google, PayOS dùng cổng giả); FE 517 test Jest qua, `tsc` và `expo lint` không lỗi. Chưa chạy test live/thiết bị thật cho đợt này.
 
 
 | Việc | Trạng thái | Ghi chú |
@@ -79,7 +79,9 @@ Kiểm chứng: BE 243 test xUnit qua (PostgreSQL thật, gồm test mới cho t
 | Nút "Xóa món đã mua" | ✅ | Màn Đi chợ: "Xóa N món đã mua" → hỏi lại → `DELETE /grocery/clear-checked`. Khác "Hoàn tất mua sắm" ở chỗ không ghi chuyến đi chợ/chi phí. |
 | Đa ngôn ngữ (i18n) | ➖ | Bỏ hẳn (15/10/2026): app chỉ dùng tiếng Việt; gỡ lựa chọn VI/EN ở Cài đặt và `appStore.language`. |
 | Health Connect, push notification | ⏳ | Cần Dev Client/EAS (và credential FCM/APNs cho push). |
-| Gemini, cổng thanh toán, SMTP | ⏳ | Cần khóa bí mật — ngoài phạm vi đợt này. Lưu ý: `Gemini:Model` mặc định `gemini-1.5-flash` đã bị Google tắt (29/09/2025). |
+| Sửa lần merge PR #12 (PayOS) | ✅ | Bản merge trên `main` không biên dịch được (`PaymentTransaction` khai báo hai lần, biến chưa khai báo) và đã lấy bản cũ của nhiều file, làm mất: `RefreshToken`, unique index nhật ký/thực đơn/Bé Mầm/XP, `UserNotifications`, Idempotency-Key, khóa `GroceryList`, `ShareToken`, kiểm tra Jwt:Key mẫu, API `status`/`transactions`/`cancel`/`webhook`, `premiumService` (FE). Đã khôi phục các phần này rồi tích hợp lại PayOS. |
+| Thanh toán PayOS (VietQR) | ✅ | `paymentMethod = PAYOS`: BE tạo link PayOS, lưu `OrderCode`/`CheckoutUrl`/`QrCode` (migration `PaymentTransactionPayOS`); Pro chỉ kích hoạt khi PayOS xác nhận — webhook có chữ ký (`POST /subscription/payos-webhook`) hoặc máy chủ hỏi PayOS qua `GET /subscription/check-status/{orderCode}` (chỉ chủ đơn); một bước xác nhận idempotent, không cộng hạn hai lần. FE: màn chờ hiện mã QR + mở trang PayOS, chờ server xác nhận (không tự bật Pro như bản PR). Khóa PayOS chỉ đặt qua `PayOS__*` trong `backend/.env`; khóa từng bị commit trong `appsettings.json`/`docker-compose.yml` của PR cần được đổi trên my.payos.vn. |
+| Gemini, cổng VNPAY/MoMo/Stripe, SMTP | ⏳ | Cần khóa bí mật — ngoài phạm vi đợt này. Lưu ý: `Gemini:Model` mặc định `gemini-1.5-flash` đã bị Google tắt (29/09/2025). |
 
 ## 1. Kết quả chính
 

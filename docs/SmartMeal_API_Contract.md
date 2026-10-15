@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Cập nhật | 2026-10-14 (bổ sung thông báo, chia sẻ bộ sưu tập, `hasPassword`). Lần 2 cùng ngày: khôi phục `POST /auth/google` (xác minh ID token, chỉ liên kết vào tài khoản đã xác minh email); thêm `GET /nutritiondiary/progress`, `otherAllergies` trong hồ sơ sức khỏe, tra mã vạch qua Open Food Facts khi CSDL chưa có |
+| Cập nhật | 2026-10-14 (bổ sung thông báo, chia sẻ bộ sưu tập, `hasPassword`). Lần 2 cùng ngày: khôi phục `POST /auth/google` (xác minh ID token, chỉ liên kết vào tài khoản đã xác minh email); thêm `GET /nutritiondiary/progress`, `otherAllergies` trong hồ sơ sức khỏe, tra mã vạch qua Open Food Facts khi CSDL chưa có. 15/10: cổng thanh toán **PayOS** (`paymentMethod = PAYOS`, `GET /subscription/check-status/{orderCode}`, `POST /subscription/payos-webhook`) |
 | Nguồn | Swagger của backend (`/swagger/v1/swagger.json`, bật ở môi trường Development) + chú thích XML và thuộc tính trong `SmartMeal.API/Controllers` và `SmartMeal.Application/DTOs` @ `cc98da0` (bổ sung: thông báo trong app, liên kết chia sẻ bộ sưu tập, `UserDto.hasPassword`; scan-label, voice-log/audio, grocery/complete, Idempotency-Key, tra mã vạch bằng CSDL, ngưỡng bệnh lý) |
 | Thay thế | Bản V2.0 (2026-09-26) đã cũ: nhiều endpoint ghi "chưa làm" nhưng đã có, đường dẫn và field khác |
 | Nguồn sự thật | **Code backend.** Tài liệu này được sinh lại từ code mỗi khi API đổi; nếu lệch thì code thắng |
@@ -118,6 +118,8 @@
 | Gói Pro & thanh toán | POST | `/api/subscription/create-checkout-session` | Cần đăng nhập | Tạo phiên thanh toán |
 | Gói Pro & thanh toán | POST | `/api/subscription/activate-mock` | Cần đăng nhập | Chỉ dùng khi phát triển: mô phỏng cổng thanh toán xác nhận |
 | Gói Pro & thanh toán | POST | `/api/subscription/webhook` | Công khai | Webhook của cổng thanh toán (server-to-server) |
+| Gói Pro & thanh toán | POST | `/api/subscription/payos-webhook` | Công khai | Webhook của PayOS; chữ ký xác minh bằng `PayOS:ChecksumKey`. |
+| Gói Pro & thanh toán | GET | `/api/subscription/check-status/{orderCode}` | Cần đăng nhập | Trạng thái giao dịch PayOS của chính mình; còn chờ thì máy chủ hỏi PayOS và kích hoạt Pro khi đã nhận đủ tiền. |
 | Gói Pro & thanh toán | GET | `/api/subscription/status` | Cần đăng nhập | Trạng thái gói: Free \| Premium \| Expired \| Cancelled, gói và hạn dùng. |
 | Gói Pro & thanh toán | GET | `/api/subscription/transactions` | Cần đăng nhập | Lịch sử giao dịch của người dùng (mới → cũ). |
 | Gói Pro & thanh toán | POST | `/api/subscription/cancel` | Cần đăng nhập | Hủy gia hạn: vẫn dùng Pro tới hết hạn. |
@@ -1079,7 +1081,9 @@ Thông báo của người dùng (mới → cũ) kèm số chưa đọc.
 
 > Gói: `PRO_MONTHLY` 79.000đ / 30 ngày, `PRO_YEARLY` 699.000đ / 365 ngày. Phương thức: `VNPAY`, `MOMO`, `STRIPE`.
 
-> Pro chỉ kích hoạt khi **cổng thanh toán xác nhận qua webhook** (`POST /subscription/webhook`, body `{ sessionId, status: "paid"|"failed", providerTransactionId, amountVnd }`, header `X-Signature` = HMAC-SHA256 hex của body với `Subscription:WebhookSecret`; số tiền phải khớp phiên; xử lý idempotent) — BR-241/242. Chưa tích hợp cổng thật: URL thanh toán trả về là sandbox.
+> Pro chỉ kích hoạt khi **cổng thanh toán xác nhận qua webhook** (`POST /subscription/webhook`, body `{ sessionId, status: "paid"|"failed", providerTransactionId, amountVnd }`, header `X-Signature` = HMAC-SHA256 hex của body với `Subscription:WebhookSecret`; số tiền phải khớp phiên; xử lý idempotent) — BR-241/242. VNPAY/MOMO/STRIPE chưa có cổng thật (URL trả về là sandbox).
+
+> **PayOS** (`paymentMethod = PAYOS`, chuyển khoản VietQR) là cổng thật: `create-checkout-session` gọi PayOS tạo link và trả thêm `orderCode`, `qrCode` (chuỗi VietQR) và `qrCodeUrl` (ảnh QR). Pro chỉ kích hoạt khi PayOS xác nhận — qua `POST /subscription/payos-webhook` (chữ ký kiểm bằng `PayOS:ChecksumKey`, sai → `401`; webhook thử với mã đơn lạ → `200`) **hoặc** khi app gọi `GET /subscription/check-status/{orderCode}` và máy chủ hỏi thẳng PayOS thấy `PAID` với số tiền đủ (dùng được khi webhook không tới được máy chủ, vd. máy dev). Cả hai đường dùng chung một bước xác nhận idempotent nên Pro không bị cộng hạn hai lần. Thiếu khóa PayOS → `503 payos_not_configured`; PayOS lỗi khi tạo link → `502 payos_error`.
 
 > `activate-mock` mô phỏng cổng thanh toán, **chỉ chạy ở Development** (hoặc khi `Subscription:AllowMockActivation = true`); nơi khác trả `404`. Gia hạn khi còn hạn thì cộng thêm vào cuối kỳ hiện tại.
 
@@ -1114,6 +1118,24 @@ Webhook của cổng thanh toán (server-to-server). Body JSON `{ sessionId, sta
 
 - **Quyền**: Công khai
 - **Response `data`**: bool
+
+#### `POST /api/subscription/payos-webhook`
+
+Webhook của PayOS (đăng ký URL này ở my.payos.vn). Body là JSON PayOS `{ code, desc, success, data: { orderCode, amount, ... }, signature }`.
+
+- **Quyền**: Công khai
+- **Response `data`**: bool
+
+#### `GET /api/subscription/check-status/{orderCode}`
+
+Trạng thái giao dịch PayOS của chính bạn; còn chờ thì máy chủ hỏi PayOS và kích hoạt Pro khi PayOS báo `PAID` với số tiền đủ. Đơn bị hủy/hết hạn bên PayOS → `Failed`. Giao dịch của người khác → `404`.
+
+- **Quyền**: Cần đăng nhập
+- **Response `data`**: [PaymentTransactionStatusDto](#schema-paymenttransactionstatusdto)
+
+| Tham số | Vị trí | Kiểu | Bắt buộc | Ràng buộc |
+|---|---|---|---|---|
+| `orderCode` | đường dẫn | int64 | có |  |
 
 #### `GET /api/subscription/status`
 
@@ -1155,6 +1177,8 @@ Khóa bí mật chỉ đặt qua biến môi trường (`Muc__Khoa`, dùng `__` 
 | `Storage:Root` / `Storage:PublicBaseUrl` / `Storage:MaxAvatarBytes` | `uploads` cạnh ứng dụng / theo request / 2 MB | Nơi lưu và URL công khai của ảnh đại diện. Chạy Docker cần gắn volume vào `Storage:Root`. |
 | `Subscription:AllowMockActivation` | (trống = chỉ Development) | Cho phép `activate-mock`. Môi trường thật phải để tắt. |
 | `Subscription:WebhookSecret` | (trống = tắt webhook) | Khóa HMAC dùng chung với cổng thanh toán. |
+| `PayOS:ClientId` / `PayOS:ApiKey` / `PayOS:ChecksumKey` | (trống = tắt PAYOS, trả 503) | Khóa PayOS (my.payos.vn → Kênh thanh toán). **Bí mật** — chỉ đặt qua biến môi trường `PayOS__*`. |
+| `PayOS:ReturnUrl` / `PayOS:CancelUrl` | `smartmeal://payment-success` / `smartmeal://payment-cancel` | Trang PayOS chuyển về sau khi thanh toán / khi hủy. |
 | `Google:ClientId` | (trống = tắt đăng nhập Google, trả 503) | Web OAuth 2.0 Client ID dùng làm audience khi xác minh ID token; trùng `EXPO_PUBLIC_GOOGLE_CLIENT_ID` của app. Không phải bí mật. |
 | `OpenFoodFacts:Enabled` / `BaseUrl` / `UserAgent` / `TimeoutSeconds` | true / `https://world.openfoodfacts.org` / `SmartMeal/1.0 (PRM393 student project)` / 8 | Tra mã vạch chưa có trong CSDL qua Open Food Facts (không cần khóa). Lỗi mạng/timeout coi như không tìm thấy. |
 | `Gemini:ApiKey` / `Gemini:Model` | (trống) / `gemini-1.5-flash` | Khóa Gemini. Trống: AI trả dữ liệu mẫu ở Development, lỗi 503 ở nơi khác. |
@@ -1323,8 +1347,10 @@ Cần ít nhất một trong `barcode` hoặc `ocrRawText`.
 | Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
 |---|---|---|---|---|
 | `sessionId` | string? |  |  |  |
-| `paymentUrl` | string? |  |  |  |
-| `qrCodeUrl` | string? |  |  |  |
+| `orderCode` | int64? |  |  | Mã đơn PayOS (chỉ có với `PAYOS`). |
+| `paymentUrl` | string? |  |  | Với `PAYOS` là trang thanh toán PayOS. |
+| `qrCodeUrl` | string? |  |  | Ảnh mã QR để hiển thị. |
+| `qrCode` | string? |  |  | Chuỗi VietQR gốc (chỉ có với `PAYOS`). |
 | `amountVnd` | number |  |  |  |
 | `message` | string? |  |  |  |
 
@@ -1370,7 +1396,7 @@ Cần ít nhất một trong `barcode` hoặc `ocrRawText`.
 | Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
 |---|---|---|---|---|
 | `planId` | string | có | ≥1 ký tự |  |
-| `paymentMethod` | string? |  |  | Chỉ nhận (không phân biệt hoa/thường): `VNPAY`, `MOMO`, `STRIPE` |
+| `paymentMethod` | string? |  |  | Chỉ nhận (không phân biệt hoa/thường): `VNPAY`, `MOMO`, `STRIPE`, `PAYOS` |
 
 <a id="schema-createcollectionrequestdto"></a>
 #### CreateCollectionRequestDto
@@ -1903,6 +1929,18 @@ Một mục danh mục (dị ứng, bệnh lý, chế độ ăn). `Code` là mã
 | Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
 |---|---|---|---|---|
 | `availableIngredients` | string[] | có | ≥1 phần tử, ≤50 phần tử |  |
+
+<a id="schema-paymenttransactionstatusdto"></a>
+#### PaymentTransactionStatusDto
+
+| Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| `orderCode` | int64 |  |  |  |
+| `status` | string? |  |  | `Pending` \| `Paid` \| `Failed` |
+| `isPaid` | bool |  |  |  |
+| `planId` | string? |  |  |  |
+| `amountVnd` | number |  |  |  |
+| `paidAt` | date-time? |  |  |  |
 
 <a id="schema-paymenttransactiondto"></a>
 #### PaymentTransactionDto

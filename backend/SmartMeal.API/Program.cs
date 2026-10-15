@@ -90,6 +90,9 @@ builder.Services.AddScoped<IHealthSyncService, HealthSyncService>();
 builder.Services.AddScoped<IGamificationService, GamificationService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+// PayOS (chuyển khoản VietQR): khóa chỉ đặt qua biến môi trường PayOS__* — thiếu khóa thì phương thức PAYOS trả 503.
+builder.Services.Configure<PayOSOptions>(builder.Configuration.GetSection(PayOSOptions.SectionName));
+builder.Services.AddSingleton<IPayOSGateway, PayOSGateway>();
 builder.Services.AddScoped<IFoodService, FoodService>();
 // Mã vạch chưa có trong CSDL: tra Open Food Facts (công khai, không cần khóa) rồi lưu lại (BR-120).
 builder.Services

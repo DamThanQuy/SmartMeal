@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AI_QUOTA_QUERY_KEY } from '@/constants/queryKeys';
 import { usePremiumStore, type BillingPlanId } from '@/state/premium/premiumStore';
 import { premiumService } from '../services/premiumService';
-import type { SelectablePaymentMethodId } from '../types/premium.types';
+import type { CheckoutOptions, SelectablePaymentMethodId } from '../types/premium.types';
 import { SUBSCRIPTION_QUERY_KEY } from './queryKeys';
 
 // Thanh toán xong (server đã xác nhận) → nạp gói mới vào store và làm mới những nơi phụ thuộc gói:
@@ -14,10 +14,11 @@ export function useCheckoutPremium() {
     mutationFn: ({
       planId,
       paymentMethodId,
+      ...options
     }: {
       planId: BillingPlanId;
       paymentMethodId: SelectablePaymentMethodId;
-    }) => premiumService.checkout(planId, paymentMethodId),
+    } & CheckoutOptions) => premiumService.checkout(planId, paymentMethodId, options),
     onSuccess: result => {
       hydrateMembership(result.membership);
     },

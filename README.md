@@ -113,6 +113,7 @@ Copy-Item frontend/SmartMealMobile/.env.example frontend/SmartMealMobile/.env   
 Mở `backend/.env` và điền:
 - `Jwt__Key`: tự sinh khóa ngẫu nhiên ≥ 32 ký tự (lệnh mẫu có trong file). Giá trị `CHANGE_ME…` chỉ chạy được ở Development.
 - `Gemini__ApiKey`: nếu muốn AI thật. Lấy miễn phí tại https://aistudio.google.com/app/apikey. Để trống thì AI trả dữ liệu mẫu (isDemo).
+- `PayOS__ClientId`, `PayOS__ApiKey`, `PayOS__ChecksumKey`: nếu muốn thanh toán Pro bằng PayOS (VietQR). Lấy ở https://my.payos.vn → Kênh thanh toán. Để trống thì phương thức PayOS bị tắt.
 
 Mở `frontend/SmartMealMobile/.env` và đặt `EXPO_PUBLIC_USE_MOCK_API=false`, `EXPO_PUBLIC_API_URL` theo mục 5 bên dưới.
 

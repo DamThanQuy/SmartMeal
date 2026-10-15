@@ -1,4 +1,3 @@
-import { Linking } from 'react-native';
 import { ENV } from '@/config/env';
 import { ENDPOINTS, api, isApiError } from '@/services/api';
 import { isProMembership, type MembershipSnapshot } from '@/state/premium/premiumStore';
@@ -6,9 +5,11 @@ import type {
   CheckoutSessionResponseDto,
   CreateCheckoutSessionRequestDto,
   PaymentTransactionDto,
+  PaymentTransactionStatusDto,
   SubscriptionPlanDto,
   SubscriptionStatusDto,
 } from '../types/premium.api.types';
+import type { CheckoutSession } from '../types/premium.types';
 import {
   fromPlanDto,
   fromStatusDto,
@@ -16,6 +17,7 @@ import {
   toApiPaymentMethod,
   toApiPlanId,
 } from './premium.mapper';
+import { openPaymentPage } from './paymentPage';
 import type { premiumMockService } from './premiumService.mock';
 
 // Bản gọi backend thật (docs/fetch-api/part1 §13). Pro CHỈ được kích hoạt khi server xác nhận
@@ -24,6 +26,8 @@ import type { premiumMockService } from './premiumService.mock';
 /** Hỏi lại trạng thái gói mỗi 3 giây, tối đa 3 phút (người dùng có thể phải sang trang cổng thanh toán). */
 export const CONFIRM_POLL_INTERVAL_MS = 3000;
 export const CONFIRM_TIMEOUT_MS = 180000;
+/** PayOS: người dùng phải mở app ngân hàng quét QR và chuyển khoản nên chờ lâu hơn (10 phút). */
+export const PAYOS_CONFIRM_TIMEOUT_MS = 600000;
 
 /** Đã tạo phiên thanh toán nhưng server chưa xác nhận trong thời gian chờ — gói Pro CHƯA được kích hoạt. */
 export class PaymentNotConfirmedError extends Error {
@@ -34,6 +38,28 @@ export class PaymentNotConfirmedError extends Error {
     this.name = 'PaymentNotConfirmedError';
     Object.setPrototypeOf(this, PaymentNotConfirmedError.prototype);
   }
+}
+
+/** PayOS báo đơn đã bị hủy hoặc hết hạn — không có tiền nào bị trừ, có thể tạo đơn mới. */
+export class PaymentFailedError extends Error {
+  constructor() {
+    super('Giao dịch PayOS đã bị hủy hoặc hết hạn. Bạn chưa bị trừ tiền — hãy tạo giao dịch mới.');
+    this.name = 'PaymentFailedError';
+    Object.setPrototypeOf(this, PaymentFailedError.prototype);
+  }
+}
+
+/** Người dùng rời màn chờ thanh toán: ngừng hỏi trạng thái (giao dịch vẫn có thể được xác nhận sau ở server). */
+export class PaymentCancelledError extends Error {
+  constructor() {
+    super('Đã dừng chờ xác nhận thanh toán.');
+    this.name = 'PaymentCancelledError';
+    Object.setPrototypeOf(this, PaymentCancelledError.prototype);
+  }
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) throw new PaymentCancelledError();
 }
 
 async function fetchStatus(): Promise<MembershipSnapshot> {
@@ -59,15 +85,6 @@ async function tryMockActivation(request: CreateCheckoutSessionRequestDto): Prom
   }
 }
 
-/** Mở trang thanh toán của cổng; lỗi mở trang không chặn việc chờ xác nhận (có thể đã mở từ trước). */
-async function openPaymentPage(paymentUrl: string): Promise<void> {
-  try {
-    await Linking.openURL(paymentUrl);
-  } catch {
-    // Bỏ qua: xem chú thích ở trên.
-  }
-}
-
 /** Gói vừa được kích hoạt/gia hạn: đang Pro và (trước đó không Pro, hoặc hạn đã đổi). */
 function isActivatedSince(before: MembershipSnapshot, after: MembershipSnapshot): boolean {
   if (!isProMembership(after.status)) return false;
@@ -78,14 +95,44 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function waitForActivation(before: MembershipSnapshot): Promise<MembershipSnapshot> {
+async function waitForActivation(
+  before: MembershipSnapshot,
+  signal?: AbortSignal,
+): Promise<MembershipSnapshot> {
   const deadline = Date.now() + CONFIRM_TIMEOUT_MS;
   for (;;) {
+    throwIfAborted(signal);
     const after = await fetchStatus();
     if (isActivatedSince(before, after)) return after;
     if (Date.now() >= deadline) throw new PaymentNotConfirmedError();
     await sleep(CONFIRM_POLL_INTERVAL_MS);
   }
+}
+
+/**
+ * PayOS: hỏi GET /subscription/check-status/{orderCode} — máy chủ tự hỏi PayOS (server-to-server) và kích hoạt Pro khi
+ * đã nhận đủ tiền, nên vẫn chạy được khi webhook không tới được máy chủ. Đã trả tiền → đọc lại gói do server xác nhận.
+ */
+async function waitForPayOS(orderCode: number, signal?: AbortSignal): Promise<MembershipSnapshot> {
+  const deadline = Date.now() + PAYOS_CONFIRM_TIMEOUT_MS;
+  for (;;) {
+    throwIfAborted(signal);
+    const result = await api.get<PaymentTransactionStatusDto>(ENDPOINTS.subscription.checkStatus(orderCode));
+    if (result.isPaid) return fetchStatus();
+    if (result.status.toLowerCase() === 'failed') throw new PaymentFailedError();
+    if (Date.now() >= deadline) throw new PaymentNotConfirmedError();
+    await sleep(CONFIRM_POLL_INTERVAL_MS);
+  }
+}
+
+function toCheckoutSession(dto: CheckoutSessionResponseDto): CheckoutSession {
+  return {
+    sessionId: dto.sessionId,
+    orderCode: dto.orderCode ?? null,
+    paymentUrl: dto.paymentUrl,
+    qrCodeUrl: dto.qrCodeUrl,
+    amountVnd: dto.amountVnd,
+  };
 }
 
 export const premiumApiService: Partial<typeof premiumMockService> = {
@@ -109,8 +156,9 @@ export const premiumApiService: Partial<typeof premiumMockService> = {
     return fromStatusDto(await api.post<SubscriptionStatusDto>(ENDPOINTS.subscription.cancel));
   },
 
-  // Tạo phiên thanh toán → (dev) kích hoạt thử, hoặc mở trang cổng thanh toán → chờ server xác nhận.
-  async checkout(planId, paymentMethodId) {
+  // Tạo phiên thanh toán → chờ server xác nhận. PayOS: màn hình hiện QR (onSession) và hỏi check-status; cổng khác:
+  // (dev) kích hoạt thử, hoặc mở trang cổng thanh toán rồi đọc lại trạng thái gói.
+  async checkout(planId, paymentMethodId, options) {
     const before = await fetchStatus();
     const request: CreateCheckoutSessionRequestDto = {
       planId: toApiPlanId(planId),
@@ -120,11 +168,17 @@ export const premiumApiService: Partial<typeof premiumMockService> = {
       ENDPOINTS.subscription.checkout,
       request,
     );
+    options?.onSession?.(toCheckoutSession(session));
 
-    const activatedByMock = await tryMockActivation(request);
-    if (!activatedByMock) await openPaymentPage(session.paymentUrl);
-
-    const membership = await waitForActivation(before);
+    let membership: MembershipSnapshot;
+    if (paymentMethodId === 'payos' && session.orderCode) {
+      // PayOS là cổng thật: không kích hoạt thử; người dùng quét QR hoặc tự mở trang PayOS từ màn hình chờ.
+      membership = await waitForPayOS(session.orderCode, options?.signal);
+    } else {
+      const activatedByMock = await tryMockActivation(request);
+      if (!activatedByMock) await openPaymentPage(session.paymentUrl);
+      membership = await waitForActivation(before, options?.signal);
+    }
     return {
       transactionId: session.sessionId,
       amountVnd: session.amountVnd,

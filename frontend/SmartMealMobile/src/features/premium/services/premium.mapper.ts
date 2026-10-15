@@ -31,6 +31,7 @@ const API_PAYMENT_METHOD: Record<SelectablePaymentMethodId, ApiPaymentMethod> = 
   vnpay: 'VNPAY',
   momo: 'MOMO',
   card: 'STRIPE',
+  payos: 'PAYOS',
 };
 
 // Nhãn hiển thị theo chu kỳ — tên gói dài của BE ("Gói Tháng (Pro Monthly)") không dùng cho UI.
@@ -56,7 +57,7 @@ export function toApiPaymentMethod(paymentMethodId: SelectablePaymentMethodId): 
   return API_PAYMENT_METHOD[paymentMethodId];
 }
 
-/** VNPAY/MOMO/STRIPE → id FE; MOCK → 'mock'; giá trị lạ → 'vnpay' (phương thức mặc định của BE). */
+/** VNPAY/MOMO/STRIPE/PAYOS → id FE; MOCK → 'mock'; giá trị lạ → 'vnpay' (phương thức mặc định của BE). */
 export function fromApiPaymentMethod(value: string): PaymentMethodId {
   const normalized = value.trim().toUpperCase();
   if (normalized === 'MOCK') return 'mock';
