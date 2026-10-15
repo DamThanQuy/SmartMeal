@@ -38,8 +38,8 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 type Props = NativeStackScreenProps<AuthStackParamList, 'Register'>;
 
 // design/Register.dc.html (BR-010, BR-011). Health Profile thu thập SAU khi tạo tài khoản
-// (docs/design.md mục 39), nên submit thành công điều hướng sang Otp khi cần xác minh email (mock,
-// hoặc API thật khi server đã cấu hình SMTP) hoặc thẳng Health Profile.
+// (docs/design.md mục 39), nên submit thành công điều hướng sang Otp khi cần xác minh email (server
+// đã cấu hình SMTP) hoặc thẳng Health Profile.
 export function RegisterScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const registerMutation = useRegister();

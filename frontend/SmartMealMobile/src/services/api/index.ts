@@ -5,5 +5,4 @@ export { ApiError, isApiError, toApiError, type ApiErrorCode } from './errors';
 export { setUnauthorizedHandler } from './interceptors';
 export { queryClient } from './queryClient';
 export { api } from './request';
-export { selectService } from './serviceSelector';
 export { unwrap } from './unwrap';

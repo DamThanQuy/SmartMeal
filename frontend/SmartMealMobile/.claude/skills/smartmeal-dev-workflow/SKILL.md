@@ -1,6 +1,6 @@
 ---
 name: smartmeal-dev-workflow
-description: Quy trình chuẩn khi implement bất kỳ màn hình/feature/component nào cho SmartMeal mobile (React Native Expo + TypeScript + NativeWind) — đọc đúng thứ tự tài liệu nguồn và artboard trong design/, kiểm tra tái sử dụng component, dùng token thay vì hard-code, đặt code đúng layer, dùng mock data đúng cách trên nhánh feat/mock-ui, và tự chấm Definition of Done trước khi báo hoàn thành. Dùng skill này bất cứ khi nào làm việc trong frontend/SmartMealMobile, đặc biệt khi thêm/sửa screen, component, hook, service hoặc mock.
+description: Quy trình chuẩn khi implement bất kỳ màn hình/feature/component nào cho SmartMeal mobile (React Native Expo + TypeScript + NativeWind) — đọc đúng thứ tự tài liệu nguồn và artboard trong design/, kiểm tra tái sử dụng component, dùng token thay vì hard-code, đặt code đúng layer, luôn gọi API thật (không mock), và tự chấm Definition of Done trước khi báo hoàn thành. Dùng skill này bất cứ khi nào làm việc trong frontend/SmartMealMobile, đặc biệt khi thêm/sửa screen, component, hook hoặc service.
 ---
 
 # SmartMeal — Quy trình phát triển Frontend chuẩn (Expo)
@@ -11,7 +11,7 @@ Dùng cho mọi task chạm vào `frontend/SmartMealMobile/`: thêm feature, th�
 
 Nếu chưa có trong phiên làm việc, đọc:
 
-- `CLAUDE.md` (đặc biệt §4 kiến trúc, §6 styling, §8 mock UI, §9 dựng UI, §10 chia đợt)
+- `CLAUDE.md` (đặc biệt §4 kiến trúc, §6 styling, §8 dữ liệu từ backend, §10 dựng UI, §11 chia đợt)
 - `.claude/rules/component-reuse.md`, `no-hardcode.md`, `typescript-mobile.md`, `architecture.md`, `state-and-api.md`
 - `docs/structure_system.md` §2 và §11 — giới hạn Expo Go, package nào phải dùng Expo SDK
 - `docs/ui-progress.md` — xem màn nào đã xong, đang làm đợt nào
@@ -36,7 +36,7 @@ Dùng `Glob`/`Grep` (không đoán theo tên), theo thứ tự:
 
 1. `src/components/ui/`
 2. `src/components/common/`
-3. `src/features/<feature-hiện-tại>/{components,hooks,services,mocks}/`
+3. `src/features/<feature-hiện-tại>/{components,hooks,services}/`
 4. `src/services/`, `src/utils/`, `src/constants/`, `src/theme/`
 
 Nguyên tắc: **Reuse > Extend > Create new**. Chỉ tạo mới khi chắc chắn không dùng lại hoặc mở rộng được.
@@ -48,7 +48,7 @@ Screen → Hook → Feature Service → API Client / Native Service → Backend 
 ```
 
 - **Screen**: chỉ render UI + gọi hook + điều hướng + Loading / Success / Empty / Error
-  (`ScreenContainer`, `LoadingState`, `EmptyState`, `ErrorState`). Không business logic, không axios, không import mocks.
+  (`ScreenContainer`, `LoadingState`, `EmptyState`, `ErrorState`). Không business logic, không axios, không dữ liệu mẫu hard-code.
 - **Component**: đúng layer (`components/ui` / `components/common` / `features/<feature>/components`)
   theo `component-reuse.md`.
 - **Styling**: NativeWind className token ngữ nghĩa (`bg-surface`, `text-text-secondary`, `p-md`,
@@ -69,22 +69,20 @@ Screen → Hook → Feature Service → API Client / Native Service → Backend 
   - Premium chỉ mở khi thanh toán thành công (BR-241).
 - Hiển thị đúng ở cả **light và dark**.
 
-## Bước 4 — Mock UI (nhánh `feat/mock-ui`)
+## Bước 4 — Dữ liệu từ backend (không mock)
 
-- Mock data trong `src/features/<feature>/mocks/*.mock.ts`, có type, shape khớp `docs/SmartMeal_API_Contract.md`.
-- Service trả Promise từ mock, delay 400–800 ms, xử lý theo `MOCK_SCENARIO` trong `src/config/mock.ts`
-  (`success | empty | error | slow`).
-- Đúng **1** comment `// TODO: replace mock with real API` mỗi service; chữ ký hàm giữ như bản gọi API thật.
-- Hook: `useQuery` để đọc, `useMutation` cho hành động (lưu, xóa, xác nhận, check-off), cập nhật cache.
-- Không axios, không URL backend, không gọi native thật. Camera/mic/barcode/Health: chỉ UI + nút "giả lập kết quả".
-- Không hard-code mock trong screen hoặc component dùng chung.
+- Service: `xService.api.ts` gọi `api` + `ENDPOINTS`, `x.mapper.ts` đổi DTO (khớp `docs/SmartMeal_API_Contract.md`)
+  → type FE, `xService.ts` export lại bản API.
+- Không tạo `mocks/`, `*.mock.ts`, không seed dữ liệu mẫu của design: tài khoản mới phải thấy Empty state.
+- Hook: `useQuery` để đọc, `useMutation` cho hành động (lưu, xóa, xác nhận, check-off), invalidate đúng query.
+- Backend chưa có endpoint / native chưa chạy được trên Expo Go → báo rõ "chưa hỗ trợ", không trả kết quả giả.
 
 ## Bước 5 — Tự chấm Definition of Done
 
 - [ ] Đúng `business_rule.md`, `design.md`, artboard tương ứng, đúng cấu trúc `structure_system.md`.
 - [ ] Không tạo component/service trùng lặp (đã kiểm tra ở Bước 2).
-- [ ] Không gọi API/mock trực tiếp từ UI; không hard-code URL/secret/màu/spacing/route.
-- [ ] Có Loading / Empty / Error khi cần; xem được mọi state qua `MOCK_SCENARIO`.
+- [ ] Không gọi API trực tiếp từ UI; không hard-code URL/secret/màu/spacing/route; không có dữ liệu giả trong `src/`.
+- [ ] Có Loading / Empty / Error khi cần (Empty: tài khoản mới; Error: tắt backend).
 - [ ] Đúng ở light và dark mode.
 - [ ] `npx tsc --noEmit` và `npx expo lint` sạch; không `any` thừa.
 - [ ] Import dùng `@/`, không `../../../`; không circular dependency.
@@ -99,7 +97,7 @@ Mục nào không đạt hoặc bỏ qua có lý do → ghi rõ trong báo cáo,
 ```
 ## Kết quả
 - Artboard: ...
-- File tạo/sửa: screens / hooks / services / mocks / types / navigation / components
+- File tạo/sửa: screens / hooks / services / types / navigation / components
 - Tái sử dụng: ...   · Mới tạo: ...
 - BR đã áp dụng: BR-xxx, ...
 - Lệch so với design: ...

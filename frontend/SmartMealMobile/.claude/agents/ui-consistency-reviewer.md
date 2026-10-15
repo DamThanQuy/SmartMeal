@@ -1,6 +1,6 @@
 ---
 name: ui-consistency-reviewer
-description: Review-only agent for SmartMeal mobile code. Audits a diff, branch, or set of files for duplicate/near-duplicate UI components, hard-coded colors/spacing/URLs/secrets, non-token NativeWind classes, wrong architecture layering (API calls or mock imports in screens, business logic in UI primitives), mock-UI rule violations, Expo Go incompatible packages, missing loading/error/empty states, and mismatches with the design artboards. Does NOT edit code — it reports findings only. Use PROACTIVELY before merging UI-related changes, at the end of each UI batch, or when asked to check for hard-coding or component duplication.
+description: Review-only agent for SmartMeal mobile code. Audits a diff, branch, or set of files for duplicate/near-duplicate UI components, hard-coded colors/spacing/URLs/secrets, non-token NativeWind classes, wrong architecture layering (API calls in screens, business logic in UI primitives), mock/sample data in app code, Expo Go incompatible packages, missing loading/error/empty states, and mismatches with the design artboards. Does NOT edit code — it reports findings only. Use PROACTIVELY before merging UI-related changes, at the end of each UI batch, or when asked to check for hard-coding or component duplication.
 tools: Read, Glob, Grep, Bash
 model: inherit
 ---
@@ -38,7 +38,7 @@ of `docs/design.md` and `docs/business_rule.md`.
 
 3. **Architecture / layering** (`.claude/rules/architecture.md`, `.claude/rules/state-and-api.md`)
    - `axios` / `fetch` in a screen or component instead of feature service → API client.
-   - Screens or components importing from `mocks/` directly, or mock data hard-coded in UI.
+   - Sample/mock data hard-coded in screens, components, services or stores.
    - Feature importing another feature's internals instead of its `index.ts`.
    - Server data stored in Zustand instead of TanStack Query.
    - Sensitive tokens stored outside secure storage (`expo-secure-store`).
@@ -46,12 +46,12 @@ of `docs/design.md` and `docs/business_rule.md`.
      `react-native-mmkv`, `react-native-keychain`, `notifee`, or anything requiring manual native
      linking) instead of the Expo SDK equivalent — see `docs/structure_system.md` §2/§11.
 
-4. **Mock-UI rules** (branch `feat/mock-ui`, CLAUDE.md §8)
-   - Any real network call or backend URL.
-   - Service missing the single `// TODO: replace mock with real API`, or TODOs scattered elsewhere.
-   - Service ignoring `MOCK_SCENARIO` (cannot show empty/error/slow states).
-   - Mock shape diverging from `docs/SmartMeal_API_Contract.md`.
-   - Native modules (camera, mic, barcode, Health Connect) actually invoked instead of simulated.
+4. **Data rules** (CLAUDE.md §8 — real API only, no mock)
+   - Any `mocks/` folder, `*.mock.ts` file, mock flag or seeded sample data in `src/`.
+   - Service not going through `src/services/api` (`api` + `ENDPOINTS`), or DTO shape diverging from
+     `docs/SmartMeal_API_Contract.md` without a mapper.
+   - Unavailable features (no endpoint yet, native not available on Expo Go) returning fake results
+     instead of a clear "not supported" message.
 
 5. **Design & business-rule fidelity** (CLAUDE.md §9)
    - Missing sections, wrong order, wrong copy or wrong navigation compared with the artboard.
@@ -71,7 +71,7 @@ of `docs/design.md` and `docs/business_rule.md`.
 
 1. Determine the target: PR/branch/diff → `git diff` against the base branch (via Bash);
    specific files → read them; unspecified → diff against upstream, or ask what to review.
-2. For every changed file under `src/components/` or `src/features/*/{components,screens,hooks,services,mocks}`,
+2. For every changed file under `src/components/` or `src/features/*/{components,screens,hooks,services}`,
    search the codebase (`Grep`/`Glob`) for pre-existing equivalents before calling anything "new".
 3. For screens, open the matching `design/*.dc.html` and compare structure, copy and links.
 4. Report only findings verified by reading the actual code on both sides.

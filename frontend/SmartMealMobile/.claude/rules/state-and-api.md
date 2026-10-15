@@ -8,13 +8,9 @@ Dùng cho mọi dữ liệu đến từ Backend: user data, nutrition diary, rec
 Screen → useMeals() (hook, TanStack Query) → mealService.getMeals() → apiClient.get()
 ```
 
-Nhánh `feat/mock-ui`: `mealService.getMeals()` tạm trả dữ liệu từ `features/<feature>/mocks/`
-(delay 400–800 ms, theo `MOCK_SCENARIO`), có đúng 1 comment `// TODO: replace mock with real API`.
-Hook/Screen không đổi khi sau này service chuyển sang gọi `apiClient` thật.
-
 - Query key đặt tên rõ ràng, nhất quán (`['meals', date]`), tránh key trùng ý nghĩa khác nhau.
 - Mutation (create/update/delete) phải invalidate đúng query liên quan, không tự bắn `refetch` thủ công
-  rải rác. Trên nhánh mock, mutation cập nhật lại dữ liệu mock/cache trong service.
+  rải rác.
 - Không đưa toàn bộ server data vào Zustand "cho chắc".
 
 ## Client state → Zustand
@@ -40,9 +36,6 @@ src/services/api/
 
 Không bao giờ import `axios` trực tiếp trong Screen/component. Feature service gọi `apiClient`, không tự
 tạo instance Axios riêng.
-
-Nhánh `feat/mock-ui`: **không** gọi `apiClient`/Axios thật; service trả mock. Chỉ chuyển sang gọi `apiClient`
-khi nối API thật, và chỉ sửa bên trong service — chữ ký hàm giữ nguyên.
 
 ## Storage
 
@@ -77,11 +70,8 @@ React Native (Expo) → SmartMeal API (backend) → AI Service → Gemini/LLM
 ```
 
 Mobile không bao giờ gọi thẳng Gemini/LLM bằng API key riêng. AI feature đặt trong `features/ai/` với
-`components/`, `hooks/`, `services/`, `mocks/`, `types/` riêng.
-
-Nhánh `feat/mock-ui`: AI service (AI Snap, Voice Logging, Fridge Scanner, OCR) trả kết quả giả lập từ
-`mocks/` theo đúng flow bên dưới, chưa gọi camera (`expo-camera`)/mic (`expo-av`)/backend thật — chỉ có
-nút "giả lập kết quả".
+`components/`, `hooks/`, `services/`, `types/` riêng. AI service gửi ảnh/âm thanh/văn bản lên backend,
+không bao giờ trả kết quả giả lập.
 
 Kết quả AI luôn phải:
 - Đi qua flow `AI Analysis → User Review → User Confirm → Save` (không tự động lưu — BR-054).
@@ -93,12 +83,11 @@ Kết quả AI luôn phải:
 - Local cache (`AsyncStorage`) chỉ dùng cho preference, dữ liệu gần đây (recent meals/recipes), không
   thay thế Backend làm source of truth (BR-260).
 - Khi mất mạng, dùng `NetInfo` để hiển thị offline state; thay đổi khi offline đưa vào sync queue, đẩy
-  lên Backend khi có mạng lại (BR-261). Trên nhánh mock-ui, mô phỏng trạng thái này bằng UI
-  (banner "Đang offline") mà không cần `NetInfo` thật nếu task chưa yêu cầu.
+  lên Backend khi có mạng lại (BR-261). Màn Dev có công tắc ép "offline" để kiểm tra luồng này.
 
 ## Error/Loading/Empty (bắt buộc với mọi màn hình có dữ liệu bất đồng bộ)
 
 Mỗi màn hình dữ liệu tối thiểu phải xử lý 4 trạng thái: `Loading`, `Success`, `Empty`, `Error` — dùng
 `LoadingState`/`EmptyState`/`ErrorState` từ `components/common` (xem `@.claude/rules/component-reuse.md`).
-Trên nhánh mock, dùng `MOCK_SCENARIO` trong `src/config/mock.ts` để kiểm tra đủ 4 trạng thái. Không để
-màn hình trắng khi API/mock lỗi hoặc đang tải.
+Kiểm tra trạng thái Empty bằng tài khoản mới (chưa có dữ liệu), Error bằng cách tắt backend. Không để màn
+hình trắng khi API lỗi hoặc đang tải.

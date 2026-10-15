@@ -4,7 +4,6 @@ import { api, ENDPOINTS, isApiError } from '@/services/api';
 import type { CheckSafetyRequestDto, CheckSafetyResponseDto, FridgeScannerResponseDto } from '../types/scanner.api.types';
 import type { FridgeScanResult, OcrReviewResult, ScannedProduct } from '../types/scanner.types';
 import { fromBarcodeCheck, fromLabelScan, toFridgeIngredients } from './scanner.mapper';
-import type { scannerMockService } from './scannerService.mock';
 
 // Bản gọi backend thật cho scanner. Mọi kết quả đến từ server: mã vạch tra trong CSDL (không đoán),
 // nhãn đọc từ ẢNH người dùng chụp, tủ lạnh nhận diện từ ảnh thật — không có giá trị mặc định hay ảnh
@@ -17,7 +16,7 @@ function imageForm(uri: string, name: string): FormData {
   return form;
 }
 
-export const scannerApiService: Partial<typeof scannerMockService> = {
+export const scannerApiService = {
   // POST /ai/check-safety { barcode } — sản phẩm + dinh dưỡng /100 g + cảnh báo theo hồ sơ (BR-120/140).
   // 404 product_not_found → null để màn chuyển sang ProductNotFound (nhập tay hoặc quét nhãn).
   async scanBarcode(code: string): Promise<ScannedProduct | null> {

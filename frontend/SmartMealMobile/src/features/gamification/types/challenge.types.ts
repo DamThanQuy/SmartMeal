@@ -9,9 +9,9 @@ export interface Challenge {
   startIso: string;
   endIso: string;
   xpReward: number;
-  /** Id trong BADGE_DEFINITIONS_MOCK (badge.types.ts) — mở khi hoàn thành. */
+  /** Id trong BADGE_DEFINITIONS (badge.types.ts) — mở khi hoàn thành. */
   badgeId?: string;
-  /** Id trong COSTUME_DEFINITIONS_MOCK — mở khi hoàn thành (design/ChallengeComplete.dc.html "Ba lô"). */
+  /** Id trong COSTUME_DEFINITIONS — mở khi hoàn thành (design/ChallengeComplete.dc.html "Ba lô"). */
   costumeId?: string;
   joined: boolean;
   /** true khi user đã hoàn thành VÀ đã nhận thưởng (BR-212, đúng 1 lần). */

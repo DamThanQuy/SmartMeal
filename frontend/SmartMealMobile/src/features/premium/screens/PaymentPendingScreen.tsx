@@ -9,9 +9,8 @@ import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useCheckoutPremium } from '../hooks/useCheckoutPremium';
-import { BILLING_PLAN_OPTIONS } from '../mocks/premium.mock';
 import { openPaymentPage } from '../services/paymentPage';
-import type { CheckoutSession } from '../types/premium.types';
+import { BILLING_PLAN_OPTIONS, type CheckoutSession } from '../types/premium.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PaymentPending'>;
 

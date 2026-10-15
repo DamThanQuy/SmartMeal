@@ -1,5 +1,4 @@
 export * from './types/premium.types';
-export * from './mocks/premium.mock';
 export * from './services/premiumService';
 export * from './hooks/useCheckoutPremium';
 export * from './hooks/useSubscription';

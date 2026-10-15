@@ -37,7 +37,7 @@ export function useToggleGroceryItem(weekStartIso: string) {
 export function useMarkAllGroceryPurchased(weekStartIso: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => groceryService.markAllPurchased(weekStartIso),
+    mutationFn: () => groceryService.markAllPurchased(),
     onSuccess: () => invalidateGrocery(queryClient, weekStartIso),
   });
 }
@@ -62,7 +62,7 @@ export function useDeleteGroceryItem(weekStartIso: string) {
 export function useClearPurchasedGrocery(weekStartIso: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => groceryService.clearPurchased(weekStartIso),
+    mutationFn: () => groceryService.clearPurchased(),
     onSuccess: () => invalidateGrocery(queryClient, weekStartIso),
   });
 }

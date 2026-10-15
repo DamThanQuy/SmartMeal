@@ -15,7 +15,6 @@ import {
   resolveDateOfBirth,
   selectionFromForm,
   selectionFromServer,
-  snapshotFromInput,
   toBasicInfoUpdateRequest,
   toHealthProfileResult,
   toRecordedAtIso,
@@ -482,46 +481,5 @@ describe('toRecordedAtIso', () => {
     expect(iso.endsWith('Z')).toBe(true);
     expect([recorded.getFullYear(), recorded.getMonth(), recorded.getDate()]).toEqual([2026, 8, 20]);
     expect(recorded.getHours()).toBe(12);
-  });
-});
-
-describe('snapshotFromInput', () => {
-  const input: HealthProfileInput = {
-    gender: 'female',
-    dateOfBirth: new Date(1996, 5, 15),
-    heightCm: 160,
-    weightKg: 55,
-    goalWeightKg: 52,
-    activityLevel: 'moderate',
-    goal: 'lose',
-    allergyIds: ['peanut'],
-    healthConditionIds: [],
-    dietaryPreferenceIds: ['vegan'],
-  };
-  const result = {
-    bmi: 21.5,
-    bmr: 1283,
-    tdee: 1988,
-    calorieTarget: 1488,
-    macros: { proteinG: 93, carbsG: 186, fatG: 41 },
-    goal: 'lose' as const,
-  };
-
-  test('tuổi tính từ ngày sinh và giữ ngày sinh thật', () => {
-    const snapshot = snapshotFromInput(input, result, TODAY);
-
-    expect(snapshot.age).toBe(30);
-    expect(snapshot.dateOfBirth).toBe(input.dateOfBirth);
-    expect(snapshot).toMatchObject({
-      gender: 'female',
-      heightCm: 160,
-      weightKg: 55,
-      goalWeightKg: 52,
-      activityLevel: 'moderate',
-      goal: 'lose',
-      allergyIds: ['peanut'],
-      dietaryPreferenceIds: ['vegan'],
-      result,
-    });
   });
 });

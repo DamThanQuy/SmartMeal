@@ -6,7 +6,6 @@ export * from './hooks/useDiary';
 export * from './hooks/useFoodSearch';
 export * from './hooks/useProgress';
 export * from './hooks/useHealthSync';
-export * from './mocks/diary.mock';
 export * from './state/offlineSyncStore';
 export * from './utils/nutritionMath';
 export * from './utils/pickedFood';

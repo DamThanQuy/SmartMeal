@@ -1,6 +1,8 @@
 // BR-170→BR-174 — Smart Grocery List: sinh từ Meal Plan, cộng dồn nguyên liệu trùng, phân loại,
 // check-off Pending/Purchased, ước tính chi phí.
 
+import type { GroceryCategory } from '../utils/groceryAggregation';
+
 export type GroceryItemStatus = 'pending' | 'purchased';
 
 export interface GroceryItem {
@@ -59,4 +61,14 @@ export interface CompleteShoppingResult {
   list: GroceryList;
   /** Câu tóm tắt của server, vd. "Đã giữ lại 3 món chưa mua. Kỳ tiếp theo chưa có thực đơn." */
   note?: string;
+}
+
+/** Món người dùng tự thêm vào danh sách đi chợ (GroceryAdd). */
+export interface ManualGroceryItemInput {
+  name: string;
+  quantity: number;
+  unit: string;
+  category: GroceryCategory;
+  /** Ước tính theo bảng giá trung bình (BR-174); bỏ trống = chưa có giá. */
+  estimatedPriceVnd?: number;
 }

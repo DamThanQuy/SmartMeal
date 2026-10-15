@@ -4,11 +4,10 @@ import type { HealthPetStatusDto, StreakStatusDto } from '../types/gamification.
 import type { PetState } from '../types/gamification.types';
 import { challengeService } from './challengeService';
 import { fromPetStatus } from './gamification.mapper';
-import type { gamificationMockService } from './gamificationService.mock';
 
 // Bản gọi backend thật cho Bé Mầm: cấp, XP và nhiệm vụ hôm nay do server tính và cộng XP (BR-202) —
 // FE không tự tính lại nhiệm vụ từ nhật ký/nước như bản PR #9 (review G1). `date` = ngày theo giờ máy.
-export const gamificationApiService: Partial<typeof gamificationMockService> = {
+export const gamificationApiService = {
   async getPetState(): Promise<PetState> {
     const date = todayIso();
     const params = { params: { date } };

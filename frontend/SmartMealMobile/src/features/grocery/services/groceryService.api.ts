@@ -9,9 +9,14 @@ import type {
   GrocerySummaryDto,
   ToggleGroceryItemRequestDto,
 } from '../types/grocery.api.types';
-import type { CompleteShoppingInput, GroceryItemStatus, GroceryList } from '../types/grocery.types';
+import type {
+  CompleteShoppingInput,
+  CompleteShoppingResult,
+  GroceryItemStatus,
+  GroceryList,
+  ManualGroceryItemInput,
+} from '../types/grocery.types';
 import { fromGroceryItemDto, fromGrocerySummaryDto } from './grocery.mapper';
-import type { groceryMockService, ManualGroceryItemInput } from './groceryService.mock';
 
 // Bản gọi backend thật cho /grocery/* (docs/SmartMeal_API_Contract.md). BE giữ MỘT danh sách cho mỗi
 // người dùng kèm khoảng ngày thực đơn của lần tạo gần nhất (periodStart/End); không tự cập nhật khi
@@ -34,7 +39,7 @@ async function generate(weekStartIso: string): Promise<GroceryList> {
   return fromGrocerySummaryDto(weekStartIso, dto);
 }
 
-export const groceryApiService: Partial<typeof groceryMockService> = {
+export const groceryApiService = {
   // GET /grocery — danh sách còn trống thì tự tạo một lần từ thực đơn tuần đang xem (tuần chưa có thực
   // đơn: BE trả 400 → giữ danh sách trống để màn hiện EmptyState "Đi tới Thực đơn").
   async getGroceryList(weekStartIso: string) {
@@ -88,7 +93,7 @@ export const groceryApiService: Partial<typeof groceryMockService> = {
 
   // "Hoàn tất mua sắm" — một request: lưu chi phí thực tế, bỏ món đã mua, giữ/bỏ món chưa mua và (khi
   // giữ) cộng luôn thực đơn tuần sau, trong một transaction phía server.
-  async completeShopping(weekStartIso: string, input: CompleteShoppingInput) {
+  async completeShopping(weekStartIso: string, input: CompleteShoppingInput): Promise<CompleteShoppingResult> {
     if (input.markAllPurchased) {
       await api.patch<GrocerySummaryDto, ToggleGroceryItemRequestDto>(ENDPOINTS.grocery.checkAll, { isChecked: true });
     }

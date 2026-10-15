@@ -13,7 +13,6 @@ import { MEAL_TYPE_TITLES } from '@/types/meal.types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { SafetyAlertList } from '../components/SafetyAlertList';
 import { useScanBarcode } from '../hooks/useScanner';
-import { CameraPermissionDeniedError } from '../services/scannerService';
 import type { ScannedProduct } from '../types/scanner.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'Barcode'>;
@@ -46,11 +45,6 @@ export function BarcodeScreen({ navigation, route }: Props) {
           setProduct(result);
         } else {
           navigation.replace(MAIN_STACK_ROUTES.PRODUCT_NOT_FOUND, { barcode: code, mealType });
-        }
-      },
-      onError: error => {
-        if (error instanceof CameraPermissionDeniedError) {
-          navigation.replace(MAIN_STACK_ROUTES.STATE_PERMISSION, { mealType, returnTo: 'Barcode' });
         }
       },
       onSettled: () => {

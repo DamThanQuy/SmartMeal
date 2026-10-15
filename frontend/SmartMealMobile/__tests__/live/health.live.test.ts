@@ -98,18 +98,6 @@ describeLive('health profile (backend thật)', () => {
 
     const updated = await healthProfileService.updateBasicInfo(
       { gender: 'female', dateOfBirth: new Date(1990, 2, 8), heightCm: 160 },
-      {
-        gender: 'male',
-        dateOfBirth: new Date(1995, 5, 15),
-        heightCm: 175,
-        weightKg: 70,
-        goalWeightKg: 65,
-        activityLevel: 'moderate',
-        goal: 'lose',
-        allergyIds: ['seafood', 'treeNut'],
-        healthConditionIds: ['diabetes'],
-        dietaryPreferenceIds: ['keto', 'lowCarb'],
-      },
     );
 
     expect(updated.snapshot).toMatchObject({ gender: 'female', heightCm: 160 });
@@ -123,28 +111,13 @@ describeLive('health profile (backend thật)', () => {
   test('đổi dị ứng/bệnh lý/chế độ ăn bằng PUT, kể cả "Không có" (xóa hết) và chỉ đổi chế độ ăn', async () => {
     const user = await newUser();
     await healthProfileService.submitHealthProfile(form());
-    const current = {
-      gender: 'male' as const,
-      dateOfBirth: new Date(1995, 5, 15),
-      heightCm: 175,
-      weightKg: 70,
-      goalWeightKg: 65,
-      activityLevel: 'moderate' as const,
-      goal: 'lose' as const,
-      allergyIds: ['seafood'],
-      healthConditionIds: [],
-      dietaryPreferenceIds: ['keto'],
-    };
-
     const dietOnly = await healthProfileService.updateHealthSettings(
       { allergyIds: ['seafood', 'treeNut', 'other'], healthConditionIds: ['diabetes'], dietaryPreferenceIds: ['vegan'] },
-      current,
     );
     expect(dietOnly?.snapshot.dietaryPreferenceIds).toEqual(['vegan']);
 
     const cleared = await healthProfileService.updateHealthSettings(
       { allergyIds: [], healthConditionIds: [], dietaryPreferenceIds: [] },
-      current,
     );
     expect(cleared?.snapshot).toMatchObject({ allergyIds: [], healthConditionIds: [], dietaryPreferenceIds: [] });
     expect((await healthProfileService.getHealthProfile(user.id))?.extras.localAllergyIds).toEqual([]);
@@ -159,18 +132,6 @@ describeLive('health profile (backend thật)', () => {
     const after = await healthProfileService.recordWeight(
       // Ngày theo giờ máy như app (todayIso) — ngày UTC lệch một ngày sau 0h giờ VN.
       { weightKg: 68, dateIso: formatDateIso(new Date()) },
-      {
-        gender: 'male',
-        dateOfBirth: new Date(1995, 5, 15),
-        heightCm: 175,
-        weightKg: 70,
-        goalWeightKg: 65,
-        activityLevel: 'moderate',
-        goal: 'lose',
-        allergyIds: [],
-        healthConditionIds: [],
-        dietaryPreferenceIds: [],
-      },
     );
 
     expect(after.snapshot.weightKg).toBe(68);
