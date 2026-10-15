@@ -63,16 +63,8 @@ services:
     container_name: smartmeal_pgadmin
     restart: unless-stopped
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-SmartMealDb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgrespassword}
-      - Jwt__Key=${Jwt__Key:-SmartMeal_SuperSecret_Jwt_Security_Key_2026_FPT_PRM393_VeryLongAndSecureKey!}
-      - Jwt__Issuer=${Jwt__Issuer:-SmartMealBackend}
-      - Jwt__Audience=${Jwt__Audience:-SmartMealMobile}
-      - Gemini__ApiKey=${Gemini__ApiKey:-}
-      - Gemini__Model=${Gemini__Model:-gemini-1.5-flash}
-      - PayOS__ClientId=${PayOS__ClientId:-f222d523-5c08-4bdb-b216-3f78f7e9a6b5}
-      - PayOS__ApiKey=${PayOS__ApiKey:-0ff53c5c-baca-4bbc-954a-92c7ebe4fe53}
-      - PayOS__ChecksumKey=${PayOS__ChecksumKey:-4269156b92bb565c0e340b92a5e77027c28548d350ea9a256b89c1115cd89bb1}
+      PGADMIN_DEFAULT_EMAIL: admin@smartmeal.com
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
     ports:
       - "127.0.0.1:5050:80"
     depends_on:

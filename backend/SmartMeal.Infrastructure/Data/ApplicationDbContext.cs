@@ -46,7 +46,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<UserChallenge> UserChallenges => Set<UserChallenge>();
     public DbSet<RecipeCollection> RecipeCollections => Set<RecipeCollection>();
     public DbSet<CollectionRecipe> CollectionRecipes => Set<CollectionRecipe>();
-    public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
+    public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -71,15 +71,139 @@ public class ApplicationDbContext : DbContext
             .HasIndex(u => u.Email)
             .IsUnique();
 
-        // PaymentTransaction
+        // NutritionDiary: mỗi (người dùng, ngày, bữa) chỉ có đúng một dòng nhóm. Ràng buộc này chặn việc
+        // các request song song tạo dòng trùng làm món "biến mất" khỏi /daily (P1-BE-12).
+        modelBuilder.Entity<NutritionDiary>()
+            .HasIndex(d => new { d.UserId, d.LogDate, d.MealType })
+            .IsUnique();
+
+        // Thực đơn: mỗi (người dùng, ngày, bữa) chỉ có một món — chặn việc các request song song xếp trùng ô.
+        modelBuilder.Entity<MealPlan>()
+            .HasIndex(m => new { m.UserId, m.PlanDate, m.MealType })
+            .IsUnique();
+
+        // Gamification: mỗi người một pet; một người tham gia một thử thách một lần; sổ XP không cộng trùng một sự kiện (BR-202).
+        modelBuilder.Entity<HealthPet>()
+            .HasIndex(p => p.UserId)
+            .IsUnique();
+
+        modelBuilder.Entity<UserChallenge>()
+            .HasIndex(uc => new { uc.UserId, uc.ChallengeId })
+            .IsUnique();
+
+        modelBuilder.Entity<XpEvent>()
+            .HasIndex(e => new { e.UserId, e.EventKey })
+            .IsUnique();
+
+        modelBuilder.Entity<UserBadge>()
+            .HasKey(b => new { b.UserId, b.BadgeId });
+
+        modelBuilder.Entity<UserBadge>()
+            .HasOne(b => b.User)
+            .WithMany()
+            .HasForeignKey(b => b.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<XpEvent>()
+            .HasOne(e => e.User)
+            .WithMany()
+            .HasForeignKey(e => e.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<WaterLog>()
+            .HasIndex(w => new { w.UserId, w.LogDate });
+
+        // Danh sách đi chợ: mỗi người dùng một dòng thông tin (khóa = UserId); lịch sử các lần hoàn tất mua sắm.
+        modelBuilder.Entity<GroceryList>(entity =>
+        {
+            entity.HasKey(l => l.UserId);
+            entity.HasOne(l => l.User).WithMany().HasForeignKey(l => l.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Idempotency-Key: mỗi (người dùng, khóa) một kết quả; index theo thời gian để dọn bản ghi quá 24 giờ.
+        modelBuilder.Entity<IdempotencyRecord>(entity =>
+        {
+            entity.HasKey(r => new { r.UserId, r.Key });
+            entity.Property(r => r.Key).HasMaxLength(100);
+            entity.Property(r => r.RequestHash).HasMaxLength(64);
+            entity.Property(r => r.ResponseContentType).HasMaxLength(100);
+            entity.HasIndex(r => r.CreatedAt);
+            entity.HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Thông báo: mỗi (người dùng, sự kiện) một dòng; index theo thời gian để liệt kê mới → cũ và dọn bản ghi cũ.
+        modelBuilder.Entity<UserNotification>(entity =>
+        {
+            entity.Property(n => n.Category).HasMaxLength(30);
+            entity.Property(n => n.Title).HasMaxLength(200);
+            entity.Property(n => n.Body).HasMaxLength(500);
+            entity.Property(n => n.DedupKey).HasMaxLength(120);
+            entity.HasIndex(n => new { n.UserId, n.DedupKey }).IsUnique();
+            entity.HasIndex(n => new { n.UserId, n.CreatedAt });
+            entity.HasOne(n => n.User).WithMany().HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Liên kết chia sẻ bộ sưu tập: mã ngẫu nhiên, duy nhất (NULL = chưa chia sẻ).
+        modelBuilder.Entity<RecipeCollection>(entity =>
+        {
+            entity.Property(c => c.ShareToken).HasMaxLength(64);
+            entity.HasIndex(c => c.ShareToken).IsUnique();
+        });
+
+        modelBuilder.Entity<GroceryTrip>(entity =>
+        {
+            entity.HasIndex(t => new { t.UserId, t.CompletedAt });
+            entity.HasOne(t => t.User).WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // HealthSyncLog: mỗi (người dùng, ngày, nguồn) một bản ghi — gửi lại thì thay thế, không nhân đôi (P1-BE-09).
+        modelBuilder.Entity<HealthSyncLog>()
+            .HasIndex(l => new { l.UserId, l.SyncDate, l.Source })
+            .IsUnique();
+
+        // GoogleId (dữ liệu cũ, đã bỏ đăng nhập Google): mỗi giá trị chỉ thuộc một tài khoản; NULL được phép lặp.
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.GoogleId)
+            .IsUnique();
+
+        // Giao dịch thanh toán được giữ lại khi người dùng xóa tài khoản (BR-271): UserId về NULL, chỉ còn UserRef (băm).
         modelBuilder.Entity<PaymentTransaction>()
-            .HasIndex(pt => pt.OrderCode)
+            .HasIndex(t => t.SessionId)
             .IsUnique();
 
         modelBuilder.Entity<PaymentTransaction>()
-            .HasOne(pt => pt.User)
-            .WithMany(u => u.PaymentTransactions)
-            .HasForeignKey(pt => pt.UserId)
+            .HasIndex(t => t.UserId);
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasOne(t => t.User)
+            .WithMany()
+            .HasForeignKey(t => t.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<AiUsageLog>()
+            .HasIndex(l => new { l.UserId, l.CreatedAt });
+
+        modelBuilder.Entity<AiUsageLog>()
+            .HasOne(l => l.User)
+            .WithMany()
+            .HasForeignKey(l => l.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<OtpVerification>()
+            .HasIndex(o => new { o.Email, o.Purpose, o.CreatedAt });
+
+        // RefreshToken: tra theo bản băm; xóa người dùng thì xóa luôn các phiên.
+        modelBuilder.Entity<RefreshToken>()
+            .HasIndex(t => t.TokenHash)
+            .IsUnique();
+
+        modelBuilder.Entity<RefreshToken>()
+            .HasIndex(t => t.UserId);
+
+        modelBuilder.Entity<RefreshToken>()
+            .HasOne(t => t.User)
+            .WithMany(u => u.RefreshTokens)
+            .HasForeignKey(t => t.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // User - HealthProfile (1-1)

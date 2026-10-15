@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using SmartMeal.Application.Common;
+using SmartMeal.Application.Services;
 using SmartMeal.Domain.Entities;
 
 namespace SmartMeal.Infrastructure.Data;
@@ -15,33 +17,6 @@ public static class DbInitializer
     /// <param name="devAccountPassword">Mật khẩu cho tài khoản dev (mặc định <see cref="DefaultDevPassword"/>).</param>
     public static async Task SeedAsync(ApplicationDbContext db, bool seedDevAccount = false, string? devAccountPassword = null)
     {
-        try
-        {
-            await db.Database.ExecuteSqlRawAsync(@"
-                CREATE TABLE IF NOT EXISTS ""PaymentTransactions"" (
-                    ""Id"" uuid NOT NULL,
-                    ""UserId"" uuid NOT NULL,
-                    ""OrderCode"" bigint NOT NULL,
-                    ""Amount"" numeric NOT NULL,
-                    ""PlanId"" text NOT NULL,
-                    ""PaymentMethod"" text NOT NULL,
-                    ""Status"" text NOT NULL,
-                    ""PaymentUrl"" text NULL,
-                    ""QrCode"" text NULL,
-                    ""CreatedAt"" timestamp with time zone NOT NULL,
-                    ""PaidAt"" timestamp with time zone NULL,
-                    CONSTRAINT ""PK_PaymentTransactions"" PRIMARY KEY (""Id""),
-                    CONSTRAINT ""FK_PaymentTransactions_Users_UserId"" FOREIGN KEY (""UserId"") REFERENCES ""Users"" (""Id"") ON DELETE CASCADE
-                );
-                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_PaymentTransactions_OrderCode"" ON ""PaymentTransactions"" (""OrderCode"");
-                CREATE INDEX IF NOT EXISTS ""IX_PaymentTransactions_UserId"" ON ""PaymentTransactions"" (""UserId"");
-            ");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[Database] PaymentTransactions table creation note: {ex.Message}");
-        }
-
         if (!db.Recipes.Any())
         {
 
@@ -397,21 +372,16 @@ public static class DbInitializer
         {
             var food = new Ingredient
             {
-                UserId = seedUser.Id,
-                Gender = "Male",
-                Age = 25,
-                HeightCm = 175,
-                CurrentWeightKg = 68,
-                TargetWeightKg = 65,
-                ActivityLevel = "Moderate",
-                Goal = "FatLoss",
-                DailyCaloriesTarget = 2000,
-                DailyCarbsTargetGrams = 225,
-                DailyProteinTargetGrams = 150,
-                DailyFatTargetGrams = 55,
-                BMR = 1680,
-                TDEE = 2300,
-                BMI = 22.2
+                Name = dish.Name,
+                Description = dish.Description,
+                Category = "Dish",
+                DefaultUnit = "g",
+                CaloriesPer100g = dish.Calories,
+                ProteinPer100g = dish.Protein,
+                CarbsPer100g = dish.Carbs,
+                FatPer100g = dish.Fat,
+                IsVerified = false,
+                SearchText = TextNormalizer.Fold($"{dish.Name} {dish.Description}").Trim()
             };
 
             foreach (var serving in dish.Servings)
