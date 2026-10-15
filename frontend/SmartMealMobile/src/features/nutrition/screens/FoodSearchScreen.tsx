@@ -1,3 +1,4 @@
+import { CommonActions } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Barcode, Search } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -10,7 +11,8 @@ import { MEAL_TYPE_TITLES } from '@/types/meal.types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { FoodSearchRow } from '../components/FoodSearchRow';
 import { useFoodSearch } from '../hooks/useFoodSearch';
-import type { FoodSearchFilter } from '../types/nutrition.types';
+import type { FoodItem, FoodSearchFilter } from '../types/nutrition.types';
+import { pickedFoodFromItem } from '../utils/pickedFood';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'FoodSearch'>;
 
@@ -24,8 +26,20 @@ const FILTERS: { id: FoodSearchFilter; label: string }[] = [
 // design/FoodSearch.dc.html (BR-052, BR-090). Bảng "N đã chọn" tổng hợp trong artboard được
 // đơn giản hoá: mỗi món chọn sẽ mở FoodDetail để chọn serving/khối lượng rồi ghi thẳng vào
 // nhật ký (BR-052: Tìm kiếm → Chọn serving → Xác nhận → Lưu), không dùng giỏ chọn nhiều món.
+// Chế độ chọn (`pickFor`, từ AI Snap "Thêm món AI bỏ sót"): bấm món thì trả món về màn AI Snap để
+// duyệt cùng các món khác, không ghi nhật ký ngay (BR-054).
 export function FoodSearchScreen({ navigation, route }: Props) {
-  const { mealType } = route.params;
+  const { mealType, pickFor } = route.params;
+  const isPicking = Boolean(pickFor);
+
+  const selectFood = (food: FoodItem) => {
+    if (pickFor) {
+      navigation.dispatch({ ...CommonActions.setParams({ pickedFood: pickedFoodFromItem(food) }), source: pickFor });
+      navigation.goBack();
+      return;
+    }
+    navigation.navigate(MAIN_STACK_ROUTES.FOOD_DETAIL, { foodId: food.id, mealType });
+  };
   const { colors } = useTheme();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<FoodSearchFilter>('all');
@@ -44,7 +58,7 @@ export function FoodSearchScreen({ navigation, route }: Props) {
   return (
     <ScreenContainer>
       <ScreenHeader
-        title={`Thêm vào ${MEAL_TYPE_TITLES[mealType]}`}
+        title={isPicking ? 'Thêm món AI bỏ sót' : `Thêm vào ${MEAL_TYPE_TITLES[mealType]}`}
         onBack={() => navigation.goBack()}
       />
       <View className="gap-sm pb-sm">
@@ -56,11 +70,13 @@ export function FoodSearchScreen({ navigation, route }: Props) {
           returnKeyType="search"
           leftIcon={<Search size={20} color={colors.textSecondary} />}
           rightAdornment={
-            <AppIconButton
-              accessibilityLabel="Quét mã vạch"
-              icon={<Barcode size={22} color={colors.textPrimary} />}
-              onPress={() => navigation.navigate(MAIN_STACK_ROUTES.BARCODE, { mealType })}
-            />
+            isPicking ? undefined : (
+              <AppIconButton
+                accessibilityLabel="Quét mã vạch"
+                icon={<Barcode size={22} color={colors.textPrimary} />}
+                onPress={() => navigation.navigate(MAIN_STACK_ROUTES.BARCODE, { mealType })}
+              />
+            )
           }
         />
         <ScrollView
@@ -99,27 +115,27 @@ export function FoodSearchScreen({ navigation, route }: Props) {
               <FoodSearchRow
                 key={food.id}
                 food={food}
-                onPress={() =>
-                  navigation.navigate(MAIN_STACK_ROUTES.FOOD_DETAIL, { foodId: food.id, mealType })
-                }
+                onPress={() => selectFood(food)}
               />
             ))}
           </AppCard>
         )}
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Tạo món thủ công"
-          onPress={() => navigation.navigate(MAIN_STACK_ROUTES.CREATE_FOOD, { mealType })}
-          className="min-h-[44px] items-center gap-xxs pt-sm"
-        >
-          <AppText variant="body" color="secondary">
-            Không tìm thấy món?
-          </AppText>
-          <AppText variant="bodyMedium" color="onPrimarySoft">
-            Tạo món thủ công
-          </AppText>
-        </Pressable>
+        {isPicking ? null : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Tạo món thủ công"
+            onPress={() => navigation.navigate(MAIN_STACK_ROUTES.CREATE_FOOD, { mealType })}
+            className="min-h-[44px] items-center gap-xxs pt-sm"
+          >
+            <AppText variant="body" color="secondary">
+              Không tìm thấy món?
+            </AppText>
+            <AppText variant="bodyMedium" color="onPrimarySoft">
+              Tạo món thủ công
+            </AppText>
+          </Pressable>
+        )}
       </ScrollView>
     </ScreenContainer>
   );

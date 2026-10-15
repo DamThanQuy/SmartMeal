@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using SmartMeal.Application.Common;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.AI;
 using SmartMeal.Application.Services;
@@ -88,6 +89,17 @@ public class ProductSafetyService : IProductSafetyService
             }).ToList()
         };
 
+        // "Dị ứng khác" tự nhập chỉ so được theo tên/mô tả sản phẩm (CSDL không lưu danh sách thành phần).
+        if (CustomAllergens.FindMatch(CustomAllergens.Keywords(profile?.OtherAllergies), new[] { food.Name, food.Description }) is { } keyword)
+        {
+            result.Alerts.Add(new SafetyAlertDto
+            {
+                Type = "ALLERGY",
+                Severity = "DANGER",
+                Message = $"CẢNH BÁO: sản phẩm có thể chứa \"{keyword}\" — nằm trong dị ứng khác bạn đã khai báo."
+            });
+        }
+
         if (!food.IsVerified)
         {
             result.Alerts.Add(new SafetyAlertDto
@@ -96,7 +108,7 @@ public class ProductSafetyService : IProductSafetyService
                 Severity = "INFO",
                 Message = food.IsUserCreated
                     ? "Số liệu do bạn tự nhập, chưa được kiểm chứng."
-                    : "Số liệu chưa được chuyên gia kiểm chứng — chỉ mang tính tham khảo."
+                    : "Số liệu và thông tin dị ứng chưa được chuyên gia kiểm chứng — chỉ mang tính tham khảo, hãy đọc kỹ nhãn trên bao bì."
             });
         }
 

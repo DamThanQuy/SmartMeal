@@ -127,6 +127,13 @@ public class MealPlannerService : IMealPlannerService
                 new List<string> { AllergenConflictError });
         }
 
+        if (MatchOtherAllergen(recipe, await OtherAllergensAsync(userId)) is { } keyword)
+        {
+            return ApiResponse<PlannedMealItemDto>.Fail(
+                $"Món '{recipe.Title}' có thể chứa \"{keyword}\" (dị ứng khác của bạn) nên không thể thêm vào thực đơn.",
+                new List<string> { AllergenConflictError });
+        }
+
         // Mỗi (ngày, bữa) chỉ có một món: gán lại thì thay món. Hai request đồng thời cùng ô → bản thứ hai dính unique index,
         // nạp lại bản ghi vừa được tạo rồi cập nhật thay vì báo lỗi.
         for (var attempt = 0; attempt < 2; attempt++)
@@ -227,7 +234,10 @@ public class MealPlannerService : IMealPlannerService
 
         // Thứ tự ưu tiên (business_rule §12): Dị ứng → Bệnh lý → Mục tiêu dinh dưỡng → Chế độ ăn.
         // BR-102: loại hẳn công thức chứa chất gây dị ứng của người dùng, không bao giờ "tạm chấp nhận".
-        var safeRecipes = allRecipes.Where(r => !ContainsAllergen(r, userAllergyIds)).ToList();
+        var otherAllergens = await OtherAllergensAsync(userId);
+        var safeRecipes = allRecipes
+            .Where(r => !ContainsAllergen(r, userAllergyIds) && MatchOtherAllergen(r, otherAllergens) is null)
+            .ToList();
         if (!safeRecipes.Any())
         {
             // Không tạo gì cả (và không đụng vào thực đơn đang có) thay vì xếp món chứa chất gây dị ứng.
@@ -399,6 +409,16 @@ public class MealPlannerService : IMealPlannerService
 
     private static bool ContainsAllergen(Recipe recipe, HashSet<int> allergyIds) =>
         allergyIds.Count > 0 && recipe.RecipeIngredients.Any(ri => ri.Ingredient.IngredientAllergies.Any(a => allergyIds.Contains(a.AllergyId)));
+
+    /// <summary>"Dị ứng khác" người dùng tự nhập (từ khóa tự do, BR-101/102).</summary>
+    private async Task<IReadOnlyList<string>> OtherAllergensAsync(Guid userId) =>
+        CustomAllergens.Keywords(await _db.HealthProfiles.AsNoTracking()
+            .Where(hp => hp.UserId == userId)
+            .Select(hp => hp.OtherAllergies)
+            .FirstOrDefaultAsync());
+
+    private static string? MatchOtherAllergen(Recipe recipe, IReadOnlyList<string> otherAllergens) =>
+        CustomAllergens.FindMatch(otherAllergens, recipe.RecipeIngredients.Select(ri => ri.Ingredient.Name).Prepend(recipe.Title));
 
     private static bool IsSuitableFor(Recipe recipe, string mealType) =>
         string.IsNullOrEmpty(recipe.MealTypes) || recipe.MealTypes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Contains(mealType);

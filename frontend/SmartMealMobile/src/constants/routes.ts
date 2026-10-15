@@ -87,6 +87,10 @@ export const MAIN_STACK_ROUTES = {
   FORGOT_PASSWORD: 'ForgotPassword',
   OTP: 'Otp',
   RESET_PASSWORD: 'ResetPassword',
+  /** Đổi mật khẩu khi đang đăng nhập bằng mật khẩu hiện tại (POST /auth/change-password). */
+  CHANGE_PASSWORD: 'ChangePassword',
+  /** Điều khoản sử dụng / Chính sách quyền riêng tư — mở từ Settings. */
+  LEGAL: 'Legal',
   // Đợt 10 — ai/scanner (design v2).
   FRIDGE_CAMERA: 'FridgeCamera',
   OCR_CAMERA: 'OCRCamera',

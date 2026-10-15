@@ -19,7 +19,7 @@ import { computeLevel, getStreakDays, getXpTotal } from './xpLedger';
 // riêng — tránh lệch giữa "đã mở" hiển thị và dữ liệu thật đang có (docs/ui-mock-prompts.md
 // Phase 12: "huy hiệu mở khóa theo dữ liệu thật đang có").
 
-let equippedCostumeId = DEFAULT_EQUIPPED_COSTUME_ID;
+let equippedCostumeId: string | null = DEFAULT_EQUIPPED_COSTUME_ID;
 
 async function computeUnlockedBadgeIds(): Promise<Set<string>> {
   const unlocked = new Set<string>();
@@ -98,6 +98,16 @@ export const badgeMockService = {
       throw new Error('Không thể đổi trang phục, vui lòng thử lại.');
     }
     equippedCostumeId = costumeId;
+  },
+
+  // Tháo trang phục đang mặc — Bé Mầm về dáng mặc định.
+  async unequipCostume(): Promise<void> {
+    const scenario = getCurrentMockScenario();
+    await wait(getMockDelayMs(scenario));
+    if (scenario === 'error') {
+      throw new Error('Không thể tháo trang phục, vui lòng thử lại.');
+    }
+    equippedCostumeId = null;
   },
 };
 

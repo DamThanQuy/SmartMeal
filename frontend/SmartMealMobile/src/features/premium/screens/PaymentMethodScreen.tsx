@@ -20,7 +20,8 @@ export function PaymentMethodScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
   const { planId } = route.params;
   const { data: plans, isLoading, isError, error, refetch } = useSubscriptionPlans();
-  const [paymentMethodId, setPaymentMethodId] = useState<SelectablePaymentMethodId>('vnpay');
+  // Mặc định PayOS: cổng thanh toán thật duy nhất đã tích hợp.
+  const [paymentMethodId, setPaymentMethodId] = useState<SelectablePaymentMethodId>('payos');
 
   if (isLoading) {
     return (

@@ -194,7 +194,7 @@ export function RecipeDetailScreen({ navigation, route }: Props) {
           {recipe.healthWarnings.length > 0 ? (
             <InlineBanner
               icon={<HeartPulse size={20} color={colors.warning} />}
-              title="Lưu ý theo bệnh lý của bạn"
+              title="Lưu ý theo hồ sơ sức khỏe của bạn"
               description={`${recipe.healthWarnings.join('\n')}\nĐây là ngưỡng tham khảo, không thay thế tư vấn của bác sĩ.`}
             />
           ) : null}

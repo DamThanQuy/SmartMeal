@@ -115,14 +115,44 @@ describe('profileInputFromForm / selectionFromForm', () => {
 
   test('"Không có" thắng danh sách đã tick', () => {
     const selection = selectionFromForm(
-      createForm({ noAllergies: true, noHealthConditions: true, noDietaryPreference: true }),
+      createForm({
+        noAllergies: true,
+        noHealthConditions: true,
+        noDietaryPreference: true,
+        otherAllergyText: 'dứa',
+      }),
     );
 
     expect(selection).toEqual({
       allergyIds: [],
       healthConditionIds: [],
       dietaryPreferenceIds: [],
+      otherAllergies: '',
     });
+  });
+});
+
+describe('Dị ứng khác (tự gõ)', () => {
+  test('wizard gửi chữ đã gõ lên khảo sát; để trống thì không gửi', () => {
+    const withText = toSurveyRequest(profileInputFromForm(createForm({ otherAllergyText: '  dứa, kiwi ' })), catalog);
+    expect(withText.otherAllergies).toBe('dứa, kiwi');
+
+    const empty = toSurveyRequest(profileInputFromForm(createForm({ otherAllergyText: '   ' })), catalog);
+    expect(empty.otherAllergies).toBeUndefined();
+  });
+
+  test('cập nhật: chuỗi rỗng là xóa, không có trường là giữ nguyên', () => {
+    const base = { allergyIds: [], healthConditionIds: [], dietaryPreferenceIds: [] };
+
+    expect(toSelectionUpdateRequest({ ...base, otherAllergies: ' kiwi ' }, catalog).otherAllergies).toBe('kiwi');
+    expect(toSelectionUpdateRequest({ ...base, otherAllergies: '' }, catalog).otherAllergies).toBe('');
+    expect(toSelectionUpdateRequest(base, catalog).otherAllergies).toBeUndefined();
+  });
+
+  test('đọc từ hồ sơ BE; null là không có', () => {
+    expect(fromHealthProfileDto({ ...PROFILE_DTO, otherAllergies: 'dứa, kiwi' }, catalog).otherAllergies).toBe('dứa, kiwi');
+    expect(fromHealthProfileDto({ ...PROFILE_DTO, otherAllergies: null }, catalog).otherAllergies).toBe('');
+    expect(fromHealthProfileDto(PROFILE_DTO, catalog).otherAllergies).toBe('');
   });
 });
 
@@ -332,6 +362,7 @@ describe('phần hồ sơ giữ cục bộ (extras)', () => {
       allergyIds: ['seafood', 'dairy', 'other'],
       healthConditionIds: ['diabetes', 'other'],
       dietaryPreferenceIds: ['keto'],
+      otherAllergies: '',
     });
   });
 
@@ -340,6 +371,7 @@ describe('phần hồ sơ giữ cục bộ (extras)', () => {
       allergyIds: ['peanut', 'sesame', 'other'],
       healthConditionIds: ['gout', 'other'],
       dietaryPreferenceIds: ['vegan'],
+      otherAllergies: 'kiwi',
     };
 
     const extras = extrasFromSelection(chosen, catalog);
@@ -351,15 +383,22 @@ describe('phần hồ sơ giữ cục bộ (extras)', () => {
         allergyIds: request.allergyIds ?? [],
         medicalConditionIds: request.medicalConditionIds ?? [],
         dietaryPreferenceIds: request.dietaryPreferenceIds ?? [],
+        otherAllergies: request.otherAllergies,
       },
       catalog,
     );
 
-    expect(request).toEqual({ allergyIds: [2, 8], medicalConditionIds: [2], dietaryPreferenceIds: [3] });
+    expect(request).toEqual({
+      allergyIds: [2, 8],
+      medicalConditionIds: [2],
+      dietaryPreferenceIds: [3],
+      otherAllergies: 'kiwi',
+    });
     expect(selectionFromServer(snapshot, extras)).toEqual({
       allergyIds: ['peanut', 'sesame', 'other'],
       healthConditionIds: ['gout', 'other'],
       dietaryPreferenceIds: ['vegan'],
+      otherAllergies: 'kiwi',
     });
   });
 });

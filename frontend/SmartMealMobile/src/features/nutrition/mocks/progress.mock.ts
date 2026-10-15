@@ -63,3 +63,48 @@ export function createWeeklyProgressMock(
     ],
   };
 }
+
+const MONTH_LENGTH_DAYS = 30;
+const MONTH_LABEL_EVERY_DAYS = 5;
+
+/** Tab "Tháng" — 30 ngày gần nhất (lặp lại số liệu mẫu của tuần, vài ngày chưa ghi = 0 kcal). */
+export function createMonthlyProgressMock(
+  todayIso: string,
+  todayCalories: number,
+): WeeklyProgressSummary {
+  const today = new Date(todayIso);
+  const days: WeeklyProgressDay[] = Array.from({ length: MONTH_LENGTH_DAYS }, (_, index) => {
+    const date = subDays(today, MONTH_LENGTH_DAYS - 1 - index);
+    const isToday = index === MONTH_LENGTH_DAYS - 1;
+    const calories = isToday
+      ? todayCalories
+      : index % 9 === 4
+        ? 0
+        : HISTORICAL_CALORIES[index % HISTORICAL_CALORIES.length];
+    return {
+      date: format(date, 'yyyy-MM-dd'),
+      label: index % MONTH_LABEL_EVERY_DAYS === 0 || isToday ? String(date.getDate()) : '',
+      calories,
+      isToday: isToday ? true : undefined,
+    };
+  });
+  const { budget: calorieTarget } = calculateCalorieBudget({
+    calorieTarget: CURRENT_USER_DAILY_TARGET.calorieTarget,
+    activityCaloriesBurned: TODAY_ACTIVITY_CALORIES_BURNED_MOCK,
+    includeActivityCalories: getIncludeActivityCalories(),
+  });
+  const logged = days.filter(day => day.calories > 0);
+
+  return {
+    rangeLabel: `${format(new Date(days[0].date), 'dd/MM')}–${format(today, 'dd/MM')}`,
+    calorieTarget,
+    days,
+    averageCalories: logged.length > 0 ? Math.round(logged.reduce((sum, day) => sum + day.calories, 0) / logged.length) : 0,
+    daysOnTarget: logged.filter(day => day.calories <= calorieTarget).length,
+    averageMacros: [
+      { label: 'Protein', consumedG: 95, targetG: CURRENT_USER_DAILY_TARGET.macroTargets.proteinG },
+      { label: 'Carbs', consumedG: 228, targetG: CURRENT_USER_DAILY_TARGET.macroTargets.carbsG },
+      { label: 'Fat', consumedG: 63, targetG: CURRENT_USER_DAILY_TARGET.macroTargets.fatG },
+    ],
+  };
+}

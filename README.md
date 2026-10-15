@@ -115,6 +115,7 @@ Mở `backend/.env` và điền:
 - `Gemini__ApiKey`: API key chỉ đặt ở backend (không đặt trong mobile). Lấy key tại https://aistudio.google.com/app/apikey và lưu trong `backend/.env` hoặc secret manager.
 - `Gemini__Model`: mặc định `gemini-3.8-flash`, model multimodal dùng cho ảnh, text và audio. Có thể thay bằng model được bật trong Google AI Studio mà không cần build lại mobile.
 - `Gemini__FallbackModels`: mặc định `gemini-flash-lite-latest` — model dự phòng (cách nhau bằng dấu phẩy) khi model chính bị Google ngừng (404) hoặc quá tải (429/5xx).
+- `PayOS__ClientId`, `PayOS__ApiKey`, `PayOS__ChecksumKey`: nếu muốn thanh toán Pro bằng PayOS (VietQR). Lấy ở https://my.payos.vn → Kênh thanh toán. Để trống thì phương thức PayOS bị tắt.
 
 Khi chạy AI thật, chỉ cần điền `Gemini__ApiKey` và **không** đặt `Ai__AllowDemoFallback=true`. Nếu thiếu key, Development trả dữ liệu mẫu có `isDemo=true`; staging/production trả lỗi 503 thay vì giả kết quả. Đã có key mà Gemini lỗi (model bị ngừng, quá tải, sai key…) thì API trả lỗi 502 ở mọi môi trường — xem nguyên nhân trong log của API (`docker compose logs backend-api`).
 

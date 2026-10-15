@@ -1,7 +1,6 @@
 export const STORAGE_KEYS = {
   THEME_MODE: 'app.themeMode',
   MOCK_SCENARIO: 'app.mockScenario',
-  LANGUAGE: 'app.language',
   /** + userId — phần hồ sơ sức khỏe backend không lưu (chế độ ăn, dị ứng/bệnh lý không có id…). */
   PROFILE_EXTRAS_PREFIX: 'user.profileExtras.',
   /** + userId — tùy chọn Health Connect cục bộ (đã kết nối, nguồn nào bật). */

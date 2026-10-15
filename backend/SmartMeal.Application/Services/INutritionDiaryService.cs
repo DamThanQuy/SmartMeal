@@ -10,6 +10,9 @@ public interface INutritionDiaryService
     Task<ApiResponse<DiaryItemDto>> UpdateDiaryItemAsync(Guid userId, Guid itemId, UpdateDiaryItemRequestDto dto);
     Task<ApiResponse<DailyDiarySummaryDto>> GetDailySummaryAsync(Guid userId, DateOnly date);
     Task<ApiResponse<WeeklyProgressDto>> GetWeeklyProgressAsync(Guid userId, DateOnly startDate);
+
+    /// <summary>Calo/macro từng ngày trong khoảng [startDate, endDate] (tối đa <c>MaxProgressDays</c> ngày).</summary>
+    Task<ApiResponse<WeeklyProgressDto>> GetProgressAsync(Guid userId, DateOnly startDate, DateOnly endDate);
     Task<ApiResponse<bool>> DeleteDiaryItemAsync(Guid userId, Guid itemId);
     Task<ApiResponse<WaterSummaryDto>> LogWaterAsync(Guid userId, LogWaterRequestDto dto);
     Task<ApiResponse<WaterHistoryDto>> GetWaterHistoryAsync(Guid userId, DateOnly endDate, int days);

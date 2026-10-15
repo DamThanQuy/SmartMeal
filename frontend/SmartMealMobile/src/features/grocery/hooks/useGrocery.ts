@@ -58,6 +58,15 @@ export function useDeleteGroceryItem(weekStartIso: string) {
   });
 }
 
+/** Bỏ các món đã mua khỏi danh sách (DELETE /grocery/clear-checked). */
+export function useClearPurchasedGrocery(weekStartIso: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => groceryService.clearPurchased(weekStartIso),
+    onSuccess: () => invalidateGrocery(queryClient, weekStartIso),
+  });
+}
+
 // GroceryDone "Hoàn tất mua sắm" — danh sách chuyển sang tuần sau (món chưa mua được giữ lại nếu chọn).
 export function useCompleteShopping(weekStartIso: string) {
   const queryClient = useQueryClient();

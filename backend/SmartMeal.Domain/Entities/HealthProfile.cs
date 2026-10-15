@@ -25,6 +25,12 @@ public class HealthProfile
     /// <summary>Mục tiêu nước uống mỗi ngày (ml).</summary>
     public int WaterGoalMl { get; set; } = 2000;
 
+    /// <summary>
+    /// Dị ứng không có trong danh mục /meta/allergies, người dùng tự gõ (vd. "dứa, kiwi"). Dùng như từ khóa để loại món và
+    /// cảnh báo sản phẩm (BR-101/102). null = không có.
+    /// </summary>
+    public string? OtherAllergies { get; set; }
+
     // Calculated fields
     public double BMI { get; set; }
     public double BMR { get; set; }

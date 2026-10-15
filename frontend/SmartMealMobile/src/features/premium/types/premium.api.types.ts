@@ -2,7 +2,7 @@
 // import file này, hook/screen chỉ biết type FE trong premium.types.ts.
 
 export type ApiPlanId = 'PRO_MONTHLY' | 'PRO_YEARLY';
-export type ApiPaymentMethod = 'VNPAY' | 'MOMO' | 'STRIPE';
+export type ApiPaymentMethod = 'VNPAY' | 'MOMO' | 'STRIPE' | 'PAYOS';
 
 /** GET /subscription/plans — nguồn duy nhất cho giá và chu kỳ. */
 export interface SubscriptionPlanDto {
@@ -23,10 +23,25 @@ export interface CreateCheckoutSessionRequestDto {
 
 export interface CheckoutSessionResponseDto {
   sessionId: string;
+  /** Mã đơn PayOS — chỉ có với PAYOS, dùng cho GET /subscription/check-status/{orderCode}. */
+  orderCode?: number | null;
   paymentUrl: string;
   qrCodeUrl: string | null;
+  /** Chuỗi VietQR gốc (PAYOS). */
+  qrCode?: string | null;
   amountVnd: number;
   message: string;
+}
+
+/** GET /subscription/check-status/{orderCode} — máy chủ hỏi PayOS và kích hoạt Pro nếu đã nhận đủ tiền. */
+export interface PaymentTransactionStatusDto {
+  orderCode: number;
+  /** Pending | Paid | Failed. */
+  status: string;
+  isPaid: boolean;
+  planId: string;
+  amountVnd: number;
+  paidAt: string | null;
 }
 
 /** GET /subscription/status và POST /subscription/cancel. */
@@ -45,7 +60,7 @@ export interface PaymentTransactionDto {
   sessionId: string;
   planId: string;
   amountVnd: number;
-  /** VNPAY | MOMO | STRIPE | MOCK (kích hoạt thử ở môi trường phát triển). */
+  /** VNPAY | MOMO | STRIPE | PAYOS | MOCK (kích hoạt thử ở môi trường phát triển). */
   paymentMethod: string;
   /** Pending | Paid | Failed. */
   status: string;

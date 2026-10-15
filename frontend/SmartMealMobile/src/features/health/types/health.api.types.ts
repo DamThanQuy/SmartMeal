@@ -20,6 +20,8 @@ export interface HealthSurveyRequest {
   medicalConditionIds: number[];
   /** id int của /meta/tags (Eat Clean, Keto...). */
   dietaryPreferenceIds: number[];
+  /** Dị ứng ngoài danh mục, phân tách bằng dấu phẩy (tối đa 200 ký tự). Bỏ trống = không có. */
+  otherAllergies?: string;
 }
 
 /**
@@ -38,6 +40,8 @@ export interface UpdateHealthProfileRequest {
   medicalConditionIds?: number[];
   dietaryPreferenceIds?: number[];
   waterGoalMl?: number;
+  /** Dị ứng ngoài danh mục; '' = xóa, không gửi = giữ nguyên. */
+  otherAllergies?: string;
 }
 
 export interface HealthProfileDto {
@@ -71,6 +75,8 @@ export interface HealthProfileDto {
   allergies: string[];
   medicalConditions: string[];
   dietaryPreferences: string[];
+  /** Dị ứng ngoài danh mục BE đã chuẩn hóa ("dứa, kiwi"); null = không có. */
+  otherAllergies?: string | null;
 }
 
 export interface WeightLogRequest {

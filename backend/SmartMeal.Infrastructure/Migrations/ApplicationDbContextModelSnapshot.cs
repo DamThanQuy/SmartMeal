@@ -484,6 +484,10 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.Property<double>("HeightCm")
                         .HasColumnType("double precision");
 
+                    b.Property<string>("OtherAllergies")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
                     b.Property<double>("TDEE")
                         .HasColumnType("double precision");
 
@@ -829,8 +833,15 @@ namespace SmartMeal.Infrastructure.Migrations
                     b.Property<decimal>("AmountVnd")
                         .HasColumnType("numeric");
 
+                    b.Property<string>("CheckoutUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("OrderCode")
+                        .HasColumnType("bigint");
 
                     b.Property<DateTime?>("PaidAt")
                         .HasColumnType("timestamp with time zone");
@@ -845,6 +856,10 @@ namespace SmartMeal.Infrastructure.Migrations
 
                     b.Property<string>("ProviderTransactionId")
                         .HasColumnType("text");
+
+                    b.Property<string>("QrCode")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
 
                     b.Property<string>("SessionId")
                         .IsRequired()
@@ -862,6 +877,9 @@ namespace SmartMeal.Infrastructure.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("OrderCode")
+                        .IsUnique();
 
                     b.HasIndex("SessionId")
                         .IsUnique();

@@ -11,6 +11,7 @@ import { formatDateIso } from '@/utils/date';
 import { BILLING_PLAN_OPTIONS, TRANSACTIONS_MOCK } from '../mocks/premium.mock';
 import type {
   BillingPlanOption,
+  CheckoutOptions,
   CheckoutResult,
   SelectablePaymentMethodId,
 } from '../types/premium.types';
@@ -64,9 +65,21 @@ export const premiumMockService = {
   async checkout(
     planId: BillingPlanId,
     paymentMethodId: SelectablePaymentMethodId,
+    options?: CheckoutOptions,
   ): Promise<CheckoutResult> {
     const plan = BILLING_PLAN_OPTIONS.find(option => option.id === planId);
     const amountVnd = plan?.priceVnd ?? 0;
+
+    // PayOS: màn hình chờ hiện "mã QR" giả lập trong lúc mock giả vờ chờ ngân hàng xác nhận.
+    if (paymentMethodId === 'payos') {
+      options?.onSession?.({
+        sessionId: `PAYOS_mock_${Date.now()}`,
+        orderCode: Date.now(),
+        paymentUrl: 'https://pay.payos.vn/web/mock',
+        qrCodeUrl: null,
+        amountVnd,
+      });
+    }
 
     try {
       await simulateRequest('Thanh toán không thành công, vui lòng thử lại.');

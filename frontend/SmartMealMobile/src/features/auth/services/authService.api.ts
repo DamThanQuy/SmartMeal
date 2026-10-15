@@ -3,6 +3,7 @@ import { ENDPOINTS, api } from '@/services/api';
 import { saveSessionTokens } from '@/services/storage/secureStorage';
 import type {
   AuthResponseDto,
+  ChangePasswordRequestDto,
   DeleteAccountRequestDto,
   ForgotPasswordRequestDto,
   LoginRequestDto,
@@ -101,6 +102,16 @@ export const authApiService: Partial<typeof authMockService> = {
       resetToken: payload.resetToken,
       newPassword: payload.newPassword,
     });
+  },
+
+  // POST /auth/change-password — BE thu hồi mọi phiên cũ (kể cả thiết bị khác) và trả cặp token mới
+  // cho phiên hiện tại, nên lưu ngay token mới để không bị đăng xuất. Sai mật khẩu hiện tại → 400.
+  async changePassword(payload) {
+    const dto = await api.post<AuthResponseDto, ChangePasswordRequestDto>(ENDPOINTS.auth.changePassword, {
+      currentPassword: payload.currentPassword,
+      newPassword: payload.newPassword,
+    });
+    await saveSessionTokens(dto);
   },
 
   // POST /auth/avatar (multipart, trường "file", jpg/png/webp ≤ 2 MB) — trả người dùng với avatarUrl mới.

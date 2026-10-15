@@ -9,7 +9,10 @@ public static class SubscriptionCatalog
     public const string ProMonthly = "PRO_MONTHLY";
     public const string ProYearly = "PRO_YEARLY";
 
-    public static readonly string[] PaymentMethods = { "VNPAY", "MOMO", "STRIPE" };
+    /// <summary>PayOS: chuyển khoản VietQR qua cổng PayOS (thật). VNPAY/MOMO/STRIPE: chưa tích hợp cổng thật.</summary>
+    public const string PayOS = "PAYOS";
+
+    public static readonly string[] PaymentMethods = { "VNPAY", "MOMO", "STRIPE", PayOS };
 
     public sealed record Plan(string Id, string Name, decimal PriceVnd, string BillingCycle, int DurationDays, bool IsPopular, string[] Features);
 
@@ -52,17 +55,41 @@ public class CreateCheckoutSessionRequestDto
     [Required(ErrorMessage = "planId là bắt buộc.")]
     public string PlanId { get; set; } = SubscriptionCatalog.ProMonthly;
 
-    [OneOfIgnoreCase("VNPAY", "MOMO", "STRIPE")]
-    public string PaymentMethod { get; set; } = "VNPAY"; // VNPAY, MOMO, STRIPE
+    [OneOfIgnoreCase("VNPAY", "MOMO", "STRIPE", "PAYOS")]
+    public string PaymentMethod { get; set; } = "VNPAY"; // VNPAY, MOMO, STRIPE, PAYOS
 }
 
 public class CheckoutSessionResponseDto
 {
     public string SessionId { get; set; } = string.Empty;
+
+    /// <summary>Mã đơn PayOS (chỉ có với PAYOS) — dùng cho <c>GET /subscription/check-status/{orderCode}</c>.</summary>
+    public long? OrderCode { get; set; }
+
     public string PaymentUrl { get; set; } = string.Empty;
+
+    /// <summary>Ảnh mã QR (URL) để hiển thị trong app.</summary>
     public string? QrCodeUrl { get; set; }
+
+    /// <summary>Chuỗi VietQR gốc (chỉ có với PAYOS) — app có thể tự vẽ QR từ chuỗi này.</summary>
+    public string? QrCode { get; set; }
+
     public decimal AmountVnd { get; set; }
     public string Message { get; set; } = string.Empty;
+}
+
+/// <summary>Trạng thái một giao dịch của chính người dùng (<c>GET /subscription/check-status/{orderCode}</c>).</summary>
+public class PaymentTransactionStatusDto
+{
+    public long OrderCode { get; set; }
+
+    /// <summary>Pending | Paid | Failed.</summary>
+    public string Status { get; set; } = string.Empty;
+
+    public bool IsPaid { get; set; }
+    public string PlanId { get; set; } = string.Empty;
+    public decimal AmountVnd { get; set; }
+    public DateTime? PaidAt { get; set; }
 }
 
 /// <summary>Thông báo kết quả thanh toán từ cổng thanh toán (webhook, có chữ ký HMAC).</summary>

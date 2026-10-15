@@ -17,6 +17,9 @@ public class NutritionDiaryService : INutritionDiaryService
     private const double DefaultTargetFat = 55;
     private const double DefaultTargetProtein = 125;
 
+    /// <summary>Số ngày tối đa của một lần xem tiến độ (đủ cho một tháng).</summary>
+    public const int MaxProgressDays = 31;
+
     private static readonly string[] LogMethods = { "Manual", "AiImage", "Voice", "Barcode", "Ocr" };
 
     private readonly ApplicationDbContext _db;
@@ -211,9 +214,22 @@ public class NutritionDiaryService : INutritionDiaryService
         return ApiResponse<DailyDiarySummaryDto>.Ok(summary);
     }
 
-    public async Task<ApiResponse<WeeklyProgressDto>> GetWeeklyProgressAsync(Guid userId, DateOnly startDate)
+    public Task<ApiResponse<WeeklyProgressDto>> GetWeeklyProgressAsync(Guid userId, DateOnly startDate) =>
+        GetProgressAsync(userId, startDate, startDate.AddDays(6));
+
+    public async Task<ApiResponse<WeeklyProgressDto>> GetProgressAsync(Guid userId, DateOnly startDate, DateOnly endDate)
     {
-        var endDate = startDate.AddDays(6);
+        if (endDate < startDate)
+        {
+            return ApiResponse<WeeklyProgressDto>.Fail("endDate phải sau hoặc trùng startDate.");
+        }
+
+        var dayCount = endDate.DayNumber - startDate.DayNumber + 1;
+        if (dayCount > MaxProgressDays)
+        {
+            return ApiResponse<WeeklyProgressDto>.Fail($"Chỉ xem được tối đa {MaxProgressDays} ngày mỗi lần.");
+        }
+
         var profile = await _db.HealthProfiles.AsNoTracking().FirstOrDefaultAsync(hp => hp.UserId == userId);
 
         var diaries = await _db.NutritionDiaries
@@ -228,7 +244,7 @@ public class NutritionDiaryService : INutritionDiaryService
         var targetProtein = profile?.DailyProteinTargetGrams ?? DefaultTargetProtein;
 
         var days = new List<DailyProgressPointDto>();
-        for (int i = 0; i < 7; i++)
+        for (int i = 0; i < dayCount; i++)
         {
             var curDate = startDate.AddDays(i);
             var dayItems = diaries.Where(d => d.LogDate == curDate).SelectMany(d => d.Items).ToList();

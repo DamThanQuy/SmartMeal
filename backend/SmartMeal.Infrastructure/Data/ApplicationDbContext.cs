@@ -174,6 +174,14 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<PaymentTransaction>()
             .HasIndex(t => t.UserId);
 
+        // Mã đơn PayOS: duy nhất (PayOS từ chối tạo lại cùng mã) — null với phương thức khác.
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasIndex(t => t.OrderCode)
+            .IsUnique();
+
+        modelBuilder.Entity<PaymentTransaction>().Property(t => t.CheckoutUrl).HasMaxLength(500);
+        modelBuilder.Entity<PaymentTransaction>().Property(t => t.QrCode).HasMaxLength(1000);
+
         modelBuilder.Entity<PaymentTransaction>()
             .HasOne(t => t.User)
             .WithMany()
@@ -212,6 +220,9 @@ public class ApplicationDbContext : DbContext
             .WithOne(u => u.HealthProfile)
             .HasForeignKey<HealthProfile>(hp => hp.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Chuỗi đã chuẩn hóa (", " giữa các mục) có thể dài hơn đầu vào 200 ký tự một chút.
+        modelBuilder.Entity<HealthProfile>().Property(hp => hp.OtherAllergies).HasMaxLength(300);
 
         // UserAllergy (N-N)
         modelBuilder.Entity<UserAllergy>()

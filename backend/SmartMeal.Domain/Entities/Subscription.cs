@@ -38,6 +38,14 @@ public class PaymentTransaction
     public string SessionId { get; set; } = string.Empty;
 
     public string? ProviderTransactionId { get; set; }
+
+    /// <summary>Mã đơn bên PayOS (số nguyên dương, duy nhất). null với các phương thức khác.</summary>
+    public long? OrderCode { get; set; }
+
+    /// <summary>Trang thanh toán PayOS và chuỗi VietQR của link — để mở lại/hiển thị lại QR khi người dùng quay lại.</summary>
+    public string? CheckoutUrl { get; set; }
+    public string? QrCode { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? PaidAt { get; set; }
 }

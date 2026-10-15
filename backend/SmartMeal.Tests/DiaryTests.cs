@@ -296,4 +296,32 @@ public class DiaryTests : IClassFixture<ApiFactory>
             Assert.True(d.TargetProteinGrams > 0 && d.TargetCarbsGrams > 0 && d.TargetFatGrams > 0);
         });
     }
+
+    [DbFact]
+    public async Task Progress_covers_any_range_up_to_31_days()
+    {
+        var user = await _factory.RegisterUserAsync();
+        (await user.Client.PostJsonAsync("/api/nutritiondiary/log", LogRequest("2026-05-01", "Breakfast", "A", 100))).EnsureSuccessStatusCode();
+        (await user.Client.PostJsonAsync("/api/nutritiondiary/log", LogRequest("2026-05-30", "Dinner", "B", 250))).EnsureSuccessStatusCode();
+
+        var response = await user.Client.GetAsync("/api/nutritiondiary/progress?startDate=2026-05-01&endDate=2026-05-31");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var days = (await response.ReadEnvelopeAsync<WeeklyPayload>()).Data!.Days;
+        Assert.Equal(31, days.Count);
+        Assert.Equal(new DateOnly(2026, 5, 1), days[0].Date);
+        Assert.Equal(new DateOnly(2026, 5, 31), days[^1].Date);
+        Assert.Equal(100, days[0].Calories);
+        Assert.Equal(250, days[29].Calories);
+        Assert.Equal(350, days.Sum(d => d.Calories));
+
+        // Mặc định: 30 ngày kết thúc hôm nay.
+        var byDefault = await user.Client.GetAsync("/api/nutritiondiary/progress");
+        Assert.Equal(30, (await byDefault.ReadEnvelopeAsync<WeeklyPayload>()).Data!.Days.Count);
+
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await user.Client.GetAsync("/api/nutritiondiary/progress?startDate=2026-05-01&endDate=2026-06-01")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await user.Client.GetAsync("/api/nutritiondiary/progress?startDate=2026-05-10&endDate=2026-05-01")).StatusCode);
+    }
 }

@@ -2,6 +2,7 @@ import { getCurrentMockScenario } from '@/state/app/appStore';
 import { getMockDelayMs, wait } from '@/config/mock';
 import type {
   AuthUser,
+  ChangePasswordPayload,
   DeleteAccountConfirmation,
   ForgotPasswordPayload,
   LoginPayload,
@@ -140,6 +141,17 @@ export const authMockService = {
     await wait(getMockDelayMs(scenario));
     if (scenario === 'error') {
       throw new Error('Không thể đặt lại mật khẩu, vui lòng thử lại.');
+    }
+  },
+
+  async changePassword(payload: ChangePasswordPayload): Promise<void> {
+    const scenario = getCurrentMockScenario();
+    await wait(getMockDelayMs(scenario));
+    if (scenario === 'error') {
+      throw new Error('Mật khẩu hiện tại không đúng.');
+    }
+    if (payload.currentPassword === payload.newPassword) {
+      throw new Error('Mật khẩu mới phải khác mật khẩu hiện tại.');
     }
   },
 

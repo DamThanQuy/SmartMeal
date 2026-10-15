@@ -19,4 +19,13 @@ public interface ISubscriptionService
 
     /// <summary>Hủy gia hạn: giữ quyền Pro tới hết hạn rồi chuyển sang Expired.</summary>
     Task<ApiResponse<SubscriptionStatusDto>> CancelAsync(Guid userId);
+
+    /// <summary>
+    /// Trạng thái giao dịch PayOS của chính người dùng. Giao dịch còn chờ thì hỏi thẳng PayOS (server-to-server) và kích
+    /// hoạt Pro nếu PayOS báo đã nhận đủ tiền — dùng được cả khi webhook không gọi tới được máy chủ (vd. chạy ở máy dev).
+    /// </summary>
+    Task<ApiResponse<PaymentTransactionStatusDto>> CheckPaymentStatusAsync(Guid userId, long orderCode);
+
+    /// <summary>Webhook của PayOS; chữ ký được xác minh bằng ChecksumKey.</summary>
+    Task<ApiResponse<bool>> HandlePayOSWebhookAsync(string rawBody);
 }

@@ -192,6 +192,88 @@ describe('checkout (không có cổng giả lập: production hoặc BE trả 40
   });
 });
 
+describe('checkout PayOS (cổng thật: hiện QR, server hỏi PayOS)', () => {
+  const PAYOS_SESSION = {
+    sessionId: 'PAYOS_176000000000001',
+    orderCode: 176000000000001,
+    paymentUrl: 'https://pay.payos.vn/web/abc',
+    qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?data=VIETQR',
+    qrCode: 'VIETQR',
+    amountVnd: 79000,
+    message: 'ok',
+  };
+
+  function routePayOS(apiMock: { get: jest.Mock; post: jest.Mock }, checks: { status: string; isPaid: boolean }[]) {
+    const results = [...checks];
+    apiMock.post.mockImplementation(async (url: string) => {
+      if (url === '/subscription/create-checkout-session') return PAYOS_SESSION;
+      throw new Error(`POST không mong đợi: ${url}`);
+    });
+    apiMock.get.mockImplementation(async (url: string) => {
+      if (url === '/subscription/status') return apiMock.get.mock.calls.length > 1 ? PRO_NOV : status(FREE);
+      if (url === `/subscription/check-status/${PAYOS_SESSION.orderCode}`) {
+        const next = results.length > 1 ? results.shift()! : results[0];
+        return { orderCode: PAYOS_SESSION.orderCode, planId: 'PRO_MONTHLY', amountVnd: 79000, paidAt: null, ...next };
+      }
+      throw new Error(`GET không mong đợi: ${url}`);
+    });
+  }
+
+  test('báo phiên (QR, mã đơn) cho màn hình rồi hỏi check-status tới khi server xác nhận; không kích hoạt thử', async () => {
+    jest.useFakeTimers();
+    const { service, apiMock, linking, CONFIRM_POLL_INTERVAL_MS } = loadService('development');
+    routePayOS(apiMock, [
+      { status: 'Pending', isPaid: false },
+      { status: 'Pending', isPaid: false },
+      { status: 'Paid', isPaid: true },
+    ]);
+    const onSession = jest.fn();
+
+    const pending = service.checkout?.('monthly', 'payos', { onSession });
+    await jest.advanceTimersByTimeAsync(CONFIRM_POLL_INTERVAL_MS * 3);
+    const result = await pending;
+
+    expect(apiMock.post).toHaveBeenCalledWith('/subscription/create-checkout-session', {
+      planId: 'PRO_MONTHLY',
+      paymentMethod: 'PAYOS',
+    });
+    expect(apiMock.post).not.toHaveBeenCalledWith('/subscription/activate-mock', expect.anything());
+    expect(linking.openURL).not.toHaveBeenCalled();
+    expect(onSession).toHaveBeenCalledWith({
+      sessionId: PAYOS_SESSION.sessionId,
+      orderCode: PAYOS_SESSION.orderCode,
+      paymentUrl: PAYOS_SESSION.paymentUrl,
+      qrCodeUrl: PAYOS_SESSION.qrCodeUrl,
+      amountVnd: 79000,
+    });
+    expect(result).toMatchObject({ paymentMethodId: 'payos', membership: { status: 'premium', expiresAtIso: '2026-11-02' } });
+  });
+
+  test('PayOS báo đơn bị hủy/hết hạn → PaymentFailedError', async () => {
+    const { service, apiMock, PaymentFailedError } = loadService('production');
+    routePayOS(apiMock, [{ status: 'Failed', isPaid: false }]);
+
+    await expect(service.checkout?.('monthly', 'payos')).rejects.toBeInstanceOf(PaymentFailedError);
+  });
+
+  test('rời màn hình (abort) → dừng hỏi, PaymentCancelledError', async () => {
+    jest.useFakeTimers();
+    const { service, apiMock, PaymentCancelledError, CONFIRM_POLL_INTERVAL_MS } = loadService('production');
+    routePayOS(apiMock, [{ status: 'Pending', isPaid: false }]);
+    const controller = new AbortController();
+
+    const outcome = service.checkout?.('monthly', 'payos', { signal: controller.signal }).catch((error: unknown) => error);
+    await jest.advanceTimersByTimeAsync(CONFIRM_POLL_INTERVAL_MS);
+    controller.abort();
+    await jest.advanceTimersByTimeAsync(CONFIRM_POLL_INTERVAL_MS);
+
+    expect(await outcome).toBeInstanceOf(PaymentCancelledError);
+    const checks = apiMock.get.mock.calls.filter(([url]) => String(url).includes('check-status')).length;
+    await jest.advanceTimersByTimeAsync(CONFIRM_POLL_INTERVAL_MS * 5);
+    expect(apiMock.get.mock.calls.filter(([url]) => String(url).includes('check-status')).length).toBe(checks);
+  });
+});
+
 describe('trạng thái, giao dịch, bảng giá, hủy gia hạn', () => {
   test('getStatus: GET /subscription/status', async () => {
     const { service, apiMock } = loadService();

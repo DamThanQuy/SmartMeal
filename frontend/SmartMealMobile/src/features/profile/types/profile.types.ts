@@ -76,3 +76,17 @@ export interface HealthConnectState {
   lastSyncedLabel: string;
   sources: HealthConnectSource[];
 }
+
+/** Tài liệu pháp lý mở từ Settings → "Quyền riêng tư". */
+export type LegalDocumentId = 'terms' | 'privacy';
+
+export interface LegalSection {
+  heading: string;
+  paragraphs: string[];
+}
+
+export interface LegalDocument {
+  title: string;
+  updatedLabel: string;
+  sections: LegalSection[];
+}

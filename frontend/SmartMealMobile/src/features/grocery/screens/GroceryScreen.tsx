@@ -1,8 +1,8 @@
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { addDays, format } from 'date-fns';
-import { RefreshCw, ShoppingBasket } from 'lucide-react-native';
-import React from 'react';
-import { ScrollView, View } from 'react-native';
+import { RefreshCw, ShoppingBasket, Trash2 } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, View } from 'react-native';
 import { EmptyState, ErrorState, InlineBanner, LoadingState, ScreenContainer } from '@/components/common';
 import { AppButton, AppCard, AppSegmentedControl, AppText } from '@/components/ui';
 import { currentWeekStartIso } from '@/features/meal-planner';
@@ -11,7 +11,12 @@ import type { MainStackParamList, PlannerStackParamList } from '@/navigation/typ
 import { usePlanChangeStore } from '@/state/planner/planChangeStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { GroceryItemRow } from '../components/GroceryItemRow';
-import { useGroceryList, useRegenerateGroceryList, useToggleGroceryItem } from '../hooks/useGrocery';
+import {
+  useClearPurchasedGrocery,
+  useGroceryList,
+  useRegenerateGroceryList,
+  useToggleGroceryItem,
+} from '../hooks/useGrocery';
 
 type Props = NativeStackScreenProps<PlannerStackParamList, 'Grocery'>;
 
@@ -21,6 +26,8 @@ function formatVnd(value: number): string {
 
 // design/Grocery.dc.html + GroceryEmpty.dc.html (BR-170→BR-174). Đợt 11 (sửa lệch) — nay là
 // Stack.Screen thật trong PlannerStackNavigator (trước là toggle cục bộ, xem MainTabNavigator.tsx).
+// "Xóa N món đã mua" dọn món đã tick khỏi danh sách (hỏi lại trước khi xóa); khác "Hoàn tất mua sắm"
+// ở chỗ không ghi lại chuyến đi chợ/chi phí.
 export function GroceryScreen({ navigation, route }: Props) {
   const outerNavigation = navigation.getParent<NativeStackNavigationProp<MainStackParamList>>();
   const { colors } = useTheme();
@@ -28,6 +35,8 @@ export function GroceryScreen({ navigation, route }: Props) {
   const { data, isLoading, isError, error, refetch } = useGroceryList(weekStartIso);
   const toggleItem = useToggleGroceryItem(weekStartIso);
   const regenerate = useRegenerateGroceryList(weekStartIso);
+  const clearPurchased = useClearPurchasedGrocery(weekStartIso);
+  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
   const planChangedAt = usePlanChangeStore(state => state.changedAt[weekStartIso]);
 
   const openMealPlanner = () =>
@@ -103,7 +112,49 @@ export function GroceryScreen({ navigation, route }: Props) {
               style={{ width: `${progressPercent}%` }}
             />
           </View>
+          {data.purchasedItems > 0 && !isConfirmingClear ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Xóa ${data.purchasedItems} món đã mua`}
+              onPress={() => setIsConfirmingClear(true)}
+              className="min-h-[44px] flex-row items-center justify-end gap-xxs"
+            >
+              <Trash2 size={16} color={colors.error} />
+              <AppText variant="bodyMedium" color="error">
+                {`Xóa ${data.purchasedItems} món đã mua`}
+              </AppText>
+            </Pressable>
+          ) : null}
         </View>
+
+        {isConfirmingClear && data.purchasedItems > 0 ? (
+          <AppCard className="gap-sm border border-error">
+            <AppText variant="bodyMedium">{`Xóa ${data.purchasedItems} món đã mua khỏi danh sách?`}</AppText>
+            <AppText variant="caption" color="secondary">
+              {'Món chưa mua vẫn được giữ. Muốn ghi lại chi phí thực tế của lần đi chợ, hãy dùng "Hoàn tất mua sắm".'}
+            </AppText>
+            <View className="flex-row gap-sm">
+              <AppButton
+                label="Hủy"
+                variant="outline"
+                className="flex-1"
+                onPress={() => setIsConfirmingClear(false)}
+                disabled={clearPurchased.isPending}
+              />
+              <AppButton
+                label="Xóa"
+                className="flex-1"
+                loading={clearPurchased.isPending}
+                onPress={() => clearPurchased.mutate(undefined, { onSuccess: () => setIsConfirmingClear(false) })}
+              />
+            </View>
+            {clearPurchased.isError ? (
+              <AppText variant="caption" color="error" accessibilityRole="alert">
+                {clearPurchased.error.message}
+              </AppText>
+            ) : null}
+          </AppCard>
+        ) : null}
 
         {isOtherWeek || planChangedSinceGenerated ? (
           <InlineBanner

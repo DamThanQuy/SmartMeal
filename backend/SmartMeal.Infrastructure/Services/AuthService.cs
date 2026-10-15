@@ -76,7 +76,10 @@ public class AuthService : IAuthService
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             FullName = dto.FullName.Trim(),
             Role = "User",
-            IsEmailVerified = !requiresVerification
+            // Chỉ đăng ký bằng mật khẩu chưa chứng minh được người đăng ký sở hữu email này. Cờ được bật khi xác minh OTP
+            // (verify-email/reset-password); đăng nhập Google chỉ liên kết vào tài khoản đã xác minh để không ai "đăng ký
+            // trước" bằng email của người khác rồi chiếm tài khoản khi chủ thật đăng nhập Google.
+            IsEmailVerified = false
         };
 
         _db.Users.Add(user);
@@ -168,7 +171,10 @@ public class AuthService : IAuthService
             user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email);
             if (user is not null && !user.IsEmailVerified)
             {
-                return ApiResponse<AuthResponseDto>.Fail("Email tài khoản hiện tại chưa được xác minh.", null, ApiErrorKind.Conflict);
+                return ApiResponse<AuthResponseDto>.Fail(
+                    "Email này đã được đăng ký bằng mật khẩu nhưng chưa được xác minh. Hãy đăng nhập bằng email và mật khẩu.",
+                    null,
+                    ApiErrorKind.Conflict);
             }
 
             if (user is null)

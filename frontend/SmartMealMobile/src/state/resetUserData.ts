@@ -3,7 +3,7 @@
 // grocery, gamification, AI usage...) tự đăng ký hàm reset về đây lúc module load — DeleteDataScreen
 // chỉ cần gọi resetUserData() một lần, không cần biết danh sách store cụ thể.
 //
-// KHÔNG đăng ký: authStore, appStore (theme/ngôn ngữ), premiumStore và lịch sử giao dịch — dữ liệu
+// KHÔNG đăng ký: authStore, appStore (theme), premiumStore và lịch sử giao dịch — dữ liệu
 // thanh toán được giữ lại theo đúng BR-271 (xem DeleteDataScreen.tsx, ITEMS_TO_KEEP).
 type ResetFn = () => void;
 

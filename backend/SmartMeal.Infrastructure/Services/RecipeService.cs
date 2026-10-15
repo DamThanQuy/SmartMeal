@@ -25,10 +25,13 @@ public class RecipeService : IRecipeService
         _limits = limits.Value;
     }
 
-    /// <summary>Thông tin về người đang xem để cá nhân hóa công thức: món yêu thích và bệnh lý (cho cảnh báo BR-110/111).</summary>
-    private sealed record Viewer(HashSet<Guid>? FavoriteIds, IReadOnlyCollection<string> ConditionCodes)
+    /// <summary>
+    /// Thông tin về người đang xem để cá nhân hóa công thức: món yêu thích, bệnh lý (cảnh báo BR-110/111) và "dị ứng khác"
+    /// tự nhập (cảnh báo BR-101/102).
+    /// </summary>
+    private sealed record Viewer(HashSet<Guid>? FavoriteIds, IReadOnlyCollection<string> ConditionCodes, IReadOnlyList<string> OtherAllergens)
     {
-        public static readonly Viewer Anonymous = new(null, Array.Empty<string>());
+        public static readonly Viewer Anonymous = new(null, Array.Empty<string>(), Array.Empty<string>());
     }
 
     /// <summary>Công thức kèm tag, nguyên liệu và chất gây dị ứng của từng nguyên liệu.</summary>
@@ -102,6 +105,23 @@ public class RecipeService : IRecipeService
             {
                 recipes = recipes.Where(r => !r.RecipeIngredients.Any(ri => ri.Ingredient.IngredientAllergies.Any(a => allergyIds.Contains(a.AllergyId))));
             }
+
+            // "Dị ứng khác" là từ khóa tự do nên không dịch được sang SQL: tìm id công thức trùng khớp trong bộ nhớ rồi loại.
+            var otherAllergens = await GetOtherAllergensAsync(allergyOwner);
+            if (otherAllergens.Count > 0)
+            {
+                var names = await _db.Recipes.AsNoTracking()
+                    .Select(r => new { r.Id, r.Title, Ingredients = r.RecipeIngredients.Select(ri => ri.Ingredient.Name).ToList() })
+                    .ToListAsync();
+                var excluded = names
+                    .Where(r => CustomAllergens.FindMatch(otherAllergens, r.Ingredients.Prepend(r.Title)) is not null)
+                    .Select(r => r.Id)
+                    .ToList();
+                if (excluded.Count > 0)
+                {
+                    recipes = recipes.Where(r => !excluded.Contains(r.Id));
+                }
+            }
         }
 
         var total = await recipes.CountAsync();
@@ -156,6 +176,12 @@ public class RecipeService : IRecipeService
             recipes = recipes.Where(r => !ContainsAnyAllergen(r, userAllergies)).ToList();
         }
 
+        var otherAllergens = userId is { } owner ? await GetOtherAllergensAsync(owner) : Array.Empty<string>();
+        if (otherAllergens.Count > 0)
+        {
+            recipes = recipes.Where(r => MatchOtherAllergen(r, otherAllergens) is null).ToList();
+        }
+
         var ranked = recipes
             .Select(r => new
             {
@@ -176,7 +202,7 @@ public class RecipeService : IRecipeService
         var favorites = await GetViewerAsync(userId);
         var message = ranked.Count > 0
             ? "Đề xuất món ăn dựa trên tủ lạnh thành công."
-            : userAllergies.Count > 0
+            : userAllergies.Count > 0 || otherAllergens.Count > 0
                 ? "Không có món nào phù hợp với nguyên liệu này mà không chứa chất gây dị ứng của bạn."
                 : "Chưa có món nào dùng các nguyên liệu này.";
         return ApiResponse<List<RecipeDto>>.Ok(ranked.Select(r => ToDto(r, favorites)).ToList(), message);
@@ -443,11 +469,25 @@ public class RecipeService : IRecipeService
             .Where(uc => uc.HealthProfile.UserId == id)
             .Select(uc => uc.MedicalCondition.Code)
             .ToListAsync();
-        return new Viewer(favorites, conditions);
+        return new Viewer(favorites, conditions, await GetOtherAllergensAsync(id));
     }
+
+    private async Task<IReadOnlyList<string>> GetOtherAllergensAsync(Guid userId) =>
+        CustomAllergens.Keywords(await _db.HealthProfiles.AsNoTracking()
+            .Where(hp => hp.UserId == userId)
+            .Select(hp => hp.OtherAllergies)
+            .FirstOrDefaultAsync());
 
     private static bool ContainsAnyAllergen(Recipe recipe, HashSet<int> allergyIds) =>
         recipe.RecipeIngredients.Any(ri => ri.Ingredient.IngredientAllergies.Any(a => allergyIds.Contains(a.AllergyId)));
+
+    private static string? MatchOtherAllergen(Recipe recipe, IReadOnlyList<string> otherAllergens) =>
+        CustomAllergens.FindMatch(otherAllergens, recipe.RecipeIngredients.Select(ri => ri.Ingredient.Name).Prepend(recipe.Title));
+
+    private static IEnumerable<string> OtherAllergenWarnings(Recipe recipe, Viewer viewer) =>
+        MatchOtherAllergen(recipe, viewer.OtherAllergens) is { } keyword
+            ? new[] { $"Có thể chứa \"{keyword}\" — nằm trong dị ứng khác bạn đã khai báo." }
+            : Array.Empty<string>();
 
     private RecipeDto ToDto(Recipe r, Viewer viewer)
     {
@@ -483,7 +523,9 @@ public class RecipeService : IRecipeService
             MealTypes = r.MealTypes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
             AllergyIds = ingredients.SelectMany(i => i.AllergyIds).Distinct().OrderBy(x => x).ToList(),
             IsFavorite = viewer.FavoriteIds?.Contains(r.Id) ?? false,
-            HealthWarnings = HealthConditionRules.Evaluate(r, viewer.ConditionCodes, _limits).Select(v => v.Message).ToList(),
+            HealthWarnings = OtherAllergenWarnings(r, viewer)
+                .Concat(HealthConditionRules.Evaluate(r, viewer.ConditionCodes, _limits).Select(v => v.Message))
+                .ToList(),
             Ingredients = ingredients
         };
     }

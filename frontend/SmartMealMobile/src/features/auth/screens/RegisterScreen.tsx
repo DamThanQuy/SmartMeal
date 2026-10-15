@@ -190,14 +190,21 @@ export function RegisterScreen({ navigation }: Props) {
               />
             )}
           />
-          <AuthSocialDivider />
-          <AuthGoogleButton
-            label="Tiếp tục với Google"
-            onPress={googleLogin.start}
-            onCredential={googleLogin.acceptCredential}
-            disabled={googleLogin.isLoading || googleLogin.isPrompting}
-          />
-          {googleLogin.error ? <AppText variant="caption" color="error" className="text-center">{googleLogin.error.message}</AppText> : null}
+          {googleLogin.isAvailable ? (
+            <>
+              <AuthSocialDivider />
+              <AuthGoogleButton
+                label="Tiếp tục với Google"
+                onCredential={googleLogin.acceptCredential}
+                disabled={googleLogin.isLoading}
+              />
+              {googleLogin.error ? (
+                <AppText variant="caption" color="error" className="text-center">
+                  {googleLogin.error.message}
+                </AppText>
+              ) : null}
+            </>
+          ) : null}
         </View>
 
         <View>

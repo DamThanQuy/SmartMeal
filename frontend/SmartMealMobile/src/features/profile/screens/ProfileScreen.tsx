@@ -37,9 +37,13 @@ export function ProfileScreen() {
   const membershipStatus = usePremiumStore(state => state.status);
   const isPremium = isProMembership(membershipStatus);
 
-  const allergyLabels = profile.allergyIds
-    .map(id => ALLERGY_OPTIONS.find(option => option.id === id)?.label)
-    .filter((label): label is string => Boolean(label));
+  const allergyLabels = [
+    ...profile.allergyIds
+      .filter(id => id !== 'other' || !profile.otherAllergies)
+      .map(id => ALLERGY_OPTIONS.find(option => option.id === id)?.label),
+    // "Dị ứng khác" tự gõ hiện đúng tên người dùng nhập thay cho nhãn chung "Khác".
+    profile.otherAllergies || undefined,
+  ].filter((label): label is string => Boolean(label));
   const dietaryLabels = profile.dietaryPreferenceIds
     .map(id => DIETARY_PREFERENCE_OPTIONS.find(option => option.id === id)?.label)
     .filter((label): label is string => Boolean(label));

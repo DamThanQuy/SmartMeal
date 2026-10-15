@@ -25,7 +25,9 @@ export const BILLING_PLAN_OPTIONS: BillingPlanOption[] = [
   },
 ];
 
+// PayOS đứng đầu: là cổng thật duy nhất đã tích hợp (chuyển khoản VietQR); các phương thức còn lại chưa có cổng thật.
 export const PAYMENT_METHOD_OPTIONS: PaymentMethodOption[] = [
+  { id: 'payos', label: 'PayOS – chuyển khoản VietQR' },
   { id: 'vnpay', label: 'VNPAY' },
   { id: 'momo', label: 'MoMo' },
   { id: 'card', label: 'Thẻ quốc tế' },

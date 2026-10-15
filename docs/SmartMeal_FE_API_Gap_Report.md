@@ -57,6 +57,32 @@ Tất cả đã được kiểm chứng như sau:
 
 Chi tiết từng việc và cách kiểm chứng: [`docs/implementation_report.md`](implementation_report.md).
 
+### 0.1 Rà soát lại — 14/10/2026 (sau commit `ef7b1cf` khôi phục đăng nhập Google)
+
+Mọi hàm của 17 service FE đều có bản gọi API; mọi endpoint FE gọi đều có route ở BE. Đợt này làm nốt các chỗ còn thiếu **không cần khóa bí mật**.
+
+Kiểm chứng: BE 248 test xUnit qua (PostgreSQL thật, gồm test mới cho tiến độ theo khoảng ngày, Open Food Facts dùng stub, dị ứng khác, liên kết Google, PayOS dùng cổng giả); FE 517 test Jest qua, `tsc` và `expo lint` không lỗi. Chưa chạy test live/thiết bị thật cho đợt này.
+
+
+| Việc | Trạng thái | Ghi chú |
+|---|---|---|
+| Biểu đồ tiến độ Ngày/Tháng | ✅ | BE thêm `GET /nutritiondiary/progress?startDate=&endDate=` (≤ 31 ngày). FE: tab Ngày tính từ nhật ký hôm nay, tab Tháng 30 ngày. |
+| Tra mã vạch khi CSDL chưa có | ✅ | BE tra Open Food Facts (không cần khóa), lưu thành thực phẩm chung `isVerified = false`; seed không có mã vạch nào nên trước đây gần như luôn 404. |
+| "Dị ứng khác" tự gõ | ✅ | Trước đây chữ nhập ở bước dị ứng bị bỏ mất dù banner hứa sẽ loại món. BE lưu `HealthProfile.OtherAllergies` (migration `HealthProfileOtherAllergies`), dùng để loại món ở recipes/pantry/auto-generate, chặn `assign`, cảnh báo ở chi tiết công thức và khi quét mã vạch. FE gửi ở khảo sát, sửa ở Hồ sơ sức khỏe. |
+| Liên kết Google chiếm tài khoản | ✅ | `register` không còn tự đánh dấu email đã xác minh → `POST /auth/google` chỉ liên kết vào tài khoản đã xác minh email (OTP), ngược lại `409`. |
+| Lỗi mã hóa tiếng Việt ở 4 file đăng nhập Google | ✅ | "Hoặc" và thông báo lỗi Google hiển thị vỡ chữ; đã sửa và đưa về UTF-8/LF. Nút Google ẩn trên native (chỉ chạy Web) thay vì bấm không làm gì. |
+| Đổi mật khẩu không cần email | ✅ | Settings → `ChangePasswordScreen` gọi `POST /auth/change-password`; tài khoản chưa có mật khẩu vẫn đi luồng OTP. |
+| Điều khoản / Quyền riêng tư | ✅ | `LegalScreen` (văn bản tĩnh, mô tả đúng luồng dữ liệu hiện có). |
+| Thêm nguyên liệu thủ công (Tủ lạnh), thêm món AI bỏ sót (AI Snap) | ✅ | Không cần API mới (pantry + FoodSearch). |
+| Nút "Liên hệ hỗ trợ" (tài khoản bị khóa) | ✅ | Đổi thành "Đặt lại mật khẩu" — BE khóa tạm và mở khóa khi đặt lại mật khẩu; dự án không có kênh hỗ trợ. |
+| Trang phục Bé Mầm (mặc/tháo) | ✅ | Khôi phục phần trang phục ở màn Huy hiệu (đã bị gỡ ở `af3c448`): chạm để mặc (`POST /gamification/costumes/{id}/equip`), bộ đang mặc có nút "Tháo" (`DELETE /gamification/costumes/equipped`). |
+| Nút "Xóa món đã mua" | ✅ | Màn Đi chợ: "Xóa N món đã mua" → hỏi lại → `DELETE /grocery/clear-checked`. Khác "Hoàn tất mua sắm" ở chỗ không ghi chuyến đi chợ/chi phí. |
+| Đa ngôn ngữ (i18n) | ➖ | Bỏ hẳn (15/10/2026): app chỉ dùng tiếng Việt; gỡ lựa chọn VI/EN ở Cài đặt và `appStore.language`. |
+| Health Connect, push notification | ⏳ | Cần Dev Client/EAS (và credential FCM/APNs cho push). |
+| Sửa lần merge PR #12 (PayOS) | ✅ | Bản merge trên `main` không biên dịch được (`PaymentTransaction` khai báo hai lần, biến chưa khai báo) và đã lấy bản cũ của nhiều file, làm mất: `RefreshToken`, unique index nhật ký/thực đơn/Bé Mầm/XP, `UserNotifications`, Idempotency-Key, khóa `GroceryList`, `ShareToken`, kiểm tra Jwt:Key mẫu, API `status`/`transactions`/`cancel`/`webhook`, `premiumService` (FE). Đã khôi phục các phần này rồi tích hợp lại PayOS. |
+| Thanh toán PayOS (VietQR) | ✅ | `paymentMethod = PAYOS`: BE tạo link PayOS, lưu `OrderCode`/`CheckoutUrl`/`QrCode` (migration `PaymentTransactionPayOS`); Pro chỉ kích hoạt khi PayOS xác nhận — webhook có chữ ký (`POST /subscription/payos-webhook`) hoặc máy chủ hỏi PayOS qua `GET /subscription/check-status/{orderCode}` (chỉ chủ đơn); một bước xác nhận idempotent, không cộng hạn hai lần. FE: màn chờ hiện mã QR + mở trang PayOS, chờ server xác nhận (không tự bật Pro như bản PR). Khóa PayOS chỉ đặt qua `PayOS__*` trong `backend/.env`; khóa từng bị commit trong `appsettings.json`/`docker-compose.yml` của PR cần được đổi trên my.payos.vn. |
+| Gemini, cổng VNPAY/MoMo/Stripe, SMTP | ⏳ | Cần khóa bí mật — ngoài phạm vi đợt này. Lưu ý: `Gemini:Model` mặc định `gemini-1.5-flash` đã bị Google tắt (29/09/2025). |
+
 ## 1. Kết quả chính
 
 **Có 20 thao tác HTTP mà code gọi API của FE đã sử dụng nhưng controller BE chưa khai báo.** Một thao tác được tính theo cặp `method + path`, nên `POST` và `DELETE` cùng một đường dẫn là hai thao tác. Đây là các lời gọi có trong code FE; khả năng chạy tới chúng còn phụ thuộc màn hình, chế độ mock và trạng thái phiên.

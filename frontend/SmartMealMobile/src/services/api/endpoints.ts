@@ -36,6 +36,8 @@ export const ENDPOINTS = {
     logBatch: '/nutritiondiary/log/batch',
     daily: '/nutritiondiary/daily',
     weeklyProgress: '/nutritiondiary/weekly-progress',
+    /** Tiến độ theo khoảng ngày bất kỳ (tối đa 31 ngày) — biểu đồ "Tháng". */
+    progress: '/nutritiondiary/progress',
     item: (id: string) => `/nutritiondiary/items/${id}`,
     water: '/nutritiondiary/water',
     waterEntry: (id: string) => `/nutritiondiary/water/${id}`,
@@ -116,6 +118,8 @@ export const ENDPOINTS = {
     plans: '/subscription/plans',
     checkout: '/subscription/create-checkout-session',
     createCheckoutSession: '/subscription/create-checkout-session',
+    /** GET trạng thái giao dịch PayOS của chính mình (máy chủ hỏi PayOS khi còn chờ). */
+    checkStatus: (orderCode: number) => `/subscription/check-status/${orderCode}`,
     activateMock: '/subscription/activate-mock',
     status: '/subscription/status',
     transactions: '/subscription/transactions',

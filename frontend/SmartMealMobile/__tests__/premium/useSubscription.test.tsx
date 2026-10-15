@@ -111,7 +111,7 @@ describe('useCheckoutPremium', () => {
 
     await hook.run(() => hook.current.mutateAsync({ planId: 'monthly', paymentMethodId: 'vnpay' }));
 
-    expect(service.checkout).toHaveBeenCalledWith('monthly', 'vnpay');
+    expect(service.checkout).toHaveBeenCalledWith('monthly', 'vnpay', {});
     expect(usePremiumStore.getState()).toMatchObject(PRO);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: SUBSCRIPTION_QUERY_KEY });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: AI_QUOTA_QUERY_KEY });

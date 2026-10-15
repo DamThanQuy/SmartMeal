@@ -4,6 +4,7 @@ export * from './screens/RegisterScreen';
 export * from './screens/OtpScreen';
 export * from './screens/ForgotPasswordScreen';
 export * from './screens/ResetPasswordScreen';
+export * from './screens/ChangePasswordScreen';
 export * from './screens/GuestPromptScreen';
 export * from './screens/StateSessionScreen';
 export * from './types/auth.types';

@@ -56,6 +56,20 @@ public class NutritionDiaryController : ControllerBase
         return this.ToActionResult(await _diaryService.GetWeeklyProgressAsync(userId, start));
     }
 
+    /// <summary>
+    /// Tiến độ từng ngày trong khoảng [startDate, endDate], tối đa 31 ngày (biểu đồ "Tháng").
+    /// Bỏ trống endDate = hôm nay; bỏ trống startDate = 30 ngày trước endDate.
+    /// </summary>
+    [HttpGet("progress")]
+    public async Task<ActionResult<ApiResponse<WeeklyProgressDto>>> GetProgress([FromQuery] DateOnly? startDate, [FromQuery] DateOnly? endDate)
+    {
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<WeeklyProgressDto>();
+
+        var end = endDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var start = startDate ?? end.AddDays(-29);
+        return this.ToActionResult(await _diaryService.GetProgressAsync(userId, start, end));
+    }
+
     /// <summary>Sửa một món đã ghi (khẩu phần, dinh dưỡng, chuyển bữa/ngày). Chỉ các trường có mặt mới đổi.</summary>
     [HttpPut("items/{itemId:guid}")]
     public async Task<ActionResult<ApiResponse<DiaryItemDto>>> UpdateItem(Guid itemId, [FromBody] UpdateDiaryItemRequestDto dto)

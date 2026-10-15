@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SmartMeal.Application.Common;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.Health;
 using SmartMeal.Application.Services;
@@ -67,6 +68,9 @@ public class HealthProfileService : IHealthProfileService
         {
             profile.WaterGoalMl = dto.WaterGoalMl.Value;
         }
+
+        // Khảo sát ghi đè toàn bộ hồ sơ: không gửi = không có dị ứng khác.
+        profile.OtherAllergies = CustomAllergens.Normalize(dto.OtherAllergies);
 
         ApplyMetrics(profile, today);
 
@@ -145,6 +149,7 @@ public class HealthProfileService : IHealthProfileService
         if (dto.CurrentWeightKg.HasValue) profile.CurrentWeightKg = dto.CurrentWeightKg.Value;
         if (dto.TargetWeightKg.HasValue) profile.TargetWeightKg = dto.TargetWeightKg.Value;
         if (dto.WaterGoalMl.HasValue) profile.WaterGoalMl = dto.WaterGoalMl.Value;
+        if (dto.OtherAllergies is not null) profile.OtherAllergies = CustomAllergens.Normalize(dto.OtherAllergies);
 
         var referenceError = await ValidateReferencesAsync(
             dto.AllergyIds ?? new List<int>(),
@@ -440,7 +445,8 @@ public class HealthProfileService : IHealthProfileService
             DietaryPreferences = diets.Select(dp => dp.Tag.Name).ToList(),
             AllergyIds = allergies.Select(ua => ua.AllergyId).ToList(),
             MedicalConditionIds = conditions.Select(uc => uc.MedicalConditionId).ToList(),
-            DietaryPreferenceIds = diets.Select(dp => dp.TagId).ToList()
+            DietaryPreferenceIds = diets.Select(dp => dp.TagId).ToList(),
+            OtherAllergies = profile.OtherAllergies
         };
     }
 }
