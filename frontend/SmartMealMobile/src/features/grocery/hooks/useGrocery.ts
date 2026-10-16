@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { shiftWeek } from '@/features/meal-planner';
-import { groceryService, type ManualGroceryItemInput } from '../services/groceryService';
-import type { CompleteShoppingInput, GroceryItemStatus } from '../types/grocery.types';
+import { groceryService } from '../services/groceryService';
+import type { CompleteShoppingInput, GroceryItemStatus, ManualGroceryItemInput } from '../types/grocery.types';
 
 export const groceryQueryKey = (weekStartIso: string) => ['grocery', weekStartIso] as const;
 

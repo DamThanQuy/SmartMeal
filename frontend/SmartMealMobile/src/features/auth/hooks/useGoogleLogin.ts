@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { Platform } from 'react-native';
 import { useMutation } from '@tanstack/react-query';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
