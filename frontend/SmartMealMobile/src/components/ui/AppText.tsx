@@ -1,6 +1,8 @@
 import React from 'react';
 import { Text, type TextProps } from 'react-native';
+import { lightColors } from '@/theme/colors';
 import type { AppTextVariant } from '@/theme/typography';
+import { camelToKebabCase } from '@/utils/color';
 
 export type AppTextColor =
   | 'primary'
@@ -52,6 +54,13 @@ const COLOR_CLASSNAME: Record<AppTextColor, string> = {
   onPrimarySoft: 'text-on-primary-soft',
 };
 
+// Màu chữ đặt qua className ("text-text-inverse", "text-on-primary/80"...) thay hẳn màu của prop `color` — không để
+// cả hai class: NativeWind xếp utility theo thứ tự chữ cái chứ không theo thứ tự trong className, nên màu mặc định
+// "text-text-primary" sẽ đè mất (chữ tối trên nền tối của SuccessToast, màn camera...).
+const TEXT_COLOR_CLASS = new RegExp(
+  `(?:^|\\s)text-(?:${Object.keys(lightColors).map(camelToKebabCase).join('|')})(?:/\\d+)?(?=\\s|$)`,
+);
+
 export function AppText({
   variant = 'body',
   color = 'primary',
@@ -60,9 +69,12 @@ export function AppText({
   children,
   ...rest
 }: AppTextProps) {
+  const colorClassName = TEXT_COLOR_CLASS.test(className)
+    ? ''
+    : COLOR_CLASSNAME[color];
   return (
     <Text
-      className={`${VARIANT_CLASSNAME[variant]} ${COLOR_CLASSNAME[color]} ${className}`}
+      className={`${VARIANT_CLASSNAME[variant]} ${colorClassName} ${className}`}
       style={[
         { includeFontPadding: false, textAlignVertical: 'center' },
         style,
