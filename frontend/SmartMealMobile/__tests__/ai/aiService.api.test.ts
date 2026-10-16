@@ -166,6 +166,20 @@ describe('transcribeVoice', () => {
   });
 });
 
+/** Theo dõi phần multipart `audio` mà service gắn vào FormData (object { uri, name, type } của React Native). */
+function spyAudioPart() {
+  const append = jest.spyOn(FormData.prototype, 'append');
+  let captured: unknown;
+  return {
+    part: () => captured,
+    // mockRestore() xóa luôn lịch sử gọi nên chụp lại phần `audio` trước.
+    restore: () => {
+      captured = append.mock.calls.find(([field]) => field === 'audio')?.[1];
+      append.mockRestore();
+    },
+  };
+}
+
 describe('transcribeVoiceAudio', () => {
   test('POST /ai/voice-log/audio multipart; câu hiển thị lấy từ bản chép lời của server', async () => {
     const { service, apiMock } = loadService();
@@ -182,11 +196,14 @@ describe('transcribeVoiceAudio', () => {
       isDemo: false,
     });
 
-    const result = await service.transcribeVoiceAudio?.('breakfast', 'file:///voice.m4a');
+    const audio = spyAudioPart();
+    const result = await service.transcribeVoiceAudio?.('breakfast', 'file:///cache/voice-1.wav');
+    audio.restore();
 
     const [url, form, config] = apiMock.post.mock.calls[0] as [string, FormData, { timeout: number }];
     expect(url).toBe('/ai/voice-log/audio');
     expect(form).toBeInstanceOf(FormData);
+    expect(audio.part()).toMatchObject({ uri: 'file:///cache/voice-1.wav', name: 'voice.wav', type: 'audio/wav' });
     expect(config).toEqual({ timeout: API_CONFIG.aiTimeout });
     expect(result).toMatchObject({
       mealType: 'breakfast',
@@ -213,6 +230,33 @@ describe('transcribeVoiceAudio', () => {
 
     await expect(service.transcribeVoiceAudio?.('lunch', undefined)).rejects.toThrow(NO_AUDIO_MESSAGE);
     expect(apiMock.post).not.toHaveBeenCalled();
+  });
+});
+
+describe('transcribeVoiceDraft', () => {
+  test('POST /ai/voice-log/transcribe với file WAV đang ghi, trả câu đã chép (bỏ khoảng trắng thừa)', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.post.mockResolvedValue({ transcript: '  trưa nay tôi ăn một tô phở ', isDemo: false });
+
+    const audio = spyAudioPart();
+    const text = await service.transcribeVoiceDraft?.('file:///cache/voice-live.wav');
+    audio.restore();
+
+    const [url, form, config] = apiMock.post.mock.calls[0] as [string, FormData, { timeout: number }];
+    expect(url).toBe('/ai/voice-log/transcribe');
+    expect(form).toBeInstanceOf(FormData);
+    expect(audio.part()).toMatchObject({ name: 'voice.wav', type: 'audio/wav' });
+    expect(config).toEqual({ timeout: API_CONFIG.aiTimeout });
+    expect(text).toBe('trưa nay tôi ăn một tô phở');
+  });
+
+  test('lỗi của server (hết lượt, gửi quá dày) ném nguyên để hook ngừng phụ đề', async () => {
+    const { service, apiMock, ApiError } = loadService();
+    apiMock.post.mockRejectedValueOnce(new ApiError('Quá nhiều yêu cầu', 'RATE_LIMITED', 429));
+
+    await expect(service.transcribeVoiceDraft?.('file:///cache/voice-live.wav')).rejects.toMatchObject({
+      code: 'RATE_LIMITED',
+    });
   });
 });
 

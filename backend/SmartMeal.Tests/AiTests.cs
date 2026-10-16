@@ -546,6 +546,85 @@ public class AiTests : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().PostAsync("/api/ai/voice-log/audio", Audio(Wav))).StatusCode);
     }
 
+    // ───────────────────────────── Ảnh món ăn được lưu lại, phụ đề tạm khi ghi âm ─────────────────────────────
+
+    [DbFact]
+    public async Task A_snapped_photo_is_kept_logged_with_the_meal_and_removed_with_the_last_item_using_it()
+    {
+        var stub = new StubGeminiHandler { ModelText = SnapJson };
+        using var factory = StubbedFactory(new ApiFactory().WithSetting("Gemini:ApiKey", "test-gemini-key"), stub);
+        var user = await factory.RegisterUserAsync();
+
+        var snap = (await (await SnapAsync(user.Client)).ReadEnvelopeAsync<SnapPayload>()).Data!;
+
+        Assert.Contains($"/uploads/meals/{user.Id:N}/", snap.ImageUrl);
+        Assert.EndsWith(".jpg", snap.ImageUrl);
+        var photoPath = new Uri(snap.ImageUrl!).PathAndQuery;
+        var photo = await factory.CreateClient().GetAsync(photoPath);
+        Assert.Equal(HttpStatusCode.OK, photo.StatusCode);
+        Assert.Equal(Jpeg, await photo.Content.ReadAsByteArrayAsync());
+
+        // Ghi hai món cùng ảnh → nhật ký trả lại đúng ảnh cho từng món.
+        var logged = await user.Client.PostJsonAsync("/api/nutritiondiary/log/batch", new
+        {
+            mealType = "Lunch",
+            items = new[]
+            {
+                new { foodName = snap.DishName, servingSize = 350, unit = "g", calories = 380, logMethod = "AiImage", imageUrl = snap.ImageUrl },
+                new { foodName = "Canh rau", servingSize = 200, unit = "g", calories = 40, logMethod = "AiImage", imageUrl = snap.ImageUrl }
+            }
+        });
+        logged.EnsureSuccessStatusCode();
+        var items = (await logged.ReadEnvelopeAsync<List<DiaryItemPayload>>()).Data!;
+        Assert.All(items, item => Assert.Equal(snap.ImageUrl, item.ImageUrl));
+
+        // Còn món dùng ảnh thì giữ file; xóa món cuối cùng thì file ảnh cũng bị xóa.
+        (await user.Client.DeleteAsync($"/api/nutritiondiary/items/{items[0].Id}")).EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.OK, (await factory.CreateClient().GetAsync(photoPath)).StatusCode);
+        (await user.Client.DeleteAsync($"/api/nutritiondiary/items/{items[1].Id}")).EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.NotFound, (await factory.CreateClient().GetAsync(photoPath)).StatusCode);
+    }
+
+    [DbFact]
+    public async Task Live_captions_transcribe_the_recording_without_using_quota_but_stop_once_the_quota_is_gone()
+    {
+        var stub = new StubGeminiHandler { ModelText = """{"transcript":"  trưa nay tôi ăn một tô phở  "}""" };
+        using var factory = StubbedFactory(new ApiFactory().WithSetting("Gemini:ApiKey", "test-gemini-key").WithSetting("Ai:FreeDailyLimit", "1"), stub);
+        var user = await factory.RegisterUserAsync();
+
+        var response = await user.Client.PostAsync("/api/ai/voice-log/transcribe", Audio(Wav));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var caption = (await response.ReadEnvelopeAsync<VoiceTranscriptPayload>()).Data!;
+        Assert.Equal("trưa nay tôi ăn một tô phở", caption.Transcript);
+        Assert.False(caption.IsDemo);
+        Assert.Contains("audio/wav", Assert.Single(stub.Calls).Body);
+        Assert.Equal(0, (await QuotaAsync(user.Client)).Used);   // phụ đề tạm không tốn lượt
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await user.Client.PostAsync("/api/ai/voice-log/transcribe", Audio(Jpeg))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().PostAsync("/api/ai/voice-log/transcribe", Audio(Wav))).StatusCode);
+
+        // Hết lượt thì không phân tích được nữa nên phụ đề cũng dừng.
+        stub.ModelText = SnapJson;
+        (await SnapAsync(user.Client)).EnsureSuccessStatusCode();
+        var exhausted = await user.Client.PostAsync("/api/ai/voice-log/transcribe", Audio(Wav));
+        Assert.Equal((HttpStatusCode)429, exhausted.StatusCode);
+        Assert.Contains("ai_quota_exceeded", (await exhausted.ReadEnvelopeAsync<object>()).Errors!);
+    }
+
+    [DbFact]
+    public async Task Live_captions_are_rate_limited_per_user()
+    {
+        using var factory = new ApiFactory().WithSetting("Ai:AllowDemoFallback", "true").WithSetting("RateLimiting:VoiceTranscribePermitsPerMinute", "2");
+        var user = await factory.RegisterUserAsync();
+        var other = await factory.RegisterUserAsync();
+
+        Assert.Equal(HttpStatusCode.OK, (await user.Client.PostAsync("/api/ai/voice-log/transcribe", Audio(Wav))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await user.Client.PostAsync("/api/ai/voice-log/transcribe", Audio(Wav))).StatusCode);
+        Assert.Equal((HttpStatusCode)429, (await user.Client.PostAsync("/api/ai/voice-log/transcribe", Audio(Wav))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await other.Client.PostAsync("/api/ai/voice-log/transcribe", Audio(Wav))).StatusCode);
+    }
+
     /// <summary>Cho factory gọi "Gemini" giả thay vì Internet.</summary>
     private static ApiFactory StubbedFactory(ApiFactory factory, StubGeminiHandler stub) =>
         factory.WithServices(services =>

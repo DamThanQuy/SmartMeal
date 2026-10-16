@@ -45,6 +45,8 @@ export interface AIAnalysisResult {
   detectedIngredients?: string[];
   /** true khi backend trả dữ liệu MẪU (chưa cấu hình AI) — phải báo rõ để không lưu nhầm thành bữa ăn thật. */
   isDemo?: boolean;
+  /** Ảnh đã chụp, backend lưu lại — gắn vào các món AI khi ghi nhật ký để xem lại về sau. */
+  imageUrl?: string;
 }
 
 export interface VoicePortionOption {

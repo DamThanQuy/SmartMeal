@@ -1,13 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import {
-  getRecordingPermissionsAsync,
-  RecordingPresets,
-  setAudioModeAsync,
-  useAudioPlayer,
-  useAudioPlayerStatus,
-  useAudioRecorder,
-} from 'expo-audio';
-import { HelpCircle, Mic, Pause, Play, Volume2 } from 'lucide-react-native';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import { HelpCircle, Mic, Pause, Play } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { ScreenContainer, ScreenHeader } from '@/components/common';
@@ -26,6 +19,7 @@ import { AiDemoNotice } from '../components/AiResultNotices';
 import { AiResultItemRow } from '../components/AiResultItemRow';
 import { useTranscribeVoice } from '../hooks/useAiAnalysis';
 import { useAiQuota, useRefreshAiQuota } from '../hooks/useAiQuota';
+import { useVoiceRecorder } from '../hooks/useVoiceRecorder';
 import { AiRecognitionFailedError, isAiQuotaExceededError } from '../services/aiService';
 import type { AIRecognizedItem, VoiceLogResult } from '../types/ai.types';
 
@@ -33,11 +27,9 @@ type Props = NativeStackScreenProps<MainStackParamList, 'VoiceLog'>;
 
 type Phase = 'recording' | 'processing' | 'reviewing';
 
-const DEFAULT_WAVEFORMS = [12, 20, 28, 16, 36, 24, 14, 28, 38, 22, 16, 26, 12];
-
-// Bật metering để sóng âm chạy theo cường độ giọng nói thật.
-const RECORDING_OPTIONS = { ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true };
-const RECORDER_STATUS_INTERVAL_MS = 100;
+/** Chiều cao thanh sóng âm (px) khi im lặng và khi to nhất. */
+const WAVE_MIN_HEIGHT = 8;
+const WAVE_MAX_HEIGHT = 44;
 
 function resolvePortionIdFor(result: VoiceLogResult): string | null {
   return (
@@ -55,6 +47,9 @@ function formatDuration(durationMillis: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
+// design/VoiceLog.dc.html (BR-070, BR-054). Vào màn là bắt đầu nghe (useVoiceRecorder — luồng PCM của
+// expo-audio); trong lúc nói, phụ đề tạm hiện ngay dưới micro. Chạm micro để dừng → gửi file WAV lên
+// /ai/voice-log/audio → duyệt món → xác nhận mới ghi nhật ký. Micro lỗi thì báo ngay tại chỗ và chạm để thử lại.
 export function VoiceLogScreen({ navigation, route }: Props) {
   const { mealType, initialResult } = route.params;
   const { colors } = useTheme();
@@ -62,6 +57,8 @@ export function VoiceLogScreen({ navigation, route }: Props) {
   const refreshQuota = useRefreshAiQuota();
   const transcribeVoice = useTranscribeVoice();
   const addMealLogEntries = useAddMealLogEntries(todayIso());
+  // Nói tới giới hạn thời lượng thì tự dừng và phân tích.
+  const recorder = useVoiceRecorder({ onMaxDuration: () => void stopAndTranscribe() });
 
   const [phase, setPhase] = useState<Phase>(initialResult ? 'reviewing' : 'recording');
   const [voiceResult, setVoiceResult] = useState<VoiceLogResult | null>(initialResult ?? null);
@@ -69,84 +66,37 @@ export function VoiceLogScreen({ navigation, route }: Props) {
   const [selectedPortionId, setSelectedPortionId] = useState<string | null>(
     initialResult ? resolvePortionIdFor(initialResult) : null,
   );
-
-  // Trạng thái ghi âm thật qua expo-audio (expo-av không còn trong Expo Go SDK 57)
-  const [durationMillis, setDurationMillis] = useState(0);
-  const [waveHeights, setWaveHeights] = useState<number[]>(DEFAULT_WAVEFORMS);
   const [recordedUri, setRecordedUri] = useState<string | null>(null);
 
-  const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const player = useAudioPlayer(recordedUri);
   const playerStatus = useAudioPlayerStatus(player);
   const isPlayingAudio = playerStatus.playing;
 
-  // Cập nhật thời lượng + sóng âm theo trạng thái recorder trong lúc đang ghi.
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const status = recorder.getStatus();
-      if (!status.isRecording) return;
-      setDurationMillis(status.durationMillis);
-      if (typeof status.metering === 'number') {
-        // Cường độ âm thanh dBFS từ -160 đến 0
-        const normalized = Math.min(Math.max((status.metering + 60) / 60, 0.15), 1);
-        setWaveHeights(prev => prev.map(() => Math.round(10 + Math.random() * normalized * 32)));
-      }
-    }, RECORDER_STATUS_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, [recorder]);
+  const isListening = phase === 'recording' && recorder.status === 'recording';
+  const isStarting = phase === 'recording' && recorder.status === 'starting';
 
-  // Bắt đầu ghi âm thật
   const startRecording = async () => {
-    try {
-      const { granted } = await getRecordingPermissionsAsync();
-      if (!granted) {
-        navigation.replace(MAIN_STACK_ROUTES.VOICE_PERMISSION, { mealType });
-        return;
-      }
-
-      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-      await recorder.prepareToRecordAsync();
-      recorder.record();
-    } catch {
-      // Nếu có lỗi khởi tạo ghi âm (ví dụ chạy trên simulator không có mic)
+    const outcome = await recorder.start();
+    if (outcome === 'permission-denied') {
+      navigation.replace(MAIN_STACK_ROUTES.VOICE_PERMISSION, { mealType });
     }
   };
 
-  // Tự động kích hoạt ghi âm khi vào màn hình (nếu không có initialResult)
+  // Tự bắt đầu nghe khi vào màn hình (trừ khi đã có kết quả từ VoicePermission "gõ bữa ăn").
   useEffect(() => {
-    if (!initialResult) {
-      void startRecording();
-    }
-
-    return () => {
-      // Dọn dẹp an toàn khi rời màn hình; recorder/player do hook expo-audio tự giải phóng.
-      try {
-        if (recorder.isRecording) void recorder.stop().catch(() => {});
-      } catch {
-        // Recorder có thể đã được giải phóng trước.
-      }
-      void setAudioModeAsync({ allowsRecording: false }).catch(() => {});
-    };
+    if (!initialResult) void startRecording();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Dừng ghi âm và gửi xử lý AI
+  // Dừng ghi và gửi phân tích; chưa thu được gì thì ở lại màn với lỗi + chạm micro để thử lại.
   const stopAndTranscribe = async () => {
-    let audioUri: string | null = null;
-    try {
-      if (recorder.isRecording) {
-        await recorder.stop();
-        audioUri = recorder.uri;
-        setRecordedUri(audioUri);
-        await setAudioModeAsync({ allowsRecording: false });
-      }
-    } catch {
-      // Bỏ qua lỗi dừng ghi âm
-    }
+    const recording = await recorder.stop();
+    if (!recording) return;
 
+    setRecordedUri(recording.uri);
     setPhase('processing');
     transcribeVoice.mutate(
-      { mealType, audioUri: audioUri ?? undefined },
+      { mealType, audioUri: recording.uri },
       {
         onSuccess: result => {
           consumeQuota();
@@ -165,7 +115,7 @@ export function VoiceLogScreen({ navigation, route }: Props) {
             navigation.replace(MAIN_STACK_ROUTES.STATE_AI_LIMIT, { mealType });
             return;
           }
-          // Vd. không thu được ghi âm, lỗi mạng: báo rõ lý do thay vì treo ở "Đang nhận diện…".
+          // Vd. lỗi mạng, AI đang lỗi: báo rõ lý do thay vì treo ở "Đang phân tích…".
           navigation.replace(MAIN_STACK_ROUTES.STATE_AI_FAILED, {
             mealType,
             source: 'voice',
@@ -174,6 +124,15 @@ export function VoiceLogScreen({ navigation, route }: Props) {
         },
       },
     );
+  };
+
+  const handleMicPress = () => {
+    if (isListening) {
+      void stopAndTranscribe();
+      return;
+    }
+    // Lỗi micro / chưa thu được gì: chạm để nghe lại.
+    void startRecording();
   };
 
   // Nghe lại đoạn âm thanh vừa thu
@@ -214,11 +173,9 @@ export function VoiceLogScreen({ navigation, route }: Props) {
     }
   };
 
-  const handleRetry = async () => {
+  const handleRetry = () => {
     if (isPlayingAudio) player.pause();
-    setDurationMillis(0);
     setRecordedUri(null);
-    setWaveHeights(DEFAULT_WAVEFORMS);
     setPhase('recording');
     setVoiceResult(null);
     setItems([]);
@@ -251,6 +208,17 @@ export function VoiceLogScreen({ navigation, route }: Props) {
     );
   };
 
+  const statusText =
+    phase === 'processing'
+      ? 'Đang phân tích bữa ăn…'
+      : phase === 'reviewing'
+        ? 'Đã ghi âm và nhận diện xong'
+        : isStarting
+          ? 'Đang mở micro…'
+          : isListening
+            ? `Đang nghe… chạm để dừng (${formatDuration(recorder.durationMillis)})`
+            : 'Chạm micro để bắt đầu nói';
+
   return (
     <ScreenContainer>
       <ScreenHeader title="Nói để ghi" onBack={() => navigation.goBack()} />
@@ -262,11 +230,11 @@ export function VoiceLogScreen({ navigation, route }: Props) {
         <View className="items-center gap-sm py-xs">
           <View className="h-[120px] w-[120px] items-center justify-center rounded-full bg-primary-soft shadow-sm">
             <AppIconButton
-              accessibilityLabel={phase === 'recording' ? 'Dừng ghi âm' : 'Đang xử lý ghi âm'}
-              disabled={phase !== 'recording'}
-              onPress={stopAndTranscribe}
+              accessibilityLabel={isListening ? 'Dừng ghi âm' : phase === 'recording' ? 'Bắt đầu ghi âm' : 'Đang xử lý ghi âm'}
+              disabled={phase !== 'recording' || isStarting}
+              onPress={handleMicPress}
               icon={
-                phase === 'processing' ? (
+                phase === 'processing' || isStarting ? (
                   <ActivityIndicator color={colors.onPrimary} />
                 ) : (
                   <Mic size={40} color={colors.onPrimary} />
@@ -276,29 +244,55 @@ export function VoiceLogScreen({ navigation, route }: Props) {
             />
           </View>
 
-          {/* Dải sóng âm thanh chuyển động theo giọng nói thật */}
+          {/* Dải sóng âm chạy theo âm lượng giọng nói thật (mới nhất ở bên phải) */}
           {phase !== 'reviewing' ? (
             <View
               className="h-[44px] flex-row items-center gap-xxs"
               importantForAccessibility="no-hide-descendants"
             >
-              {waveHeights.map((height, index) => (
+              {recorder.levels.map((level, index) => (
                 <View
                   key={index}
                   className="w-[4px] rounded-pill bg-primary"
-                  style={{ height: phase === 'recording' ? height : 10 }}
+                  style={{
+                    height: isListening
+                      ? WAVE_MIN_HEIGHT + level * (WAVE_MAX_HEIGHT - WAVE_MIN_HEIGHT)
+                      : WAVE_MIN_HEIGHT,
+                  }}
                 />
               ))}
             </View>
           ) : null}
 
           <AppText variant="body" color="secondary" className="font-medium">
-            {phase === 'recording'
-              ? `Đang nghe… chạm để dừng (${formatDuration(durationMillis)})`
-              : phase === 'processing'
-                ? 'Đang nhận diện giọng nói…'
-                : 'Đã ghi âm và nhận diện xong'}
+            {statusText}
           </AppText>
+
+          {phase === 'recording' && recorder.error ? (
+            <AppText variant="caption" color="error" className="text-center">
+              {recorder.error}
+            </AppText>
+          ) : null}
+
+          {/* Phụ đề tạm: lời người dùng đang nói, cập nhật vài giây một lần */}
+          {phase !== 'reviewing' ? (
+            <View
+              accessibilityLiveRegion="polite"
+              className="min-h-[72px] w-full justify-center rounded-card bg-surface p-md"
+            >
+              {recorder.liveTranscript ? (
+                <AppText variant="bodyLg" className="text-center">
+                  {`“${recorder.liveTranscript}”`}
+                </AppText>
+              ) : (
+                <AppText variant="body" color="secondary" className="text-center">
+                  {isListening
+                    ? 'Hãy nói món bạn đã ăn, ví dụ: “Trưa nay tôi ăn một tô phở bò”'
+                    : 'Lời bạn nói sẽ hiện ở đây.'}
+                </AppText>
+              )}
+            </View>
+          ) : null}
         </View>
 
         {voiceResult ? (

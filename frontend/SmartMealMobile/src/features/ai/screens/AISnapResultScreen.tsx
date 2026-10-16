@@ -13,6 +13,7 @@ import {
   useAddMealLogEntries,
   type NutritionInfo,
 } from '@/features/nutrition';
+import { RecipeImage } from '@/features/recipes';
 import { MEAL_TYPE_TITLES } from '@/types/meal.types';
 import { MAIN_STACK_ROUTES, MAIN_TAB_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
@@ -48,7 +49,9 @@ function isSelectionResolved(selection: UncertainSelection | undefined): boolean
 // độ tin cậy thấp (isUncertain + uncertainResolution): món đó "chưa được ghi" cho tới khi user
 // chọn đúng tên + khẩu phần, nút Confirm disable tới lúc đó (BR-072).
 export function AISnapResultScreen({ navigation, route }: Props) {
-  const { mealType, result } = route.params;
+  const { mealType, result, imageUri } = route.params;
+  // Ảnh trên máy hiện ngay; không có (mở lại từ nơi khác) thì dùng bản BE đã lưu.
+  const photoUri = imageUri ?? result.imageUrl;
   const { colors } = useTheme();
   const [items, setItems] = useState<AIRecognizedItem[]>(result.items);
   const [uncertainSelections, setUncertainSelections] = useState<Record<string, UncertainSelection>>({});
@@ -154,12 +157,14 @@ export function AISnapResultScreen({ navigation, route }: Props) {
                   nutrition: item.nutrition,
                   source: 'ai' as const,
                   aiConfirmed: true,
+                  imageUrl: result.imageUrl,
                 },
           ),
           ...resolvedUncertainEntries.map(entry => ({
             ...entry,
             source: 'ai' as const,
             aiConfirmed: true,
+            imageUrl: result.imageUrl,
           })),
         ],
       },
@@ -192,11 +197,19 @@ export function AISnapResultScreen({ navigation, route }: Props) {
         contentContainerClassName="gap-lg py-xs"
       >
         <View>
-          <View className="h-[210px] items-center justify-center gap-xxs rounded-lg bg-primary-soft">
-            <AppText variant="caption" className="text-on-primary-soft">
-              Ảnh bữa ăn của bạn
-            </AppText>
-          </View>
+          {photoUri ? (
+            <RecipeImage
+              imageUrl={photoUri}
+              accessibilityLabel="Ảnh bữa ăn của bạn"
+              className="h-[210px] rounded-lg"
+            />
+          ) : (
+            <View className="h-[210px] items-center justify-center gap-xxs rounded-lg bg-primary-soft">
+              <AppText variant="caption" className="text-on-primary-soft">
+                Ảnh bữa ăn của bạn
+              </AppText>
+            </View>
+          )}
           <AppBadge
             label="Ước tính từ hình ảnh"
             tone="info"

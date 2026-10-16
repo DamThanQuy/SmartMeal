@@ -19,3 +19,10 @@ export function useTranscribeVoice() {
         : aiService.transcribeVoice(input.mealType, input.transcript),
   });
 }
+
+/** Phụ đề tạm khi đang ghi âm: chép lời đoạn đã ghi tới lúc đó (không bóc món, không trừ lượt). */
+export function useTranscribeVoiceDraft() {
+  return useMutation({
+    mutationFn: (audioUri: string) => aiService.transcribeVoiceDraft(audioUri),
+  });
+}
