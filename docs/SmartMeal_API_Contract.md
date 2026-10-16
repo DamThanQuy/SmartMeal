@@ -1112,13 +1112,17 @@ Thông báo của người dùng (mới → cũ) kèm số chưa đọc.
 
 ### Gói Pro & thanh toán
 
-> Gói: `PRO_MONTHLY` 79.000đ / 30 ngày, `PRO_YEARLY` 699.000đ / 365 ngày. Phương thức: `SEPAY`, `PAYOS` (đều là chuyển khoản VietQR). Quyền lợi Pro (máy chủ kiểm tra): AI không giới hạn lượt (Free 5 lượt/ngày), quét tủ lạnh (`/ai/fridge-scanner`) và tự tạo thực đơn tuần (`/mealplanner/auto-generate`) — Free gọi hai tính năng này nhận `403 pro_required`.
+> Gói: `PRO_MONTHLY` 79.000đ / 30 ngày, `PRO_YEARLY` 699.000đ / 365 ngày. Phương thức: `BANK_APP` (mở thẳng app ngân hàng, điền sẵn thông tin), `SEPAY` và `PAYOS` (chuyển khoản VietQR). Quyền lợi Pro (máy chủ kiểm tra): AI không giới hạn lượt (Free 5 lượt/ngày), quét tủ lạnh (`/ai/fridge-scanner`) và tự tạo thực đơn tuần (`/mealplanner/auto-generate`) — Free gọi hai tính năng này nhận `403 pro_required`.
 
 > Pro chỉ kích hoạt khi **cổng thanh toán xác nhận đã nhận tiền** (webhook của cổng hoặc máy chủ tự hỏi cổng) — BR-241/242. Mọi đường xác nhận dùng chung một bước idempotent nên Pro không bị cộng hạn hai lần. Các cổng giả lập trước đây (`VNPAY`/`MOMO`/`STRIPE` với URL tự dựng và webhook `/subscription/webhook` tự định nghĩa) đã bị bỏ.
 
 > **SePay** (`paymentMethod = SEPAY`): người dùng chuyển khoản thẳng vào tài khoản ngân hàng đã liên kết SePay. `create-checkout-session` trả `orderCode`, `qrCodeUrl` (ảnh VietQR đã điền sẵn số tiền và nội dung), `bankCode`, `accountNumber`, `accountName`, `transferContent` (mã thanh toán = `SePay:PaymentCodePrefix` + 8 ký tự, cũng là `sessionId`) và `expiresAt` (hạn hiển thị mã; tiền tới sau hạn vẫn được ghi nhận). Pro kích hoạt khi tiền vào đúng mã với số tiền đủ — qua `POST /subscription/sepay-webhook` (header `Authorization: Apikey {SePay:WebhookApiKey}`, sai → `401`) **hoặc** khi app gọi `check-status` và máy chủ tự hỏi API giao dịch của SePay (`SePay:ApiToken`, tối đa 1 lần / `SePay:StatusCheckIntervalSeconds` mỗi đơn). Mã được tìm cả trong trường `code` của SePay lẫn trong nội dung chuyển khoản (không phân biệt hoa thường, bỏ qua chữ/dấu ngân hàng chèn thêm). Chuyển thiếu tiền, tiền ra, nội dung không khớp đơn nào → `200 {"success": true}` nhưng không kích hoạt (ghi log để đối soát). Thiếu tài khoản nhận hoặc không có cách xác nhận nào → `503 sepay_not_configured`.
 
-> **PayOS** (`paymentMethod = PAYOS`, chuyển khoản VietQR) là cổng thật: `create-checkout-session` gọi PayOS tạo link và trả thêm `orderCode`, `qrCode` (chuỗi VietQR) và `qrCodeUrl` (ảnh QR). Pro chỉ kích hoạt khi PayOS xác nhận — qua `POST /subscription/payos-webhook` (chữ ký kiểm bằng `PayOS:ChecksumKey`, sai → `401`; webhook thử với mã đơn lạ → `200`) **hoặc** khi app gọi `GET /subscription/check-status/{orderCode}` và máy chủ hỏi thẳng PayOS thấy `PAID` với số tiền đủ (dùng được khi webhook không tới được máy chủ, vd. máy dev). Cả hai đường dùng chung một bước xác nhận idempotent nên Pro không bị cộng hạn hai lần. Thiếu khóa PayOS → `503 payos_not_configured`; PayOS lỗi khi tạo link → `502 payos_error`.
+> `BANK_TRANSFER` (chuyển khoản qua số tài khoản) **đã bỏ** — gộp vào `BANK_APP` (số tài khoản vẫn xem được ở đó). Không tạo đơn mới (`400`), nhưng webhook/`check-status` vẫn khớp tiền cho đơn `BANK_TRANSFER` cũ.
+
+> **Mở app ngân hàng** (`paymentMethod = BANK_APP`): cùng tài khoản SePay, cùng cách sinh mã nội dung và xác nhận như `SEPAY` nhưng không có QR (`qrCodeUrl = null`, `paymentUrl = ""`); lịch sử ghi `BANK_APP`. Mọi đơn chuyển khoản SePay trả thêm `vietQrBankCode` — mã VietQR viết thường của ngân hàng nhận (đổi từ `SePay:BankCode`, vd. `MBBank` → `mb`; không nhận ra → `null`). App ghép link `https://dl.vietqr.io/pay?app={appId}&ba={accountNumber}@{vietQrBankCode}&am={amountVnd}&tn={transferContent}&bn={accountName}&url={trang quay về}` để mở app ngân hàng người dùng chọn; app có "tự điền" (VietinBank, BIDV, OCB, ACB, MB) nhận sẵn thông tin, app khác chỉ được mở lên. `url` bắt buộc là http(s) (dùng `GET /subscription/payment-return`).
+
+> **PayOS** (`paymentMethod = PAYOS`, chuyển khoản VietQR) là cổng thật: `create-checkout-session` gọi PayOS tạo link và trả thêm `orderCode`, `qrCode` (chuỗi VietQR) và `qrCodeUrl` (ảnh QR). Pro chỉ kích hoạt khi PayOS xác nhận — qua `POST /subscription/payos-webhook` (chữ ký kiểm bằng `PayOS:ChecksumKey`, sai → `401`; webhook thử với mã đơn lạ → `200`) **hoặc** khi app gọi `GET /subscription/check-status/{orderCode}` và máy chủ hỏi thẳng PayOS thấy `PAID` với số tiền đủ (dùng được khi webhook không tới được máy chủ, vd. máy dev). Cả hai đường dùng chung một bước xác nhận idempotent nên Pro không bị cộng hạn hai lần. Thiếu khóa PayOS → `503 payos_not_configured`; PayOS lỗi khi tạo link → `502 payos_error`. App gửi kèm `returnUrl` là deep link của chính nó (`smartmealmobile://payment-result`; Expo Go `exp://…/--/payment-result`) để PayOS chuyển về đúng app; máy chủ chỉ nhận scheme `smartmealmobile` (và `exp`/`exps` ở Development), URL khác → `400 invalid_return_url`. App không điều hướng theo link này — màn chờ tự hỏi `check-status` khi app được mở lại.
 
 > `activate-mock` mô phỏng cổng thanh toán, **chỉ chạy ở Development** (hoặc khi `Subscription:AllowMockActivation = true`); nơi khác trả `404`. Gia hạn khi còn hạn thì cộng thêm vào cuối kỳ hiện tại.
 
@@ -1133,7 +1137,15 @@ Bảng giá các gói Pro (giá, chu kỳ, quyền lợi) — nguồn duy nhất
 
 #### `POST /api/subscription/create-checkout-session`
 
-Tạo phiên thanh toán (`SEPAY` hoặc `PAYOS`). Gói Pro chỉ được kích hoạt khi cổng thanh toán xác nhận đã nhận tiền (BR-241/242).
+Tạo phiên thanh toán (`BANK_APP`, `SEPAY` hoặc `PAYOS`).
+
+#### `GET /api/subscription/payment-return`
+
+Trang HTML app ngân hàng mở sau khi chuyển khoản (tham số `url` của link `dl.vietqr.io` — phải là http(s) thì ngân hàng mới điền sẵn). Chỉ có nút "Quay lại SmartMeal" tới `to` nếu `to` là deep link của app (`smartmealmobile://…`, Expo Go `exp://…` chỉ ở Development), ngược lại tới `smartmealmobile://payment-result`. Không xác nhận gì — Pro chỉ bật khi tiền vào.
+
+- **Quyền**: Công khai
+- **Query**: `to` (string, tùy chọn)
+- **Response**: `text/html` Gói Pro chỉ được kích hoạt khi cổng thanh toán xác nhận đã nhận tiền (BR-241/242).
 
 - **Quyền**: Cần đăng nhập
 - **Body (JSON)**: [CreateCheckoutSessionRequestDto](#schema-createcheckoutsessionrequestdto)
@@ -1216,7 +1228,7 @@ Khóa bí mật chỉ đặt qua biến môi trường (`Muc__Khoa`, dùng `__` 
 | `SePay:WebhookApiKey` / `SePay:ApiToken` | (trống) | **Bí mật** — chỉ đặt qua biến môi trường `SePay__*`. API Key xác thực webhook; API Token để máy chủ tự hỏi giao dịch khi webhook không tới được (máy dev). Cần ít nhất một trong hai. |
 | `SePay:PaymentCodePrefix` / `ExpiryMinutes` / `StatusCheckIntervalSeconds` | `SM` / 15 / 10 | Tiền tố mã thanh toán (đặt trùng "cấu trúc mã thanh toán" trên SePay), thời gian hiển thị mã QR, khoảng cách tối thiểu giữa hai lần hỏi API SePay cho một đơn. |
 | `PayOS:ClientId` / `PayOS:ApiKey` / `PayOS:ChecksumKey` | (trống = tắt PAYOS, trả 503) | Khóa PayOS (my.payos.vn → Kênh thanh toán). **Bí mật** — chỉ đặt qua biến môi trường `PayOS__*`. |
-| `PayOS:ReturnUrl` / `PayOS:CancelUrl` | `smartmeal://payment-success` / `smartmeal://payment-cancel` | Trang PayOS chuyển về sau khi thanh toán / khi hủy. |
+| `PayOS:ReturnUrl` / `PayOS:CancelUrl` | `smartmealmobile://payment-result` | Trang PayOS chuyển về sau khi thanh toán / khi hủy (deep link của app, scheme `smartmealmobile` trong app.json) — dùng khi app không gửi `returnUrl`. |
 | `Google:ClientId` | (trống = tắt đăng nhập Google, trả 503) | Web OAuth 2.0 Client ID dùng làm audience khi xác minh ID token; trùng `EXPO_PUBLIC_GOOGLE_CLIENT_ID` của app. Không phải bí mật. |
 | `OpenFoodFacts:Enabled` / `BaseUrl` / `UserAgent` / `TimeoutSeconds` | true / `https://world.openfoodfacts.org` / `SmartMeal/1.0 (PRM393 student project)` / 8 | Tra mã vạch chưa có trong CSDL qua Open Food Facts (không cần khóa). Lỗi mạng/timeout coi như không tìm thấy. |
 | `Gemini:ApiKey` / `Gemini:Model` / `Gemini:FallbackModels` | (trống) / `gemini-3.8-flash` / `gemini-flash-lite-latest` | Khóa Gemini, model multimodal dùng cho ảnh, text, audio và các model dự phòng (cách nhau bằng dấu phẩy, rỗng = tắt) khi model chính bị ngừng (404) hoặc quá tải (429/5xx). Key chỉ đặt ở backend bằng biến môi trường/secret manager; trống: AI trả dữ liệu mẫu ở Development, lỗi 503 ở nơi khác. |
@@ -1387,17 +1399,18 @@ Cần ít nhất một trong `barcode` hoặc `ocrRawText`.
 | Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
 |---|---|---|---|---|
 | `sessionId` | string? |  |  |  |
-| `orderCode` | int64? |  |  | Mã đơn (`SEPAY`, `PAYOS`) — dùng cho `check-status`. |
-| `paymentUrl` | string? |  |  | Với `PAYOS` là trang thanh toán PayOS; với `SEPAY` là ảnh VietQR. |
-| `qrCodeUrl` | string? |  |  | Ảnh mã QR để hiển thị. |
+| `orderCode` | int64? |  |  | Mã đơn (`SEPAY`, `PAYOS`, `BANK_APP`) — dùng cho `check-status`. |
+| `paymentUrl` | string? |  |  | Với `PAYOS` là trang thanh toán PayOS; với `SEPAY` là ảnh VietQR; `BANK_APP` rỗng. |
+| `qrCodeUrl` | string? |  |  | Ảnh mã QR để hiển thị; `BANK_APP` không có (null). |
 | `qrCode` | string? |  |  | Chuỗi VietQR gốc (chỉ có với `PAYOS`). |
 | `amountVnd` | number |  |  |  |
 | `message` | string? |  |  |  |
-| `bankCode` | string? |  |  | `SEPAY`: ngân hàng nhận tiền. |
-| `accountNumber` | string? |  |  | `SEPAY`: số tài khoản nhận tiền. |
-| `accountName` | string? |  |  | `SEPAY`: tên chủ tài khoản (để người dùng đối chiếu). |
-| `transferContent` | string? |  |  | `SEPAY`: nội dung chuyển khoản bắt buộc (mã thanh toán). |
-| `expiresAt` | datetime (ISO 8601 UTC)? |  |  | `SEPAY`: hết thời gian hiển thị mã; tiền tới sau hạn vẫn được ghi nhận. |
+| `bankCode` | string? |  |  | `SEPAY`, `BANK_APP`: ngân hàng nhận tiền. |
+| `accountNumber` | string? |  |  | `SEPAY`, `BANK_APP`: số tài khoản nhận tiền. |
+| `accountName` | string? |  |  | `SEPAY`, `BANK_APP`: tên chủ tài khoản (để người dùng đối chiếu). |
+| `transferContent` | string? |  |  | `SEPAY`, `BANK_APP`: nội dung chuyển khoản bắt buộc (mã thanh toán). |
+| `expiresAt` | datetime (ISO 8601 UTC)? |  |  | `SEPAY`, `BANK_APP`: hết thời gian hiển thị mã; tiền tới sau hạn vẫn được ghi nhận. |
+| `vietQrBankCode` | string? |  |  | `SEPAY`, `BANK_APP`: mã VietQR viết thường của ngân hàng nhận (vd. `mb`) cho link mở app ngân hàng `dl.vietqr.io`; `null` nếu không nhận ra. |
 
 <a id="schema-collectionsharedto"></a>
 #### CollectionShareDto
@@ -1441,7 +1454,8 @@ Cần ít nhất một trong `barcode` hoặc `ocrRawText`.
 | Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
 |---|---|---|---|---|
 | `planId` | string | có | ≥1 ký tự |  |
-| `paymentMethod` | string? |  |  | Chỉ nhận (không phân biệt hoa/thường): `SEPAY`, `PAYOS` |
+| `paymentMethod` | string? |  |  | Chỉ nhận (không phân biệt hoa/thường): `SEPAY`, `PAYOS`, `BANK_APP` |
+| `returnUrl` | string? |  | ≤500 ký tự | `PAYOS`: deep link của app để PayOS chuyển về sau khi thanh toán/hủy. Chỉ scheme `smartmealmobile` (và `exp`/`exps` ở Development); bỏ trống = `PayOS:ReturnUrl`. |
 
 <a id="schema-createcollectionrequestdto"></a>
 #### CreateCollectionRequestDto

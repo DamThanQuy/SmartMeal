@@ -1,7 +1,9 @@
+using System.Net;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SmartMeal.API.Infrastructure;
+using SmartMeal.Application.Common;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.Subscription;
 using SmartMeal.Application.Services;
@@ -22,6 +24,45 @@ public class SubscriptionController : ControllerBase
     [HttpGet("plans")]
     public async Task<ActionResult<ApiResponse<List<SubscriptionPlanDto>>>> GetPlans() =>
         this.ToActionResult(await _subscriptionService.GetPlansAsync());
+
+    /// <summary>
+    /// Trang app ngân hàng mở sau khi chuyển khoản (tham số <c>url</c> của link dl.vietqr.io — bắt buộc là http(s) thì ngân
+    /// hàng mới điền sẵn thông tin). Chỉ có nút quay lại SmartMeal: <c>to</c> phải là deep link của app (Expo Go chỉ ở
+    /// Development), sai thì dùng <c>smartmealmobile://payment-result</c>. Không xác nhận gì — Pro chỉ bật khi tiền vào.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("payment-return")]
+    public ContentResult PaymentReturn([FromQuery] string? to, [FromServices] IHostEnvironment environment)
+    {
+        var target = AppDeepLink.IsAllowed(to, environment.IsDevelopment()) ? to!.Trim() : AppDeepLink.PaymentResult;
+        var href = WebUtility.HtmlEncode(target);
+        var html = $$"""
+            <!doctype html>
+            <html lang="vi">
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <meta name="robots" content="noindex">
+              <title>SmartMeal</title>
+              <style>
+                body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+                       font-family: system-ui, sans-serif; background: #f6f8f6; color: #1c2b22; }
+                main { max-width: 360px; padding: 24px; text-align: center; }
+                a { display: inline-block; margin-top: 16px; padding: 14px 24px; border-radius: 12px;
+                    background: #2e9e5b; color: #fff; text-decoration: none; font-weight: 600; }
+              </style>
+            </head>
+            <body>
+              <main>
+                <h1>Đã gửi lệnh chuyển khoản</h1>
+                <p>Quay lại SmartMeal để xem kết quả — gói Pro tự kích hoạt ngay khi tiền vào tài khoản.</p>
+                <a href="{{href}}">Quay lại SmartMeal</a>
+              </main>
+            </body>
+            </html>
+            """;
+        return Content(html, "text/html; charset=utf-8");
+    }
 
     /// <summary>Tạo phiên thanh toán. Gói Pro chỉ được kích hoạt khi cổng thanh toán xác nhận qua webhook (BR-241/242).</summary>
     [Authorize]

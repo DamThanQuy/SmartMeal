@@ -18,7 +18,11 @@ public interface IPayOSGateway
     /// <summary>false khi chưa đặt đủ ba khóa: chọn PayOS sẽ trả 503 thay vì gọi ra ngoài.</summary>
     bool IsConfigured { get; }
 
-    Task<PayOSPaymentLink> CreatePaymentLinkAsync(long orderCode, int amountVnd, string description, string itemName);
+    /// <summary>
+    /// Tạo link thanh toán. <paramref name="returnUrl"/>: deep link app gửi lên (vd. Expo Go <c>exp://…/--/payment-result</c>)
+    /// để PayOS chuyển về sau khi trả tiền/hủy; null thì dùng <c>PayOS:ReturnUrl</c>/<c>PayOS:CancelUrl</c>.
+    /// </summary>
+    Task<PayOSPaymentLink> CreatePaymentLinkAsync(long orderCode, int amountVnd, string description, string itemName, string? returnUrl = null);
 
     Task<PayOSPaymentInfo> GetPaymentInfoAsync(long orderCode);
 

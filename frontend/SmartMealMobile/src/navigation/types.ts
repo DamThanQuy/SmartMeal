@@ -3,7 +3,7 @@ import type { AIAnalysisResult, VoiceLogResult } from '@/features/ai';
 import type { OtpPurpose } from '@/features/auth';
 import type { PickedFood } from '@/features/nutrition';
 import type { LegalDocumentId } from '@/features/profile';
-import type { CheckoutResult, SelectablePaymentMethodId } from '@/features/premium';
+import type { CheckoutResult, QrPaymentMethodId } from '@/features/premium';
 import type { RecipeFilters } from '@/features/recipes';
 import type { BillingPlanId } from '@/state/premium/premiumStore';
 import type { MealType } from '@/types/meal.types';
@@ -112,7 +112,8 @@ export type MainStackParamList = {
   // Đợt 8 — Gamification + Premium (BR-200→BR-242). Không có bottom nav, sibling của MainTabs.
   Pet: undefined;
   Premium: undefined;
-  PaymentPending: { planId: BillingPlanId; paymentMethodId: SelectablePaymentMethodId };
+  /** Màn quét mã QR (SePay/PayOS); mở app ngân hàng dùng BankApp. */
+  PaymentPending: { planId: BillingPlanId; paymentMethodId: QrPaymentMethodId };
   PaymentSuccess: { result: CheckoutResult };
 
   // Đợt 9 — auth/profile (design v2, BR-001→003, BR-010→014, BR-270/271).
@@ -160,6 +161,7 @@ export type MainStackParamList = {
   // Đợt 13 — premium (design v2, BR-230→233, BR-240→242).
   Subscription: undefined;
   PaymentMethod: { planId: BillingPlanId };
+  BankApp: { planId: BillingPlanId };
 };
 
 export type RootStackParamList = {
