@@ -13,6 +13,7 @@ import { StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { bootstrapSession, startSessionLifecycle } from '@/features/auth';
+import { RealtimeNotificationBanner } from '@/features/profile';
 import { AppNavigator } from '@/navigation/AppNavigator';
 import { linking } from '@/navigation/linking';
 import { navigationRef } from '@/navigation/navigationRef';
@@ -49,6 +50,8 @@ function AppContent() {
         barStyle={resolvedScheme === 'dark' ? 'light-content' : 'dark-content'}
       />
       <AppNavigator />
+      {/* Thông báo real-time: banner trên mọi màn / thông báo hệ thống khi app chạy nền — chỉ chạy khi đã đăng nhập. */}
+      <RealtimeNotificationBanner />
     </NavigationContainer>
   );
 }

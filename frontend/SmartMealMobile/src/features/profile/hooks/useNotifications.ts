@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notificationsService } from '../services/notificationsService';
 import type { NotificationsResult } from '../types/profile.types';
 
-const NOTIFICATIONS_QUERY_KEY = ['notifications'] as const;
+export const NOTIFICATIONS_QUERY_KEY = ['notifications'] as const;
 
 export function useNotifications() {
   return useQuery({

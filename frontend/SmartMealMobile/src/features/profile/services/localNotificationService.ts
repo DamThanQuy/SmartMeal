@@ -6,6 +6,8 @@ import { REMINDER_ID_PREFIX, type DailyReminder } from './reminderSchedule';
 // để các luồng còn lại của app vẫn chạy; development build/production build vẫn dùng local reminders.
 
 const ANDROID_CHANNEL_ID = 'reminders';
+/** Kênh Android của thông báo sự kiện từ server (huy hiệu, thử thách, gói Pro...) — hiện banner như app khác. */
+const EVENTS_CHANNEL_ID = 'events';
 
 let handlerInstalled = false;
 type NotificationsModule = typeof import('expo-notifications');
@@ -34,6 +36,13 @@ async function ensureForegroundHandler(): Promise<NotificationsModule | null> {
   return notifications;
 }
 
+export interface PresentedNotification {
+  title: string;
+  body: string;
+  /** Gắn vào thông báo, nhận lại khi người dùng bấm (addTapListener). */
+  data: Record<string, string>;
+}
+
 export const localNotificationService = {
   async isPermissionGranted(): Promise<boolean> {
     const notifications = await getNotifications();
@@ -49,6 +58,37 @@ export const localNotificationService = {
     const current = await notifications.getPermissionsAsync();
     if (current.granted || !current.canAskAgain) return current.granted;
     return (await notifications.requestPermissionsAsync()).granted;
+  },
+
+  /**
+   * Hiện ngay một thông báo hệ thống (thanh thông báo của máy). Không tự hỏi quyền — chưa cấp, đang chạy Expo Go hay web
+   * thì bỏ qua (app vẫn có thông báo trong app và chấm đỏ ở chuông).
+   */
+  async presentNow({ title, body, data }: PresentedNotification): Promise<void> {
+    if (Platform.OS === 'web') return;
+    const notifications = await ensureForegroundHandler();
+    if (!notifications || !(await notifications.getPermissionsAsync()).granted) return;
+    if (Platform.OS === 'android') {
+      await notifications.setNotificationChannelAsync(EVENTS_CHANNEL_ID, {
+        name: 'Thông báo',
+        importance: notifications.AndroidImportance.HIGH,
+      });
+    }
+    await notifications.scheduleNotificationAsync({
+      content: { title, body, data },
+      trigger: Platform.OS === 'android' ? { channelId: EVENTS_CHANNEL_ID } : null,
+    });
+  },
+
+  /** Người dùng bấm vào một thông báo hệ thống của app: nhận lại `data` đã gắn. Trả hàm hủy. */
+  async addTapListener(onTap: (data: Record<string, unknown>) => void): Promise<() => void> {
+    if (Platform.OS === 'web') return () => {};
+    const notifications = await getNotifications();
+    if (!notifications) return () => {};
+    const subscription = notifications.addNotificationResponseReceivedListener(response =>
+      onTap(response.notification.request.content.data ?? {}),
+    );
+    return () => subscription.remove();
   },
 
   /** Thay toàn bộ nhắc nhở SmartMeal đã lên lịch bằng danh sách mới (thông báo của app khác giữ nguyên). */

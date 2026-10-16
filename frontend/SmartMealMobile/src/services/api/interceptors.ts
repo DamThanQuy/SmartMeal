@@ -86,6 +86,42 @@ function refreshSession(client: AxiosInstance): Promise<RefreshOutcome> {
   return refreshInFlight;
 }
 
+/** Token còn hạn ít hơn mức này thì làm mới trước khi dùng ngoài Axios. */
+const TOKEN_REFRESH_MARGIN_MS = 60_000;
+
+/** Thời điểm hết hạn (ms) đọc từ claim `exp` của JWT; null khi không đọc được. */
+function jwtExpiresAtMs(token: string): number | null {
+  const payload = token.split('.')[1];
+  if (!payload) return null;
+  try {
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const json = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='));
+    const exp: unknown = (JSON.parse(json) as { exp?: unknown }).exp;
+    return typeof exp === 'number' ? exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Access token còn hạn cho kết nối không đi qua Axios (WebSocket real-time): sắp hết hạn thì làm mới trước, dùng chung
+ * lượt /auth/refresh với các request đang nhận 401. Refresh token đã hết → xử lý hết phiên như request 401. Ném lỗi khi
+ * chưa đăng nhập hoặc tạm thời không làm mới được (mất mạng) để nơi gọi thử lại sau.
+ */
+export async function getFreshAccessToken(client: AxiosInstance): Promise<string> {
+  const token = await tokenStorage.get();
+  if (!token) throw new Error('Chưa đăng nhập.');
+
+  const expiresAt = jwtExpiresAtMs(token);
+  if (expiresAt === null || expiresAt - Date.now() > TOKEN_REFRESH_MARGIN_MS) return token;
+
+  const outcome = await refreshSession(client);
+  if (outcome.kind === 'refreshed') return outcome.token;
+  if (outcome.kind === 'unavailable') throw outcome.error;
+  onUnauthorized();
+  throw new Error('Phiên đăng nhập đã hết hạn.');
+}
+
 export function installInterceptors(client: AxiosInstance): void {
   client.interceptors.request.use(async config => {
     if (config.skipAuth) return config;

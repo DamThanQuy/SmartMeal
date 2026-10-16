@@ -104,6 +104,8 @@ export const ENDPOINTS = {
     list: '/notifications',
     read: (id: string) => `/notifications/${id}/read`,
     readAll: '/notifications/read-all',
+    /** Hub SignalR đẩy thông báo mới real-time (WebSocket). */
+    hub: '/hubs/notifications',
   },
   gamification: {
     pet: '/gamification/pet',
