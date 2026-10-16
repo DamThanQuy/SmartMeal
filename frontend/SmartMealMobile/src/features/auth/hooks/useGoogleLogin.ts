@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
 import { Platform } from 'react-native';
 import { useMutation } from '@tanstack/react-query';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { authService } from '../services/authService';
+import { isGoogleSignInSupported, loadNativeGoogleSignIn } from '../services/nativeGoogleSignIn';
 import { openSession } from '../services/sessionService';
 import type { SessionOpenResult } from '../types/auth.types';
 
@@ -14,17 +14,11 @@ export interface UseGoogleLoginOptions {
   onSuccess?: (result: SessionOpenResult) => void;
 }
 
-// Cấu hình GoogleSignin Native cho Android / iOS
-if (Platform.OS !== 'web') {
-  GoogleSignin.configure({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
-    offlineAccess: true,
-  });
-}
-
 /**
  * Hook Google Sign-In hỗ trợ đa nền tảng:
- * - Native (Android / iOS): Sử dụng Google Play Services chính thức (@react-native-google-signin/google-signin)
+ * - Native (Android / iOS): Sử dụng Google Play Services chính thức (@react-native-google-signin/google-signin) —
+ *   chỉ trên dev build / bản chính thức; thư viện được nạp khi cần (nativeGoogleSignIn.ts) nên Expo Go vẫn chạy được,
+ *   chỉ không có đăng nhập Google (`isAvailable = false`, màn hình ẩn nút).
  * - Web: Nhận token trực tiếp qua acceptCredential
  */
 export function useGoogleLogin(options?: UseGoogleLoginOptions) {
@@ -51,6 +45,13 @@ export function useGoogleLogin(options?: UseGoogleLoginOptions) {
         return;
       }
 
+      const nativeGoogle = loadNativeGoogleSignIn();
+      if (!nativeGoogle) {
+        setPromptError(new Error('Đăng nhập Google cần bản dev build của app (Expo Go không hỗ trợ).'));
+        return;
+      }
+      const { GoogleSignin } = nativeGoogle;
+
       // Kiểm tra Google Play Services
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       
@@ -66,11 +67,12 @@ export function useGoogleLogin(options?: UseGoogleLoginOptions) {
 
       googleMutation.mutate(idToken);
     } catch (err: any) {
-      if (err.code === statusCodes.SIGN_IN_CANCELLED) {
+      const statusCodes = loadNativeGoogleSignIn()?.statusCodes;
+      if (statusCodes && err.code === statusCodes.SIGN_IN_CANCELLED) {
         // Người dùng hủy popup chọn tài khoản
-      } else if (err.code === statusCodes.IN_PROGRESS) {
+      } else if (statusCodes && err.code === statusCodes.IN_PROGRESS) {
         // Đang xử lý
-      } else if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+      } else if (statusCodes && err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         setPromptError(new Error('Google Play Services không khả dụng hoặc cần cập nhật.'));
       } else {
         setPromptError(err);
@@ -87,6 +89,8 @@ export function useGoogleLogin(options?: UseGoogleLoginOptions) {
   }, [googleMutation]);
 
   return {
+    /** false khi chạy trên Expo Go (không có Google Sign-In native) — màn hình ẩn nút Google. */
+    isAvailable: isGoogleSignInSupported,
     /** true khi đang chờ Google prompt hoặc đang gọi API. */
     isPrompting: isPrompting || googleMutation.isPending,
     /** Bấm nút Google trong App để kích hoạt One-Tap / Account Chooser. */
