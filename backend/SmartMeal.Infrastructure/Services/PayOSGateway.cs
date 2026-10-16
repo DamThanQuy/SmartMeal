@@ -32,15 +32,15 @@ public sealed class PayOSGateway : IPayOSGateway
         return new PayOS(_options.ClientId, _options.ApiKey, _options.ChecksumKey);
     }
 
-    public async Task<PayOSPaymentLink> CreatePaymentLinkAsync(long orderCode, int amountVnd, string description, string itemName)
+    public async Task<PayOSPaymentLink> CreatePaymentLinkAsync(long orderCode, int amountVnd, string description, string itemName, string? returnUrl = null)
     {
         var data = new PaymentData(
             orderCode,
             amountVnd,
             description,
             new List<ItemData> { new(itemName, 1, amountVnd) },
-            _options.CancelUrl,
-            _options.ReturnUrl);
+            returnUrl ?? _options.CancelUrl,
+            returnUrl ?? _options.ReturnUrl);
 
         var result = await Client().createPaymentLink(data);
         return new PayOSPaymentLink(result.checkoutUrl, result.qrCode);

@@ -120,6 +120,8 @@ export const MAIN_STACK_ROUTES = {
   // Đợt 13 — premium (design v2, BR-230→233, BR-240→242).
   SUBSCRIPTION: 'Subscription',
   PAYMENT_METHOD: 'PaymentMethod',
+  /** Trang chọn app ngân hàng để mở thẳng app chuyển khoản (link VietQR). */
+  BANK_APP: 'BankApp',
 } as const;
 
 /** Nested Stack của tab Thực đơn (MAIN_TAB_ROUTES.PLANNER) — Grocery tách route riêng (Đợt 11,
@@ -129,4 +131,10 @@ export const MAIN_STACK_ROUTES = {
 export const PLANNER_STACK_ROUTES = {
   MEAL_PLANNER: 'MealPlanner',
   GROCERY: 'Grocery',
+} as const;
+
+/** Đường dẫn deep link không mở màn nào (xem src/navigation/linking.ts). */
+export const DEEP_LINK_PATHS = {
+  /** PayOS chuyển về sau khi thanh toán/hủy — chỉ cần đưa người dùng quay lại màn đang chờ xác nhận. */
+  PAYMENT_RETURN: 'payment-result',
 } as const;

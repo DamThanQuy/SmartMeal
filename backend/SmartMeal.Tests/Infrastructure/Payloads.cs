@@ -49,7 +49,7 @@ public sealed record HealthSyncSummaryPayload(
 
 public sealed record AiQuotaPayload(bool IsUnlimited, int? Limit, int Used, int? Remaining, DateTime ResetsAt);
 
-public sealed record SnapPayload(string DishName, double EstimatedGrams, double Calories, List<string> DetectedIngredients, List<string> AllergyWarnings, bool IsDemo);
+public sealed record SnapPayload(string DishName, double EstimatedGrams, double Calories, List<string> DetectedIngredients, List<string> AllergyWarnings, bool IsDemo, string? ImageUrl = null);
 
 public sealed record SafetyAlertPayload(string Type, string Message, string Severity);
 
@@ -58,6 +58,8 @@ public sealed record SafetyPayload(bool IsSafe, List<SafetyAlertPayload> Alerts,
 public sealed record VoicePayload(string MealType, double TotalCalories, bool IsDemo);
 
 public sealed record VoiceAudioPayload(string MealType, string Transcript, double TotalCalories, bool IsDemo);
+
+public sealed record VoiceTranscriptPayload(string Transcript, bool IsDemo);
 
 public sealed record ScannedProductPayload(Guid FoodId, string Name, string? Barcode, bool IsVerified, bool IsUserCreated, List<int> AllergyIds, List<int> MatchedAllergyIds);
 

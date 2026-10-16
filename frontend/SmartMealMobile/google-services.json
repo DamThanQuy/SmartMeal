@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "220202356854",
+    "project_id": "smartmeal-mcp",
+    "storage_bucket": "smartmeal-mcp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:220202356854:android:510ea0c6c37c5468c7cf57",
+        "android_client_info": {
+          "package_name": "com.smartmeal.mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "220202356854-r9qv5oos175cqi1fpckc23brm8fo4a63.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCkF5hpX5Vt3Xh-8eb9lO7pwN9gbGrgO0Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "220202356854-r9qv5oos175cqi1fpckc23brm8fo4a63.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

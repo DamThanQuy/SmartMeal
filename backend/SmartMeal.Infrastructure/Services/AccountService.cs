@@ -65,12 +65,11 @@ public class AccountService : IAccountService
             return ApiResponse<UserDto>.Fail("Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP.");
         }
 
-        // Tên file do server sinh (không dùng tên client gửi) để không thể ghi đè hay thoát thư mục.
-        var relativePath = $"avatars/{userId:N}/{Guid.NewGuid():N}.{extension}";
+        var relativePath = UploadPaths.NewFile(UploadPaths.Avatars, userId, extension);
         await _storage.SaveAsync(relativePath, new MemoryStream(bytes));
 
-        var previous = ExtractOwnRelativePath(user.AvatarUrl, userId);
-        user.AvatarUrl = $"{publicBaseUrl.TrimEnd('/')}/uploads/{relativePath}";
+        var previous = UploadPaths.OwnRelativePath(user.AvatarUrl, UploadPaths.Avatars, userId);
+        user.AvatarUrl = UploadPaths.PublicUrl(publicBaseUrl, relativePath);
         user.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
@@ -83,6 +82,32 @@ public class AccountService : IAccountService
         return ApiResponse<UserDto>.Ok(ToUserDto(user, hasSurvey), "Cập nhật ảnh đại diện thành công.");
     }
 
+    public async Task<ApiResponse<UserDto>> RemoveAvatarAsync(Guid userId)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user is null)
+        {
+            return ApiResponse<UserDto>.Fail("Người dùng không tồn tại.", null, ApiErrorKind.NotFound);
+        }
+
+        // Ảnh Google (URL ngoài) chỉ bỏ liên kết; file do hệ thống lưu thì xóa luôn sau khi đã lưu DB.
+        var previous = UploadPaths.OwnRelativePath(user.AvatarUrl, UploadPaths.Avatars, userId);
+        if (user.AvatarUrl is not null)
+        {
+            user.AvatarUrl = null;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+        }
+
+        if (previous is not null)
+        {
+            await _storage.DeleteAsync(previous);
+        }
+
+        var hasSurvey = await _db.HealthProfiles.AnyAsync(hp => hp.UserId == userId);
+        return ApiResponse<UserDto>.Ok(ToUserDto(user, hasSurvey), "Đã xóa ảnh đại diện.");
+    }
+
     // ───────────────────────────── Xóa dữ liệu / tài khoản ─────────────────────────────
 
     public async Task<ApiResponse<DeleteDataResultDto>> DeleteMyDataAsync(Guid userId)
@@ -90,6 +115,9 @@ public class AccountService : IAccountService
         await using var transaction = await _db.Database.BeginTransactionAsync();
         var deleted = await DeletePersonalDataAsync(userId);
         await transaction.CommitAsync();
+
+        // Ảnh món ăn gắn với nhật ký vừa xóa (giữ ảnh đại diện vì tài khoản vẫn còn).
+        await _storage.DeleteDirectoryAsync(UploadPaths.UserFolder(UploadPaths.MealPhotos, userId));
 
         return ApiResponse<DeleteDataResultDto>.Ok(
             new DeleteDataResultDto { Deleted = deleted },
@@ -136,7 +164,7 @@ public class AccountService : IAccountService
             return ApiResponse<bool>.Fail("Nhập đúng email của tài khoản vào confirmEmail để xác nhận xóa.");
         }
 
-        var avatar = ExtractOwnRelativePath(user.AvatarUrl, userId);
+        var avatar = UploadPaths.OwnRelativePath(user.AvatarUrl, UploadPaths.Avatars, userId);
 
         // Xóa người dùng kéo theo (cascade ở DB) toàn bộ dữ liệu của họ, kể cả refresh token.
         _db.Users.Remove(user);
@@ -146,6 +174,8 @@ public class AccountService : IAccountService
         {
             await _storage.DeleteAsync(avatar);
         }
+
+        await _storage.DeleteDirectoryAsync(UploadPaths.UserFolder(UploadPaths.MealPhotos, userId));
 
         return ApiResponse<bool>.Ok(true, "Đã xóa tài khoản.");
     }
@@ -208,25 +238,6 @@ public class AccountService : IAccountService
 
     /// <summary>Nhận diện JPG/PNG/WebP bằng chữ ký đầu file; trả phần mở rộng chuẩn hoặc null.</summary>
     private static string? DetectImageExtension(byte[] bytes) => ImageSniffer.DetectExtension(bytes);
-
-    /// <summary>Nếu avatar hiện tại là file do chính hệ thống lưu cho người dùng này thì trả đường dẫn tương đối để xóa.</summary>
-    private static string? ExtractOwnRelativePath(string? avatarUrl, Guid userId)
-    {
-        if (string.IsNullOrEmpty(avatarUrl))
-        {
-            return null;
-        }
-
-        var marker = $"/uploads/avatars/{userId:N}/";
-        var index = avatarUrl.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
-        if (index < 0)
-        {
-            return null;
-        }
-
-        var fileName = Path.GetFileName(avatarUrl[(index + marker.Length)..]);
-        return string.IsNullOrEmpty(fileName) ? null : $"avatars/{userId:N}/{fileName}";
-    }
 
     private static UserDto ToUserDto(User user, bool hasCompletedSurvey) => UserMapper.ToDto(user, hasCompletedSurvey);
 }

@@ -62,9 +62,10 @@ builder.Services.AddScoped<IAccountService, AccountService>();
 
 builder.Services.Configure<SubscriptionOptions>(builder.Configuration.GetSection(SubscriptionOptions.SectionName));
 
-// File người dùng tải lên (ảnh đại diện) lưu cục bộ dưới Storage:Root và phục vụ tĩnh tại /uploads.
+// File người dùng tải lên (ảnh đại diện, ảnh món ăn AI Snap) lưu cục bộ dưới Storage:Root và phục vụ tĩnh tại /uploads.
 builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.SectionName));
 builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
+builder.Services.AddScoped<IMealPhotoService, MealPhotoService>();
 
 // Gửi email: SMTP thật khi có Smtp:Host và địa chỉ gửi, ngược lại chỉ ghi log (Development in cả mã OTP).
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.SectionName));
@@ -278,6 +279,23 @@ builder.Services.AddRateLimiter(options =>
             ?? "unknown";
 
         return RateLimitPartition.GetFixedWindowLimiter("scanner:" + key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = permitsPerMinute,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
+
+    // Phụ đề tạm khi ghi âm (không tính hạn mức AI): app gửi tối đa ~1 lần/giây trong lúc người dùng nói.
+    options.AddPolicy(RateLimitPolicies.VoiceTranscribe, httpContext =>
+    {
+        var permitsPerMinute = httpContext.RequestServices.GetRequiredService<IConfiguration>()
+            .GetValue("RateLimiting:VoiceTranscribePermitsPerMinute", 60);
+        var key = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? httpContext.Connection.RemoteIpAddress?.ToString()
+            ?? "unknown";
+
+        return RateLimitPartition.GetFixedWindowLimiter("voice-transcribe:" + key, _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = permitsPerMinute,
             Window = TimeSpan.FromMinutes(1),

@@ -77,6 +77,8 @@ export interface MealLogEntry {
   aiConfirmed?: boolean;
   /** Giờ ghi (ISO) — backend lưu và trả `createdAt` của món. */
   loggedAt?: string;
+  /** Ảnh món (AI Snap) backend đã lưu. */
+  imageUrl?: string;
 }
 
 /** Dữ liệu 1 món để ghi vào nhật ký (BR-052 ghi thủ công, BR-054 AI Confirm → Save). */
@@ -93,6 +95,8 @@ export interface NewMealLogInput {
   ingredientId?: string;
   /** id công thức khi ghi từ một công thức. */
   recipeId?: string;
+  /** Ảnh món đã chụp (URL backend trả ở /ai/snap-and-track) — nhật ký hiện lại ảnh này. */
+  imageUrl?: string;
 }
 
 export interface MacroTargetProgress {

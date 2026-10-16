@@ -2,7 +2,7 @@
 // import file này, hook/screen chỉ biết type FE trong premium.types.ts.
 
 export type ApiPlanId = 'PRO_MONTHLY' | 'PRO_YEARLY';
-export type ApiPaymentMethod = 'SEPAY' | 'PAYOS';
+export type ApiPaymentMethod = 'SEPAY' | 'PAYOS' | 'BANK_APP';
 
 /** GET /subscription/plans — nguồn duy nhất cho giá và chu kỳ. */
 export interface SubscriptionPlanDto {
@@ -19,6 +19,8 @@ export interface SubscriptionPlanDto {
 export interface CreateCheckoutSessionRequestDto {
   planId: ApiPlanId;
   paymentMethod: ApiPaymentMethod;
+  /** PAYOS: deep link của app để PayOS chuyển về (BE chỉ nhận scheme của app; Expo Go chỉ ở Development). */
+  returnUrl?: string;
 }
 
 export interface CheckoutSessionResponseDto {
@@ -39,6 +41,8 @@ export interface CheckoutSessionResponseDto {
   transferContent?: string | null;
   /** SEPAY: hết thời gian hiển thị mã (ISO 8601 UTC); tiền tới sau hạn vẫn được ghi nhận. */
   expiresAt?: string | null;
+  /** Mã VietQR viết thường của ngân hàng nhận (vd. "mb") cho link mở app ngân hàng dl.vietqr.io; null nếu không rõ. */
+  vietQrBankCode?: string | null;
 }
 
 /** GET /subscription/check-status/{orderCode} — máy chủ hỏi PayOS/SePay và kích hoạt Pro nếu đã nhận đủ tiền. */

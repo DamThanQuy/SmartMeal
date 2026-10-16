@@ -28,11 +28,14 @@ describe('mã gói và phương thức thanh toán', () => {
     expect(fromApiPlanId(null)).toBeNull();
   });
 
-  test('phương thức FE ↔ BE: chỉ SePay/PayOS để chọn; giao dịch cũ giữ nhãn cũ; giá trị lạ → mặc định SePay', () => {
+  test('phương thức FE ↔ BE: mở app ngân hàng/SePay/PayOS để chọn; giao dịch cũ giữ nhãn cũ; giá trị lạ → mặc định SePay', () => {
     expect(toApiPaymentMethod('sepay')).toBe('SEPAY');
     expect(toApiPaymentMethod('payos')).toBe('PAYOS');
+    expect(toApiPaymentMethod('bank_app')).toBe('BANK_APP');
     expect(fromApiPaymentMethod('sepay')).toBe('sepay');
     expect(fromApiPaymentMethod('PAYOS')).toBe('payos');
+    expect(fromApiPaymentMethod('BANK_TRANSFER')).toBe('bank_transfer');   // chuyển khoản STK đã bỏ, chỉ còn trong lịch sử
+    expect(fromApiPaymentMethod('BANK_APP')).toBe('bank_app');
     // Lịch sử: cổng giả lập trước đây và kích hoạt thử ở môi trường phát triển.
     expect(fromApiPaymentMethod('VNPAY')).toBe('vnpay');
     expect(fromApiPaymentMethod('momo')).toBe('momo');

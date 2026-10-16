@@ -172,13 +172,15 @@ export function LoginScreen({ navigation, route }: Props) {
             Email đã được xác minh. Hãy đăng nhập lại.
           </AppText>
         ) : null}
+        {/* Expo Go không có Google Sign-In native → ẩn nút, đăng nhập email/mật khẩu vẫn dùng bình thường. */}
         {googleLogin.isAvailable ? (
           <>
             <AuthSocialDivider />
             <AuthGoogleButton
               label="Tiếp tục với Google"
+              onPress={googleLogin.start}
               onCredential={googleLogin.acceptCredential}
-              disabled={googleLogin.isLoading}
+              disabled={googleLogin.isLoading || googleLogin.isPrompting}
             />
             {googleLogin.error ? (
               <AppText variant="caption" color="error" className="text-center">
