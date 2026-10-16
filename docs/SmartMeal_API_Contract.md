@@ -114,6 +114,7 @@
 | Thông báo | GET | `/api/notifications` | Cần đăng nhập | Thông báo trong app (mới → cũ) kèm `unreadCount`; `date`, `limit` (1–100, mặc định 50). |
 | Thông báo | PATCH | `/api/notifications/{id}/read` | Cần đăng nhập | Đánh dấu một thông báo đã đọc (idempotent); của người khác → 404. |
 | Thông báo | POST | `/api/notifications/read-all` | Cần đăng nhập | Đánh dấu đã đọc tất cả; trả số thông báo vừa đánh dấu. |
+| Thông báo | WebSocket | `/api/hubs/notifications` | Cần đăng nhập | Hub SignalR: server đẩy sự kiện `notification` (NotificationDto) ngay khi tạo thông báo mới — xem mục "Thông báo real-time". |
 | Gói Pro & thanh toán | GET | `/api/subscription/plans` | Công khai | Bảng giá các gói Pro (giá, chu kỳ, quyền lợi) — nguồn duy nhất cho giá. |
 | Gói Pro & thanh toán | POST | `/api/subscription/create-checkout-session` | Cần đăng nhập | Tạo phiên thanh toán |
 | Gói Pro & thanh toán | POST | `/api/subscription/activate-mock` | Cần đăng nhập | Chỉ dùng khi phát triển: mô phỏng cổng thanh toán xác nhận |
@@ -1048,6 +1049,17 @@ Cởi trang phục đang mặc.
 > Thông báo do **server tạo từ sự kiện thật**, mỗi sự kiện đúng một lần (khóa duy nhất theo người dùng + sự kiện): Bé Mầm lên cấp (`pet`, kèm trang phục mở ở cấp đó), mở huy hiệu (`badge`), hoàn thành thử thách (`challenge`), danh sách đi chợ tạo từ thực đơn — mỗi khoảng ngày một lần (`grocery`), kích hoạt Pro và Pro còn ≤ 3 ngày (`premium`). Nhắc giờ ăn/uống nước là thông báo cục bộ của app, không đi qua API này.
 
 > `GET /notifications` đánh giá lại tiến trình Bé Mầm như các endpoint gamification (`date` = hôm nay theo máy, ±1 ngày quanh UTC) và dọn thông báo quá 90 ngày. "Xóa dữ liệu cá nhân" xóa cả thông báo.
+
+> Sự kiện được đánh giá **ngay lúc ghi dữ liệu**, không đợi app đọc lại: ghi/sửa món (`/nutritiondiary/log`, `/log/batch`, `PUT /items/{id}` — theo ngày của món), uống nước (`/nutritiondiary/water`), đồng bộ bước (`/health-sync/steps-and-calories`) và đi chợ đều chạy đánh giá gamification sau khi lưu (lỗi đánh giá không làm hỏng thao tác chính).
+
+#### Thông báo real-time — `WebSocket /api/hubs/notifications`
+
+Hub SignalR (giao thức JSON). Mỗi thông báo mới được đẩy ngay tới **mọi thiết bị đang kết nối của đúng người dùng đó**, đúng một lần, và chỉ sau khi đã lưu vào database (thông báo ghi trong transaction — vd. lên cấp cùng lúc cộng XP — được gửi sau commit).
+
+- **Quyền**: Cần đăng nhập. App native gửi `Authorization: Bearer <token>` khi mở WebSocket; trình duyệt (Expo web) không gửi được header nên dùng query `?access_token=<token>` — query này **chỉ** được chấp nhận ở đường dẫn hub.
+- **Kết nối**: WebSocket, bỏ negotiate (`skipNegotiation: true`). Client chỉ nghe, không gọi method nào lên hub.
+- **Sự kiện server → app**: `notification` — payload là [NotificationDto](#schema-notificationdto), giống một phần tử của `GET /notifications`.
+- Không kết nối (app tắt, mất mạng) thì không nhận gì — thông báo vẫn nằm trong `GET /notifications`. App đọc lại danh sách mỗi lần kết nối (lại) để không sót.
 
 #### `GET /api/notifications`
 

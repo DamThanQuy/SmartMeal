@@ -17,12 +17,14 @@ public class GroceryService : IGroceryService
     private readonly ApplicationDbContext _db;
     private readonly IGamificationService _gamification;
     private readonly ILogger<GroceryService> _logger;
+    private readonly NotificationWriter _notifications;
 
-    public GroceryService(ApplicationDbContext db, IGamificationService gamification, ILogger<GroceryService> logger)
+    public GroceryService(ApplicationDbContext db, IGamificationService gamification, ILogger<GroceryService> logger, NotificationWriter notifications)
     {
         _db = db;
         _gamification = gamification;
         _logger = logger;
+        _notifications = notifications;
     }
 
     public async Task<ApiResponse<GrocerySummaryDto>> GetGroceryListAsync(Guid userId)
@@ -153,7 +155,7 @@ public class GroceryService : IGroceryService
     private async Task NotifyListReadyAsync(Guid userId, DateOnly start, DateOnly end)
     {
         var pending = await _db.GroceryItems.CountAsync(g => g.UserId == userId && !g.IsChecked);
-        await NotificationWriter.TryAddAsync(_db, userId, NotificationCategories.Grocery, "Danh sách đi chợ đã sẵn sàng",
+        await _notifications.TryAddAsync(userId, NotificationCategories.Grocery, "Danh sách đi chợ đã sẵn sàng",
             $"{pending} nguyên liệu cho thực đơn {start:dd/MM}–{end:dd/MM}.", $"grocery-{start:yyyyMMdd}-{end:yyyyMMdd}");
     }
 
@@ -337,17 +339,8 @@ public class GroceryService : IGroceryService
     // ───────────────────────────── Nội bộ ─────────────────────────────
 
     /// <summary>Báo cho gamification biết người dùng vừa đi chợ (huy hiệu "Người đi chợ" mở ngay cả khi họ dọn danh sách ngay sau đó). Lỗi ở đây không được làm hỏng thao tác đi chợ.</summary>
-    private async Task NotifyGamificationAsync(Guid userId)
-    {
-        try
-        {
-            await _gamification.EvaluateAsync(userId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Gamification evaluation failed after a grocery change for user {UserId}.", userId);
-        }
-    }
+    private Task NotifyGamificationAsync(Guid userId) =>
+        _gamification.EvaluateAfterChangeAsync(_logger, userId, date: null, change: "grocery");
 
     private sealed class Aggregate
     {

@@ -26,6 +26,7 @@ public class SubscriptionService : ISubscriptionService
     private readonly IPayOSGateway _payOS;
     private readonly ISePayGateway _sePay;
     private readonly ILogger<SubscriptionService> _logger;
+    private readonly NotificationWriter _notifications;
 
     public SubscriptionService(
         ApplicationDbContext db,
@@ -33,9 +34,11 @@ public class SubscriptionService : ISubscriptionService
         IHostEnvironment environment,
         IPayOSGateway payOS,
         ISePayGateway sePay,
-        ILogger<SubscriptionService> logger)
+        ILogger<SubscriptionService> logger,
+        NotificationWriter notifications)
     {
         _db = db;
+        _notifications = notifications;
         _options = options.Value;
         _environment = environment;
         _payOS = payOS;
@@ -556,7 +559,7 @@ public class SubscriptionService : ISubscriptionService
     };
 
     private Task NotifyActivatedAsync(Guid userId, SubscriptionCatalog.Plan plan, Guid transactionId) =>
-        NotificationWriter.TryAddAsync(_db, userId, NotificationCategories.Premium, "Đã kích hoạt SmartMeal Pro",
+        _notifications.TryAddAsync(userId, NotificationCategories.Premium, "Đã kích hoạt SmartMeal Pro",
             $"{plan.Name}: thêm {plan.DurationDays} ngày dùng toàn bộ tính năng Pro.", $"subscription-{transactionId}");
 
     /// <summary>Kích hoạt/gia hạn Pro: cộng thời hạn vào cuối kỳ hiện tại nếu còn hạn, ngược lại tính từ bây giờ.</summary>

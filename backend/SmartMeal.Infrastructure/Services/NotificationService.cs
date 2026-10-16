@@ -26,11 +26,13 @@ public class NotificationService : INotificationService
 
     private readonly ApplicationDbContext _db;
     private readonly IGamificationService _gamification;
+    private readonly NotificationWriter _notifications;
 
-    public NotificationService(ApplicationDbContext db, IGamificationService gamification)
+    public NotificationService(ApplicationDbContext db, IGamificationService gamification, NotificationWriter notifications)
     {
         _db = db;
         _gamification = gamification;
+        _notifications = notifications;
     }
 
     public async Task<ApiResponse<NotificationListDto>> GetNotificationsAsync(Guid userId, int? limit, DateOnly? date)
@@ -103,11 +105,11 @@ public class NotificationService : INotificationService
             ? $"Bạn đã hủy gia hạn. Tính năng Pro kết thúc sau {days} ngày nữa."
             : $"Gói Pro hết hạn sau {days} ngày nữa. Gia hạn để không bị gián đoạn tính năng Pro.";
 
-        await NotificationWriter.TryAddAsync(_db, userId, NotificationCategories.Premium, "Gói Pro sắp hết hạn", body,
+        await _notifications.TryAddAsync(userId, NotificationCategories.Premium, "Gói Pro sắp hết hạn", body,
             $"subscription-expiring-{expiresAt:yyyyMMddHHmm}");
     }
 
-    private static NotificationDto ToDto(UserNotification n) => new()
+    internal static NotificationDto ToDto(UserNotification n) => new()
     {
         Id = n.Id,
         Category = n.Category,
