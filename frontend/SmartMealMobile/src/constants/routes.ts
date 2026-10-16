@@ -120,8 +120,8 @@ export const MAIN_STACK_ROUTES = {
   // Đợt 13 — premium (design v2, BR-230→233, BR-240→242).
   SUBSCRIPTION: 'Subscription',
   PAYMENT_METHOD: 'PaymentMethod',
-  /** Trang chuyển khoản theo số tài khoản (không QR) — phương thức cuối ở PaymentMethod. */
-  BANK_TRANSFER: 'BankTransfer',
+  /** Trang chọn app ngân hàng để mở thẳng app chuyển khoản (link VietQR). */
+  BANK_APP: 'BankApp',
 } as const;
 
 /** Nested Stack của tab Thực đơn (MAIN_TAB_ROUTES.PLANNER) — Grocery tách route riêng (Đợt 11,

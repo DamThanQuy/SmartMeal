@@ -55,7 +55,7 @@ import {
 import {
   PaymentMethodScreen,
   PaymentPendingScreen,
-  BankTransferScreen,
+  BankAppScreen,
   PaymentSuccessScreen,
   PremiumScreen,
   SubscriptionScreen,
@@ -147,7 +147,7 @@ export function MainNavigator() {
       <Stack.Screen name={MAIN_STACK_ROUTES.SUBSCRIPTION} component={SubscriptionScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.PAYMENT_METHOD} component={PaymentMethodScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.PAYMENT_PENDING} component={PaymentPendingScreen} />
-      <Stack.Screen name={MAIN_STACK_ROUTES.BANK_TRANSFER} component={BankTransferScreen} />
+      <Stack.Screen name={MAIN_STACK_ROUTES.BANK_APP} component={BankAppScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.PAYMENT_SUCCESS} component={PaymentSuccessScreen} />
 
       {/* Đợt 9 — auth/profile (design v2). */}

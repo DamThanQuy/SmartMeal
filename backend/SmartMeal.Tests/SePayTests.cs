@@ -12,7 +12,8 @@ namespace SmartMeal.Tests;
 
 public sealed record SePayCheckoutPayload(
     string SessionId, long? OrderCode, string PaymentUrl, string? QrCodeUrl, decimal AmountVnd,
-    string? BankCode, string? AccountNumber, string? AccountName, string? TransferContent, DateTime? ExpiresAt);
+    string? BankCode, string? AccountNumber, string? AccountName, string? TransferContent, DateTime? ExpiresAt,
+    string? VietQrBankCode = null);
 
 /// <summary>Thay API giao dịch thật của SePay: trả các giao dịch đặt sẵn và ghi lại request để kiểm tra cách gọi.</summary>
 public sealed class StubSePayApiHandler : HttpMessageHandler
@@ -227,12 +228,25 @@ public class SePayTests : IClassFixture<SePayFixture>, IClassFixture<ApiFactory>
     }
 
     [DbFact]
-    public async Task Bank_transfer_shows_the_account_and_code_without_a_qr_and_is_confirmed_like_sepay()
+    public async Task Bank_transfer_is_no_longer_offered()
     {
         var user = await _factory.RegisterUserAsync();
 
-        var checkout = await CheckoutAsync(user.Client, paymentMethod: "BANK_TRANSFER");
+        var response = await user.Client.PostJsonAsync("/api/subscription/create-checkout-session", new { planId = "PRO_MONTHLY", paymentMethod = "BANK_TRANSFER" });
 
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [DbFact]
+    public async Task Bank_app_gives_the_vietqr_bank_code_to_open_the_bank_app_and_is_confirmed_like_sepay()
+    {
+        var user = await _factory.RegisterUserAsync();
+
+        var checkout = await CheckoutAsync(user.Client, paymentMethod: "BANK_APP");
+        var withQr = await CheckoutAsync(user.Client);
+
+        Assert.Equal("mb", checkout.VietQrBankCode);                   // SePay:BankCode "MBBank" → mã VietQR viết thường
+        Assert.Equal("mb", withQr.VietQrBankCode);
         Assert.Null(checkout.QrCodeUrl);
         Assert.Equal(string.Empty, checkout.PaymentUrl);
         Assert.Equal(("MBBank", "0123456789", "NGUYEN VAN A"), (checkout.BankCode, checkout.AccountNumber, checkout.AccountName));
@@ -241,23 +255,39 @@ public class SePayTests : IClassFixture<SePayFixture>, IClassFixture<ApiFactory>
         Assert.NotNull(checkout.ExpiresAt);
         Assert.False((await MeAsync(user.Client)).IsPro);
 
-        // Tiền vào cùng tài khoản SePay, khớp theo nội dung người dùng tự gõ.
-        var webhook = await WebhookAsync(IncomingTransfer(9201, 79000, $"{checkout.TransferContent} thanh toan smartmeal"));
+        await WebhookAsync(IncomingTransfer(9301, 79000, $"{checkout.TransferContent} chuyen tu app MB"));
 
-        Assert.Equal(HttpStatusCode.OK, webhook.StatusCode);
         Assert.True((await MeAsync(user.Client)).IsPro);
-        Assert.True((await CheckStatusAsync(user.Client, checkout.OrderCode!.Value)).IsPaid);
         var transactions = (await (await user.Client.GetAsync("/api/subscription/transactions")).ReadEnvelopeAsync<List<TransactionPayload>>()).Data!;
-        var paid = Assert.Single(transactions);
-        Assert.Equal("BANK_TRANSFER", paid.PaymentMethod);
-        Assert.Equal("Paid", paid.Status);
+        Assert.Contains(transactions, t => t.PaymentMethod == "BANK_APP" && t.Status == "Paid");
     }
 
     [DbFact]
-    public async Task Without_a_webhook_a_bank_transfer_is_found_through_the_sepay_api()
+    public async Task The_bank_return_page_only_links_back_to_the_app()
+    {
+        var client = _factory.CreateClient();   // app ngân hàng mở trang này, không có token
+
+        var toApp = await client.GetAsync("/api/subscription/payment-return?to=" + Uri.EscapeDataString("smartmealmobile://payment-result?a=1&b=2"));
+        var toWeb = await client.GetAsync("/api/subscription/payment-return?to=" + Uri.EscapeDataString("https://evil.example/phish"));
+        var noTarget = await client.GetAsync("/api/subscription/payment-return");
+
+        Assert.Equal(HttpStatusCode.OK, toApp.StatusCode);
+        Assert.Equal("text/html", toApp.Content.Headers.ContentType!.MediaType);
+        Assert.Contains("href=\"smartmealmobile://payment-result?a=1&amp;b=2\"", await toApp.Content.ReadAsStringAsync());
+        var webPage = await toWeb.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("evil.example", webPage);
+        Assert.Contains("href=\"smartmealmobile://payment-result\"", webPage);
+        // Expo Go (exp://) chỉ được nhận ở Development — môi trường test thì quay về link mặc định.
+        var expoGo = await client.GetAsync("/api/subscription/payment-return?to=" + Uri.EscapeDataString("exp://192.168.1.5:8081/--/payment-result"));
+        Assert.DoesNotContain("exp://", await expoGo.Content.ReadAsStringAsync());
+        Assert.Contains("href=\"smartmealmobile://payment-result\"", await noTarget.Content.ReadAsStringAsync());
+    }
+
+    [DbFact]
+    public async Task Without_a_webhook_a_bank_app_transfer_is_found_through_the_sepay_api()
     {
         var user = await _factory.RegisterUserAsync();
-        var checkout = await CheckoutAsync(user.Client, paymentMethod: "BANK_TRANSFER");
+        var checkout = await CheckoutAsync(user.Client, paymentMethod: "BANK_APP");
 
         _sePay.Api.Transactions.Enqueue(new
         {
@@ -279,11 +309,11 @@ public class SePayTests : IClassFixture<SePayFixture>, IClassFixture<ApiFactory>
         var webhook = await _notConfigured.CreateClient().PostAsync("/api/subscription/sepay-webhook",
             new StringContent("{}", Encoding.UTF8, "application/json"));
 
-        var bankTransfer = await user.Client.PostJsonAsync("/api/subscription/create-checkout-session", new { planId = "PRO_MONTHLY", paymentMethod = "BANK_TRANSFER" });
+        var bankApp = await user.Client.PostJsonAsync("/api/subscription/create-checkout-session", new { planId = "PRO_MONTHLY", paymentMethod = "BANK_APP" });
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, checkout.StatusCode);
         Assert.Contains("sepay_not_configured", (await checkout.ReadEnvelopeAsync<object>()).Errors!);
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, bankTransfer.StatusCode);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, bankApp.StatusCode);
         Assert.Equal(HttpStatusCode.ServiceUnavailable, webhook.StatusCode);
     }
 }

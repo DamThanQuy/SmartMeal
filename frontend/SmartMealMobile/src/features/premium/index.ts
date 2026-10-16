@@ -5,6 +5,6 @@ export * from './hooks/useSubscription';
 export * from './screens/PremiumScreen';
 export * from './screens/PaymentMethodScreen';
 export * from './screens/PaymentPendingScreen';
-export * from './screens/BankTransferScreen';
+export * from './screens/BankAppScreen';
 export * from './screens/PaymentSuccessScreen';
 export * from './screens/SubscriptionScreen';

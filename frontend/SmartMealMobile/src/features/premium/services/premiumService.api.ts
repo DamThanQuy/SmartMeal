@@ -127,6 +127,7 @@ function toCheckoutSession(dto: CheckoutSessionResponseDto): CheckoutSession {
       accountName: dto.accountName ?? null,
       transferContent: dto.transferContent,
       expiresAtIso: dto.expiresAt ?? null,
+      ...(dto.vietQrBankCode ? { vietQrBankCode: dto.vietQrBankCode } : {}),
     };
   }
   return session;

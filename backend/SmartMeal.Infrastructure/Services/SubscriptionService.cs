@@ -92,28 +92,13 @@ public class SubscriptionService : ISubscriptionService
         }
 
         var returnUrl = dto.ReturnUrl?.Trim();
-        if (!string.IsNullOrEmpty(returnUrl) && !IsAppReturnUrl(returnUrl))
+        if (!string.IsNullOrEmpty(returnUrl) && !AppDeepLink.IsAllowed(returnUrl, _environment.IsDevelopment()))
         {
             return ApiResponse<CheckoutSessionResponseDto>.Fail(
                 "returnUrl không hợp lệ: chỉ nhận deep link của app SmartMeal.", new List<string> { "invalid_return_url" });
         }
 
         return await CreatePayOSCheckoutAsync(userId, plan, string.IsNullOrEmpty(returnUrl) ? null : returnUrl);
-    }
-
-    /// <summary>
-    /// Chỉ cho PayOS chuyển về deep link của chính app (không phải trang web bất kỳ). Expo Go dùng <c>exp://</c>/<c>exps://</c>
-    /// nên chỉ nhận ở môi trường Development.
-    /// </summary>
-    private bool IsAppReturnUrl(string url)
-    {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
-        {
-            return false;
-        }
-
-        return string.Equals(uri.Scheme, PayOSOptions.AppScheme, StringComparison.OrdinalIgnoreCase)
-            || (_environment.IsDevelopment() && uri.Scheme.ToLowerInvariant() is "exp" or "exps");
     }
 
     public async Task<ApiResponse<bool>> ActivateProPlanAsync(Guid userId, string planId)
@@ -161,7 +146,7 @@ public class SubscriptionService : ISubscriptionService
 
     /// <summary>
     /// Đơn chuyển khoản vào tài khoản đã liên kết SePay. <paramref name="method"/> = SEPAY: kèm mã VietQR để quét;
-    /// BANK_TRANSFER: chỉ số tài khoản + nội dung để người dùng tự nhập trong app ngân hàng (không có QR).
+    /// BANK_APP: không QR — số tài khoản + nội dung + <c>vietQrBankCode</c> để app mở app ngân hàng điền sẵn thông tin.
     /// </summary>
     private async Task<ApiResponse<CheckoutSessionResponseDto>> CreateSePayCheckoutAsync(Guid userId, SubscriptionCatalog.Plan plan, string method)
     {
@@ -202,6 +187,7 @@ public class SubscriptionService : ISubscriptionService
                 AccountName = transfer.AccountName,
                 TransferContent = code,
                 ExpiresAt = transaction.CreatedAt.AddMinutes(_sePay.ExpiryMinutes),
+                VietQrBankCode = VietQrBanks.FindCode(transfer.BankCode),
                 Message = withQr
                     ? $"Quét mã VietQR bằng app ngân hàng, hoặc chuyển {amount}đ với nội dung {code}. Gói Pro được kích hoạt ngay khi nhận được tiền."
                     : $"Chuyển {amount}đ tới số tài khoản {transfer.AccountNumber} ({transfer.BankCode}) với nội dung {code}. Gói Pro được kích hoạt ngay khi nhận được tiền."
@@ -417,7 +403,7 @@ public class SubscriptionService : ISubscriptionService
             }
         }
 
-        // SePay/chuyển khoản STK: dự phòng khi webhook không tới được máy chủ (vd. máy dev) — tự hỏi API giao dịch của SePay.
+        // SePay/mở app ngân hàng: dự phòng khi webhook không tới được máy chủ (vd. máy dev) — tự hỏi API giao dịch của SePay.
         if (transaction.Status == PaymentStatuses.Pending && SubscriptionCatalog.SePayMethods.Contains(transaction.PaymentMethod) && _sePay.CanQueryTransactions)
         {
             await CheckSePayTransferAsync(transaction);

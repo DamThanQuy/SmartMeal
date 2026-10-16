@@ -176,30 +176,38 @@ describe('checkout SePay (chuyển khoản VietQR vào tài khoản ngân hàng)
   });
 });
 
-describe('checkout chuyển khoản qua số tài khoản (BANK_TRANSFER, không QR)', () => {
-  const BANK_TRANSFER_SESSION = { ...SEPAY_SESSION, paymentUrl: '', qrCodeUrl: null as unknown as string };
+describe('checkout mở app ngân hàng (BANK_APP, không QR)', () => {
+  const BANK_APP_SESSION = { ...SEPAY_SESSION, paymentUrl: '', qrCodeUrl: null as unknown as string };
 
-  test('gửi BANK_TRANSFER, báo số tài khoản + nội dung (không có QR) rồi chờ server xác nhận', async () => {
+  test('gửi BANK_APP, báo số tài khoản + nội dung + mã VietQR của ngân hàng nhận (không QR) rồi chờ server xác nhận', async () => {
     jest.useFakeTimers();
     const { service, apiMock, CONFIRM_POLL_INTERVAL_MS } = loadService('production');
-    routeSePay(apiMock, [{ status: 'Pending', isPaid: false }, { status: 'Paid', isPaid: true }], BANK_TRANSFER_SESSION);
+    routeSePay(
+      apiMock,
+      [{ status: 'Pending', isPaid: false }, { status: 'Paid', isPaid: true }],
+      { ...BANK_APP_SESSION, vietQrBankCode: 'mb' } as typeof BANK_APP_SESSION,
+    );
     const onSession = jest.fn();
 
-    const pending = service.checkout?.('monthly', 'bank_transfer', { onSession });
+    const pending = service.checkout?.('monthly', 'bank_app', { onSession });
     await jest.advanceTimersByTimeAsync(CONFIRM_POLL_INTERVAL_MS * 2);
     const result = await pending;
 
     expect(apiMock.post).toHaveBeenCalledWith('/subscription/create-checkout-session', {
       planId: 'PRO_MONTHLY',
-      paymentMethod: 'BANK_TRANSFER',
+      paymentMethod: 'BANK_APP',
     });
     expect(onSession).toHaveBeenCalledWith(
       expect.objectContaining({
         qrCodeUrl: null,
-        bankTransfer: expect.objectContaining({ accountNumber: '0123456789', transferContent: 'SM7K2P9QXA' }),
+        bankTransfer: expect.objectContaining({
+          vietQrBankCode: 'mb',
+          accountNumber: '0123456789',
+          transferContent: 'SM7K2P9QXA',
+        }),
       }),
     );
-    expect(result).toMatchObject({ paymentMethodId: 'bank_transfer', membership: { status: 'premium' } });
+    expect(result).toMatchObject({ paymentMethodId: 'bank_app', membership: { status: 'premium' } });
   });
 
   test('"Tôi đã chuyển khoản"/quay lại app: trigger hỏi ngay không chờ hết nhịp; mỗi lần còn chờ thì báo onPending', async () => {
@@ -210,14 +218,14 @@ describe('checkout chuyển khoản qua số tài khoản (BANK_TRANSFER, không
     routeSePay(
       apiMock,
       [{ status: 'Pending', isPaid: false }, { status: 'Pending', isPaid: false }, { status: 'Paid', isPaid: true }],
-      BANK_TRANSFER_SESSION,
+      BANK_APP_SESSION,
     );
     const trigger = new PaymentCheckTrigger();
     const onPending = jest.fn();
     const checkStatusCalls = () =>
       apiMock.get.mock.calls.filter(([url]) => String(url).startsWith('/subscription/check-status/')).length;
 
-    const pending = service.checkout?.('monthly', 'bank_transfer', { trigger, onPending });
+    const pending = service.checkout?.('monthly', 'bank_app', { trigger, onPending });
     await jest.advanceTimersByTimeAsync(0);
     expect(checkStatusCalls()).toBe(1);
     expect(onPending).toHaveBeenCalledTimes(1);

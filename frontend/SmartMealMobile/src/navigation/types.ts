@@ -111,7 +111,7 @@ export type MainStackParamList = {
   // Đợt 8 — Gamification + Premium (BR-200→BR-242). Không có bottom nav, sibling của MainTabs.
   Pet: undefined;
   Premium: undefined;
-  /** Màn quét mã QR (SePay/PayOS); chuyển khoản STK dùng BankTransfer. */
+  /** Màn quét mã QR (SePay/PayOS); mở app ngân hàng dùng BankApp. */
   PaymentPending: { planId: BillingPlanId; paymentMethodId: QrPaymentMethodId };
   PaymentSuccess: { result: CheckoutResult };
 
@@ -160,7 +160,7 @@ export type MainStackParamList = {
   // Đợt 13 — premium (design v2, BR-230→233, BR-240→242).
   Subscription: undefined;
   PaymentMethod: { planId: BillingPlanId };
-  BankTransfer: { planId: BillingPlanId };
+  BankApp: { planId: BillingPlanId };
 };
 
 export type RootStackParamList = {

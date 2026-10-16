@@ -121,6 +121,8 @@ export const ENDPOINTS = {
     checkout: '/subscription/create-checkout-session',
     createCheckoutSession: '/subscription/create-checkout-session',
     /** GET trạng thái giao dịch PayOS của chính mình (máy chủ hỏi PayOS khi còn chờ). */
+    /** Trang app ngân hàng mở sau khi chuyển khoản (tham số `url` của link dl.vietqr.io), có nút quay lại app. */
+    paymentReturn: '/subscription/payment-return',
     checkStatus: (orderCode: number) => `/subscription/check-status/${orderCode}`,
     activateMock: '/subscription/activate-mock',
     status: '/subscription/status',
