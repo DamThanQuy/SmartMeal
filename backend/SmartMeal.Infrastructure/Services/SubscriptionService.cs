@@ -86,9 +86,34 @@ public class SubscriptionService : ISubscriptionService
             return ApiResponse<CheckoutSessionResponseDto>.Fail("Không tìm thấy thông tin tài khoản.", null, ApiErrorKind.NotFound);
         }
 
-        return method == SubscriptionCatalog.PayOS
-            ? await CreatePayOSCheckoutAsync(userId, plan)
-            : await CreateSePayCheckoutAsync(userId, plan);
+        if (method != SubscriptionCatalog.PayOS)
+        {
+            return await CreateSePayCheckoutAsync(userId, plan, method);
+        }
+
+        var returnUrl = dto.ReturnUrl?.Trim();
+        if (!string.IsNullOrEmpty(returnUrl) && !IsAppReturnUrl(returnUrl))
+        {
+            return ApiResponse<CheckoutSessionResponseDto>.Fail(
+                "returnUrl không hợp lệ: chỉ nhận deep link của app SmartMeal.", new List<string> { "invalid_return_url" });
+        }
+
+        return await CreatePayOSCheckoutAsync(userId, plan, string.IsNullOrEmpty(returnUrl) ? null : returnUrl);
+    }
+
+    /// <summary>
+    /// Chỉ cho PayOS chuyển về deep link của chính app (không phải trang web bất kỳ). Expo Go dùng <c>exp://</c>/<c>exps://</c>
+    /// nên chỉ nhận ở môi trường Development.
+    /// </summary>
+    private bool IsAppReturnUrl(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        return string.Equals(uri.Scheme, PayOSOptions.AppScheme, StringComparison.OrdinalIgnoreCase)
+            || (_environment.IsDevelopment() && uri.Scheme.ToLowerInvariant() is "exp" or "exps");
     }
 
     public async Task<ApiResponse<bool>> ActivateProPlanAsync(Guid userId, string planId)
@@ -134,7 +159,11 @@ public class SubscriptionService : ISubscriptionService
     /// <summary>Lần cuối hỏi API giao dịch SePay cho từng đơn — app hỏi trạng thái mỗi 3 giây, không gọi SePay dồn dập.</summary>
     private static readonly ConcurrentDictionary<Guid, DateTime> SePayLastQueriedAt = new();
 
-    private async Task<ApiResponse<CheckoutSessionResponseDto>> CreateSePayCheckoutAsync(Guid userId, SubscriptionCatalog.Plan plan)
+    /// <summary>
+    /// Đơn chuyển khoản vào tài khoản đã liên kết SePay. <paramref name="method"/> = SEPAY: kèm mã VietQR để quét;
+    /// BANK_TRANSFER: chỉ số tài khoản + nội dung để người dùng tự nhập trong app ngân hàng (không có QR).
+    /// </summary>
+    private async Task<ApiResponse<CheckoutSessionResponseDto>> CreateSePayCheckoutAsync(Guid userId, SubscriptionCatalog.Plan plan, string method)
     {
         if (!_sePay.IsConfigured)
         {
@@ -152,10 +181,11 @@ public class SubscriptionService : ISubscriptionService
             }
 
             var transfer = _sePay.BuildTransferInfo(plan.PriceVnd, code);
+            var withQr = method == SubscriptionCatalog.SePay;
             // Mã thanh toán chính là nội dung chuyển khoản; SessionId duy nhất nên mỗi mã chỉ khớp một đơn.
-            var transaction = NewTransaction(userId, plan, SubscriptionCatalog.SePay, code);
+            var transaction = NewTransaction(userId, plan, method, code);
             transaction.OrderCode = orderCode;
-            transaction.CheckoutUrl = transfer.QrImageUrl;
+            transaction.CheckoutUrl = withQr ? transfer.QrImageUrl : null;
             _db.PaymentTransactions.Add(transaction);
             await _db.SaveChangesAsync();
 
@@ -164,15 +194,17 @@ public class SubscriptionService : ISubscriptionService
             {
                 SessionId = code,
                 OrderCode = orderCode,
-                PaymentUrl = transfer.QrImageUrl,
-                QrCodeUrl = transfer.QrImageUrl,
+                PaymentUrl = withQr ? transfer.QrImageUrl : string.Empty,
+                QrCodeUrl = withQr ? transfer.QrImageUrl : null,
                 AmountVnd = plan.PriceVnd,
                 BankCode = transfer.BankCode,
                 AccountNumber = transfer.AccountNumber,
                 AccountName = transfer.AccountName,
                 TransferContent = code,
                 ExpiresAt = transaction.CreatedAt.AddMinutes(_sePay.ExpiryMinutes),
-                Message = $"Quét mã VietQR bằng app ngân hàng, hoặc chuyển {amount}đ với nội dung {code}. Gói Pro được kích hoạt ngay khi nhận được tiền."
+                Message = withQr
+                    ? $"Quét mã VietQR bằng app ngân hàng, hoặc chuyển {amount}đ với nội dung {code}. Gói Pro được kích hoạt ngay khi nhận được tiền."
+                    : $"Chuyển {amount}đ tới số tài khoản {transfer.AccountNumber} ({transfer.BankCode}) với nội dung {code}. Gói Pro được kích hoạt ngay khi nhận được tiền."
             });
         }
 
@@ -202,7 +234,7 @@ public class SubscriptionService : ISubscriptionService
         var transaction = candidates.Count == 0
             ? null
             : await _db.PaymentTransactions.FirstOrDefaultAsync(t =>
-                t.PaymentMethod == SubscriptionCatalog.SePay && candidates.Contains(t.SessionId));
+                SubscriptionCatalog.SePayMethods.Contains(t.PaymentMethod) && candidates.Contains(t.SessionId));
         if (transaction is null)
         {
             _logger.LogInformation("SePay transfer {TransferId} ({Amount}đ) does not match any SePay order.", transfer.Id, transfer.Amount);
@@ -294,7 +326,7 @@ public class SubscriptionService : ISubscriptionService
 
     // ───────────────────────────── PayOS ─────────────────────────────
 
-    private async Task<ApiResponse<CheckoutSessionResponseDto>> CreatePayOSCheckoutAsync(Guid userId, SubscriptionCatalog.Plan plan)
+    private async Task<ApiResponse<CheckoutSessionResponseDto>> CreatePayOSCheckoutAsync(Guid userId, SubscriptionCatalog.Plan plan, string? returnUrl)
     {
         if (!_payOS.IsConfigured)
         {
@@ -318,7 +350,7 @@ public class SubscriptionService : ISubscriptionService
             PayOSPaymentLink link;
             try
             {
-                link = await _payOS.CreatePaymentLinkAsync(orderCode, amount, description, plan.Name);
+                link = await _payOS.CreatePaymentLinkAsync(orderCode, amount, description, plan.Name, returnUrl);
             }
             catch (Exception ex)
             {
@@ -385,8 +417,8 @@ public class SubscriptionService : ISubscriptionService
             }
         }
 
-        // SePay: dự phòng khi webhook không tới được máy chủ (vd. máy dev) — tự hỏi API giao dịch của SePay.
-        if (transaction.Status == PaymentStatuses.Pending && transaction.PaymentMethod == SubscriptionCatalog.SePay && _sePay.CanQueryTransactions)
+        // SePay/chuyển khoản STK: dự phòng khi webhook không tới được máy chủ (vd. máy dev) — tự hỏi API giao dịch của SePay.
+        if (transaction.Status == PaymentStatuses.Pending && SubscriptionCatalog.SePayMethods.Contains(transaction.PaymentMethod) && _sePay.CanQueryTransactions)
         {
             await CheckSePayTransferAsync(transaction);
         }

@@ -1,6 +1,6 @@
-import type { LinkingOptions } from '@react-navigation/native';
+import { getStateFromPath, type LinkingOptions } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
-import { MAIN_STACK_ROUTES, ROOT_ROUTES } from '@/constants/routes';
+import { DEEP_LINK_PATHS, MAIN_STACK_ROUTES, ROOT_ROUTES } from '@/constants/routes';
 import type { RootStackParamList } from './types';
 
 const APP_SCHEME_PREFIX = 'smartmealmobile://';
@@ -18,8 +18,15 @@ function appUrlPrefixes(): string[] {
 // - shared/collections/:token — liên kết chia sẻ chỉ đọc (CollectionDetailScreen "Chia sẻ", BR-150→152);
 // - collections/:collectionId — bộ sưu tập công khai theo id.
 // Chỉ mở được khi đã đăng nhập vì các màn này nằm trong MainNavigator.
+// - payment-result — PayOS chuyển về sau khi thanh toán: KHÔNG điều hướng (để nguyên màn đang chờ xác nhận, màn đó tự
+//   hỏi trạng thái khi app quay lại); không bỏ qua thì React Navigation coi "payment-result" là tên màn và báo lỗi.
+export function isPaymentReturnPath(path: string): boolean {
+  return path.replace(/^\/+/, '').split(/[?#]/)[0] === DEEP_LINK_PATHS.PAYMENT_RETURN;
+}
+
 export const linking: LinkingOptions<RootStackParamList> = {
   prefixes: appUrlPrefixes(),
+  getStateFromPath: (path, options) => (isPaymentReturnPath(path) ? undefined : getStateFromPath(path, options)),
   config: {
     screens: {
       [ROOT_ROUTES.MAIN]: {

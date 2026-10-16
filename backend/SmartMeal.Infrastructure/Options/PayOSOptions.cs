@@ -13,9 +13,15 @@ public sealed class PayOSOptions
     public string ApiKey { get; set; } = string.Empty;
     public string ChecksumKey { get; set; } = string.Empty;
 
-    /// <summary>Trang PayOS chuyển về sau khi thanh toán xong / khi người dùng hủy (deep link của app).</summary>
-    public string ReturnUrl { get; set; } = "smartmeal://payment-success";
-    public string CancelUrl { get; set; } = "smartmeal://payment-cancel";
+    /// <summary>Scheme deep link của app mobile ("scheme" trong frontend/SmartMealMobile/app.json).</summary>
+    public const string AppScheme = "smartmealmobile";
+
+    /// <summary>
+    /// Trang PayOS chuyển về sau khi thanh toán xong / khi người dùng hủy (deep link của app) — dùng khi app không gửi
+    /// <c>returnUrl</c> riêng. PayOS tự gắn thêm <c>?status=...&amp;cancel=...</c> nên hai trường hợp dùng chung một đường dẫn.
+    /// </summary>
+    public string ReturnUrl { get; set; } = $"{AppScheme}://payment-result";
+    public string CancelUrl { get; set; } = $"{AppScheme}://payment-result";
 
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(ClientId) && !string.IsNullOrWhiteSpace(ApiKey) && !string.IsNullOrWhiteSpace(ChecksumKey);

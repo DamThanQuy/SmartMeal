@@ -1,115 +1,43 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { format } from 'date-fns';
-import { QrCode, X } from 'lucide-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import { QrCode } from 'lucide-react-native';
+import React from 'react';
 import { ActivityIndicator, Image, ScrollView, View } from 'react-native';
 import { ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppButton, AppCard, AppText } from '@/components/ui';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
-import { useCheckoutPremium } from '../hooks/useCheckoutPremium';
+import { PaymentFailedView } from '../components/PaymentFailedView';
+import { TransferInfoRow } from '../components/TransferInfoRow';
+import { usePaymentSession } from '../hooks/usePaymentSession';
 import { openPaymentPage } from '../services/paymentPage';
-import { BILLING_PLAN_OPTIONS, type CheckoutSession } from '../types/premium.types';
+import { BILLING_PLAN_OPTIONS } from '../types/premium.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PaymentPending'>;
 
 const QR_SIZE = 220;
 
-interface TransferRowProps {
-  label: string;
-  value: string;
-  /** Nhấn giữ để sao chép (số tài khoản, nội dung chuyển khoản). */
-  copyable?: boolean;
-  emphasize?: boolean;
-}
-
-function TransferRow({ label, value, copyable = false, emphasize = false }: TransferRowProps) {
-  return (
-    <View className="w-full flex-row items-center justify-between gap-sm">
-      <AppText variant="caption" color="secondary">
-        {label}
-      </AppText>
-      <AppText
-        variant={emphasize ? 'h3' : 'bodyMedium'}
-        color={emphasize ? 'onPrimarySoft' : 'primary'}
-        selectable={copyable}
-        className="flex-shrink text-right"
-      >
-        {value}
-      </AppText>
-    </View>
-  );
-}
-
 // design/PaymentPending.dc.html (BR-241/242 — Payment Verification: chỉ xác thực Premium khi
 // "Backend" xác nhận, không tin client-side callback). Màn này chỉ bắt đầu thanh toán rồi chờ
 // premiumService.checkout() trả về — service tạo phiên, chờ server xác nhận (đọc lại trạng thái gói)
-// và hook useCheckoutPremium nạp gói mới vào store. Với PayOS, trong lúc chờ màn hình hiện mã VietQR +
-// nút mở trang PayOS (phiên nhận qua onSession); server tự hỏi PayOS nên không cần nút "Tôi đã chuyển".
+// và hook useCheckoutPremium nạp gói mới vào store (vòng đời ở usePaymentSession). Với PayOS, trong lúc chờ màn hình
+// hiện mã VietQR + nút mở trang PayOS (phiên nhận qua onSession); server tự hỏi PayOS nên không cần nút "Tôi đã chuyển".
 // Rời màn hình thì dừng chờ (AbortController) — giao dịch vẫn được kích hoạt ở server nếu PayOS xác nhận sau.
 export function PaymentPendingScreen({ navigation, route }: Props) {
   const { planId, paymentMethodId } = route.params;
   const { colors } = useTheme();
-  const checkout = useCheckoutPremium();
-  const [session, setSession] = useState<CheckoutSession | null>(null);
-  const hasStarted = useRef(false);
-  const abortRef = useRef<AbortController | null>(null);
-
-  const runCheckout = () => {
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setSession(null);
-    checkout.mutate(
-      { planId, paymentMethodId, onSession: setSession, signal: controller.signal },
-      {
-        onSuccess: result => {
-          navigation.replace(MAIN_STACK_ROUTES.PAYMENT_SUCCESS, { result });
-        },
-      },
-    );
-  };
-
-  useEffect(() => {
-    if (!hasStarted.current) {
-      hasStarted.current = true;
-      runCheckout();
-    }
-    return () => abortRef.current?.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ chạy 1 lần lúc mount, tránh gọi lại checkout khi mutation state đổi.
-  }, []);
-
-  const handleRetry = () => {
-    checkout.reset();
-    runCheckout();
-  };
+  const { checkout, session, retry, stop } = usePaymentSession(planId, paymentMethodId, result =>
+    navigation.replace(MAIN_STACK_ROUTES.PAYMENT_SUCCESS, { result }),
+  );
 
   const changeMethod = () => {
-    abortRef.current?.abort();
+    stop();
     navigation.replace(MAIN_STACK_ROUTES.PREMIUM);
   };
 
   if (checkout.isError) {
-    return (
-      <ScreenContainer contentContainerClassName="gap-lg" scroll>
-        <View className="flex-1 items-center justify-center gap-sm py-xl">
-          <View className="h-[72px] w-[72px] items-center justify-center rounded-full bg-surface">
-            <X size={32} color={colors.error} />
-          </View>
-          <AppText variant="h2" className="text-center">
-            Thanh toán thất bại
-          </AppText>
-          <AppText variant="body" color="secondary" className="text-center">
-            {checkout.error.message}
-          </AppText>
-        </View>
-        <View className="gap-sm">
-          <AppButton label="Thử lại" onPress={handleRetry} />
-          <AppButton label="Đổi phương thức" variant="outline" onPress={changeMethod} />
-        </View>
-      </ScreenContainer>
-    );
+    return <PaymentFailedView message={checkout.error.message} onRetry={retry} onChangeMethod={changeMethod} />;
   }
 
   // SePay: chuyển khoản thẳng vào tài khoản ngân hàng — quét QR (số tiền + nội dung điền sẵn) hoặc chuyển tay đúng nội dung.
@@ -144,12 +72,12 @@ export function PaymentPendingScreen({ navigation, route }: Props) {
               </View>
             )}
             <View className="w-full gap-xs border-t border-border pt-xs">
-              <TransferRow label="Gói" value={plan?.label ?? ''} />
-              <TransferRow label="Số tiền" value={`${session.amountVnd.toLocaleString('vi-VN')}đ`} emphasize />
-              <TransferRow label="Ngân hàng" value={transfer.bankCode} />
-              <TransferRow label="Số tài khoản" value={transfer.accountNumber} copyable />
-              {transfer.accountName ? <TransferRow label="Chủ tài khoản" value={transfer.accountName} /> : null}
-              <TransferRow label="Nội dung chuyển khoản" value={transfer.transferContent} copyable emphasize />
+              <TransferInfoRow label="Gói" value={plan?.label ?? ''} />
+              <TransferInfoRow label="Số tiền" value={`${session.amountVnd.toLocaleString('vi-VN')}đ`} emphasize />
+              <TransferInfoRow label="Ngân hàng" value={transfer.bankCode} />
+              <TransferInfoRow label="Số tài khoản" value={transfer.accountNumber} selectable />
+              {transfer.accountName ? <TransferInfoRow label="Chủ tài khoản" value={transfer.accountName} /> : null}
+              <TransferInfoRow label="Nội dung chuyển khoản" value={transfer.transferContent} selectable emphasize />
             </View>
           </AppCard>
 

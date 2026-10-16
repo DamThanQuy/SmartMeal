@@ -19,6 +19,7 @@ import type {
   CheckoutSession,
   SelectablePaymentMethodId,
 } from '../types/premium.types';
+import type { PaymentCheckTrigger } from './paymentCheckTrigger';
 import {
   fromPlanDto,
   fromStatusDto,
@@ -77,18 +78,30 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+interface ConfirmationOptions {
+  signal?: AbortSignal;
+  trigger?: PaymentCheckTrigger;
+  onPending?: () => void;
+}
+
 /**
  * Hỏi GET /subscription/check-status/{orderCode} — máy chủ tự hỏi SePay/PayOS (server-to-server) và kích hoạt Pro khi đã
  * nhận đủ tiền, nên vẫn chạy được khi webhook không tới được máy chủ. Đã trả tiền → đọc lại gói do server xác nhận.
+ * `trigger` cắt ngắn lượt chờ giữa hai lần hỏi (người dùng báo đã chuyển / quay lại app).
  */
-async function waitForConfirmation(orderCode: number, deadline: number, signal?: AbortSignal): Promise<MembershipSnapshot> {
+async function waitForConfirmation(
+  orderCode: number,
+  deadline: number,
+  { signal, trigger, onPending }: ConfirmationOptions = {},
+): Promise<MembershipSnapshot> {
   for (;;) {
     throwIfAborted(signal);
     const result = await api.get<PaymentTransactionStatusDto>(ENDPOINTS.subscription.checkStatus(orderCode));
     if (result.isPaid) return fetchStatus();
     if (result.status.toLowerCase() === 'failed') throw new PaymentFailedError();
     if (Date.now() >= deadline) throw new PaymentNotConfirmedError();
-    await sleep(CONFIRM_POLL_INTERVAL_MS);
+    onPending?.();
+    await (trigger ? trigger.wait(CONFIRM_POLL_INTERVAL_MS) : sleep(CONFIRM_POLL_INTERVAL_MS));
   }
 }
 
@@ -140,8 +153,8 @@ export const premiumApiService = {
     return fromStatusDto(await api.post<SubscriptionStatusDto>(ENDPOINTS.subscription.cancel));
   },
 
-  // Tạo giao dịch → màn hình hiện mã VietQR (onSession) → hỏi check-status tới khi server xác nhận đã nhận tiền. Không có
-  // đường tắt kích hoạt thử: Pro chỉ bật khi SePay/PayOS báo tiền đã vào.
+  // Tạo giao dịch → màn hình hiện mã VietQR hoặc số tài khoản (onSession) → hỏi check-status tới khi server xác nhận đã
+  // nhận tiền. Không có đường tắt kích hoạt thử: Pro chỉ bật khi SePay/PayOS báo tiền đã vào.
   async checkout(
     planId: BillingPlanId,
     paymentMethodId: SelectablePaymentMethodId,
@@ -150,6 +163,7 @@ export const premiumApiService = {
     const request: CreateCheckoutSessionRequestDto = {
       planId: toApiPlanId(planId),
       paymentMethod: toApiPaymentMethod(paymentMethodId),
+      ...(options?.returnUrl ? { returnUrl: options.returnUrl } : {}),
     };
     const session = await api.post<CheckoutSessionResponseDto, CreateCheckoutSessionRequestDto>(
       ENDPOINTS.subscription.checkout,
@@ -158,7 +172,11 @@ export const premiumApiService = {
     if (!session.orderCode) throw new PaymentNotConfirmedError();
     options?.onSession?.(toCheckoutSession(session));
 
-    const membership = await waitForConfirmation(session.orderCode, confirmationDeadline(session), options?.signal);
+    const membership = await waitForConfirmation(session.orderCode, confirmationDeadline(session), {
+      signal: options?.signal,
+      trigger: options?.trigger,
+      onPending: options?.onPending,
+    });
     return {
       transactionId: session.sessionId,
       amountVnd: session.amountVnd,

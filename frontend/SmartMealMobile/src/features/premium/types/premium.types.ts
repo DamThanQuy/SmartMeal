@@ -3,6 +3,7 @@ import type {
   MembershipSnapshot,
   MembershipStatus,
 } from '@/state/premium/premiumStore';
+import type { PaymentCheckTrigger } from '../services/paymentCheckTrigger';
 
 // BR-230→BR-233, BR-241/242 — Membership Status + Payment Verification.
 
@@ -24,18 +25,23 @@ export const MEMBERSHIP_STATUS_LABEL: Record<MembershipStatus, string> = {
 
 /**
  * 'sepay' = chuyển khoản VietQR thẳng vào tài khoản ngân hàng (SePay báo tiền vào); 'payos' = chuyển khoản VietQR qua
- * cổng PayOS. 'vnpay' | 'momo' | 'card' | 'mock' chỉ còn trong lịch sử: giao dịch của các cổng giả lập trước đây và của
- * công tắc kích hoạt thử ở môi trường phát triển.
+ * cổng PayOS; 'bank_transfer' = người dùng tự chuyển khoản theo số tài khoản (không QR) vào cùng tài khoản SePay.
+ * 'vnpay' | 'momo' | 'card' | 'mock' chỉ còn trong lịch sử: giao dịch của các cổng giả lập trước đây và của công tắc kích
+ * hoạt thử ở môi trường phát triển.
  */
-export type PaymentMethodId = 'sepay' | 'payos' | 'vnpay' | 'momo' | 'card' | 'mock';
+export type PaymentMethodId = 'sepay' | 'payos' | 'bank_transfer' | 'vnpay' | 'momo' | 'card' | 'mock';
+
+/** Phương thức chọn rồi bấm "Thanh toán" → màn quét mã QR (PaymentPending). */
+export type QrPaymentMethodId = 'sepay' | 'payos';
 
 /** Phương thức người dùng có thể chọn khi thanh toán — chỉ các cổng thật. */
-export type SelectablePaymentMethodId = 'sepay' | 'payos';
+export type SelectablePaymentMethodId = QrPaymentMethodId | 'bank_transfer';
 
 /** Nhãn hiển thị của mọi phương thức, gồm cả các giá trị chỉ có trong lịch sử. */
 export const PAYMENT_METHOD_LABEL: Record<PaymentMethodId, string> = {
   sepay: 'Chuyển khoản ngân hàng',
   payos: 'PayOS (VietQR)',
+  bank_transfer: 'Chuyển khoản STK',
   vnpay: 'VNPAY',
   momo: 'MoMo',
   card: 'Thẻ quốc tế',
@@ -51,7 +57,7 @@ export interface BillingPlanOption {
 }
 
 export interface PaymentMethodOption {
-  id: SelectablePaymentMethodId;
+  id: QrPaymentMethodId;
   label: string;
 }
 
@@ -87,6 +93,12 @@ export const PAYMENT_METHOD_OPTIONS: PaymentMethodOption[] = [
   { id: 'sepay', label: 'Chuyển khoản ngân hàng (VietQR)' },
   { id: 'payos', label: 'PayOS – chuyển khoản VietQR' },
 ];
+
+/** Phương thức đứng cuối danh sách: chạm là sang trang chuyển khoản theo số tài khoản (BankTransferScreen). */
+export const BANK_TRANSFER_METHOD = {
+  label: 'Chuyển khoản qua số tài khoản',
+  description: 'Sao chép số tài khoản và nội dung, tự chuyển trong app ngân hàng',
+} as const;
 
 export const FEATURE_COMPARISON_ROWS: FeatureComparisonRow[] = [
   {
@@ -130,6 +142,12 @@ export interface CheckoutOptions {
   onSession?: (session: CheckoutSession) => void;
   /** Hủy việc chờ xác nhận (vd. người dùng rời màn hình) — checkout ném PaymentCancelledError. */
   signal?: AbortSignal;
+  /** Hỏi trạng thái ngay thay vì đợi nhịp kế tiếp ("Tôi đã chuyển khoản", quay lại app). */
+  trigger?: PaymentCheckTrigger;
+  /** Gọi mỗi lần server trả lời giao dịch vẫn đang chờ (chưa nhận được tiền). */
+  onPending?: () => void;
+  /** PayOS: deep link để trang thanh toán chuyển về app (paymentReturnUrl). */
+  returnUrl?: string;
 }
 
 export interface CheckoutResult {

@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Check } from 'lucide-react-native';
+import { Check, ChevronRight, Landmark } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { ErrorState, LoadingState, ScreenContainer, ScreenHeader } from '@/components/common';
@@ -8,7 +8,11 @@ import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useSubscriptionPlans } from '../hooks/useSubscription';
-import { PAYMENT_METHOD_OPTIONS, type SelectablePaymentMethodId } from '../types/premium.types';
+import {
+  BANK_TRANSFER_METHOD,
+  PAYMENT_METHOD_OPTIONS,
+  type QrPaymentMethodId,
+} from '../types/premium.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PaymentMethod'>;
 
@@ -20,7 +24,7 @@ export function PaymentMethodScreen({ navigation, route }: Props) {
   const { planId } = route.params;
   const { data: plans, isLoading, isError, error, refetch } = useSubscriptionPlans();
   // Mặc định chuyển khoản qua SePay: tiền vào thẳng tài khoản ngân hàng, xác nhận tự động.
-  const [paymentMethodId, setPaymentMethodId] = useState<SelectablePaymentMethodId>('sepay');
+  const [paymentMethodId, setPaymentMethodId] = useState<QrPaymentMethodId>('sepay');
 
   if (isLoading) {
     return (
@@ -79,6 +83,26 @@ export function PaymentMethodScreen({ navigation, route }: Props) {
               </Pressable>
             );
           })}
+
+          {/* Không chọn rồi bấm "Thanh toán" như 2 cổng QR: chạm là sang trang chuyển khoản theo số tài khoản. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={BANK_TRANSFER_METHOD.label}
+            accessibilityHint={BANK_TRANSFER_METHOD.description}
+            onPress={() => navigation.navigate(MAIN_STACK_ROUTES.BANK_TRANSFER, { planId })}
+            className="mt-xs flex-row items-center gap-sm rounded-card border border-border bg-surface p-md active:opacity-80"
+          >
+            <View className="h-[40px] w-[40px] items-center justify-center rounded-md bg-primary-soft">
+              <Landmark size={20} color={colors.primary} />
+            </View>
+            <View className="flex-1 gap-xxs">
+              <AppText variant="body">{BANK_TRANSFER_METHOD.label}</AppText>
+              <AppText variant="caption" color="secondary">
+                {BANK_TRANSFER_METHOD.description}
+              </AppText>
+            </View>
+            <ChevronRight size={20} color={colors.textSecondary} />
+          </Pressable>
         </View>
       </ScrollView>
 

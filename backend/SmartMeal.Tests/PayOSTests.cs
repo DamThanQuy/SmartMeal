@@ -18,11 +18,15 @@ public sealed class FakePayOSGateway : IPayOSGateway
 {
     public ConcurrentDictionary<long, PayOSPaymentInfo> Payments { get; } = new();
 
+    /// <summary>returnUrl máy chủ chuyển cho PayOS theo từng đơn (null = dùng cấu hình mặc định).</summary>
+    public ConcurrentDictionary<long, string?> ReturnUrls { get; } = new();
+
     public bool IsConfigured => true;
 
-    public Task<PayOSPaymentLink> CreatePaymentLinkAsync(long orderCode, int amountVnd, string description, string itemName)
+    public Task<PayOSPaymentLink> CreatePaymentLinkAsync(long orderCode, int amountVnd, string description, string itemName, string? returnUrl = null)
     {
         Payments[orderCode] = new PayOSPaymentInfo("PENDING", 0, null);
+        ReturnUrls[orderCode] = returnUrl;
         return Task.FromResult(new PayOSPaymentLink($"https://pay.payos.vn/web/{orderCode}", $"VIETQR-{orderCode}-{amountVnd}"));
     }
 
@@ -91,6 +95,30 @@ public class PayOSTests : IClassFixture<PayOSFixture>, IClassFixture<ApiFactory>
             $$"""{"code":"{{code}}","desc":"success","success":true,"data":{"orderCode":{{orderCode}},"amount":{{amount}},"code":"{{code}}"},"signature":"{{signature}}"}""",
             Encoding.UTF8,
             "application/json"));
+
+    [DbFact]
+    public async Task PayOS_returns_to_the_app_deep_link_and_never_to_other_urls()
+    {
+        var user = await _payOS.Factory.RegisterUserAsync();
+
+        var withAppLink = await user.Client.PostJsonAsync("/api/subscription/create-checkout-session",
+            new { planId = "PRO_MONTHLY", paymentMethod = "PAYOS", returnUrl = "smartmealmobile://payment-result" });
+        var withoutLink = await CheckoutAsync(user.Client);
+
+        Assert.Equal(HttpStatusCode.OK, withAppLink.StatusCode);
+        var orderCode = (await withAppLink.ReadEnvelopeAsync<PayOSCheckoutPayload>()).Data!.OrderCode!.Value;
+        Assert.Equal("smartmealmobile://payment-result", _payOS.Gateway.ReturnUrls[orderCode]);
+        Assert.Null(_payOS.Gateway.ReturnUrls[withoutLink.OrderCode!.Value]);   // dùng PayOS:ReturnUrl của máy chủ
+
+        // Trang web lạ, chuỗi hỏng, và Expo Go ngoài môi trường Development đều bị từ chối trước khi gọi PayOS.
+        foreach (var returnUrl in new[] { "https://evil.example/phish", "not a url", "exp://192.168.1.5:8081/--/payment-result" })
+        {
+            var rejected = await user.Client.PostJsonAsync("/api/subscription/create-checkout-session",
+                new { planId = "PRO_MONTHLY", paymentMethod = "PAYOS", returnUrl });
+            Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+            Assert.Contains("invalid_return_url", (await rejected.ReadEnvelopeAsync<object>()).Errors!);
+        }
+    }
 
     [DbFact]
     public async Task Without_keys_payos_is_unavailable()

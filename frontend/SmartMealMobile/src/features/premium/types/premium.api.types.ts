@@ -2,7 +2,7 @@
 // import file này, hook/screen chỉ biết type FE trong premium.types.ts.
 
 export type ApiPlanId = 'PRO_MONTHLY' | 'PRO_YEARLY';
-export type ApiPaymentMethod = 'SEPAY' | 'PAYOS';
+export type ApiPaymentMethod = 'SEPAY' | 'PAYOS' | 'BANK_TRANSFER';
 
 /** GET /subscription/plans — nguồn duy nhất cho giá và chu kỳ. */
 export interface SubscriptionPlanDto {
@@ -19,6 +19,8 @@ export interface SubscriptionPlanDto {
 export interface CreateCheckoutSessionRequestDto {
   planId: ApiPlanId;
   paymentMethod: ApiPaymentMethod;
+  /** PAYOS: deep link của app để PayOS chuyển về (BE chỉ nhận scheme của app; Expo Go chỉ ở Development). */
+  returnUrl?: string;
 }
 
 export interface CheckoutSessionResponseDto {
