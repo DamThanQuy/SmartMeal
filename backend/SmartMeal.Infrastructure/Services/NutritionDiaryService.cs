@@ -25,12 +25,18 @@ public class NutritionDiaryService : INutritionDiaryService
 
     private readonly ApplicationDbContext _db;
     private readonly IGamificationService _gamification;
+    private readonly IMealPhotoService _mealPhotos;
     private readonly ILogger<NutritionDiaryService> _logger;
 
-    public NutritionDiaryService(ApplicationDbContext db, IGamificationService gamification, ILogger<NutritionDiaryService> logger)
+    public NutritionDiaryService(
+        ApplicationDbContext db,
+        IGamificationService gamification,
+        IMealPhotoService mealPhotos,
+        ILogger<NutritionDiaryService> logger)
     {
         _db = db;
         _gamification = gamification;
+        _mealPhotos = mealPhotos;
         _logger = logger;
     }
 
@@ -167,6 +173,7 @@ public class NutritionDiaryService : INutritionDiaryService
 
         _db.DiaryItems.Remove(item);
         await _db.SaveChangesAsync();
+        await _mealPhotos.DeleteIfUnusedAsync(userId, item.ImageUrl);
 
         return ApiResponse<bool>.Ok(true, "Xóa thành công.");
     }

@@ -23,14 +23,24 @@ public class AiController : ControllerBase
     private readonly IAiVisionService _aiVisionService;
     private readonly IProductSafetyService _productSafety;
     private readonly IAiQuotaService _quota;
+    private readonly IMealPhotoService _mealPhotos;
     private readonly AiOptions _options;
+    private readonly StorageOptions _storage;
 
-    public AiController(IAiVisionService aiVisionService, IProductSafetyService productSafety, IAiQuotaService quota, IOptions<AiOptions> options)
+    public AiController(
+        IAiVisionService aiVisionService,
+        IProductSafetyService productSafety,
+        IAiQuotaService quota,
+        IMealPhotoService mealPhotos,
+        IOptions<AiOptions> options,
+        IOptions<StorageOptions> storage)
     {
         _aiVisionService = aiVisionService;
         _productSafety = productSafety;
         _quota = quota;
+        _mealPhotos = mealPhotos;
         _options = options.Value;
+        _storage = storage.Value;
     }
 
     /// <summary>Hạn mức AI còn lại hôm nay.</summary>
@@ -42,7 +52,10 @@ public class AiController : ControllerBase
         return Ok(ApiResponse<AiQuotaDto>.Ok(await _quota.GetAsync(userId)));
     }
 
-    /// <summary>AI Snap &amp; Track: ảnh đĩa thức ăn (multipart, trường <c>image</c>; JPG/PNG/WebP, tối đa 5 MB).</summary>
+    /// <summary>
+    /// AI Snap &amp; Track: ảnh đĩa thức ăn (multipart, trường <c>image</c>; JPG/PNG/WebP, tối đa 5 MB). Phân tích thành công thì
+    /// ảnh được lưu lại và trả về trong <c>imageUrl</c> để app gắn vào món khi ghi nhật ký.
+    /// </summary>
     [HttpPost("snap-and-track")]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(8 * 1024 * 1024)]
@@ -51,7 +64,16 @@ public class AiController : ControllerBase
         var (bytes, mime, error) = await ReadImageAsync(image);
         if (error is not null) return BadRequest(ApiResponse<SnapAndTrackResponseDto>.Fail(error));
 
-        return await RunWithQuotaAsync("snap", userId => _aiVisionService.SnapAndTrackAsync(bytes!, mime!, userId));
+        return await RunWithQuotaAsync("snap", async userId =>
+        {
+            var result = await _aiVisionService.SnapAndTrackAsync(bytes!, mime!, userId);
+            if (result.Success && result.Data is { } data)
+            {
+                data.ImageUrl = await _mealPhotos.SaveAsync(userId, bytes!, this.PublicBaseUrl(_storage));
+            }
+
+            return result;
+        });
     }
 
     /// <summary>Fridge Scanner (chỉ Pro, BR-080/230): ảnh nguyên liệu trong tủ lạnh (multipart, trường <c>image</c>).</summary>
@@ -84,6 +106,23 @@ public class AiController : ControllerBase
         if (error is not null) return BadRequest(ApiResponse<VoiceLogResponseDto>.Fail(error));
 
         return await RunWithQuotaAsync("voice", _ => _aiVisionService.ParseVoiceAudioAsync(bytes!, mime!));
+    }
+
+    /// <summary>
+    /// Phụ đề tạm khi đang ghi âm (multipart, trường <c>audio</c>): app gửi lại đoạn đã ghi vài giây một lần và hiện bản chép
+    /// lời dưới nút micro. Chỉ chép lời, không bóc món; không trừ lượt AI (lượt được tính ở <c>voice-log/audio</c> khi người
+    /// dùng nói xong) nhưng hết lượt thì cũng không dùng được, và có giới hạn tần suất theo người dùng.
+    /// </summary>
+    [HttpPost("voice-log/transcribe")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(12 * 1024 * 1024)]
+    [EnableRateLimiting(RateLimitPolicies.VoiceTranscribe)]
+    public async Task<ActionResult<ApiResponse<VoiceTranscriptDto>>> VoiceTranscribe(IFormFile? audio)
+    {
+        var (bytes, mime, error) = await ReadAudioAsync(audio);
+        if (error is not null) return BadRequest(ApiResponse<VoiceTranscriptDto>.Fail(error));
+
+        return await RunWithQuotaAsync("voice", _ => _aiVisionService.TranscribeAudioAsync(bytes!, mime!), countsAsUse: false);
     }
 
     /// <summary>
@@ -182,10 +221,15 @@ public class AiController : ControllerBase
     }
 
     /// <summary>
-    /// Kiểm hạn mức (BR-233) trước khi chạy; chỉ ghi nhận lượt dùng khi AI trả kết quả thành công. Tính năng chỉ dành cho Pro
-    /// (<paramref name="requiresPro"/>) bị chặn ở máy chủ với tài khoản Free (403 <c>pro_required</c>), không chỉ ẩn trên app.
+    /// Kiểm hạn mức (BR-233) trước khi chạy; chỉ ghi nhận lượt dùng khi AI trả kết quả thành công (và <paramref name="countsAsUse"/>).
+    /// Tính năng chỉ dành cho Pro (<paramref name="requiresPro"/>) bị chặn ở máy chủ với tài khoản Free (403 <c>pro_required</c>),
+    /// không chỉ ẩn trên app.
     /// </summary>
-    private async Task<ActionResult<ApiResponse<T>>> RunWithQuotaAsync<T>(string kind, Func<Guid, Task<ApiResponse<T>>> action, bool requiresPro = false)
+    private async Task<ActionResult<ApiResponse<T>>> RunWithQuotaAsync<T>(
+        string kind,
+        Func<Guid, Task<ApiResponse<T>>> action,
+        bool requiresPro = false,
+        bool countsAsUse = true)
     {
         if (!this.TryGetUserId(out var userId)) return this.InvalidSession<T>();
 
@@ -206,7 +250,7 @@ public class AiController : ControllerBase
         }
 
         var result = await action(userId);
-        if (result.Success)
+        if (result.Success && countsAsUse)
         {
             await _quota.RecordUseAsync(userId, kind);
         }

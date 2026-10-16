@@ -69,6 +69,14 @@ describe('fromSnapResponse', () => {
     expect(result.isDemo).toBe(true);
   });
 
+  test('ảnh BE đã lưu được giữ lại để gắn vào món khi ghi nhật ký; không lưu được thì bỏ trống', () => {
+    const url = 'http://192.168.1.5:5000/uploads/meals/abc/1.jpg';
+
+    expect(fromSnapResponse('lunch', snap({ imageUrl: url })).imageUrl).toBe(url);
+    expect(fromSnapResponse('lunch', snap({ imageUrl: null })).imageUrl).toBeUndefined();
+    expect(fromSnapResponse('lunch', snap()).imageUrl).toBeUndefined();
+  });
+
   test('độ tin cậy thấp (BR-072): món bị đánh dấu chưa chắc, kèm lựa chọn tên + 3 cỡ khẩu phần dựng từ số liệu của BE', () => {
     const [item] = fromSnapResponse('lunch', snap({ confidenceScore: 0.45, estimatedGrams: 400 })).items;
 

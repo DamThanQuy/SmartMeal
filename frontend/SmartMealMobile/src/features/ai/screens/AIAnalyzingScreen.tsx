@@ -55,7 +55,7 @@ export function AIAnalyzingScreen({ navigation, route }: Props) {
     analyzeMealPhoto.mutate({ mealType, imageUri }, {
       onSuccess: result => {
         consumeQuota();
-        navigation.replace(MAIN_STACK_ROUTES.AI_SNAP_RESULT, { mealType, result });
+        navigation.replace(MAIN_STACK_ROUTES.AI_SNAP_RESULT, { mealType, result, imageUri });
       },
       onError: error => {
         if (error instanceof AiRecognitionFailedError) {

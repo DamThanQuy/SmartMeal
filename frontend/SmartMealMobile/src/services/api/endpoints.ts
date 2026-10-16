@@ -96,6 +96,8 @@ export const ENDPOINTS = {
     voiceLog: '/ai/voice-log',
     /** Voice Logging từ file ghi âm (multipart, trường `audio`). */
     voiceLogAudio: '/ai/voice-log/audio',
+    /** Phụ đề tạm khi đang ghi âm — chỉ chép lời, không trừ lượt (multipart, trường `audio`). */
+    voiceLogTranscribe: '/ai/voice-log/transcribe',
     checkSafety: '/ai/check-safety',
     /** Đọc nhãn dinh dưỡng từ ảnh (multipart, trường `image`). */
     scanLabel: '/ai/scan-label',

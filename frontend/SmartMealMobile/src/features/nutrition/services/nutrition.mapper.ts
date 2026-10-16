@@ -97,6 +97,7 @@ export function toDiaryItemInput(input: NewMealLogInput, unit: string = DEFAULT_
     carbsGrams: input.nutrition.carbsG,
     fatGrams: input.nutrition.fatG,
     logMethod: input.logMethod ?? (input.source === 'ai' ? 'AiImage' : 'Manual'),
+    imageUrl: input.imageUrl,
   };
 }
 
@@ -169,6 +170,7 @@ export function fromDiaryItemDto(
     source,
     aiConfirmed,
     loggedAt: toIsoDateTime(dto.createdAt),
+    imageUrl: dto.imageUrl || undefined,
   };
 }
 

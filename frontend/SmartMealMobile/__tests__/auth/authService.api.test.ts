@@ -310,6 +310,16 @@ describe('ảnh đại diện và xóa dữ liệu', () => {
     await expect(service.uploadAvatar?.({ uri: 'file:///a.jpg', mimeType: 'image/jpeg', fileName: 'a.jpg' })).rejects.toBe(error);
   });
 
+  test('removeAvatar: DELETE /auth/avatar, user quay về không có ảnh', async () => {
+    const { service, apiMock } = loadService();
+    apiMock.delete.mockResolvedValue({ ...USER_DTO, avatarUrl: null });
+
+    const result = await service.removeAvatar?.();
+
+    expect(apiMock.delete).toHaveBeenCalledWith('/auth/avatar');
+    expect(result).toEqual({ avatarUrl: null });
+  });
+
   test('deleteMyData: DELETE /me/data', async () => {
     const { service, apiMock } = loadService();
     apiMock.delete.mockResolvedValue({ deleted: { diaryItems: 3 } });

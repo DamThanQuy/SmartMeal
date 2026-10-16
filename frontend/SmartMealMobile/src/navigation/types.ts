@@ -65,8 +65,9 @@ export type MainStackParamList = {
   QuickLog: { mealType?: MealType } | undefined;
   AICamera: { mealType: MealType };
   AIAnalyzing: { mealType: MealType; imageUri?: string };
-  /** `pickedFood`: món vừa chọn ở FoodSearch (chế độ chọn) để thêm vào danh sách đang duyệt. */
-  AISnapResult: { mealType: MealType; result: AIAnalysisResult; pickedFood?: PickedFood };
+  /** `pickedFood`: món vừa chọn ở FoodSearch (chế độ chọn) để thêm vào danh sách đang duyệt.
+   * `imageUri`: ảnh vừa chụp trên máy — hiện ngay, không phải tải lại bản BE đã lưu (`result.imageUrl`). */
+  AISnapResult: { mealType: MealType; result: AIAnalysisResult; imageUri?: string; pickedFood?: PickedFood };
   /** `initialResult` — set khi đến từ VoicePermission "Hoặc gõ bữa ăn của bạn" (BR-252): bỏ qua
    * bước ghi âm, vào thẳng phase reviewing với kết quả đã có. */
   VoiceLog: { mealType: MealType; initialResult?: VoiceLogResult };

@@ -119,6 +119,13 @@ describe('toDiaryItemInput', () => {
     expect(toDiaryItemInput({ ...MEAL_INPUT, logMethod: 'Barcode' }).logMethod).toBe('Barcode');
   });
 
+  test('món AI Snap gửi kèm URL ảnh đã chụp để nhật ký hiện lại ảnh', () => {
+    const imageUrl = 'http://192.168.1.5:5000/uploads/meals/abc/1.jpg';
+
+    expect(toDiaryItemInput({ ...MEAL_INPUT, source: 'ai', imageUrl }).imageUrl).toBe(imageUrl);
+    expect(toDiaryItemInput(MEAL_INPUT).imageUrl).toBeUndefined();
+  });
+
   test('ghi lại bản ghi đơn vị khác gram thì giữ nguyên đơn vị', () => {
     expect(toDiaryItemInput({ ...MEAL_INPUT, grams: 2 }, 'phần')).toMatchObject({
       servingSize: 2,
@@ -226,6 +233,13 @@ describe('fromDiaryItemDto', () => {
       '2026-10-02T05:30:00.000Z',
     );
     expect(fromDiaryItemDto(item({ createdAt: 'khong-phai-ngay' })).loggedAt).toBeUndefined();
+  });
+
+  test('ảnh món (AI Snap) BE trả về được giữ để nhật ký hiện ảnh; không có ảnh → undefined', () => {
+    const imageUrl = 'http://192.168.1.5:5000/uploads/meals/abc/1.jpg';
+
+    expect(fromDiaryItemDto(item({ imageUrl })).imageUrl).toBe(imageUrl);
+    expect(fromDiaryItemDto(item()).imageUrl).toBeUndefined();
   });
 
   test('nutritionPerGram tính từ số thực của BE, không từ số đã làm tròn', () => {

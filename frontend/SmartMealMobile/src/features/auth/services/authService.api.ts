@@ -144,6 +144,12 @@ export const authApiService = {
     return { avatarUrl: dto.avatarUrl };
   },
 
+  // DELETE /auth/avatar — bỏ ảnh đại diện (app hiện chữ cái đầu của tên); BE xóa luôn file đã lưu.
+  async removeAvatar(): Promise<{ avatarUrl: null }> {
+    await api.delete<UserDto>(ENDPOINTS.auth.avatar);
+    return { avatarUrl: null };
+  },
+
   // DELETE /me/data — xóa dữ liệu cá nhân phía máy chủ (BR-271): nhật ký, nước, hồ sơ sức khỏe, thực đơn,
   // đi chợ, yêu thích, món tự nhập, XP/huy hiệu... Giữ tài khoản và lịch sử thanh toán.
   async deleteMyData(): Promise<void> {

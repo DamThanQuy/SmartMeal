@@ -19,7 +19,7 @@
 - **Enum** là chuỗi, so khớp không phân biệt hoa/thường và lưu/trả dạng chuẩn: `mealType` `Breakfast|Lunch|Dinner|Snack`; `logMethod` `Manual|AiImage|Voice|Barcode|Ocr`; xem cột "Ghi chú" của từng DTO.
 - **Danh mục theo mã**: `/meta/allergies|medical-conditions|tags` trả `{ id, code, name, description }`. Client gửi/nhận **id** nhưng nên ánh xạ theo **`code`** ổn định (vd. `seafood`, `peanut`, `diabetes`, `keto`), không hard-code id.
 - **Idempotency**: mọi `POST/PUT/PATCH/DELETE` của người dùng đã đăng nhập nhận header tùy chọn `Idempotency-Key` (1–100 ký tự `A-Z a-z 0-9 . _ : -`). Lần đầu chạy bình thường và phản hồi được lưu 24 giờ; gửi lại **cùng khóa + cùng nội dung** nhận lại đúng phản hồi đó kèm header `Idempotency-Replayed: true`, không ghi thêm. Cùng khóa khác nội dung → `409` `idempotency_key_reused`; lần đầu chưa xong → `409` `idempotency_in_progress`; khóa sai định dạng → `400` `idempotency_key_invalid`. Lỗi 5xx và lỗi tạm thời (408/409/423/429) không được lưu. App dùng cho hàng đợi offline khi ghi nhật ký (BR-261). Không gửi header thì như cũ (health-sync theo `(ngày, nguồn)`, yêu thích thực phẩm và webhook vốn idempotent).
-- **Upload**: `POST /auth/avatar` (field `file`, jpg/png/webp ≤ `Storage:MaxAvatarBytes`, mặc định 2 MB), `POST /ai/snap-and-track`, `/ai/fridge-scanner` và `/ai/scan-label` (field `image`, ≤ `Ai:MaxImageBytes`, mặc định 5 MB), `POST /ai/voice-log/audio` (field `audio`, WAV/AAC/M4A/MP3/OGG/FLAC/WebM, ≤ `Ai:MaxAudioBytes`, mặc định 10 MB). Loại file được nhận bằng nội dung file, không tin `Content-Type`.
+- **Upload**: `POST /auth/avatar` (field `file`, jpg/png/webp ≤ `Storage:MaxAvatarBytes`, mặc định 2 MB), `POST /ai/snap-and-track`, `/ai/fridge-scanner` và `/ai/scan-label` (field `image`, ≤ `Ai:MaxImageBytes`, mặc định 5 MB), `POST /ai/voice-log/audio` và `POST /ai/voice-log/transcribe` (field `audio`, WAV/AAC/M4A/MP3/OGG/FLAC/WebM, ≤ `Ai:MaxAudioBytes`, mặc định 10 MB). Loại file được nhận bằng nội dung file, không tin `Content-Type`.
 
 ## 2. Danh sách endpoint
 
@@ -38,6 +38,7 @@
 | Xác thực & tài khoản | GET | `/api/auth/me` | Cần đăng nhập | Thông tin tài khoản hiện tại (gồm gói Pro, đã làm khảo sát sức khỏe chưa). |
 | Xác thực & tài khoản | PUT | `/api/auth/profile` | Cần đăng nhập | Sửa họ tên / ảnh đại diện. |
 | Xác thực & tài khoản | POST | `/api/auth/avatar` | Cần đăng nhập | Tải ảnh đại diện (multipart, trường `file`; JPG/PNG/WebP, tối đa 2 MB) |
+| Xác thực & tài khoản | DELETE | `/api/auth/avatar` | Cần đăng nhập | Xóa ảnh đại diện (về chữ cái đầu của tên); file do hệ thống lưu bị xóa luôn. |
 | Xác thực & tài khoản | DELETE | `/api/auth/account` | Cần đăng nhập | Xóa vĩnh viễn tài khoản và dữ liệu (BR-271) |
 | Dữ liệu cá nhân | DELETE | `/api/me/data` | Cần đăng nhập | Xóa dữ liệu cá nhân (nhật ký, nước, hồ sơ sức khỏe và cân nặng, thực đơn, danh sách đi chợ, yêu thích/bộ sưu tập, pet và thử thách) nhưng giữ tài khoản |
 | Hồ sơ sức khỏe | POST | `/api/healthprofile/survey` | Cần đăng nhập | Khảo sát sức khỏe: tạo hồ sơ hoặc ghi đè toàn bộ |
@@ -98,10 +99,11 @@
 | Đi chợ | DELETE | `/api/grocery/clear-checked` | Cần đăng nhập | Dọn dẹp toàn bộ các món đồ đã đánh dấu mua (Clear Checked Items). |
 | Đi chợ | POST | `/api/grocery/complete` | Cần đăng nhập | Hoàn tất mua sắm: lưu chi phí thực tế, bỏ món đã mua, giữ/bỏ món chưa mua và có thể cộng thực đơn kỳ kế tiếp — một transaction. |
 | AI | GET | `/api/ai/quota` | Cần đăng nhập | Hạn mức AI còn lại hôm nay. |
-| AI | POST | `/api/ai/snap-and-track` | Cần đăng nhập | AI Snap & Track: ảnh đĩa thức ăn (multipart, trường `image`; JPG/PNG/WebP, tối đa 5 MB). |
+| AI | POST | `/api/ai/snap-and-track` | Cần đăng nhập | AI Snap & Track: ảnh đĩa thức ăn (multipart, trường `image`; JPG/PNG/WebP, tối đa 5 MB); ảnh được lưu lại, trả `imageUrl`. |
 | AI | POST | `/api/ai/fridge-scanner` | Cần đăng nhập | Fridge Scanner (**chỉ Pro**, Free → `403 pro_required`): ảnh nguyên liệu trong tủ lạnh (multipart, trường `image`). |
 | AI | POST | `/api/ai/voice-log` | Cần đăng nhập | Voice Log: văn bản (người dùng gõ hoặc đã nhận dạng trên máy) → món ăn kèm dinh dưỡng. |
 | AI | POST | `/api/ai/voice-log/audio` | Cần đăng nhập | Voice Log từ file ghi âm (multipart, trường `audio`, tối đa 10 MB): AI chép lời rồi bóc tách món; trả `transcript`. |
+| AI | POST | `/api/ai/voice-log/transcribe` | Cần đăng nhập | Phụ đề tạm khi đang ghi âm (multipart, trường `audio`): chỉ chép lời, không trừ lượt; giới hạn tần suất theo người dùng. |
 | AI | POST | `/api/ai/check-safety` | Cần đăng nhập | Kiểm tra an toàn sản phẩm theo dị ứng/bệnh lý của người dùng (BR-140); `barcode` tra trong CSDL (`404` `product_not_found` khi chưa có) |
 | AI | POST | `/api/ai/scan-label` | Cần đăng nhập | Đọc nhãn dinh dưỡng từ ảnh (multipart, trường `image`) rồi kiểm tra an toàn; không tính hạn mức. |
 | Bé Mầm: XP, thử thách, huy hiệu | GET | `/api/gamification/pet` | Cần đăng nhập | Trạng thái pet: cấp độ, XP, nhiệm vụ hôm nay |
@@ -245,6 +247,13 @@ Tải ảnh đại diện (multipart, trường `file`; JPG/PNG/WebP, tối đa 
 - **Quyền**: Cần đăng nhập
 - **Body (multipart/form-data)**: field `file` (file)
 - **Response `data`**: [UserDto](#schema-userdto)
+
+#### `DELETE /api/auth/avatar`
+
+Xóa ảnh đại diện (app hiện chữ cái đầu của tên). Ảnh do hệ thống lưu (`/uploads/avatars/...`) bị xóa khỏi ổ đĩa; ảnh ngoài (Google) chỉ bỏ liên kết. Chưa có ảnh thì vẫn trả thành công.
+
+- **Quyền**: Cần đăng nhập
+- **Response `data`**: [UserDto](#schema-userdto) (`avatarUrl = null`)
 
 #### `DELETE /api/auth/account`
 
@@ -898,7 +907,9 @@ Hoàn tất mua sắm: lưu chi phí thực tế (BR-174), bỏ các món đã m
 
 > Chưa cấu hình `Gemini:ApiKey`: ở Development trả dữ liệu **mẫu** với `isDemo: true` (cờ `Ai:AllowDemoFallback`); nơi khác trả `503` (chưa cấu hình). Đã có khóa mà Gemini lỗi thì trả `502` ở mọi môi trường (chỉ trả dữ liệu mẫu khi đặt `Ai:AllowDemoFallback=true`) thay vì giả vờ thành công. Model chính bị ngừng (404) hoặc quá tải (429/5xx) thì backend thử lần lượt các model trong `Gemini:FallbackModels`.
 
-> `voice-log` nhận **văn bản**; `voice-log/audio` nhận **file ghi âm** (≤ `Ai:MaxAudioBytes`, 10 MB) và trả thêm `transcript` — đoạn ghi âm không nghe ra món nào → `400` `voice_unrecognized` (không trừ lượt). Ảnh `snap-and-track`/`fridge-scanner`/`scan-label` ≤ `Ai:MaxImageBytes` (5 MB), chỉ JPG/PNG/WebP.
+> `voice-log` nhận **văn bản**; `voice-log/audio` nhận **file ghi âm** (≤ `Ai:MaxAudioBytes`, 10 MB) và trả thêm `transcript` — đoạn ghi âm không nghe ra món nào → `400` `voice_unrecognized` (không trừ lượt). `voice-log/transcribe` chỉ chép lời đoạn đang ghi (phụ đề dưới micro): **không trừ lượt** nhưng hết lượt vẫn trả `429` `ai_quota_exceeded`, và giới hạn tần suất theo người dùng (policy `voice-transcribe`, `RateLimiting:VoiceTranscribePermitsPerMinute`, mặc định 60/phút).
+
+> `snap-and-track` thành công thì ảnh được lưu ở `/uploads/meals/{userId}/...` và trả trong `imageUrl`; app gửi lại `imageUrl` khi ghi món để nhật ký hiện ảnh. Xóa món cuối cùng dùng ảnh → file ảnh bị xóa; `DELETE /me/data` và xóa tài khoản xóa toàn bộ ảnh món ăn của người dùng. Ảnh `snap-and-track`/`fridge-scanner`/`scan-label` ≤ `Ai:MaxImageBytes` (5 MB), chỉ JPG/PNG/WebP.
 
 > `check-safety` với `barcode`: tra sản phẩm trong **CSDL** (món hệ thống hoặc món người dùng tự nhập kèm mã vạch), không để AI đoán; `source = "database"`, `product` có thông tin sản phẩm, dinh dưỡng tính trên 100 g (`basis = "per100g"`). Chưa có sản phẩm → `404` `product_not_found` (trừ khi gửi kèm `ocrRawText`, khi đó AI phân tích văn bản nhãn). Cảnh báo dị ứng theo hồ sơ (`DANGER`) và cảnh báo vượt ngưỡng trên 100 g ở mục `ProductSafety` (`WARNING`, hoặc `DANGER` nếu người dùng có bệnh lý liên quan) do server tính bằng code.
 
@@ -911,7 +922,7 @@ Hạn mức AI còn lại hôm nay.
 
 #### `POST /api/ai/snap-and-track`
 
-AI Snap & Track: ảnh đĩa thức ăn (multipart, trường `image`; JPG/PNG/WebP, tối đa 5 MB).
+AI Snap & Track: ảnh đĩa thức ăn (multipart, trường `image`; JPG/PNG/WebP, tối đa 5 MB). Phân tích thành công thì ảnh được lưu lại và trả về trong `imageUrl` để app gắn vào món khi ghi nhật ký.
 
 - **Quyền**: Cần đăng nhập
 - **Body (multipart/form-data)**: field `image` (file)
@@ -940,6 +951,14 @@ Voice Log từ file ghi âm (multipart, trường `audio`; WAV/AAC/M4A/MP3/OGG/W
 - **Quyền**: Cần đăng nhập
 - **Body (multipart/form-data)**: field `audio` (file)
 - **Response `data`**: [VoiceLogResponseDto](#schema-voicelogresponsedto)
+
+#### `POST /api/ai/voice-log/transcribe`
+
+Phụ đề tạm khi đang ghi âm (multipart, trường `audio`): app gửi lại đoạn đã ghi vài giây một lần và hiện bản chép lời dưới nút micro. Chỉ chép lời, không bóc món; không trừ lượt AI (lượt được tính ở `voice-log/audio` khi người dùng nói xong) nhưng hết lượt thì trả `429` `ai_quota_exceeded`. Giới hạn tần suất theo người dùng (policy `voice-transcribe`).
+
+- **Quyền**: Cần đăng nhập
+- **Body (multipart/form-data)**: field `audio` (file)
+- **Response `data`**: [VoiceTranscriptDto](#schema-voicetranscriptdto)
 
 #### `POST /api/ai/check-safety`
 
@@ -2139,6 +2158,7 @@ Một mục danh mục (dị ứng, bệnh lý, chế độ ăn). `Code` là mã
 | `allergyWarnings` | string[]? |  |  |  |
 | `healthTips` | string? |  |  |  |
 | `isDemo` | bool |  |  | True khi đây là dữ liệu MẪU (chưa cấu hình Gemini, chỉ ở môi trường phát triển), không phải kết quả thật. |
+| `imageUrl` | string? |  |  | URL ảnh vừa phân tích, đã lưu ở máy chủ — app gửi lại trong `imageUrl` khi ghi món để nhật ký hiện ảnh món. Null nếu không lưu được ảnh. |
 
 <a id="schema-streakdaydto"></a>
 #### StreakDayDto
@@ -2327,6 +2347,14 @@ Cập nhật từng phần hồ sơ đã có. Trường không gửi (null) gi�
 | `totalCarbs` | number |  |  |  |
 | `totalProtein` | number |  |  |  |
 | `totalFat` | number |  |  |  |
+| `isDemo` | bool |  |  |  |
+
+<a id="schema-voicetranscriptdto"></a>
+#### VoiceTranscriptDto
+
+| Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| `transcript` | string? |  |  | Bản chép lời tạm của đoạn đang ghi (rỗng khi chưa nghe thấy lời nói). |
 | `isDemo` | bool |  |  |  |
 
 <a id="schema-waterdaydto"></a>

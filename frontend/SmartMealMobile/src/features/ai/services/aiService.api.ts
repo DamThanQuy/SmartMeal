@@ -6,6 +6,7 @@ import type {
   SnapAndTrackResponseDto,
   VoiceLogRequestDto,
   VoiceLogResponseDto,
+  VoiceTranscriptDto,
 } from '../types/ai.api.types';
 import type { AIAnalysisResult, AiQuota, VoiceLogResult } from '../types/ai.types';
 import { AiRecognitionFailedError } from './ai.errors';
@@ -21,6 +22,16 @@ export const NO_AUDIO_MESSAGE = 'Chưa thu được đoạn ghi âm nào. Hãy t
 
 /** Mã BE khi đoạn ghi âm không nghe ra món nào — không trừ lượt, chuyển sang màn "AI chưa nhận diện được". */
 const VOICE_UNRECOGNIZED = 'voice_unrecognized';
+
+/** Phần multipart `audio` cho file ghi âm trên máy: WAV (ghi từ PCM, xem useVoiceRecorder) hoặc M4A. */
+function audioFormPart(audioUri: string) {
+  const isWav = audioUri.toLowerCase().endsWith('.wav');
+  return {
+    uri: audioUri,
+    name: isWav ? 'voice.wav' : 'voice.m4a',
+    type: isWav ? 'audio/wav' : 'audio/mp4',
+  } as unknown as Blob;
+}
 
 export const aiApiService = {
   // GET /ai/quota — Free: limit/used/remaining; Pro: isUnlimited.
@@ -58,13 +69,13 @@ export const aiApiService = {
     return fromVoiceResponse(mealType, text, dto);
   },
 
-  // POST /ai/voice-log/audio (multipart, trường `audio`; expo-audio ghi .m4a). AI vừa chép lời vừa bóc món;
+  // POST /ai/voice-log/audio (multipart, trường `audio`; app ghi WAV). AI vừa chép lời vừa bóc món;
   // câu hiển thị lấy từ bản chép lời của server. Không nghe ra món nào → 400 voice_unrecognized.
   async transcribeVoiceAudio(mealType: MealType, audioUri?: string): Promise<VoiceLogResult> {
     if (!audioUri) throw new Error(NO_AUDIO_MESSAGE);
 
     const form = new FormData();
-    form.append('audio', { uri: audioUri, name: 'voice.m4a', type: 'audio/mp4' } as unknown as Blob);
+    form.append('audio', audioFormPart(audioUri));
     try {
       const dto = await api.post<VoiceLogResponseDto, FormData>(ENDPOINTS.ai.voiceLogAudio, form, {
         timeout: API_CONFIG.aiTimeout,
@@ -76,5 +87,16 @@ export const aiApiService = {
       }
       throw error;
     }
+  },
+
+  // POST /ai/voice-log/transcribe — phụ đề tạm hiện dưới micro trong lúc người dùng còn đang nói: gửi lại
+  // cả đoạn đã ghi tới thời điểm đó, BE chỉ chép lời (không bóc món, không trừ lượt).
+  async transcribeVoiceDraft(audioUri: string): Promise<string> {
+    const form = new FormData();
+    form.append('audio', audioFormPart(audioUri));
+    const dto = await api.post<VoiceTranscriptDto, FormData>(ENDPOINTS.ai.voiceLogTranscribe, form, {
+      timeout: API_CONFIG.aiTimeout,
+    });
+    return dto.transcript.trim();
   },
 };
