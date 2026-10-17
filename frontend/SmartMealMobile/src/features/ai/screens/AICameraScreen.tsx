@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CameraView, useCameraPermissions, type CameraType } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, Image as ImageIcon, RefreshCw, Settings, X, Zap } from 'lucide-react-native';
+import { Camera, Image as ImageIcon, RefreshCw, X, Zap } from 'lucide-react-native';
 import React, { useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { AppButton, AppIconButton, AppText } from '@/components/ui';

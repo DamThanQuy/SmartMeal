@@ -16,7 +16,7 @@ export interface OtpCodeInputProps {
 // (design/OTP.dc.html), tự chuyển focus khi nhập/xoá, viền xanh khi đang focus.
 export function OtpCodeInput({ length = 6, value, onChange }: OtpCodeInputProps) {
   const { colors } = useTheme();
-  const inputRefs = useRef<Array<TextInputInstance | null>>([]);
+  const inputRefs = useRef<(TextInputInstance | null)[]>([]);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
   const handleChangeDigit = (index: number, digit: string) => {

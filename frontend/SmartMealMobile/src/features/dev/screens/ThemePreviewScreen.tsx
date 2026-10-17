@@ -24,7 +24,7 @@ import type { MainStackParamList } from '@/navigation/types';
 import { useAppStore } from '@/state/app/appStore';
 import { useTheme, type ThemeMode } from '@/theme/ThemeProvider';
 
-const MODE_OPTIONS: Array<{ label: string; value: ThemeMode }> = [
+const MODE_OPTIONS: { label: string; value: ThemeMode }[] = [
   { label: 'System', value: 'system' },
   { label: 'Light', value: 'light' },
   { label: 'Dark', value: 'dark' },
