@@ -1,0 +1,54 @@
+name: Server Health Check (24/7 Monitor)
+
+on:
+  schedule:
+    # Chạy tự động mỗi 5 phút trên đám mây GitHub Actions
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Cho phép bấm chạy thủ công kiểm tra bất kỳ lúc nào
+
+jobs:
+  check-server:
+    name: Check Server Health & Funnel
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Server Public Funnel
+        id: check_status
+        run: |
+          URL="https://tkm2.taildec640.ts.net/swagger/v1/swagger.json"
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$URL" || echo "000")
+          echo "HTTP status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "status=UP" >> $GITHUB_OUTPUT
+          else
+            echo "status=DOWN" >> $GITHUB_OUTPUT
+            echo "code=$HTTP_STATUS" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Alert Email if Server is DOWN
+        if: steps.check_status.outputs.status == 'DOWN'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "🚨 [CANH BAO 24/7] Server SmartMeal (tkm2) BI SAP NGUON / MAT KET NOI!"
+          to: ${{ secrets.ALERT_EMAIL }}
+          from: "SmartMeal 24/7 Cloud Monitor <${{ secrets.SMTP_USER }}>"
+          body: |
+            Xin chao Quan tri vien,
+
+            He thong Cloud Monitor (GitHub Actions) phat hien May chu SmartMeal (tkm2) hien KHONG THE TRUY CAP!
+
+            Chi tiet su co:
+            - Thoi gian phat hien (UTC): ${{ github.event.repository.updated_at }}
+            - Server URL: https://tkm2.taildec640.ts.net/
+            - HTTP Status tra ve: ${{ steps.check_status.outputs.code }}
+
+            Nguyen nhan co the:
+            1. May chu bi mat dien / sap nguon tai nha.
+            2. Mat mang Wi-Fi / Internet tai nha.
+            3. Docker Desktop hoac Tailscale Funnel bi ngung.
+
+            Vui long kiem tra lai may chu tkm2 de dam bao ung dung SmartMealMobile hoat dong binh thuong.
