@@ -93,7 +93,8 @@ public class SubscriptionService : ISubscriptionService
 
     /// <summary>
     /// Khởi tạo phiên thanh toán nâng cấp gói Pro cho người dùng:
-    /// - Kiểm tra tính hợp lệ của mã gói (planId) và phương thức thanh toán ('payos' hoặc 'sepay').
+    /// - Kiểm tra tính hợp lệ của mã gói (planId) và phương thức thanh toán ('payos', 'sepay' hoặc 'bank_app'); với PayOS,
+    ///   <c>returnUrl</c> (nếu có) phải là deep link của app SmartMeal.
     /// - Tạo bản ghi giao dịch thanh toán (PaymentTransaction) ở trạng thái 'Pending'.
     /// - Sinh liên kết thanh toán PayOS hoặc mã chuyển khoản VietQR kèm nội dung đối soát SePay duy nhất.
     /// </summary>
@@ -123,9 +124,19 @@ public class SubscriptionService : ISubscriptionService
             return ApiResponse<CheckoutSessionResponseDto>.Fail("Không tìm thấy thông tin tài khoản.", null, ApiErrorKind.NotFound);
         }
 
-        return method == SubscriptionCatalog.PayOS
-            ? await CreatePayOSCheckoutAsync(userId, plan)
-            : await CreateSePayCheckoutAsync(userId, plan);
+        if (method != SubscriptionCatalog.PayOS)
+        {
+            return await CreateSePayCheckoutAsync(userId, plan, method);
+        }
+
+        var returnUrl = dto.ReturnUrl?.Trim();
+        if (!string.IsNullOrEmpty(returnUrl) && !AppDeepLink.IsAllowed(returnUrl, _environment.IsDevelopment()))
+        {
+            return ApiResponse<CheckoutSessionResponseDto>.Fail(
+                "returnUrl không hợp lệ: chỉ nhận deep link của app SmartMeal.", new List<string> { "invalid_return_url" });
+        }
+
+        return await CreatePayOSCheckoutAsync(userId, plan, string.IsNullOrEmpty(returnUrl) ? null : returnUrl);
     }
 
     /// <summary>
@@ -184,11 +195,14 @@ public class SubscriptionService : ISubscriptionService
     /// - Sinh mã chuyển khoản ngẫu nhiên (SessionId) không trùng lặp và mã đơn hàng (OrderCode).
     /// - Tạo mã VietQR chứa đầy đủ thông tin: Ngân hàng, Số tài khoản, Số tiền chính xác và Nội dung chuyển khoản.
     /// - Lưu giao dịch Pending vào database.
+    /// <paramref name="method"/> = SEPAY: kèm mã VietQR để quét; BANK_APP: không QR — số tài khoản + nội dung +
+    /// <c>vietQrBankCode</c> để app mở app ngân hàng điền sẵn thông tin.
     /// </summary>
     /// <param name="userId">Mã người dùng mua gói.</param>
     /// <param name="plan">Thông tin gói cước người dùng lựa chọn.</param>
+    /// <param name="method">Phương thức chuyển khoản qua SePay: SEPAY (quét QR) hoặc BANK_APP (mở app ngân hàng).</param>
     /// <returns>Đối tượng phản hồi chứa mã QR VietQR và thông tin chuyển khoản.</returns>
-    private async Task<ApiResponse<CheckoutSessionResponseDto>> CreateSePayCheckoutAsync(Guid userId, SubscriptionCatalog.Plan plan)
+    private async Task<ApiResponse<CheckoutSessionResponseDto>> CreateSePayCheckoutAsync(Guid userId, SubscriptionCatalog.Plan plan, string method)
     {
         if (!_sePay.IsConfigured)
         {
@@ -206,10 +220,11 @@ public class SubscriptionService : ISubscriptionService
             }
 
             var transfer = _sePay.BuildTransferInfo(plan.PriceVnd, code);
+            var withQr = method == SubscriptionCatalog.SePay;
             // Mã thanh toán chính là nội dung chuyển khoản; SessionId duy nhất nên mỗi mã chỉ khớp một đơn.
-            var transaction = NewTransaction(userId, plan, SubscriptionCatalog.SePay, code);
+            var transaction = NewTransaction(userId, plan, method, code);
             transaction.OrderCode = orderCode;
-            transaction.CheckoutUrl = transfer.QrImageUrl;
+            transaction.CheckoutUrl = withQr ? transfer.QrImageUrl : null;
             _db.PaymentTransactions.Add(transaction);
             await _db.SaveChangesAsync();
 
@@ -218,15 +233,18 @@ public class SubscriptionService : ISubscriptionService
             {
                 SessionId = code,
                 OrderCode = orderCode,
-                PaymentUrl = transfer.QrImageUrl,
-                QrCodeUrl = transfer.QrImageUrl,
+                PaymentUrl = withQr ? transfer.QrImageUrl : string.Empty,
+                QrCodeUrl = withQr ? transfer.QrImageUrl : null,
                 AmountVnd = plan.PriceVnd,
                 BankCode = transfer.BankCode,
                 AccountNumber = transfer.AccountNumber,
                 AccountName = transfer.AccountName,
                 TransferContent = code,
                 ExpiresAt = transaction.CreatedAt.AddMinutes(_sePay.ExpiryMinutes),
-                Message = $"Quét mã VietQR bằng app ngân hàng, hoặc chuyển {amount}đ với nội dung {code}. Gói Pro được kích hoạt ngay khi nhận được tiền."
+                VietQrBankCode = VietQrBanks.FindCode(transfer.BankCode),
+                Message = withQr
+                    ? $"Quét mã VietQR bằng app ngân hàng, hoặc chuyển {amount}đ với nội dung {code}. Gói Pro được kích hoạt ngay khi nhận được tiền."
+                    : $"Chuyển {amount}đ tới số tài khoản {transfer.AccountNumber} ({transfer.BankCode}) với nội dung {code}. Gói Pro được kích hoạt ngay khi nhận được tiền."
             });
         }
 
@@ -265,7 +283,7 @@ public class SubscriptionService : ISubscriptionService
         var transaction = candidates.Count == 0
             ? null
             : await _db.PaymentTransactions.FirstOrDefaultAsync(t =>
-                t.PaymentMethod == SubscriptionCatalog.SePay && candidates.Contains(t.SessionId));
+                SubscriptionCatalog.SePayMethods.Contains(t.PaymentMethod) && candidates.Contains(t.SessionId));
         if (transaction is null)
         {
             _logger.LogInformation("SePay transfer {TransferId} ({Amount}đ) does not match any SePay order.", transfer.Id, transfer.Amount);
@@ -380,8 +398,9 @@ public class SubscriptionService : ISubscriptionService
     /// </summary>
     /// <param name="userId">Mã người dùng mua gói.</param>
     /// <param name="plan">Thông tin gói cước người dùng lựa chọn.</param>
+    /// <param name="returnUrl">Deep link của app (đã kiểm tra) để PayOS quay về sau khi thanh toán; null thì dùng PayOS:ReturnUrl của máy chủ.</param>
     /// <returns>Đối tượng phản hồi chứa CheckoutUrl và mã QR PayOS.</returns>
-    private async Task<ApiResponse<CheckoutSessionResponseDto>> CreatePayOSCheckoutAsync(Guid userId, SubscriptionCatalog.Plan plan)
+    private async Task<ApiResponse<CheckoutSessionResponseDto>> CreatePayOSCheckoutAsync(Guid userId, SubscriptionCatalog.Plan plan, string? returnUrl)
     {
         if (!_payOS.IsConfigured)
         {
@@ -405,7 +424,7 @@ public class SubscriptionService : ISubscriptionService
             PayOSPaymentLink link;
             try
             {
-                link = await _payOS.CreatePaymentLinkAsync(orderCode, amount, description, plan.Name);
+                link = await _payOS.CreatePaymentLinkAsync(orderCode, amount, description, plan.Name, returnUrl);
             }
             catch (Exception ex)
             {
@@ -482,7 +501,7 @@ public class SubscriptionService : ISubscriptionService
         }
 
         // SePay: dự phòng khi webhook không tới được máy chủ (vd. máy dev) — tự hỏi API giao dịch của SePay.
-        if (transaction.Status == PaymentStatuses.Pending && transaction.PaymentMethod == SubscriptionCatalog.SePay && _sePay.CanQueryTransactions)
+        if (transaction.Status == PaymentStatuses.Pending && SubscriptionCatalog.SePayMethods.Contains(transaction.PaymentMethod) && _sePay.CanQueryTransactions)
         {
             await CheckSePayTransferAsync(transaction);
         }
