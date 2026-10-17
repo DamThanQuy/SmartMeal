@@ -21,6 +21,12 @@ public class ProductSafetyService : IProductSafetyService
     private readonly IFoodService _foods;
     private readonly ProductSafetyOptions _limits;
 
+    /// <summary>
+    /// Khởi tạo dịch vụ kiểm tra an toàn thực phẩm từ mã vạch với DbContext, FoodService và ngưỡng an toàn dinh dưỡng.
+    /// </summary>
+    /// <param name="db">DbContext truy xuất dữ liệu hồ sơ sức khỏe và dị ứng.</param>
+    /// <param name="foods">Dịch vụ tra cứu thông tin thực phẩm theo mã vạch.</param>
+    /// <param name="limits">Cấu hình ngưỡng dinh dưỡng an toàn cho các bệnh lý nền.</param>
     public ProductSafetyService(ApplicationDbContext db, IFoodService foods, IOptions<ProductSafetyOptions> limits)
     {
         _db = db;
@@ -28,6 +34,14 @@ public class ProductSafetyService : IProductSafetyService
         _limits = limits.Value;
     }
 
+    /// <summary>
+    /// Kiểm tra an toàn thực phẩm của sản phẩm dựa trên mã vạch tra cứu từ cơ sở dữ liệu nội bộ (BR-120/140).
+    /// Đối chiếu các chất gây dị ứng và bệnh lý nền của người dùng, kiểm tra ngưỡng dinh dưỡng (đường, muối, chất béo)
+    /// và đưa ra các cảnh báo mức độ DANGER/WARNING/INFO tương ứng.
+    /// </summary>
+    /// <param name="barcode">Chuỗi mã vạch sản phẩm (EAN-13, UPC, ...).</param>
+    /// <param name="userId">Định danh người dùng để lấy hồ sơ sức khỏe và dị ứng.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa kết quả đánh giá an toàn, thông tin dinh dưỡng và danh sách cảnh báo.</returns>
     public async Task<ApiResponse<CheckSafetyResponseDto>> CheckBarcodeAsync(string barcode, Guid userId)
     {
         var lookup = await _foods.GetFoodByBarcodeAsync(barcode, userId);
