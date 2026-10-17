@@ -11,6 +11,11 @@ using SmartMeal.Infrastructure.Options;
 
 namespace SmartMeal.Infrastructure.Services;
 
+/// <summary>
+/// Dịch vụ quản lý công thức món ăn, gợi ý món ăn theo nguyên liệu trong tủ lạnh (Pantry Suggestion),
+/// quản lý danh sách yêu thích và bộ sưu tập công thức cá nhân/công khai của người dùng.
+/// Tự động tích hợp cảnh báo sức khỏe và dị ứng cá nhân hóa theo hồ sơ sức khỏe người xem (BR-101/102/110/111).
+/// </summary>
 public class RecipeService : IRecipeService
 {
     private const int MaxPageSize = 50;
@@ -19,6 +24,11 @@ public class RecipeService : IRecipeService
     private readonly ApplicationDbContext _db;
     private readonly HealthConditionLimitsOptions _limits;
 
+    /// <summary>
+    /// Khởi tạo instance mới của <see cref="RecipeService"/>.
+    /// </summary>
+    /// <param name="db">DbContext kết nối cơ sở dữ liệu ứng dụng.</param>
+    /// <param name="limits">Tùy chọn ngưỡng giới hạn dinh dưỡng cho các tình trạng bệnh lý (cao huyết áp, tiểu đường, gout, bệnh thận,...).</param>
     public RecipeService(ApplicationDbContext db, IOptions<HealthConditionLimitsOptions> limits)
     {
         _db = db;
@@ -43,6 +53,13 @@ public class RecipeService : IRecipeService
 
     // ───────────────────────────── Danh sách / chi tiết ─────────────────────────────
 
+    /// <summary>
+    /// Lấy danh sách công thức món ăn kèm phân trang và bộ lọc linh hoạt (từ khóa không dấu, tag, độ khó, calo tối đa, thời gian nấu, loại bữa ăn, loại trừ dị ứng).
+    /// Cá nhân hóa kết quả với trạng thái yêu thích và cảnh báo dị ứng/bệnh lý nếu có người dùng đăng nhập.
+    /// </summary>
+    /// <param name="query">Đối tượng chứa các tiêu chí tìm kiếm và tham số phân trang.</param>
+    /// <param name="userId">Định danh người dùng đang xem (tùy chọn, dùng để cá nhân hóa kết quả).</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa kết quả phân trang các công thức món ăn.</returns>
     public async Task<ApiResponse<PagedResult<RecipeDto>>> GetRecipesAsync(RecipeQuery query, Guid? userId)
     {
         var mealType = (string?)null;
@@ -146,6 +163,12 @@ public class RecipeService : IRecipeService
         });
     }
 
+    /// <summary>
+    /// Lấy thông tin chi tiết của một công thức món ăn theo mã định danh, bao gồm danh sách nguyên liệu, cách nấu, tag và cảnh báo sức khỏe.
+    /// </summary>
+    /// <param name="id">Mã định danh công thức món ăn.</param>
+    /// <param name="userId">Định danh người dùng đang xem (tùy chọn).</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa thông tin chi tiết công thức.</returns>
     public async Task<ApiResponse<RecipeDto>> GetRecipeByIdAsync(Guid id, Guid? userId)
     {
         var r = await RecipesWithDetails().FirstOrDefaultAsync(x => x.Id == id);
@@ -154,6 +177,14 @@ public class RecipeService : IRecipeService
         return ApiResponse<RecipeDto>.Ok(ToDto(r, await GetViewerAsync(userId)));
     }
 
+    /// <summary>
+    /// Đề xuất danh sách công thức nấu ăn dựa trên các nguyên liệu có sẵn trong tủ lạnh (Pantry Suggestion).
+    /// Tự động loại bỏ hoàn toàn các món ăn chứa thành phần gây dị ứng của người dùng (BR-102),
+    /// và xếp hạng ưu tiên các món có số lượng nguyên liệu khớp nhiều nhất.
+    /// </summary>
+    /// <param name="dto">Danh sách tên các nguyên liệu hiện có trong tủ lạnh.</param>
+    /// <param name="userId">Định danh người dùng thực hiện gợi ý (tùy chọn).</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa danh sách tối đa 10 công thức phù hợp nhất.</returns>
     public async Task<ApiResponse<List<RecipeDto>>> SuggestByPantryAsync(PantrySuggestionRequestDto dto, Guid? userId)
     {
         var availableNames = dto.AvailableIngredients
@@ -210,6 +241,12 @@ public class RecipeService : IRecipeService
 
     // ───────────────────────────── Yêu thích ─────────────────────────────
 
+    /// <summary>
+    /// Thêm hoặc bỏ một món ăn khỏi danh sách yêu thích cá nhân của người dùng (Toggle Favorite).
+    /// </summary>
+    /// <param name="userId">Định danh người dùng thao tác.</param>
+    /// <param name="recipeId">Định danh công thức món ăn cần bật/tắt yêu thích.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa trạng thái yêu thích mới và tổng số món yêu thích hiện có.</returns>
     public async Task<ApiResponse<FavoriteToggleResponseDto>> ToggleFavoriteAsync(Guid userId, Guid recipeId)
     {
         var recipe = await _db.Recipes.FirstOrDefaultAsync(r => r.Id == recipeId);
@@ -238,6 +275,11 @@ public class RecipeService : IRecipeService
         }, isFavorite ? "Đã lưu vào danh sách yêu thích." : "Đã bỏ khỏi danh sách yêu thích.");
     }
 
+    /// <summary>
+    /// Lấy danh sách toàn bộ các món ăn đã được người dùng lưu vào danh sách yêu thích cá nhân.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa danh sách công thức món ăn yêu thích.</returns>
     public async Task<ApiResponse<List<RecipeDto>>> GetFavoritesAsync(Guid userId)
     {
         var favRecipeIds = await _db.UserFavorites.Where(f => f.UserId == userId).Select(f => f.RecipeId).ToListAsync();
@@ -249,9 +291,13 @@ public class RecipeService : IRecipeService
         var favorites = await GetViewerAsync(userId);
         return ApiResponse<List<RecipeDto>>.Ok(recipes.Select(r => ToDto(r, favorites)).ToList(), "Lấy danh sách món ăn yêu thích thành công.");
     }
-
     // ───────────────────────────── Bộ sưu tập ─────────────────────────────
 
+    /// <summary>
+    /// Lấy danh sách các bộ sưu tập công thức thuộc quyền sở hữu của người dùng hoặc các bộ sưu tập được công khai (Public).
+    /// </summary>
+    /// <param name="userId">Định danh người dùng.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa danh sách các bộ sưu tập.</returns>
     public async Task<ApiResponse<List<RecipeCollectionDto>>> GetCollectionsAsync(Guid userId)
     {
         var collections = await CollectionsWithRecipes()
@@ -265,6 +311,12 @@ public class RecipeService : IRecipeService
             "Lấy danh sách bộ sưu tập thành công.");
     }
 
+    /// <summary>
+    /// Lấy chi tiết một bộ sưu tập công thức theo mã định danh (nếu người dùng là chủ sở hữu hoặc bộ sưu tập là công khai).
+    /// </summary>
+    /// <param name="userId">Định danh người dùng đang xem.</param>
+    /// <param name="collectionId">Mã định danh bộ sưu tập.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa thông tin chi tiết bộ sưu tập kèm danh sách công thức.</returns>
     public async Task<ApiResponse<RecipeCollectionDto>> GetCollectionAsync(Guid userId, Guid collectionId)
     {
         var collection = await CollectionsWithRecipes().FirstOrDefaultAsync(c => c.Id == collectionId && (c.UserId == userId || c.IsPublic));
@@ -276,6 +328,12 @@ public class RecipeService : IRecipeService
         return ApiResponse<RecipeCollectionDto>.Ok(ToCollectionDto(collection, userId, await GetViewerAsync(userId)));
     }
 
+    /// <summary>
+    /// Tạo một bộ sưu tập công thức mới cho người dùng.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng tạo bộ sưu tập.</param>
+    /// <param name="dto">Dữ liệu tạo bộ sưu tập gồm tên, mô tả, ảnh đại diện và chế độ hiển thị công khai/riêng tư.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa thông tin bộ sưu tập vừa tạo.</returns>
     public async Task<ApiResponse<RecipeCollectionDto>> CreateCollectionAsync(Guid userId, CreateCollectionRequestDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) return ApiResponse<RecipeCollectionDto>.Fail("Tên bộ sưu tập không được để trống.");
@@ -306,6 +364,14 @@ public class RecipeService : IRecipeService
         }, $"Đã tạo bộ sưu tập '{col.Name}'.");
     }
 
+    /// <summary>
+    /// Cập nhật thông tin bộ sưu tập công thức (tên, mô tả, ảnh đại diện, trạng thái công khai).
+    /// Chỉ chủ sở hữu mới có quyền cập nhật (BR-152).
+    /// </summary>
+    /// <param name="userId">Định danh người dùng thao tác.</param>
+    /// <param name="collectionId">Mã định danh bộ sưu tập cần sửa.</param>
+    /// <param name="dto">Dữ liệu các trường cần cập nhật.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa thông tin bộ sưu tập sau cập nhật.</returns>
     public async Task<ApiResponse<RecipeCollectionDto>> UpdateCollectionAsync(Guid userId, Guid collectionId, UpdateCollectionRequestDto dto)
     {
         var (collection, error) = await FindOwnedCollectionAsync<RecipeCollectionDto>(userId, collectionId);
@@ -326,6 +392,12 @@ public class RecipeService : IRecipeService
         return await GetCollectionAsync(userId, collectionId);
     }
 
+    /// <summary>
+    /// Xóa một bộ sưu tập công thức. Chỉ chủ sở hữu mới có quyền xóa.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng thao tác.</param>
+    /// <param name="collectionId">Mã định danh bộ sưu tập cần xóa.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> xác nhận kết quả xóa thành công.</returns>
     public async Task<ApiResponse<bool>> DeleteCollectionAsync(Guid userId, Guid collectionId)
     {
         var (collection, error) = await FindOwnedCollectionAsync<bool>(userId, collectionId);
@@ -336,6 +408,13 @@ public class RecipeService : IRecipeService
         return ApiResponse<bool>.Ok(true, "Đã xóa bộ sưu tập.");
     }
 
+    /// <summary>
+    /// Thêm một công thức món ăn vào bộ sưu tập của người dùng.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng sở hữu bộ sưu tập.</param>
+    /// <param name="collectionId">Mã định danh bộ sưu tập.</param>
+    /// <param name="recipeId">Mã định danh công thức món ăn cần thêm.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> xác nhận thêm thành công.</returns>
     public async Task<ApiResponse<bool>> AddRecipeToCollectionAsync(Guid userId, Guid collectionId, Guid recipeId)
     {
         var (collection, error) = await FindOwnedCollectionAsync<bool>(userId, collectionId);
@@ -353,6 +432,13 @@ public class RecipeService : IRecipeService
         return ApiResponse<bool>.Ok(true, "Đã thêm món ăn vào bộ sưu tập.");
     }
 
+    /// <summary>
+    /// Bỏ một công thức món ăn khỏi bộ sưu tập của người dùng.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng sở hữu bộ sưu tập.</param>
+    /// <param name="collectionId">Mã định danh bộ sưu tập.</param>
+    /// <param name="recipeId">Mã định danh công thức món ăn cần bỏ.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> xác nhận bỏ món ăn thành công.</returns>
     public async Task<ApiResponse<bool>> RemoveRecipeFromCollectionAsync(Guid userId, Guid collectionId, Guid recipeId)
     {
         var (collection, error) = await FindOwnedCollectionAsync<bool>(userId, collectionId);
@@ -368,13 +454,17 @@ public class RecipeService : IRecipeService
         await _db.SaveChangesAsync();
         return ApiResponse<bool>.Ok(true, "Đã bỏ món ăn khỏi bộ sưu tập.");
     }
-
     // ───────────────────────────── Chia sẻ bộ sưu tập ─────────────────────────────
 
     /// <summary>
-    /// Bật liên kết chia sẻ (chỉ chủ sở hữu). Đã có mã thì trả lại mã cũ; <paramref name="regenerate"/> = true thì tạo mã mới và
-    /// liên kết cũ hết hiệu lực. Liên kết xem được cả khi bộ sưu tập để riêng tư.
+    /// Bật liên kết chia sẻ cho bộ sưu tập (chỉ chủ sở hữu).
+    /// Nếu đã có token chia sẻ và không yêu cầu tạo lại, hàm trả về token hiện tại;
+    /// nếu <paramref name="regenerate"/> = true thì hủy token cũ và sinh token ngẫu nhiên mới bảo mật cao.
     /// </summary>
+    /// <param name="userId">Định danh người dùng chủ sở hữu.</param>
+    /// <param name="collectionId">Mã định danh bộ sưu tập cần chia sẻ.</param>
+    /// <param name="regenerate">True nếu muốn làm mới token chia sẻ và vô hiệu hóa link cũ.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa mã token chia sẻ và thời điểm chia sẻ.</returns>
     public async Task<ApiResponse<CollectionShareDto>> CreateShareLinkAsync(Guid userId, Guid collectionId, bool regenerate)
     {
         var (collection, error) = await FindOwnedCollectionAsync<CollectionShareDto>(userId, collectionId);
@@ -392,7 +482,13 @@ public class RecipeService : IRecipeService
             "Đã bật liên kết chia sẻ.");
     }
 
-    /// <summary>Thu hồi liên kết chia sẻ (idempotent): mã cũ không còn mở được.</summary>
+    /// <summary>
+    /// Thu hồi liên kết chia sẻ của bộ sưu tập (idempotent).
+    /// Sau khi thu hồi, bất kỳ ai truy cập bằng liên kết cũ sẽ nhận mã lỗi 404.
+    /// </summary>
+    /// <param name="userId">Định danh chủ sở hữu bộ sưu tập.</param>
+    /// <param name="collectionId">Mã định danh bộ sưu tập.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> xác nhận đã tắt liên kết chia sẻ.</returns>
     public async Task<ApiResponse<bool>> RevokeShareLinkAsync(Guid userId, Guid collectionId)
     {
         var (collection, error) = await FindOwnedCollectionAsync<bool>(userId, collectionId);
@@ -408,7 +504,12 @@ public class RecipeService : IRecipeService
         return ApiResponse<bool>.Ok(true, "Đã tắt liên kết chia sẻ.");
     }
 
-    /// <summary>Xem bộ sưu tập qua liên kết chia sẻ (chỉ đọc). Mã sai hoặc đã thu hồi → 404.</summary>
+    /// <summary>
+    /// Xem chi tiết một bộ sưu tập qua liên kết chia sẻ công khai mà không cần đăng nhập hoặc quyền sở hữu (chế độ chỉ đọc).
+    /// </summary>
+    /// <param name="shareToken">Mã token chia sẻ ngẫu nhiên đính kèm trên URL.</param>
+    /// <param name="userId">Định danh người dùng đang xem (tùy chọn, dùng để cá nhân hóa món yêu thích).</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa thông tin bộ sưu tập và danh sách công thức.</returns>
     public async Task<ApiResponse<RecipeCollectionDto>> GetSharedCollectionAsync(string shareToken, Guid? userId)
     {
         var token = shareToken?.Trim() ?? string.Empty;
@@ -423,12 +524,13 @@ public class RecipeService : IRecipeService
         return ApiResponse<RecipeCollectionDto>.Ok(ToCollectionDto(collection, userId ?? Guid.Empty, await GetViewerAsync(userId)));
     }
 
-    /// <summary>24 byte ngẫu nhiên, base64url (32 ký tự) — không đoán được.</summary>
+    /// <summary>Sinh 24 byte ngẫu nhiên mã hóa base64url (32 ký tự) dùng làm token chia sẻ an toàn không thể đoán.</summary>
     private static string NewShareToken() =>
         Convert.ToBase64String(RandomNumberGenerator.GetBytes(24)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
     // ───────────────────────────── Nội bộ ─────────────────────────────
 
+    /// <summary>Truy vấn danh sách bộ sưu tập nạp kèm công thức, tag, nguyên liệu và danh mục chất dị ứng.</summary>
     private IQueryable<RecipeCollection> CollectionsWithRecipes() => _db.RecipeCollections
         .AsNoTracking()
         .Include(c => c.CollectionRecipes).ThenInclude(cr => cr.Recipe).ThenInclude(r => r.RecipeTags).ThenInclude(rt => rt.Tag)
@@ -436,8 +538,8 @@ public class RecipeService : IRecipeService
         .AsSplitQuery();
 
     /// <summary>
-    /// Bộ sưu tập chỉ chủ sở hữu mới được sửa (BR-152): không thấy → 404 (không lộ bộ sưu tập riêng tư của người khác),
-    /// thấy được (công khai) nhưng không phải chủ → 403.
+    /// Tìm bộ sưu tập và kiểm tra quyền sở hữu của người dùng (BR-152).
+    /// Nếu không tìm thấy hoặc là riêng tư của người khác: trả về 404; nếu là công khai của người khác: trả về 403 Forbidden.
     /// </summary>
     private async Task<(RecipeCollection? Collection, ApiResponse<T>? Error)> FindOwnedCollectionAsync<T>(Guid userId, Guid collectionId)
     {
@@ -455,12 +557,14 @@ public class RecipeService : IRecipeService
         return (collection, null);
     }
 
+    /// <summary>Lấy danh sách mã định danh chất dị ứng chuẩn của người dùng từ hồ sơ sức khỏe.</summary>
     private async Task<HashSet<int>> GetUserAllergyIdsAsync(Guid userId) =>
         (await _db.UserAllergies
             .Where(ua => ua.HealthProfile.UserId == userId)
             .Select(ua => ua.AllergyId)
             .ToListAsync()).ToHashSet();
 
+    /// <summary>Nạp thông tin người xem (món yêu thích, bệnh lý, dị ứng tự do) để phục vụ cá nhân hóa.</summary>
     private async Task<Viewer> GetViewerAsync(Guid? userId)
     {
         if (userId is not { } id) return Viewer.Anonymous;
@@ -472,23 +576,30 @@ public class RecipeService : IRecipeService
         return new Viewer(favorites, conditions, await GetOtherAllergensAsync(id));
     }
 
+    /// <summary>Lấy danh sách từ khóa dị ứng tự do (OtherAllergies) của người dùng.</summary>
     private async Task<IReadOnlyList<string>> GetOtherAllergensAsync(Guid userId) =>
         CustomAllergens.Keywords(await _db.HealthProfiles.AsNoTracking()
             .Where(hp => hp.UserId == userId)
             .Select(hp => hp.OtherAllergies)
             .FirstOrDefaultAsync());
 
+    /// <summary>Kiểm tra xem công thức món ăn có chứa bất kỳ chất gây dị ứng nào trong danh sách chỉ định không.</summary>
     private static bool ContainsAnyAllergen(Recipe recipe, HashSet<int> allergyIds) =>
         recipe.RecipeIngredients.Any(ri => ri.Ingredient.IngredientAllergies.Any(a => allergyIds.Contains(a.AllergyId)));
 
+    /// <summary>Kiểm tra xem công thức có chứa từ khóa dị ứng tự do nào không.</summary>
     private static string? MatchOtherAllergen(Recipe recipe, IReadOnlyList<string> otherAllergens) =>
         CustomAllergens.FindMatch(otherAllergens, recipe.RecipeIngredients.Select(ri => ri.Ingredient.Name).Prepend(recipe.Title));
 
+    /// <summary>Tạo danh sách thông báo cảnh báo dị ứng tự do nếu có nguyên liệu trùng khớp.</summary>
     private static IEnumerable<string> OtherAllergenWarnings(Recipe recipe, Viewer viewer) =>
         MatchOtherAllergen(recipe, viewer.OtherAllergens) is { } keyword
             ? new[] { $"Có thể chứa \"{keyword}\" — nằm trong dị ứng khác bạn đã khai báo." }
             : Array.Empty<string>();
 
+    /// <summary>
+    /// Chuyển đổi thực thể <see cref="Recipe"/> sang DTO <see cref="RecipeDto"/> có kèm cá nhân hóa (yêu thích, cảnh báo sức khỏe).
+    /// </summary>
     private RecipeDto ToDto(Recipe r, Viewer viewer)
     {
         var ingredients = r.RecipeIngredients.Select(ri => new RecipeIngredientDto
@@ -530,6 +641,9 @@ public class RecipeService : IRecipeService
         };
     }
 
+    /// <summary>
+    /// Chuyển đổi thực thể <see cref="RecipeCollection"/> sang DTO <see cref="RecipeCollectionDto"/>.
+    /// </summary>
     private RecipeCollectionDto ToCollectionDto(RecipeCollection c, Guid userId, Viewer favorites) => new()
     {
         Id = c.Id,
