@@ -1,3 +1,4 @@
+import { haptic } from '@/utils/haptics';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import { Camera, X } from 'lucide-react-native';
@@ -42,8 +43,10 @@ export function BarcodeScreen({ navigation, route }: Props) {
     scanBarcode.mutate(code, {
       onSuccess: result => {
         if (result) {
+          haptic.success();
           setProduct(result);
         } else {
+          haptic.warning();
           navigation.replace(MAIN_STACK_ROUTES.PRODUCT_NOT_FOUND, { barcode: code, mealType });
         }
       },

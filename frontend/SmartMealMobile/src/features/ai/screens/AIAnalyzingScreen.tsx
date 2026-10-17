@@ -1,3 +1,4 @@
+import { haptic } from '@/utils/haptics';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Search } from 'lucide-react-native';
 import React, { useEffect } from 'react';
@@ -54,6 +55,7 @@ export function AIAnalyzingScreen({ navigation, route }: Props) {
   useEffect(() => {
     analyzeMealPhoto.mutate({ mealType, imageUri }, {
       onSuccess: result => {
+        haptic.success();
         consumeQuota();
         navigation.replace(MAIN_STACK_ROUTES.AI_SNAP_RESULT, { mealType, result, imageUri });
       },

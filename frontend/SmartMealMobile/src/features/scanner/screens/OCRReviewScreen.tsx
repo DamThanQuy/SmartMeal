@@ -1,3 +1,4 @@
+import { haptic } from '@/utils/haptics';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AlertTriangle, Info } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
@@ -30,6 +31,7 @@ export function OCRReviewScreen({ navigation, route }: Props) {
   const analyze = () =>
     analyzeOcrLabel.mutate(imageUri, {
       onSuccess: scanned => {
+        haptic.success();
         setResult(scanned);
         setProductName(scanned.productName);
         setFields(scanned.fields);
