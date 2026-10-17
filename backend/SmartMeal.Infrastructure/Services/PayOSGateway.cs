@@ -53,22 +53,23 @@ public sealed class PayOSGateway : IPayOSGateway
     /// <summary>
     /// Tạo liên kết thanh toán đơn hàng trực tuyến trên cổng PayOS:
     /// - Tiếp nhận mã đơn hàng duy nhất, số tiền thanh toán, nội dung mô tả và tên gói cước.
-    /// - Gọi API PayOS SDK tạo phiên thanh toán với ReturnUrl và CancelUrl được cấu hình sẵn.
+    /// - Hỗ trợ tùy chỉnh returnUrl (ví dụ deep link quay lại app mobile) hoặc dùng mặc định từ cấu hình.
     /// </summary>
     /// <param name="orderCode">Mã đơn hàng định dạng số nguyên dương duy nhất.</param>
     /// <param name="amountVnd">Số tiền cần thanh toán tính bằng VNĐ.</param>
     /// <param name="description">Nội dung tóm tắt chuyển khoản (tối đa 25 ký tự).</param>
     /// <param name="itemName">Tên sản phẩm/gói dịch vụ hiển thị trên hóa đơn PayOS.</param>
+    /// <param name="returnUrl">URL điều hướng sau khi thanh toán hoặc hủy (tùy chọn).</param>
     /// <returns>Đối tượng <see cref="PayOSPaymentLink"/> chứa URL cổng thanh toán và chuỗi dữ liệu mã QR.</returns>
-    public async Task<PayOSPaymentLink> CreatePaymentLinkAsync(long orderCode, int amountVnd, string description, string itemName)
+    public async Task<PayOSPaymentLink> CreatePaymentLinkAsync(long orderCode, int amountVnd, string description, string itemName, string? returnUrl = null)
     {
         var data = new PaymentData(
             orderCode,
             amountVnd,
             description,
             new List<ItemData> { new(itemName, 1, amountVnd) },
-            _options.CancelUrl,
-            _options.ReturnUrl);
+            returnUrl ?? _options.CancelUrl,
+            returnUrl ?? _options.ReturnUrl);
 
         var result = await Client().createPaymentLink(data);
         return new PayOSPaymentLink(result.checkoutUrl, result.qrCode);
