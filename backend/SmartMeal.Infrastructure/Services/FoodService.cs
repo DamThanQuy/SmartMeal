@@ -8,6 +8,12 @@ using SmartMeal.Infrastructure.Data;
 
 namespace SmartMeal.Infrastructure.Services;
 
+/// <summary>
+/// Dịch vụ quản lý cơ sở dữ liệu thực phẩm và nguyên liệu (Food & Ingredients).
+/// Cung cấp tra cứu thực phẩm theo tên/từ khóa không dấu, danh mục, phân trang, lọc theo phạm vi (tất cả, của tôi, yêu thích, gần đây),
+/// quét mã vạch Barcode (tự động tra cứu và lưu đệm từ danh mục ngoài Open Food Facts),
+/// và cho phép người dùng tự tạo món tùy chỉnh cá nhân (tối đa 200 món/tài khoản).
+/// </summary>
 public class FoodService : IFoodService
 {
     private const int MaxCustomFoodsPerUser = 200;
@@ -18,6 +24,11 @@ public class FoodService : IFoodService
     private readonly ApplicationDbContext _db;
     private readonly IProductCatalogLookup _catalog;
 
+    /// <summary>
+    /// Khởi tạo instance mới của <see cref="FoodService"/>.
+    /// </summary>
+    /// <param name="db">DbContext kết nối cơ sở dữ liệu ứng dụng.</param>
+    /// <param name="catalog">Dịch vụ tra cứu danh mục sản phẩm bên ngoài (Open Food Facts).</param>
     public FoodService(ApplicationDbContext db, IProductCatalogLookup catalog)
     {
         _db = db;
@@ -26,6 +37,12 @@ public class FoodService : IFoodService
 
     // ───────────────────────────── Đọc ─────────────────────────────
 
+    /// <summary>
+    /// Lấy danh sách thực phẩm theo các tiêu chí tìm kiếm, danh mục và phạm vi phân loại (all, mine, recent, favorite) kèm phân trang.
+    /// </summary>
+    /// <param name="query">Đối tượng chứa các tham số lọc và phân trang.</param>
+    /// <param name="userId">Định danh người dùng (tùy chọn, bắt buộc khi xem phạm vi cá nhân: mine, recent, favorite).</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa kết quả phân trang danh sách thực phẩm.</returns>
     public async Task<ApiResponse<PagedResult<FoodItemDto>>> GetFoodsAsync(FoodQuery query, Guid? userId)
     {
         var page = query.Page < 1 ? 1 : query.Page;
@@ -98,6 +115,12 @@ public class FoodService : IFoodService
         });
     }
 
+    /// <summary>
+    /// Lấy thông tin chi tiết một loại thực phẩm theo mã định danh (bao gồm thông tin dinh dưỡng trên 100g, khẩu phần ăn và chất gây dị ứng).
+    /// </summary>
+    /// <param name="id">Mã định danh thực phẩm.</param>
+    /// <param name="userId">Định danh người dùng (dùng để cá nhân hóa trạng thái yêu thích).</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa thông tin chi tiết thực phẩm.</returns>
     public async Task<ApiResponse<FoodItemDto>> GetFoodByIdAsync(Guid id, Guid? userId)
     {
         var food = await WithDetails(Visible(userId)).FirstOrDefaultAsync(f => f.Id == id);
@@ -107,6 +130,13 @@ public class FoodService : IFoodService
         return ApiResponse<FoodItemDto>.Ok(ToDto(food, await FavoriteIdsAsync(userId)));
     }
 
+    /// <summary>
+    /// Tra cứu thực phẩm theo mã vạch sản phẩm (Barcode 8 đến 14 chữ số).
+    /// Nếu trong CSDL chưa có, dịch vụ sẽ tự động truy vấn danh mục mở Open Food Facts và lưu đệm vào CSDL (BR-120).
+    /// </summary>
+    /// <param name="barcode">Chuỗi mã vạch cần tra cứu.</param>
+    /// <param name="userId">Định danh người dùng (tùy chọn).</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa thông tin thực phẩm tìm thấy.</returns>
     public async Task<ApiResponse<FoodItemDto>> GetFoodByBarcodeAsync(string barcode, Guid? userId)
     {
         var code = new string((barcode ?? string.Empty).Where(char.IsDigit).ToArray());
@@ -128,6 +158,9 @@ public class FoodService : IFoodService
         return ApiResponse<FoodItemDto>.Ok(ToDto(food, await FavoriteIdsAsync(userId)));
     }
 
+    /// <summary>
+    /// Nhập thông tin sản phẩm từ danh mục bên ngoài (Open Food Facts) vào CSDL ứng dụng khi người dùng quét mã vạch mới.
+    /// </summary>
     private async Task<Ingredient?> ImportExternalProductAsync(string barcode)
     {
         var product = await _catalog.FindByBarcodeAsync(barcode);
@@ -200,6 +233,14 @@ public class FoodService : IFoodService
 
     // ───────────────────────────── Ghi ─────────────────────────────
 
+    /// <summary>
+    /// Tạo mới một món ăn/nguyên liệu tùy chỉnh thuộc quyền sở hữu của người dùng.
+    /// Kiểm tra tính hợp lệ của macro (tổng carb + fat + protein &lt;= 100g trên 100g), danh sách chất dị ứng,
+    /// tránh trùng tên và giới hạn tối đa 200 món/tài khoản.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng tạo món.</param>
+    /// <param name="dto">Dữ liệu chi tiết về món ăn, dinh dưỡng trên 100g, khẩu phần ăn và dị ứng.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa thông tin món ăn vừa được tạo.</returns>
     public async Task<ApiResponse<FoodItemDto>> CreateFoodAsync(Guid userId, CreateFoodRequestDto dto)
     {
         var name = (dto.Name ?? string.Empty).Trim();
@@ -280,6 +321,13 @@ public class FoodService : IFoodService
         return ApiResponse<FoodItemDto>.Ok(ToDto(created, await FavoriteIdsAsync(userId)), $"Đã lưu món '{food.Name}' (do bạn nhập).");
     }
 
+    /// <summary>
+    /// Xóa một món ăn do người dùng tự nhập. Không được phép xóa thực phẩm dùng chung của hệ thống.
+    /// Giữ nguyên số liệu trong các nhật ký đã ghi, chỉ gỡ bỏ liên kết khóa ngoại.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng yêu cầu xóa.</param>
+    /// <param name="id">Mã định danh món ăn cần xóa.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> xác nhận kết quả xóa thành công.</returns>
     public async Task<ApiResponse<bool>> DeleteFoodAsync(Guid userId, Guid id)
     {
         var food = await _db.Ingredients.FirstOrDefaultAsync(f => f.Id == id && (f.OwnerUserId == null || f.OwnerUserId == userId));
@@ -302,6 +350,13 @@ public class FoodService : IFoodService
         return ApiResponse<bool>.Ok(true, "Đã xóa món.");
     }
 
+    /// <summary>
+    /// Đánh dấu hoặc bỏ đánh dấu yêu thích một món ăn cho người dùng.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng.</param>
+    /// <param name="id">Mã định danh thực phẩm.</param>
+    /// <param name="isFavorite">Trạng thái yêu thích mới.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa trạng thái yêu thích sau cập nhật.</returns>
     public async Task<ApiResponse<FoodFavoriteDto>> SetFavoriteAsync(Guid userId, Guid id, bool isFavorite)
     {
         if (!await Visible(userId).AnyAsync(f => f.Id == id))
@@ -341,12 +396,14 @@ public class FoodService : IFoodService
     private IQueryable<Ingredient> Visible(Guid? userId) =>
         _db.Ingredients.AsNoTracking().Where(f => f.OwnerUserId == null || f.OwnerUserId == userId);
 
+    /// <summary>Nạp kèm thông tin chi tiết về dị ứng và khẩu phần ăn (Servings).</summary>
     private static IQueryable<Ingredient> WithDetails(IQueryable<Ingredient> foods) => foods
         .Include(f => f.Allergy)
         .Include(f => f.IngredientAllergies)
         .Include(f => f.Servings)
         .AsSplitQuery();
 
+    /// <summary>Lấy danh sách tối đa 50 ID thực phẩm được người dùng ghi nhật ký gần đây nhất.</summary>
     private async Task<List<Guid>> RecentFoodIdsAsync(Guid userId) =>
         await _db.DiaryItems
             .Where(i => i.NutritionDiary.UserId == userId && i.IngredientId != null)
@@ -357,15 +414,18 @@ public class FoodService : IFoodService
             .Select(x => x.Id)
             .ToListAsync();
 
+    /// <summary>Lấy tập hợp các ID thực phẩm yêu thích của người dùng.</summary>
     private async Task<HashSet<Guid>?> FavoriteIdsAsync(Guid? userId)
     {
         if (userId is not { } id) return null;
         return (await _db.UserFavoriteFoods.Where(f => f.UserId == id).Select(f => f.IngredientId).ToListAsync()).ToHashSet();
     }
 
+    /// <summary>Tạo chuỗi tìm kiếm không dấu chuẩn hóa từ tên và mô tả sản phẩm.</summary>
     public static string BuildSearchText(string name, string? description) =>
         TextNormalizer.Fold($"{name} {description}").Trim();
 
+    /// <summary>Chuyển đổi thực thể <see cref="Ingredient"/> sang DTO <see cref="FoodItemDto"/>.</summary>
     private static FoodItemDto ToDto(Ingredient i, HashSet<Guid>? favoriteIds)
     {
         var servings = i.Servings.OrderByDescending(s => s.IsDefault).ThenBy(s => s.Grams).ThenBy(s => s.Label).ToList();
