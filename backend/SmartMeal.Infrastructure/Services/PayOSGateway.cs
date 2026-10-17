@@ -8,20 +8,38 @@ using SmartMeal.Infrastructure.Options;
 
 namespace SmartMeal.Infrastructure.Services;
 
-/// <summary>Cài đặt <see cref="IPayOSGateway"/> bằng SDK chính thức của PayOS (gói NuGet <c>payOS</c>).</summary>
+/// <summary>
+/// Cổng kết nối tích hợp dịch vụ thanh toán PayOS thông qua SDK chính thức (gói NuGet <c>payOS</c>):
+/// - Khởi tạo liên kết thanh toán (Payment Link) trực tuyến kèm mã QR chuẩn VietQR/Napas 24/7.
+/// - Tra cứu thông tin trạng thái đơn hàng trực tiếp từ hệ thống máy chủ PayOS.
+/// - Xác minh tính toàn vẹn và chữ ký điện tử HMAC-SHA256 của Webhook gửi từ PayOS.
+/// </summary>
 public sealed class PayOSGateway : IPayOSGateway
 {
     private readonly PayOSOptions _options;
     private readonly ILogger<PayOSGateway> _logger;
 
+    /// <summary>
+    /// Khởi tạo instance mới của <see cref="PayOSGateway"/>.
+    /// </summary>
+    /// <param name="options">Tùy chọn cấu hình khóa tích hợp PayOS (ClientId, ApiKey, ChecksumKey).</param>
+    /// <param name="logger">Logger phục vụ ghi log gỡ lỗi và cảnh báo sự cố thanh toán.</param>
     public PayOSGateway(IOptions<PayOSOptions> options, ILogger<PayOSGateway> logger)
     {
         _options = options.Value;
         _logger = logger;
     }
 
+    /// <summary>
+    /// Cờ kiểm tra xem hệ thống đã được nạp đầy đủ 3 khóa bí mật của PayOS (ClientId, ApiKey, ChecksumKey) hay chưa.
+    /// </summary>
     public bool IsConfigured => _options.IsConfigured;
 
+    /// <summary>
+    /// Khởi tạo client kết nối SDK PayOS từ các khóa cấu hình:
+    /// Ném ngoại lệ InvalidOperationException nếu hệ thống chưa được nạp đủ khóa bí mật.
+    /// </summary>
+    /// <returns>Đối tượng client <see cref="PayOS"/> của SDK chính thức.</returns>
     private PayOS Client()
     {
         if (!IsConfigured)
@@ -32,6 +50,16 @@ public sealed class PayOSGateway : IPayOSGateway
         return new PayOS(_options.ClientId, _options.ApiKey, _options.ChecksumKey);
     }
 
+    /// <summary>
+    /// Tạo liên kết thanh toán đơn hàng trực tuyến trên cổng PayOS:
+    /// - Tiếp nhận mã đơn hàng duy nhất, số tiền thanh toán, nội dung mô tả và tên gói cước.
+    /// - Gọi API PayOS SDK tạo phiên thanh toán với ReturnUrl và CancelUrl được cấu hình sẵn.
+    /// </summary>
+    /// <param name="orderCode">Mã đơn hàng định dạng số nguyên dương duy nhất.</param>
+    /// <param name="amountVnd">Số tiền cần thanh toán tính bằng VNĐ.</param>
+    /// <param name="description">Nội dung tóm tắt chuyển khoản (tối đa 25 ký tự).</param>
+    /// <param name="itemName">Tên sản phẩm/gói dịch vụ hiển thị trên hóa đơn PayOS.</param>
+    /// <returns>Đối tượng <see cref="PayOSPaymentLink"/> chứa URL cổng thanh toán và chuỗi dữ liệu mã QR.</returns>
     public async Task<PayOSPaymentLink> CreatePaymentLinkAsync(long orderCode, int amountVnd, string description, string itemName)
     {
         var data = new PaymentData(
@@ -46,6 +74,12 @@ public sealed class PayOSGateway : IPayOSGateway
         return new PayOSPaymentLink(result.checkoutUrl, result.qrCode);
     }
 
+    /// <summary>
+    /// Tra cứu thông tin trạng thái thanh toán của một đơn hàng từ hệ thống PayOS:
+    /// Trả về trạng thái đơn ('PAID', 'PENDING', 'CANCELLED', 'EXPIRED'), số tiền thực nhận và mã tham chiếu giao dịch.
+    /// </summary>
+    /// <param name="orderCode">Mã đơn hàng cần kiểm tra.</param>
+    /// <returns>Đối tượng <see cref="PayOSPaymentInfo"/> chứa trạng thái thanh toán hiện thời.</returns>
     public async Task<PayOSPaymentInfo> GetPaymentInfoAsync(long orderCode)
     {
         var info = await Client().getPaymentLinkInformation(orderCode);
@@ -53,6 +87,14 @@ public sealed class PayOSGateway : IPayOSGateway
         return new PayOSPaymentInfo(info.status ?? string.Empty, info.amountPaid, reference);
     }
 
+    /// <summary>
+    /// Xác thực tính hợp lệ và chữ ký số HMAC của Webhook nhận được từ PayOS:
+    /// - Giải mã chuỗi JSON thô thành đối tượng <see cref="WebhookType"/>.
+    /// - Dùng ChecksumKey kiểm tra chữ ký điện tử 'signature' khớp chính xác với dữ liệu 'data'.
+    /// - Trả về null nếu chữ ký không khớp, dữ liệu bị can thiệp hoặc cấu hình chưa hoàn thiện.
+    /// </summary>
+    /// <param name="rawBody">Toàn bộ nội dung chuỗi JSON thô của Webhook.</param>
+    /// <returns>Đối tượng <see cref="PayOSWebhookPayment"/> chứa thông tin chuyển khoản nếu chữ ký hợp lệ, ngược lại trả null.</returns>
     public PayOSWebhookPayment? VerifyWebhook(string rawBody)
     {
         if (!IsConfigured)
