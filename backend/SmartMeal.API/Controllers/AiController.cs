@@ -148,6 +148,25 @@ public class AiController : ControllerBase
     }
 
     /// <summary>
+    /// Phụ đề tạm khi đang ghi âm (multipart, trường <c>audio</c>): app gửi lại đoạn đã ghi vài giây một lần và hiện bản chép
+    /// lời dưới nút micro. Chỉ chép lời, không bóc món; không trừ lượt AI (lượt được tính ở <c>voice-log/audio</c> khi người
+    /// dùng nói xong) nhưng hết lượt thì cũng không dùng được, và có giới hạn tần suất theo người dùng.
+    /// </summary>
+    /// <param name="audio">Đoạn ghi âm tính từ lúc bắt đầu nói đến hiện tại.</param>
+    /// <returns>Đối tượng <see cref="VoiceTranscriptDto"/> chứa bản chép lời tạm thời.</returns>
+    [HttpPost("voice-log/transcribe")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(12 * 1024 * 1024)]
+    [EnableRateLimiting(RateLimitPolicies.VoiceTranscribe)]
+    public async Task<ActionResult<ApiResponse<VoiceTranscriptDto>>> VoiceTranscribe(IFormFile? audio)
+    {
+        var (bytes, mime, error) = await ReadAudioAsync(audio);
+        if (error is not null) return BadRequest(ApiResponse<VoiceTranscriptDto>.Fail(error));
+
+        return await RunWithQuotaAsync("voice", _ => _aiVisionService.TranscribeAudioAsync(bytes!, mime!), countsAsUse: false);
+    }
+
+    /// <summary>
     /// Kiểm tra mức độ an toàn của sản phẩm thực phẩm đối với sức khỏe người dùng (BR-140):
     /// - Nếu cung cấp mã vạch ('barcode'): Hệ thống tra cứu trực tiếp trong cơ sở dữ liệu nội bộ và OpenFoodFacts (chính xác tuyệt đối).
     /// - Nếu không tìm thấy mã vạch trong CSDL nhưng có kèm văn bản OCR ('ocrRawText'): AI phân tích thành phần nhãn để phát hiện chất gây dị ứng hoặc chất chống chỉ định với bệnh lý người dùng.

@@ -338,6 +338,8 @@ export function DashboardScreen(_props: Props) {
                   .join(', ')}
                 calories={totalCalories}
                 macroLine={`P ${totalProtein}g · C ${totalCarbs}g · F ${totalFat}g`}
+                // Món trong bữa xếp theo giờ ghi (cũ → mới): lấy ảnh chụp gần nhất.
+                imageUrl={section.entries.findLast(entry => entry.imageUrl)?.imageUrl}
                 onPress={() =>
                   navigation.navigate(MAIN_STACK_ROUTES.MAIN_TABS, {
                     screen: MAIN_TAB_ROUTES.DIARY,

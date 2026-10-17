@@ -1,29 +1,29 @@
-import { UtensilsCrossed } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { AppText } from '@/components/ui';
+import { RecipeImage } from '@/features/recipes';
 import { shadows } from '@/theme/shadows';
-import { useTheme } from '@/theme/ThemeProvider';
 
 export interface TodayMealPreviewCardProps {
   mealTitle: string;
   foodNames: string;
   calories: number;
   macroLine: string;
+  /** Ảnh món đã chụp (AI Snap) backend lưu; không có thì hiện placeholder icon. */
+  imageUrl?: string;
   onPress: () => void;
 }
 
 // design/design.md mục 19 (Meal Card) + Dashboard.dc.html "Bữa ăn hôm nay" — ảnh món chiếm
-// ~35–45% card (dùng placeholder icon, ảnh thật sẽ thay sau — CLAUDE.md mục 10).
+// ~35–45% card: ảnh đã chụp khi ghi bằng AI Snap, chưa có ảnh thì placeholder icon (CLAUDE.md mục 10).
 export function TodayMealPreviewCard({
   mealTitle,
   foodNames,
   calories,
   macroLine,
+  imageUrl,
   onPress,
 }: TodayMealPreviewCardProps) {
-  const { colors } = useTheme();
-
   return (
     <Pressable
       accessibilityRole="button"
@@ -32,9 +32,11 @@ export function TodayMealPreviewCard({
       style={shadows.card}
       className="flex-row gap-sm rounded-card bg-surface p-sm"
     >
-      <View className="h-[104px] w-[124px] items-center justify-center rounded-md bg-primary-soft">
-        <UtensilsCrossed size={28} color={colors.primary} />
-      </View>
+      <RecipeImage
+        imageUrl={imageUrl}
+        accessibilityLabel={`Ảnh ${mealTitle.toLowerCase()}`}
+        className="h-[104px] w-[124px] rounded-md"
+      />
       <View className="flex-1 justify-center gap-xxs py-xxs">
         <AppText variant="caption" color="secondary">
           {mealTitle}
