@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { ENV } from '@/config/env';
 
 export interface AuthUser {
   id: string;
@@ -68,15 +67,13 @@ export interface AuthState {
 //
 // Access token KHÔNG nằm ở store này: chỉ ở expo-secure-store (+ cache bộ nhớ) qua
 // services/storage/secureStorage.ts. Khi xóa phiên (đăng xuất/hết hạn), xem sessionService.
-// Chế độ mock (EXPO_PUBLIC_USE_MOCK_API=true) vẫn đăng nhập không kiểm tra thật (CLAUDE.md mục 8)
-// và không có phiên để khôi phục nên bootstrapStatus luôn 'ready'.
 export const useAuthStore = create<AuthState>()((set, get) => ({
   isAuthenticated: false,
   isGuest: false,
   user: null,
   pendingUser: null,
   lastExitReason: null,
-  bootstrapStatus: ENV.useMockApi ? 'ready' : 'loading',
+  bootstrapStatus: 'loading',
   sessionExpired: false,
   setBootstrapStatus: status => set({ bootstrapStatus: status }),
   markSessionExpired: () => set({ sessionExpired: true }),

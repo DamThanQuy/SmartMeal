@@ -30,12 +30,20 @@ export interface SnapAndTrackResponseDto {
   healthTips: string | null;
   /** true khi đây là dữ liệu MẪU (BE chưa cấu hình AI, chỉ ở môi trường phát triển), không phải kết quả thật. */
   isDemo: boolean;
+  /** URL ảnh vừa phân tích, BE đã lưu lại — gửi kèm khi ghi món để nhật ký hiện ảnh. null nếu BE không lưu được. */
+  imageUrl?: string | null;
 }
 
 /** POST /ai/voice-log — văn bản đã nhận dạng giọng nói (BE không nhận file âm thanh). */
 export interface VoiceLogRequestDto {
   /** 2–1000 ký tự. */
   transcript: string;
+}
+
+/** POST /ai/voice-log/transcribe — bản chép lời tạm của đoạn đang ghi (phụ đề dưới micro). */
+export interface VoiceTranscriptDto {
+  transcript: string;
+  isDemo: boolean;
 }
 
 export interface ExtractedMealItemDto {

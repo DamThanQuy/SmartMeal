@@ -1,7 +1,7 @@
 import { getCurrentUserAllergyIds } from '@/state/user/userProfileStore';
 import type { Recipe, RecipeFilters, RecipeMatch } from '../types/recipe.types';
 
-// Logic lọc dùng chung cho bản mock và bản gọi API của recipeService — không gọi mạng, không đọc mock.
+// Logic lọc của recipeService — hàm thuần, không gọi mạng.
 
 /** BR-101/102 — loại bỏ công thức chứa dị ứng đã khai báo, dùng chung cho Discovery + Fridge + Planner. */
 export function filterOutUserAllergens(recipes: Recipe[]): {
@@ -25,17 +25,6 @@ export function matchesCalorieFilter(recipe: Recipe, calorie: RecipeFilters['cal
   if (calorie === '300to500') return calories >= 300 && calories <= 500;
   if (calorie === 'over500') return calories > 500;
   return true;
-}
-
-export function applyFilters(recipes: Recipe[], filters: RecipeFilters): Recipe[] {
-  return recipes.filter(recipe => {
-    if (filters.tag && !recipe.tags.includes(filters.tag)) return false;
-    if (filters.cookTime && recipe.durationMinutes > Number(filters.cookTime)) return false;
-    if (filters.mealType && recipe.mealTypes.length > 0 && !recipe.mealTypes.includes(filters.mealType)) {
-      return false;
-    }
-    return matchesCalorieFilter(recipe, filters.calorie);
-  });
 }
 
 /** So khớp tên nguyên liệu không phân biệt hoa/thường và dấu tiếng Việt ("ca chua" khớp "Cà chua"). */

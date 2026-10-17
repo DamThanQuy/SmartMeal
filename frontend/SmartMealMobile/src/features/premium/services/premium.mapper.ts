@@ -30,10 +30,12 @@ const API_PLAN_ID: Record<BillingPlanId, ApiPlanId> = {
 const API_PAYMENT_METHOD: Record<SelectablePaymentMethodId, ApiPaymentMethod> = {
   sepay: 'SEPAY',
   payos: 'PAYOS',
+  bank_app: 'BANK_APP',
 };
 
 /** Phương thức chỉ còn trong lịch sử giao dịch (cổng giả lập trước đây, kích hoạt thử ở môi trường phát triển). */
 const LEGACY_PAYMENT_METHOD: Record<string, PaymentMethodId> = {
+  BANK_TRANSFER: 'bank_transfer',
   VNPAY: 'vnpay',
   MOMO: 'momo',
   STRIPE: 'card',
@@ -63,7 +65,7 @@ export function toApiPaymentMethod(paymentMethodId: SelectablePaymentMethodId): 
   return API_PAYMENT_METHOD[paymentMethodId];
 }
 
-/** SEPAY/PAYOS → id FE; giá trị cũ (VNPAY/MOMO/STRIPE/MOCK) giữ nhãn cũ; giá trị lạ → 'sepay' (phương thức mặc định của BE). */
+/** SEPAY/PAYOS/BANK_APP → id FE; giá trị cũ (BANK_TRANSFER, (VNPAY/MOMO/STRIPE/MOCK) giữ nhãn cũ; giá trị lạ → 'sepay' (phương thức mặc định của BE). */
 export function fromApiPaymentMethod(value: string): PaymentMethodId {
   const normalized = value.trim().toUpperCase();
   const methodIds = Object.keys(API_PAYMENT_METHOD) as SelectablePaymentMethodId[];

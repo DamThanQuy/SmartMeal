@@ -1,6 +1,5 @@
 import { addDays, format, parseISO, startOfWeek } from 'date-fns';
-import { BADGE_DEFINITIONS_MOCK } from '../mocks/badges.mock';
-import type { BadgesSummary } from '../types/badge.types';
+import { BADGE_DEFINITIONS, type BadgesSummary } from '../types/badge.types';
 import type { ChallengeApiDto } from '../types/challenge.api.types';
 import type { ChallengeWithWindow } from '../types/challenge.types';
 import type { BadgesSummaryDto, HealthPetStatusDto, PetTaskDto, StreakStatusDto } from '../types/gamification.api.types';
@@ -48,7 +47,7 @@ export function fromChallengeDto(dto: ChallengeApiDto, todayIso: string): Challe
   const startIso = joined && dto.startDate ? dto.startDate : todayIso;
   const endIso =
     joined && dto.endDate ? dto.endDate : format(addDays(parseISO(todayIso), dto.durationDays - 1), 'yyyy-MM-dd');
-  const badge = BADGE_DEFINITIONS_MOCK.find(definition => definition.id === dto.rewardBadge);
+  const badge = BADGE_DEFINITIONS.find(definition => definition.id === dto.rewardBadge);
   return {
     id: dto.id,
     title: dto.title,

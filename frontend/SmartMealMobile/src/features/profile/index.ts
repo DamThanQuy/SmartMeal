@@ -6,6 +6,7 @@ export * from './hooks/useReminders';
 export * from './hooks/useHealthConnect';
 export * from './hooks/useNotifications';
 export * from './components/ProfileMenuRow';
+export * from './components/RealtimeNotificationBanner';
 export * from './screens/ProfileScreen';
 export * from './screens/HealthSettingsScreen';
 export * from './screens/WeightHistoryScreen';

@@ -27,6 +27,7 @@ public class AiController : ControllerBase
     private readonly IAiVisionService _aiVisionService;
     private readonly IProductSafetyService _productSafety;
     private readonly IAiQuotaService _quota;
+    private readonly IMealPhotoService _mealPhotos;
     private readonly AiOptions _options;
 
     /// <summary>
@@ -41,7 +42,9 @@ public class AiController : ControllerBase
         _aiVisionService = aiVisionService;
         _productSafety = productSafety;
         _quota = quota;
+        _mealPhotos = mealPhotos;
         _options = options.Value;
+        _storage = storage.Value;
     }
 
     /// <summary>
@@ -74,7 +77,16 @@ public class AiController : ControllerBase
         var (bytes, mime, error) = await ReadImageAsync(image);
         if (error is not null) return BadRequest(ApiResponse<SnapAndTrackResponseDto>.Fail(error));
 
-        return await RunWithQuotaAsync("snap", userId => _aiVisionService.SnapAndTrackAsync(bytes!, mime!, userId));
+        return await RunWithQuotaAsync("snap", async userId =>
+        {
+            var result = await _aiVisionService.SnapAndTrackAsync(bytes!, mime!, userId);
+            if (result.Success && result.Data is { } data)
+            {
+                data.ImageUrl = await _mealPhotos.SaveAsync(userId, bytes!, this.PublicBaseUrl(_storage));
+            }
+
+            return result;
+        });
     }
 
     /// <summary>
@@ -271,7 +283,7 @@ public class AiController : ControllerBase
         }
 
         var result = await action(userId);
-        if (result.Success)
+        if (result.Success && countsAsUse)
         {
             await _quota.RecordUseAsync(userId, kind);
         }

@@ -1,7 +1,9 @@
+using System.Net;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SmartMeal.API.Infrastructure;
+using SmartMeal.Application.Common;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.Subscription;
 using SmartMeal.Application.Services;

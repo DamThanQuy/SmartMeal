@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using SmartMeal.Application.Common.Models;
+using SmartMeal.Infrastructure.Options;
 
 namespace SmartMeal.API.Infrastructure;
 
@@ -9,6 +10,12 @@ public static class ControllerExtensions
     /// <summary>Lấy id người dùng từ claim của JWT.</summary>
     public static bool TryGetUserId(this ControllerBase controller, out Guid userId) =>
         Guid.TryParse(controller.User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
+
+    /// <summary>Địa chỉ công khai để dựng URL file tải lên: <c>Storage:PublicBaseUrl</c> nếu có, không thì theo request hiện tại.</summary>
+    public static string PublicBaseUrl(this ControllerBase controller, StorageOptions storage) =>
+        !string.IsNullOrWhiteSpace(storage.PublicBaseUrl)
+            ? storage.PublicBaseUrl!
+            : $"{controller.Request.Scheme}://{controller.Request.Host}";
 
     /// <summary>Phản hồi 401 theo envelope chuẩn khi token thiếu claim người dùng hợp lệ.</summary>
     public static ActionResult<ApiResponse<T>> InvalidSession<T>(this ControllerBase controller) =>

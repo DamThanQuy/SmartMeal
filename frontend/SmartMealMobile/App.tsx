@@ -13,12 +13,12 @@ import { StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { bootstrapSession, startSessionLifecycle } from '@/features/auth';
+import { RealtimeNotificationBanner } from '@/features/profile';
 import { AppNavigator } from '@/navigation/AppNavigator';
 import { linking } from '@/navigation/linking';
 import { navigationRef } from '@/navigation/navigationRef';
 import { getNavigationTheme } from '@/navigation/navigationTheme';
 import { queryClient } from '@/services/api';
-import { hydrateMockScenario } from '@/state/app/appStore';
 import { useAuthStore } from '@/state/auth/authStore';
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
 
@@ -50,15 +50,14 @@ function AppContent() {
         barStyle={resolvedScheme === 'dark' ? 'light-content' : 'dark-content'}
       />
       <AppNavigator />
+      {/* Thông báo real-time: banner trên mọi màn / thông báo hệ thống khi app chạy nền — chỉ chạy khi đã đăng nhập. */}
+      <RealtimeNotificationBanner />
     </NavigationContainer>
   );
 }
 
 function App() {
-  // Công tắc dev/QA, không phải dữ liệu người dùng — hydrate không cần chặn splash screen
-  // như theme mode (xem ThemeProvider bên dưới).
   useEffect(() => {
-    void hydrateMockScenario();
     // Phiên đăng nhập: đăng ký handler 401 + tự dọn khi đăng xuất, rồi khôi phục phiên đã lưu.
     const stopSessionLifecycle = startSessionLifecycle();
     void bootstrapSession();

@@ -9,7 +9,7 @@ import type { MainStackParamList } from '@/navigation/types';
 import type { BillingPlanId } from '@/state/premium/premiumStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useSubscriptionPlans } from '../hooks/useSubscription';
-import { FEATURE_COMPARISON_MOCK } from '../mocks/premium.mock';
+import { FEATURE_COMPARISON_ROWS } from '../types/premium.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'Premium'>;
 
@@ -72,7 +72,7 @@ export function PremiumScreen({ navigation }: Props) {
               Pro
             </AppText>
           </View>
-          {FEATURE_COMPARISON_MOCK.map(row => (
+          {FEATURE_COMPARISON_ROWS.map(row => (
             <View
               key={row.label}
               className="flex-row items-center border-t border-border py-sm"

@@ -5,8 +5,8 @@ import type {
   WaterHistoryDto,
   WaterSummaryDto,
 } from '../types/water.api.types';
+import type { WaterDaySummary, WaterEntry, WaterWeekSummary } from '../types/water.types';
 import { fromWaterHistoryToDay, fromWaterHistoryToWeek } from './water.mapper';
-import type { waterMockService } from './waterService.mock';
 
 // Bản gọi backend thật (docs/fetch-api/part1 §10): ghi/đọc/xóa từng lần uống, lịch sử nhiều ngày và
 // mục tiêu nước lấy từ hồ sơ sức khỏe.
@@ -18,13 +18,13 @@ function getHistory(dateIso: string, days: number): Promise<WaterHistoryDto> {
   return api.get<WaterHistoryDto>(ENDPOINTS.nutritionDiary.water, { params: { date: dateIso, days } });
 }
 
-export const waterApiService: Partial<typeof waterMockService> = {
-  async getDaySummary(dateIso) {
+export const waterApiService = {
+  async getDaySummary(dateIso: string): Promise<WaterDaySummary> {
     return fromWaterHistoryToDay(await getHistory(dateIso, 1), dateIso);
   },
 
   // POST /nutritiondiary/water — response chỉ có tổng của ngày và id lần uống vừa ghi.
-  async addEntry(dateIso, amountMl) {
+  async addEntry(dateIso: string, amountMl: number): Promise<WaterEntry> {
     const summary = await api.post<WaterSummaryDto, LogWaterRequestDto>(
       ENDPOINTS.nutritionDiary.water,
       { amountMl, date: dateIso },
@@ -33,7 +33,7 @@ export const waterApiService: Partial<typeof waterMockService> = {
   },
 
   // "Hoàn tác": BE chỉ xóa theo id nên đọc lần uống mới nhất của ngày rồi xóa nó.
-  async undoLastEntry(dateIso) {
+  async undoLastEntry(dateIso: string): Promise<void> {
     const history = await getHistory(dateIso, 1);
     const entries = history.days.find(day => day.date === dateIso)?.entries ?? [];
     const last = entries[entries.length - 1];
@@ -42,12 +42,12 @@ export const waterApiService: Partial<typeof waterMockService> = {
   },
 
   // DELETE /nutritiondiary/water/{id}.
-  async deleteEntry(_dateIso, entryId) {
+  async deleteEntry(_dateIso: string, entryId: string): Promise<void> {
     await api.delete<WaterSummaryDto>(ENDPOINTS.nutritionDiary.waterEntry(entryId));
   },
 
   // 7 ngày kết thúc ở `dateIso` ("7 ngày qua").
-  async getWeekSummary(dateIso) {
+  async getWeekSummary(dateIso: string): Promise<WaterWeekSummary> {
     return fromWaterHistoryToWeek(await getHistory(dateIso, WEEK_LENGTH_DAYS), dateIso);
   },
 };

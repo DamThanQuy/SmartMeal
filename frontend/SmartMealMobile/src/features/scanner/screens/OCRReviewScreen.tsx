@@ -11,7 +11,6 @@ import { MEAL_TYPE_TITLES } from '@/types/meal.types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { SafetyAlertList } from '../components/SafetyAlertList';
 import { useAnalyzeOcrLabel } from '../hooks/useScanner';
-import { CameraPermissionDeniedError } from '../services/scannerService';
 import { ocrFieldsToNutrition, type OcrNutritionField, type OcrReviewResult } from '../types/scanner.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'OCRReview'>;
@@ -34,11 +33,6 @@ export function OCRReviewScreen({ navigation, route }: Props) {
         setResult(scanned);
         setProductName(scanned.productName);
         setFields(scanned.fields);
-      },
-      onError: error => {
-        if (error instanceof CameraPermissionDeniedError) {
-          navigation.replace(MAIN_STACK_ROUTES.STATE_PERMISSION, { mealType, returnTo: 'Barcode' });
-        }
       },
     });
 

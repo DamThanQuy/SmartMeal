@@ -11,9 +11,9 @@ import {
   TriangleAlert,
   User,
 } from 'lucide-react-native';
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { ScreenContainer, UserAvatar } from '@/components/common';
+import { ScreenContainer } from '@/components/common';
 import { AppBadge, AppCard, AppText } from '@/components/ui';
 import { ALLERGY_OPTIONS, DIETARY_PREFERENCE_OPTIONS } from '@/features/health';
 import { MEMBERSHIP_BADGE_LABEL } from '@/features/premium';
@@ -23,9 +23,15 @@ import { useAuthStore } from '@/state/auth/authStore';
 import { isProMembership, usePremiumStore } from '@/state/premium/premiumStore';
 import { useUserProfileStore } from '@/state/user/userProfileStore';
 import { useTheme } from '@/theme/ThemeProvider';
+import { AvatarActionSheet } from '../components/AvatarActionSheet';
+import { EditableAvatar } from '../components/EditableAvatar';
 import { ProfileMenuRow } from '../components/ProfileMenuRow';
+import { useChangeAvatar } from '../hooks/useChangeAvatar';
+import { useHealthConnectStatus } from '../hooks/useHealthConnect';
+import { summarizeReminders, useRemindersSettings } from '../hooks/useReminders';
 
-// design/Profile.dc.html (BR-001→BR-003). Là MAIN_TAB_ROUTES.PROFILE. Icon "Cài đặt" mở
+// design/Profile.dc.html (BR-001→BR-003). Là MAIN_TAB_ROUTES.PROFILE. Chạm ảnh đại diện để chụp/chọn ảnh
+// mới hoặc xóa ảnh (AvatarActionSheet, dùng chung với EditProfile). Icon "Cài đặt" mở
 // SettingsScreen (Đợt 9, design v2) — ThemePreviewScreen (MAIN_STACK_ROUTES.DEV) nay nằm trong
 // mục Dev của Settings, không còn mở trực tiếp từ đây.
 export function ProfileScreen() {
@@ -36,6 +42,10 @@ export function ProfileScreen() {
   const profile = useUserProfileStore();
   const membershipStatus = usePremiumStore(state => state.status);
   const isPremium = isProMembership(membershipStatus);
+  const { data: healthConnect } = useHealthConnectStatus();
+  const { data: reminders } = useRemindersSettings();
+  const changeAvatar = useChangeAvatar();
+  const [avatarSheetVisible, setAvatarSheetVisible] = useState(false);
 
   const allergyLabels = [
     ...profile.allergyIds
@@ -55,7 +65,14 @@ export function ProfileScreen() {
   return (
     <ScreenContainer scroll contentContainerClassName="gap-lg">
       <View className="flex-row items-center gap-sm py-xs">
-        <UserAvatar name={user?.fullName} uri={user?.avatarUrl} size={64} textVariant="h1" />
+        <EditableAvatar
+          name={user?.fullName}
+          uri={user?.avatarUrl}
+          size={64}
+          textVariant="h1"
+          busy={changeAvatar.isPending}
+          onPress={() => setAvatarSheetVisible(true)}
+        />
         <View className="flex-1 gap-xxs">
           <AppText variant="h2">{user?.fullName ?? 'Người dùng SmartMeal'}</AppText>
           <AppBadge label={MEMBERSHIP_BADGE_LABEL[membershipStatus]} tone={isPremium ? 'primary' : 'neutral'} />
@@ -69,6 +86,11 @@ export function ProfileScreen() {
           <Settings size={22} color={colors.textPrimary} />
         </Pressable>
       </View>
+      {changeAvatar.error ? (
+        <AppText variant="caption" color="error" className="-mt-md">
+          {changeAvatar.error}
+        </AppText>
+      ) : null}
 
       {!isPremium ? (
         <Pressable
@@ -109,13 +131,13 @@ export function ProfileScreen() {
         <ProfileMenuRow
           icon={<Activity size={20} color={colors.primary} />}
           label="Health Connect"
-          valueLabel="Đã kết nối"
+          valueLabel={healthConnect ? (healthConnect.connected ? 'Đã kết nối' : 'Chưa kết nối') : undefined}
           onPress={() => navigation.navigate(MAIN_STACK_ROUTES.HEALTH_CONNECT)}
         />
         <ProfileMenuRow
           icon={<Bell size={20} color={colors.primary} />}
           label="Nhắc nhở"
-          valueLabel="Bữa ăn, uống nước"
+          valueLabel={summarizeReminders(reminders)}
           onPress={() => navigation.navigate(MAIN_STACK_ROUTES.REMINDERS)}
         />
         <ProfileMenuRow
@@ -130,6 +152,15 @@ export function ProfileScreen() {
           onPress={handleLogout}
         />
       </AppCard>
+
+      <AvatarActionSheet
+        visible={avatarSheetVisible}
+        hasAvatar={Boolean(user?.avatarUrl)}
+        onClose={() => setAvatarSheetVisible(false)}
+        onTakePhoto={() => void changeAvatar.changeFrom('camera')}
+        onChooseFromLibrary={() => void changeAvatar.changeFrom('library')}
+        onRemove={changeAvatar.remove}
+      />
     </ScreenContainer>
   );
 }

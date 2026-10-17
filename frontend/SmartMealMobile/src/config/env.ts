@@ -45,9 +45,4 @@ export const ENV = {
   apiTimeoutMs: readPositiveNumber(process.env.EXPO_PUBLIC_API_TIMEOUT_MS, 15000),
   /** Gemini có thể mất 5–20s nên các endpoint /ai/* dùng timeout dài hơn. */
   aiTimeoutMs: readPositiveNumber(process.env.EXPO_PUBLIC_AI_TIMEOUT_MS, 60000),
-  /**
-   * Mặc định là true (dùng mock) trừ khi chỉ định rõ EXPO_PUBLIC_USE_MOCK_API=false,
-   * giúp app chạy mượt mà ngay cả khi chưa khởi động server backend ASP.NET Core.
-   */
-  useMockApi: process.env.EXPO_PUBLIC_USE_MOCK_API !== 'false',
 } as const;

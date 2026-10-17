@@ -27,9 +27,7 @@ function partitionByTab(challenges: ChallengeWithWindow[], tab: ChallengeTab): C
   return challenges.filter(item => !item.joined && !item.completed);
 }
 
-// design/Challenges.dc.html (BR-211, BR-212). "Xem chi tiết" trên thử thách đã tham gia mô
-// phỏng luôn kết quả hoàn thành (BR-212, thưởng đúng 1 lần qua awardXpOnce) — nhánh feat/mock-ui
-// không chờ được 7 ngày thật (CLAUDE.md mục 8).
+// design/Challenges.dc.html (BR-211, BR-212). Tiến độ, trạng thái hoàn thành và XP thưởng do server tính.
 export function ChallengesScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const { data, isLoading, isError, error, refetch } = useChallenges();

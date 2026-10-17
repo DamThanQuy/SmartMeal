@@ -15,14 +15,15 @@ import type {
 import type {
   CollectionShareLink,
   CollectionUpdate,
+  FavoriteToggleResult,
   NewCollectionInput,
   Recipe,
   RecipeCollection,
   RecipeFilters,
+  RecommendedRecipes,
 } from '../types/recipe.types';
 import { fromCollectionDto, fromRecipeDto, toRecipeQueryParams } from './recipe.mapper';
 import { filterOutUserAllergens, matchesCalorieFilter, rankByPantry } from './recipeFilters';
-import type { recipeMockService } from './recipeService.mock';
 
 // Bản gọi backend thật cho /recipes/* (docs/SmartMeal_API_Contract.md). Dị ứng là ràng buộc bắt buộc
 // (BR-101/102): BE loại món khi có token (excludeMyAllergens) và FE lọc lại lần nữa theo hồ sơ đang có
@@ -46,9 +47,9 @@ async function orUndefinedWhenMissing<T>(load: () => Promise<T>): Promise<T | un
   }
 }
 
-export const recipeApiService: Partial<typeof recipeMockService> = {
+export const recipeApiService = {
   // GET /recipes?tag&maxCalories&mealType&maxCookTimeMinutes&excludeMyAllergens
-  async getRecommended(filters: RecipeFilters = {}) {
+  async getRecommended(filters: RecipeFilters = {}): Promise<RecommendedRecipes> {
     const signedIn = isSignedIn();
     const [dtos, catalog] = await Promise.all([
       api.get<RecipeApiDto[]>(ENDPOINTS.recipes.list, { params: toRecipeQueryParams(filters, signedIn) }),
@@ -84,7 +85,7 @@ export const recipeApiService: Partial<typeof recipeMockService> = {
   },
 
   // POST /recipes/{id}/favorite — TOGGLE, trả trạng thái mới.
-  async toggleFavorite(recipeId: string) {
+  async toggleFavorite(recipeId: string): Promise<FavoriteToggleResult> {
     return api.post<FavoriteToggleApiDto>(ENDPOINTS.recipes.favorite(recipeId));
   },
 

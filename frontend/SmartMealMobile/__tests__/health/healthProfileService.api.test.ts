@@ -10,7 +10,6 @@ import type { AuthUser } from '@/state/auth/authStore';
 import {
   createEmptyHealthProfileFormData,
   type HealthProfileFormData,
-  type HealthProfileInput,
 } from '@/features/health/types/health.types';
 import { createTestCatalog } from '../../test-utils/metaCatalog';
 
@@ -212,19 +211,6 @@ describe('getHealthProfile', () => {
   });
 });
 
-const CURRENT_PROFILE: HealthProfileInput = {
-  gender: 'female',
-  dateOfBirth: new Date(1996, 0, 1),
-  heightCm: 160,
-  weightKg: 55,
-  goalWeightKg: 52,
-  activityLevel: 'moderate',
-  goal: 'lose',
-  allergyIds: ['peanut', 'sesame'],
-  healthConditionIds: [],
-  dietaryPreferenceIds: ['vegan'],
-};
-
 describe('getWeightHistory', () => {
   test('GET /healthprofile/weight-history → mới → cũ', async () => {
     const { service, apiMock } = loadService();
@@ -262,7 +248,7 @@ describe('recordWeight', () => {
     });
     const dateIso = format(new Date(), 'yyyy-MM-dd');
 
-    const profile = await service.recordWeight?.({ weightKg: 54, dateIso }, CURRENT_PROFILE);
+    const profile = await service.recordWeight?.({ weightKg: 54, dateIso });
 
     expect(order).toEqual(['post', 'get']);
     const [url, body] = apiMock.post.mock.calls[0] as [string, { weightKg: number; recordedAt: string }];
@@ -280,7 +266,7 @@ describe('recordWeight', () => {
     apiMock.post.mockRejectedValue(error);
 
     await expect(
-      service.recordWeight?.({ weightKg: 54, dateIso: '2026-09-20' }, CURRENT_PROFILE),
+      service.recordWeight?.({ weightKg: 54, dateIso: '2026-09-20' }),
     ).rejects.toBe(error);
     expect(apiMock.get).not.toHaveBeenCalled();
   });
@@ -299,7 +285,6 @@ describe('updateBasicInfo', () => {
 
     const profile = await service.updateBasicInfo?.(
       { gender: 'male', dateOfBirth: new Date(1995, 2, 8), heightCm: 175 },
-      CURRENT_PROFILE,
     );
 
     expect(apiMock.put).toHaveBeenCalledTimes(1);
@@ -324,7 +309,6 @@ describe('updateBasicInfo', () => {
     await expect(
       service.updateBasicInfo?.(
         { gender: 'male', dateOfBirth: new Date(2020, 0, 1), heightCm: 175 },
-        CURRENT_PROFILE,
       ),
     ).rejects.toBe(error);
   });
@@ -347,7 +331,6 @@ describe('updateHealthSettings', () => {
         healthConditionIds: ['diabetes'],
         dietaryPreferenceIds: ['keto'],
       },
-      CURRENT_PROFILE,
     );
 
     expect(apiMock.put).toHaveBeenCalledWith('/healthprofile', {
@@ -374,7 +357,6 @@ describe('updateHealthSettings', () => {
 
     await service.updateHealthSettings?.(
       { allergyIds: ['peanut', 'sesame'], healthConditionIds: [], dietaryPreferenceIds: ['keto', 'lowCarb'] },
-      CURRENT_PROFILE,
     );
 
     expect(apiMock.put).toHaveBeenCalledTimes(1);
@@ -387,7 +369,6 @@ describe('updateHealthSettings', () => {
 
     await service.updateHealthSettings?.(
       { allergyIds: [], healthConditionIds: [], dietaryPreferenceIds: [] },
-      CURRENT_PROFILE,
     );
 
     expect(apiMock.put).toHaveBeenCalledWith('/healthprofile', {
@@ -406,7 +387,6 @@ describe('updateHealthSettings', () => {
     await expect(
       service.updateHealthSettings?.(
         { allergyIds: ['seafood'], healthConditionIds: [], dietaryPreferenceIds: [] },
-        CURRENT_PROFILE,
       ),
     ).rejects.toBe(error);
     expect(extrasStorage.save).not.toHaveBeenCalled();

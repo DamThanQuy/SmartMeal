@@ -100,6 +100,7 @@ export function fromSnapResponse(mealType: MealType, dto: SnapAndTrackResponseDt
     healthTips: dto.healthTips ?? undefined,
     detectedIngredients: dto.detectedIngredients,
     isDemo: dto.isDemo || undefined,
+    imageUrl: dto.imageUrl || undefined,
   };
 }
 

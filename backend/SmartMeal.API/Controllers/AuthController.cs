@@ -215,12 +215,18 @@ public class AuthController : ControllerBase
             return BadRequest(ApiResponse<UserDto>.Fail("Vui lòng chọn một ảnh (trường multipart tên \"file\")."));
         }
 
-        var baseUrl = !string.IsNullOrWhiteSpace(storage.Value.PublicBaseUrl)
-            ? storage.Value.PublicBaseUrl!
-            : $"{Request.Scheme}://{Request.Host}";
-
         await using var stream = file.OpenReadStream();
-        return this.ToActionResult(await _accountService.UploadAvatarAsync(userId, stream, file.Length, baseUrl));
+        return this.ToActionResult(await _accountService.UploadAvatarAsync(userId, stream, file.Length, this.PublicBaseUrl(storage.Value)));
+    }
+
+    /// <summary>Xóa ảnh đại diện (app hiện chữ cái đầu của tên). Trả người dùng với <c>avatarUrl = null</c>.</summary>
+    [Authorize]
+    [HttpDelete("avatar")]
+    public async Task<ActionResult<ApiResponse<UserDto>>> RemoveAvatar()
+    {
+        if (!this.TryGetUserId(out var userId)) return this.InvalidSession<UserDto>();
+
+        return this.ToActionResult(await _accountService.RemoveAvatarAsync(userId));
     }
 
     /// <summary>

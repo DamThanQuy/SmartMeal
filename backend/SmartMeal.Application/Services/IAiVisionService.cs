@@ -12,6 +12,9 @@ public interface IAiVisionService
     /// <summary>Voice Logging từ file ghi âm: AI chép lời rồi bóc tách món ăn (BR-070).</summary>
     Task<ApiResponse<VoiceLogResponseDto>> ParseVoiceAudioAsync(byte[] audioBytes, string contentType);
 
+    /// <summary>Chỉ chép lời đoạn ghi âm (không bóc món) — phụ đề tạm hiện trong lúc người dùng còn đang nói.</summary>
+    Task<ApiResponse<VoiceTranscriptDto>> TranscribeAudioAsync(byte[] audioBytes, string contentType);
+
     /// <summary>Phân tích văn bản nhãn đã OCR (không nhận mã vạch trần).</summary>
     Task<ApiResponse<CheckSafetyResponseDto>> CheckSafetyAsync(CheckSafetyRequestDto dto, Guid? userId = null);
 

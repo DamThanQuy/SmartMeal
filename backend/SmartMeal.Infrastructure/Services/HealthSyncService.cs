@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.HealthSync;
@@ -13,10 +14,14 @@ public class HealthSyncService : IHealthSyncService
     private const double DefaultTargetCalories = 2000;
 
     private readonly ApplicationDbContext _db;
+    private readonly IGamificationService _gamification;
+    private readonly ILogger<HealthSyncService> _logger;
 
-    public HealthSyncService(ApplicationDbContext db)
+    public HealthSyncService(ApplicationDbContext db, IGamificationService gamification, ILogger<HealthSyncService> logger)
     {
         _db = db;
+        _gamification = gamification;
+        _logger = logger;
     }
 
     /// <summary>Lưu (thay thế) tổng của một ngày từ một nguồn: gửi lại cùng (ngày, nguồn) không làm số liệu nhân đôi.</summary>
@@ -58,6 +63,8 @@ public class HealthSyncService : IHealthSyncService
             Apply(log, dto, syncedAt);
             await _db.SaveChangesAsync();
         }
+
+        await _gamification.EvaluateAfterChangeAsync(_logger, userId, date, "health-sync");
 
         var response = new SyncHealthMetricsResponseDto
         {

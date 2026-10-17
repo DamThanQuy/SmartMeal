@@ -47,26 +47,8 @@ export interface ParsedAmount {
   unitLabel: string;
 }
 
-// "300 g" → {quantity:300, unitKind:'g'}. "1 củ" → {quantity:1, unitKind:'piece', unitLabel:'củ'}.
-// "Vừa đủ" → null (không cộng dồn được, chỉ hiển thị nguyên văn — BR-171 chỉ áp dụng khi có số).
-export function parseIngredientAmount(amount: string): ParsedAmount | null {
-  const match = amount.trim().match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
-  if (!match) return null;
-
-  const quantity = Number(match[1].replace(',', '.'));
-  if (!Number.isFinite(quantity)) return null;
-
-  const unitText = match[2].trim();
-  const firstToken = unitText.split(/\s+/)[0]?.toLowerCase() ?? '';
-  if (firstToken === 'g') return { quantity, unitKind: 'g', unitLabel: 'g' };
-  if (firstToken === 'kg') return { quantity: quantity * 1000, unitKind: 'g', unitLabel: 'g' };
-  if (firstToken === 'ml') return { quantity, unitKind: 'ml', unitLabel: 'ml' };
-  if (firstToken === 'l') return { quantity: quantity * 1000, unitKind: 'ml', unitLabel: 'ml' };
-  return { quantity, unitKind: 'piece', unitLabel: unitText || 'phần' };
-}
-
-// design/GroceryAdd.dc.html — chip đơn vị (g/kg/ml/quả/bó/gói...) nhập tay, khác parseIngredientAmount
-// (bóc tách từ chuỗi "300 g" có sẵn trong Recipe) vì ở đây số lượng + đơn vị đã tách sẵn theo form.
+// design/GroceryAdd.dc.html — chip đơn vị (g/kg/ml/quả/bó/gói...) nhập tay: số lượng + đơn vị đã tách
+// sẵn theo form.
 export function manualQuantityToParsedAmount(quantity: number, unit: string): ParsedAmount {
   const normalizedUnit = unit.trim().toLowerCase();
   if (normalizedUnit === 'g') return { quantity, unitKind: 'g', unitLabel: 'g' };
@@ -76,14 +58,6 @@ export function manualQuantityToParsedAmount(quantity: number, unit: string): Pa
   return { quantity, unitKind: 'piece', unitLabel: unit };
 }
 
-export function formatAmountLabel(quantity: number, unitKind: ParsedUnitKind, unitLabel: string): string {
-  const roundedQuantity = unitKind === 'piece' ? quantity : Math.round(quantity);
-  const quantityLabel = Number.isInteger(roundedQuantity)
-    ? String(roundedQuantity)
-    : roundedQuantity.toLocaleString('vi-VN');
-  return `${quantityLabel} ${unitLabel}`;
-}
-
 interface PriceRule {
   keywords: string[];
   pricePerGram?: number;
@@ -91,7 +65,7 @@ interface PriceRule {
   pricePerPiece?: number;
 }
 
-// BR-174 — "giá trung bình" mock minh hoạ (VNĐ), KHÔNG phải giá thị trường thật.
+// BR-174 — "giá trung bình" minh hoạ (VNĐ), KHÔNG phải giá thị trường thật.
 const PRICE_RULES: PriceRule[] = [
   { keywords: ['thịt bò'], pricePerGram: 280 },
   { keywords: ['cá basa'], pricePerGram: 90 },

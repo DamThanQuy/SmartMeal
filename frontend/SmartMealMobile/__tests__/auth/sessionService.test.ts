@@ -60,7 +60,7 @@ function flushPromises(): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, 0));
 }
 
-function load(useMockApi = false) {
+function load() {
   const authServiceMock = { getMe: jest.fn(), logout: jest.fn().mockResolvedValue(undefined) };
   const healthMock = { getHealthProfile: jest.fn() };
   const premiumMock = { getStatus: jest.fn().mockResolvedValue(FREE_MEMBERSHIP) };
@@ -83,7 +83,6 @@ function load(useMockApi = false) {
   };
 
   jest.resetModules();
-  jest.doMock('@/config/env', () => ({ ENV: { useMockApi } }));
   jest.doMock('@/features/health', () => ({ healthProfileService: healthMock }));
   jest.doMock('@/features/premium', () => ({ premiumService: premiumMock }));
   jest.doMock('@/features/auth/services/authService', () => ({ authService: authServiceMock }));
@@ -161,7 +160,7 @@ describe('openSession', () => {
     });
   });
 
-  test('bản mock/không có gì để nạp (null) → giữ nguyên store', async () => {
+  test('server chưa có hồ sơ (null) → giữ nguyên store', async () => {
     const { session, healthMock, useUserProfileStore } = load();
     healthMock.getHealthProfile.mockResolvedValue(null);
 
@@ -203,15 +202,6 @@ describe('openSession', () => {
 });
 
 describe('bootstrapSession', () => {
-  test('chế độ mock → ready ngay, không đọc token', async () => {
-    const { session, useAuthStore, tokenStorageMock } = load(true);
-
-    await session.bootstrapSession();
-
-    expect(useAuthStore.getState().bootstrapStatus).toBe('ready');
-    expect(tokenStorageMock.get).not.toHaveBeenCalled();
-  });
-
   test('chưa có token → ready, chưa đăng nhập (đi Welcome), không gọi API', async () => {
     const { session, useAuthStore, tokenStorageMock, authServiceMock } = load();
     tokenStorageMock.get.mockResolvedValue(null);
@@ -522,21 +512,6 @@ describe('startSessionLifecycle', () => {
     useAuthStore.getState().setBootstrapStatus('ready');
     await flushPromises();
 
-    expect(tokenStorageMock.clear).not.toHaveBeenCalled();
-    expect(resetUserDataMock).not.toHaveBeenCalled();
-  });
-
-  test('chế độ mock → không đăng ký gì, đăng xuất giữ hành vi cũ', async () => {
-    const { session, useAuthStore, setUnauthorizedHandler, tokenStorageMock, resetUserDataMock } =
-      load(true);
-    const stop = session.startSessionLifecycle();
-    useAuthStore.getState().login(USER);
-
-    useAuthStore.getState().logout();
-    await flushPromises();
-    stop();
-
-    expect(setUnauthorizedHandler).not.toHaveBeenCalled();
     expect(tokenStorageMock.clear).not.toHaveBeenCalled();
     expect(resetUserDataMock).not.toHaveBeenCalled();
   });

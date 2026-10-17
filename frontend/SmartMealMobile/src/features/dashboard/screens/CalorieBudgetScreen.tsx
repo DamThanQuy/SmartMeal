@@ -57,8 +57,7 @@ export function CalorieBudgetScreen({ navigation }: Props) {
     activityCaloriesBurned: activity?.caloriesBurned ?? 0,
     includeActivityCalories,
   });
-  // Backend chỉ có tên nguồn và tổng calo; chi tiết từng nguồn/hoạt động chỉ có ở bản mock nên
-  // các khối này tự ẩn khi không có dữ liệu.
+  // Chi tiết từng nguồn/hoạt động chỉ có khi backend trả về; không có thì các khối này tự ẩn.
   const sourceDetails = activity?.sourceDetails ?? [];
   const activities = activity?.activities ?? [];
   const consumed = Object.values(diary.entriesByMeal)

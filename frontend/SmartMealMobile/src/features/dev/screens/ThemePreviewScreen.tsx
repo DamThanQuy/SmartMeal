@@ -19,12 +19,9 @@ import {
   AppSwitch,
   AppText,
 } from '@/components/ui';
-import { ENV } from '@/config/env';
-import { MOCK_SCENARIOS, type MockScenario } from '@/config/mock';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useAppStore } from '@/state/app/appStore';
-import { usePremiumStore } from '@/state/premium/premiumStore';
 import { useTheme, type ThemeMode } from '@/theme/ThemeProvider';
 
 const MODE_OPTIONS: Array<{ label: string; value: ThemeMode }> = [
@@ -32,13 +29,6 @@ const MODE_OPTIONS: Array<{ label: string; value: ThemeMode }> = [
   { label: 'Light', value: 'light' },
   { label: 'Dark', value: 'dark' },
 ];
-
-const MOCK_SCENARIO_LABELS: Record<MockScenario, string> = {
-  success: 'Success',
-  empty: 'Empty',
-  error: 'Error',
-  slow: 'Slow',
-};
 
 const MEAL_CHIPS = ['Sáng', 'Trưa', 'Tối'];
 
@@ -49,13 +39,8 @@ const MEAL_CHIPS = ['Sáng', 'Trưa', 'Tối'];
 export function ThemePreviewScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { mode, resolvedScheme, setMode } = useTheme();
-  const mockScenario = useAppStore(state => state.mockScenario);
-  const setMockScenario = useAppStore(state => state.setMockScenario);
   const isOffline = useAppStore(state => state.isOfflineDevOverride);
   const setOfflineDevOverride = useAppStore(state => state.setOfflineDevOverride);
-  const premiumStatus = usePremiumStore(state => state.status);
-  const activatePremium = usePremiumStore(state => state.activatePremium);
-  const resetToFree = usePremiumStore(state => state.resetToFree);
   const [inputValue, setInputValue] = useState('');
   const [selectedChip, setSelectedChip] = useState(MEAL_CHIPS[0]);
   const [sheetVisible, setSheetVisible] = useState(false);
@@ -65,7 +50,7 @@ export function ThemePreviewScreen() {
       <View className="gap-xs">
         <AppText variant="display">SmartMeal Theme</AppText>
         <AppText variant="body" color="secondary">
-          {`mode: ${mode} · resolved: ${resolvedScheme} · mock: ${mockScenario}`}
+          {`mode: ${mode} · resolved: ${resolvedScheme}`}
         </AppText>
       </View>
 
@@ -78,23 +63,6 @@ export function ThemePreviewScreen() {
             onPress={() => setMode(option.value)}
           />
         ))}
-      </View>
-
-      <View className="gap-sm">
-        <SectionHeader title="Mock scenario" />
-        <AppText variant="caption" color="muted">
-          Áp dụng cho mọi mock service (auth/health...) — xem CLAUDE.md mục 8.
-        </AppText>
-        <View className="flex-row flex-wrap gap-sm">
-          {MOCK_SCENARIOS.map(scenario => (
-            <AppChip
-              key={scenario}
-              label={MOCK_SCENARIO_LABELS[scenario]}
-              selected={mockScenario === scenario}
-              onPress={() => setMockScenario(scenario)}
-            />
-          ))}
-        </View>
       </View>
 
       <View className="gap-sm">
@@ -117,25 +85,6 @@ export function ThemePreviewScreen() {
           }
         />
       </View>
-
-      {/* Bật Pro giả chỉ đổi trạng thái trên máy — chỉ dùng ở chế độ mock; gọi API thật thì gói do server quyết định. */}
-      {ENV.useMockApi ? (
-        <View className="gap-sm">
-          <SectionHeader title="Free/Pro (Đợt 11)" />
-          <AppText variant="caption" color="muted">
-            Demo gate Premium (Fridge Scanner, Gợi ý thực đơn AI — BR-230/231) không cần đi hết luồng
-            thanh toán.
-          </AppText>
-          <View className="flex-row gap-sm">
-            <AppChip label="Free" selected={premiumStatus !== 'premium'} onPress={() => resetToFree()} />
-            <AppChip
-              label="Pro"
-              selected={premiumStatus === 'premium'}
-              onPress={() => activatePremium('monthly', '2099-12-31')}
-            />
-          </View>
-        </View>
-      ) : null}
 
       <View className="gap-sm">
         <SectionHeader title="Offline (Đợt 11)" />

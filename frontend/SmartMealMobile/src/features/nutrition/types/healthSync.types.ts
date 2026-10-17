@@ -19,7 +19,7 @@ export interface SyncMetricsInput {
 export interface ActivitySourceDetail {
   id: string;
   label: string;
-  /** Backend chỉ trả tên nguồn, không trả calo theo từng nguồn → chỉ có ở bản mock. */
+  /** Backend chỉ trả tên nguồn, không trả calo theo từng nguồn → có thể không có. */
   calories?: number;
   /** false = bị bỏ qua vì trùng khung giờ với nguồn khác. */
   countsTowardBudget: boolean;
@@ -50,6 +50,6 @@ export interface DailyActivity {
   hasSyncedData: boolean;
   /** Chi tiết theo nguồn (CalorieBudget). Rỗng khi chưa đồng bộ. */
   sourceDetails: ActivitySourceDetail[];
-  /** Danh sách hoạt động được tính — backend không có (chỉ mock); rỗng → UI ẩn khối này. */
+  /** Danh sách hoạt động được tính — backend chưa trả; rỗng → UI ẩn khối này. */
   activities: ActivityLogItem[];
 }

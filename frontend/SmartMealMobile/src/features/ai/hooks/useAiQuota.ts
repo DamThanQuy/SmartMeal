@@ -32,8 +32,8 @@ export function useAiQuota() {
     /** Giờ làm mới hạn mức theo giờ máy ("00:00" ở Việt Nam); rỗng khi chưa đọc được. */
     resetTimeLabel: quota ? formatQuotaResetTime(quota) : '',
     /**
-     * Gọi sau mỗi lần AI phân tích THÀNH CÔNG: bản thật để server đếm rồi đọc lại hạn mức, bản mock tự
-     * đếm cục bộ. Thất bại thì không gọi (lượt AI không bị trừ — StateAIFailed).
+     * Gọi sau mỗi lần AI phân tích THÀNH CÔNG: để server đếm rồi đọc lại hạn mức. Thất bại thì không
+     * gọi (lượt AI không bị trừ — StateAIFailed).
      */
     consumeQuota: () => {
       void aiService

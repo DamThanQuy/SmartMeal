@@ -1,5 +1,9 @@
 import { ENDPOINTS, api } from '@/services/api';
-import type { MembershipSnapshot } from '@/state/premium/premiumStore';
+import type {
+  BillingPlanId,
+  MembershipSnapshot,
+  TransactionRecord,
+} from '@/state/premium/premiumStore';
 import type {
   CheckoutSessionResponseDto,
   CreateCheckoutSessionRequestDto,
@@ -8,7 +12,14 @@ import type {
   SubscriptionPlanDto,
   SubscriptionStatusDto,
 } from '../types/premium.api.types';
-import type { CheckoutSession } from '../types/premium.types';
+import type {
+  BillingPlanOption,
+  CheckoutOptions,
+  CheckoutResult,
+  CheckoutSession,
+  SelectablePaymentMethodId,
+} from '../types/premium.types';
+import type { PaymentCheckTrigger } from './paymentCheckTrigger';
 import {
   fromPlanDto,
   fromStatusDto,
@@ -16,7 +27,6 @@ import {
   toApiPaymentMethod,
   toApiPlanId,
 } from './premium.mapper';
-import type { premiumMockService } from './premiumService.mock';
 
 // Bản gọi backend thật (docs/fetch-api/part1 §13). Pro CHỈ được kích hoạt khi server xác nhận
 // thanh toán (BR-241/242): FE không tự tính hạn hay tự bật Pro, mà hỏi GET /subscription/check-status
@@ -68,18 +78,30 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+interface ConfirmationOptions {
+  signal?: AbortSignal;
+  trigger?: PaymentCheckTrigger;
+  onPending?: () => void;
+}
+
 /**
  * Hỏi GET /subscription/check-status/{orderCode} — máy chủ tự hỏi SePay/PayOS (server-to-server) và kích hoạt Pro khi đã
  * nhận đủ tiền, nên vẫn chạy được khi webhook không tới được máy chủ. Đã trả tiền → đọc lại gói do server xác nhận.
+ * `trigger` cắt ngắn lượt chờ giữa hai lần hỏi (người dùng báo đã chuyển / quay lại app).
  */
-async function waitForConfirmation(orderCode: number, deadline: number, signal?: AbortSignal): Promise<MembershipSnapshot> {
+async function waitForConfirmation(
+  orderCode: number,
+  deadline: number,
+  { signal, trigger, onPending }: ConfirmationOptions = {},
+): Promise<MembershipSnapshot> {
   for (;;) {
     throwIfAborted(signal);
     const result = await api.get<PaymentTransactionStatusDto>(ENDPOINTS.subscription.checkStatus(orderCode));
     if (result.isPaid) return fetchStatus();
     if (result.status.toLowerCase() === 'failed') throw new PaymentFailedError();
     if (Date.now() >= deadline) throw new PaymentNotConfirmedError();
-    await sleep(CONFIRM_POLL_INTERVAL_MS);
+    onPending?.();
+    await (trigger ? trigger.wait(CONFIRM_POLL_INTERVAL_MS) : sleep(CONFIRM_POLL_INTERVAL_MS));
   }
 }
 
@@ -105,14 +127,15 @@ function toCheckoutSession(dto: CheckoutSessionResponseDto): CheckoutSession {
       accountName: dto.accountName ?? null,
       transferContent: dto.transferContent,
       expiresAtIso: dto.expiresAt ?? null,
+      ...(dto.vietQrBankCode ? { vietQrBankCode: dto.vietQrBankCode } : {}),
     };
   }
   return session;
 }
 
-export const premiumApiService: Partial<typeof premiumMockService> = {
+export const premiumApiService = {
   // GET /subscription/plans — giá và chu kỳ do BE quyết định.
-  async getPlans() {
+  async getPlans(): Promise<BillingPlanOption[]> {
     const plans = await api.get<SubscriptionPlanDto[]>(ENDPOINTS.subscription.plans);
     return plans.flatMap(plan => fromPlanDto(plan) ?? []);
   },
@@ -121,22 +144,27 @@ export const premiumApiService: Partial<typeof premiumMockService> = {
   getStatus: fetchStatus,
 
   // GET /subscription/transactions — mới → cũ.
-  async getTransactions() {
+  async getTransactions(): Promise<TransactionRecord[]> {
     const list = await api.get<PaymentTransactionDto[]>(ENDPOINTS.subscription.transactions);
     return list.flatMap(transaction => fromTransactionDto(transaction) ?? []);
   },
 
   // POST /subscription/cancel — hủy gia hạn, vẫn dùng Pro tới hết hạn.
-  async cancelRenewal() {
+  async cancelRenewal(): Promise<MembershipSnapshot> {
     return fromStatusDto(await api.post<SubscriptionStatusDto>(ENDPOINTS.subscription.cancel));
   },
 
-  // Tạo giao dịch → màn hình hiện mã VietQR (onSession) → hỏi check-status tới khi server xác nhận đã nhận tiền. Không có
-  // đường tắt kích hoạt thử: Pro chỉ bật khi SePay/PayOS báo tiền đã vào.
-  async checkout(planId, paymentMethodId, options) {
+  // Tạo giao dịch → màn hình hiện mã VietQR hoặc số tài khoản (onSession) → hỏi check-status tới khi server xác nhận đã
+  // nhận tiền. Không có đường tắt kích hoạt thử: Pro chỉ bật khi SePay/PayOS báo tiền đã vào.
+  async checkout(
+    planId: BillingPlanId,
+    paymentMethodId: SelectablePaymentMethodId,
+    options?: CheckoutOptions,
+  ): Promise<CheckoutResult> {
     const request: CreateCheckoutSessionRequestDto = {
       planId: toApiPlanId(planId),
       paymentMethod: toApiPaymentMethod(paymentMethodId),
+      ...(options?.returnUrl ? { returnUrl: options.returnUrl } : {}),
     };
     const session = await api.post<CheckoutSessionResponseDto, CreateCheckoutSessionRequestDto>(
       ENDPOINTS.subscription.checkout,
@@ -145,7 +173,11 @@ export const premiumApiService: Partial<typeof premiumMockService> = {
     if (!session.orderCode) throw new PaymentNotConfirmedError();
     options?.onSession?.(toCheckoutSession(session));
 
-    const membership = await waitForConfirmation(session.orderCode, confirmationDeadline(session), options?.signal);
+    const membership = await waitForConfirmation(session.orderCode, confirmationDeadline(session), {
+      signal: options?.signal,
+      trigger: options?.trigger,
+      onPending: options?.onPending,
+    });
     return {
       transactionId: session.sessionId,
       amountVnd: session.amountVnd,

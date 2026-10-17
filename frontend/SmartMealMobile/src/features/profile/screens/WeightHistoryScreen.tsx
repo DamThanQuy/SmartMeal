@@ -46,8 +46,7 @@ function formatWeight(weightKg: number): string {
 }
 
 // design/WeightHistory.dc.html (BR-001→BR-003). Ghi cân nặng mới đi qua healthProfileService (BE
-// tính lại BMI/BMR/TDEE/macro, mock dùng calculateHealthProfileResult) — không định nghĩa lại
-// công thức ở đây (no-hardcode.md mục 5). Hồ sơ hiện tại (cân nặng, mục tiêu) đọc từ
+// tính lại BMI/BMR/TDEE/macro) — không định nghĩa lại công thức ở đây (no-hardcode.md mục 5). Hồ sơ hiện tại (cân nặng, mục tiêu) đọc từ
 // userProfileStore; lịch sử là server state qua useWeightHistory.
 export function WeightHistoryScreen({ navigation }: Props) {
   const { colors } = useTheme();
