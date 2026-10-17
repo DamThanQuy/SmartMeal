@@ -14,9 +14,21 @@ internal static class HealthConditionRules
     public const string Dyslipidemia = "dyslipidemia";
     public const string Gout = "gout";
 
+    /// <summary>
+    /// Bản ghi vi phạm điều kiện sức khỏe chứa mã bệnh lý và thông báo cảnh báo chi tiết.
+    /// </summary>
+    /// <param name="ConditionCode">Mã định danh bệnh lý (diabetes, hypertension, dyslipidemia, gout).</param>
+    /// <param name="Message">Nội dung giải thích cảnh báo về chỉ số dinh dưỡng vượt ngưỡng hoặc nguyên liệu cần kiêng.</param>
     public sealed record Violation(string ConditionCode, string Message);
 
-    /// <summary>Công thức cần nạp sẵn <c>RecipeIngredients.Ingredient</c>.</summary>
+    /// <summary>
+    /// Đánh giá công thức món ăn dựa trên danh sách mã bệnh lý nền của người dùng và các ngưỡng giới hạn cấu hình (BR-110/111).
+    /// Yêu cầu <see cref="Recipe"/> cần được nạp sẵn danh sách <c>RecipeIngredients.Ingredient</c>.
+    /// </summary>
+    /// <param name="recipe">Thực thể công thức món ăn cần đánh giá.</param>
+    /// <param name="conditionCodes">Tập hợp các mã bệnh lý của người dùng (vd: diabetes, hypertension, dyslipidemia, gout).</param>
+    /// <param name="limits">Cấu hình các ngưỡng giới hạn dinh dưỡng cho từng loại bệnh lý.</param>
+    /// <returns>Danh sách các vi phạm <see cref="Violation"/> nếu các chỉ số vượt ngưỡng an toàn.</returns>
     public static List<Violation> Evaluate(Recipe recipe, IReadOnlyCollection<string> conditionCodes, HealthConditionLimitsOptions limits)
     {
         var violations = new List<Violation>();
