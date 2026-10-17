@@ -56,7 +56,7 @@
       "@react-native-google-signin/google-signin"
     ],
     "experiments": {
-      "reactCompiler": true
+      "reactCompiler": false
     }
   }
 }
