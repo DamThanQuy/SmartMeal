@@ -28,6 +28,12 @@ public class NotificationService : INotificationService
     private readonly IGamificationService _gamification;
     private readonly NotificationWriter _notifications;
 
+    /// <summary>
+    /// Khởi tạo instance mới của <see cref="NotificationService"/>.
+    /// </summary>
+    /// <param name="db">DbContext kết nối cơ sở dữ liệu ứng dụng.</param>
+    /// <param name="gamification">Dịch vụ Gamification để đánh giá trạng thái sự kiện khi người dùng kiểm tra thông báo.</param>
+    /// <param name="notifications">Dịch vụ ghi thông báo đẩy nội bộ.</param>
     public NotificationService(ApplicationDbContext db, IGamificationService gamification, NotificationWriter notifications)
     {
         _db = db;
@@ -35,6 +41,15 @@ public class NotificationService : INotificationService
         _notifications = notifications;
     }
 
+    /// <summary>
+    /// Lấy danh sách thông báo của người dùng kèm số lượng chưa đọc.
+    /// Tự động kích hoạt đánh giá tiến độ Gamification, kiểm tra hạn gói Pro (cảnh báo sắp hết hạn trước 3 ngày),
+    /// và dọn dẹp các thông báo cũ hơn 90 ngày.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng.</param>
+    /// <param name="limit">Số lượng thông báo tối đa cần lấy (mặc định 50, tối đa 100).</param>
+    /// <param name="date">Ngày mốc để đánh giá Gamification (tùy chọn).</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa danh sách thông báo và số lượng chưa đọc.</returns>
     public async Task<ApiResponse<NotificationListDto>> GetNotificationsAsync(Guid userId, int? limit, DateOnly? date)
     {
         if (limit is < 1 or > MaxLimit)
@@ -61,6 +76,12 @@ public class NotificationService : INotificationService
             "Lấy danh sách thông báo thành công.");
     }
 
+    /// <summary>
+    /// Đánh dấu một thông báo cụ thể là đã đọc.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng sở hữu thông báo.</param>
+    /// <param name="notificationId">Mã định danh thông báo.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa thông tin thông báo sau khi cập nhật.</returns>
     public async Task<ApiResponse<NotificationDto>> MarkReadAsync(Guid userId, Guid notificationId)
     {
         var notification = await _db.UserNotifications.FirstOrDefaultAsync(n => n.Id == notificationId && n.UserId == userId);
@@ -78,6 +99,11 @@ public class NotificationService : INotificationService
         return ApiResponse<NotificationDto>.Ok(ToDto(notification), "Đã đánh dấu đã đọc.");
     }
 
+    /// <summary>
+    /// Đánh dấu tất cả thông báo chưa đọc của người dùng thành đã đọc.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa số lượng thông báo vừa được cập nhật.</returns>
     public async Task<ApiResponse<MarkAllNotificationsReadResultDto>> MarkAllReadAsync(Guid userId)
     {
         var now = DateTime.UtcNow;
@@ -109,6 +135,7 @@ public class NotificationService : INotificationService
             $"subscription-expiring-{expiresAt:yyyyMMddHHmm}");
     }
 
+    /// <summary>Chuyển đổi thực thể <see cref="UserNotification"/> sang DTO <see cref="NotificationDto"/>.</summary>
     internal static NotificationDto ToDto(UserNotification n) => new()
     {
         Id = n.Id,
