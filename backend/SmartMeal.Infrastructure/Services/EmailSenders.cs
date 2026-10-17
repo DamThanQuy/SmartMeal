@@ -67,12 +67,23 @@ public sealed class LogOnlyEmailSender : IEmailSender
     private readonly ILogger<LogOnlyEmailSender> _logger;
     private readonly IHostEnvironment _environment;
 
+    /// <summary>
+    /// Khởi tạo dịch vụ giả lập ghi log email với ILogger và IHostEnvironment.
+    /// </summary>
+    /// <param name="logger">Logger để ghi lại thông tin email.</param>
+    /// <param name="environment">Môi trường máy chủ (Development hoặc Production).</param>
     public LogOnlyEmailSender(ILogger<LogOnlyEmailSender> logger, IHostEnvironment environment)
     {
         _logger = logger;
         _environment = environment;
     }
 
+    /// <summary>
+    /// Giả lập việc gửi email bằng cách ghi log nội dung email trong môi trường Development và cảnh báo ở các môi trường khác.
+    /// </summary>
+    /// <param name="message">Thông tin email bao gồm người nhận, tiêu đề và nội dung.</param>
+    /// <param name="cancellationToken">Token hủy thao tác.</param>
+    /// <returns>Tác vụ hoàn thành ngay lập tức.</returns>
     public Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
     {
         if (_environment.IsDevelopment())
