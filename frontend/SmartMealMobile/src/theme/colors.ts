@@ -44,6 +44,8 @@ export interface AppColorTokens {
   infoText: string;
 
   overlay: string;
+  /** Chữ/icon trên overlay tối (màn camera) — trắng ở cả light và dark, khác onPrimary (tối ở dark). */
+  onOverlay: string;
   skeleton: string;
 }
 

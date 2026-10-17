@@ -20,7 +20,7 @@ import { MacroStatGrid } from '@/features/nutrition';
 import { useUnreadNotificationsCount } from '@/features/profile/hooks/useNotifications';
 import { MAIN_STACK_ROUTES, MAIN_TAB_ROUTES } from '@/constants/routes';
 import type { MainStackParamList, MainTabParamList } from '@/navigation/types';
-import { MEAL_TYPE_TITLES } from '@/types/meal.types';
+import { getMealTypeForHour, MEAL_TYPE_TITLES } from '@/types/meal.types';
 import { useAuthStore } from '@/state/auth/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { ActivityCard } from '../components/ActivityCard';
@@ -290,6 +290,11 @@ export function DashboardScreen(_props: Props) {
             onSearch={() =>
               navigation.navigate(MAIN_STACK_ROUTES.FOOD_SEARCH, {
                 mealType: 'dinner',
+              })
+            }
+            onScan={() =>
+              navigation.navigate(MAIN_STACK_ROUTES.BARCODE, {
+                mealType: getMealTypeForHour(now.getHours()),
               })
             }
           />
