@@ -241,6 +241,8 @@ namespace SmartMeal.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ImageUrl");
+
                     b.HasIndex("IngredientId");
 
                     b.HasIndex("NutritionDiaryId");
@@ -651,6 +653,8 @@ namespace SmartMeal.Infrastructure.Migrations
 
                     b.HasIndex("Barcode");
 
+                    b.HasIndex("Name");
+
                     b.HasIndex("OwnerUserId");
 
                     b.ToTable("Ingredients");
@@ -945,6 +949,10 @@ namespace SmartMeal.Infrastructure.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("Title");
 
                     b.ToTable("Recipes");
                 });
