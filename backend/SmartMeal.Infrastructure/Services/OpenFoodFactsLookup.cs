@@ -44,6 +44,12 @@ public sealed class OpenFoodFactsLookup : IProductCatalogLookup
     private readonly OpenFoodFactsOptions _options;
     private readonly ILogger<OpenFoodFactsLookup> _logger;
 
+    /// <summary>
+    /// Khởi tạo dịch vụ tra cứu thông tin sản phẩm từ cơ sở dữ liệu mở Open Food Facts.
+    /// </summary>
+    /// <param name="http">HttpClient để gửi yêu cầu HTTP.</param>
+    /// <param name="options">Cấu hình kết nối và giới hạn thời gian timeout cho Open Food Facts.</param>
+    /// <param name="logger">Logger phục vụ ghi nhận cảnh báo và lỗi truy vấn.</param>
     public OpenFoodFactsLookup(HttpClient http, IOptions<OpenFoodFactsOptions> options, ILogger<OpenFoodFactsLookup> logger)
     {
         _http = http;
@@ -51,6 +57,12 @@ public sealed class OpenFoodFactsLookup : IProductCatalogLookup
         _logger = logger;
     }
 
+    /// <summary>
+    /// Tra cứu thông tin sản phẩm và chỉ số dinh dưỡng từ Open Food Facts API v2 theo mã vạch.
+    /// </summary>
+    /// <param name="barcode">Mã vạch sản phẩm dạng chuỗi số.</param>
+    /// <param name="cancellationToken">Token hủy thao tác bất đồng bộ.</param>
+    /// <returns>Đối tượng <see cref="ExternalProduct"/> chứa thông tin sản phẩm trích xuất hoặc null nếu không tìm thấy hoặc số liệu không hợp lệ.</returns>
     public async Task<ExternalProduct?> FindByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
     {
         if (!_options.Enabled || string.IsNullOrWhiteSpace(barcode) || !barcode.All(char.IsAsciiDigit))
@@ -90,7 +102,13 @@ public sealed class OpenFoodFactsLookup : IProductCatalogLookup
         }
     }
 
-    /// <summary>Đọc phản hồi API v2 (<c>{ status, product }</c>). Tách riêng để kiểm thử không cần mạng.</summary>
+    /// <summary>
+    /// Phân tích dữ liệu JSON phản hồi từ API Open Food Facts v2 (<c>{ status, product }</c>) thành đối tượng <see cref="ExternalProduct"/>.
+    /// Kiểm tra tính hợp lệ của số liệu dinh dưỡng (calo, macro, natri) và ánh xạ các thẻ dị ứng (allergen tags) sang mã nội bộ.
+    /// </summary>
+    /// <param name="barcode">Mã vạch sản phẩm.</param>
+    /// <param name="root">Gốc phần tử JSON từ phản hồi API.</param>
+    /// <returns>Đối tượng <see cref="ExternalProduct"/> hợp lệ hoặc null nếu thiếu thông tin bắt buộc hoặc số liệu bất thường.</returns>
     public static ExternalProduct? Parse(string barcode, JsonElement root)
     {
         if (root.ValueKind != JsonValueKind.Object ||
