@@ -9,16 +9,28 @@ using SmartMeal.Infrastructure.Options;
 
 namespace SmartMeal.Infrastructure.Services;
 
-/// <summary>Gửi email thật qua SMTP (cấu hình ở mục "Smtp").</summary>
+/// <summary>
+/// Dịch vụ gửi email thực tế qua giao thức SMTP (cấu hình trong appsettings tại mục "Smtp").
+/// Hỗ trợ xác thực bảo mật SSL/TLS, gửi email kích hoạt tài khoản và mã OTP đặt lại mật khẩu.
+/// </summary>
 public sealed class SmtpEmailSender : IEmailSender
 {
     private readonly SmtpOptions _options;
 
+    /// <summary>
+    /// Khởi tạo dịch vụ gửi email SMTP với cấu hình máy chủ SmtpOptions.
+    /// </summary>
+    /// <param name="options">Tùy chọn cấu hình máy chủ SMTP (Host, Port, User, Password, SenderAddress...).</param>
     public SmtpEmailSender(IOptions<SmtpOptions> options)
     {
         _options = options.Value;
     }
 
+    /// <summary>
+    /// Gửi thông điệp email bất đồng bộ qua máy chủ SMTP được chỉ định.
+    /// </summary>
+    /// <param name="message">Thông tin email bao gồm người nhận, tiêu đề và nội dung văn bản.</param>
+    /// <param name="cancellationToken">Token hủy thao tác gửi email.</param>
     public async Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
     {
         using var client = new SmtpClient(_options.Host, _options.Port)
