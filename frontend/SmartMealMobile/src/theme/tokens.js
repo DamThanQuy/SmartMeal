@@ -52,6 +52,7 @@ const lightColors = {
   infoText: '#2E5F94', // derived
 
   overlay: '#000000', // derived — dùng kèm alpha, vd bg-overlay/40
+  onOverlay: '#FFFFFF', // derived — chữ/icon trên overlay tối (màn camera), trắng ở cả 2 theme
   skeleton: '#E4EFE8', // (= border) — nền shimmer loading
 };
 
@@ -100,6 +101,7 @@ const darkColors = {
   infoText: '#A8CDF2', // derived
 
   overlay: '#000000',
+  onOverlay: '#FFFFFF',
   skeleton: '#262626', // (= dark border)
 };
 
