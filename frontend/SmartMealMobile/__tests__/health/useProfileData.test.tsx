@@ -86,25 +86,14 @@ beforeEach(() => {
 });
 
 describe('useRecordWeight', () => {
-  test('gửi hồ sơ hiện tại cho service, nạp chỉ số mới vào store và giữ mục "Khác" ở máy', async () => {
+  test('gửi cân nặng cho service, nạp chỉ số mới vào store và giữ mục "Khác" ở máy', async () => {
     service.recordWeight.mockResolvedValue(profile());
     const hook = await renderHookWithQuery(() => useRecordWeight());
     const invalidate = jest.spyOn(hook.queryClient, 'invalidateQueries');
 
     await hook.run(() => hook.current.mutateAsync({ weightKg: 54, dateIso: '2026-10-02' }));
 
-    expect(service.recordWeight).toHaveBeenCalledWith(
-      { weightKg: 54, dateIso: '2026-10-02' },
-      expect.objectContaining({
-        gender: 'female',
-        heightCm: 160,
-        weightKg: 55,
-        goalWeightKg: 52,
-        allergyIds: ['peanut', 'treeNut'],
-        healthConditionIds: ['other'],
-        dietaryPreferenceIds: ['keto'],
-      }),
-    );
+    expect(service.recordWeight).toHaveBeenCalledWith({ weightKg: 54, dateIso: '2026-10-02' });
     expect(useUserProfileStore.getState()).toMatchObject({
       weightKg: 54,
       result: RESULT,
@@ -148,10 +137,7 @@ describe('useUpdateBasicInfo', () => {
       hook.current.mutateAsync({ gender: 'male', dateOfBirth: savedDob, heightCm: 175 }),
     );
 
-    expect(service.updateBasicInfo).toHaveBeenCalledWith(
-      { gender: 'male', dateOfBirth: savedDob, heightCm: 175 },
-      expect.objectContaining({ gender: 'female', heightCm: 160 }),
-    );
+    expect(service.updateBasicInfo).toHaveBeenCalledWith({ gender: 'male', dateOfBirth: savedDob, heightCm: 175 });
     const state = useUserProfileStore.getState();
     expect(state).toMatchObject({ gender: 'male', heightCm: 175, result: RESULT });
     expect(state.dateOfBirth).toBe(savedDob);
@@ -166,29 +152,6 @@ describe('useUpdateHealthSettings', () => {
     dietaryPreferenceIds: ['vegan'],
   };
 
-  test('bản mock (service trả null) → chỉ áp lựa chọn vào store', async () => {
-    service.updateHealthSettings.mockResolvedValue(null);
-    const hook = await renderHookWithQuery(() => useUpdateHealthSettings());
-    const invalidate = jest.spyOn(hook.queryClient, 'invalidateQueries');
-
-    await hook.run(() => hook.current.mutateAsync(selection));
-
-    expect(service.updateHealthSettings).toHaveBeenCalledWith(
-      selection,
-      expect.objectContaining({ allergyIds: ['peanut', 'treeNut'] }),
-    );
-    expect(useUserProfileStore.getState()).toMatchObject({
-      allergyIds: ['seafood', 'sesame', 'other'],
-      healthConditionIds: ['diabetes'],
-      dietaryPreferenceIds: ['vegan'],
-      // Chỉ số không đổi.
-      weightKg: 55,
-    });
-    // Dị ứng/bệnh lý ảnh hưởng gợi ý ở nhiều feature → làm mới mọi query đang hiển thị.
-    expect(invalidate).toHaveBeenCalledWith();
-    await hook.unmount();
-  });
-
   test('BE trả hồ sơ mới → nạp lại, ghép với mục "Khác" giữ ở máy', async () => {
     service.updateHealthSettings.mockResolvedValue(
       profile({
@@ -198,15 +161,19 @@ describe('useUpdateHealthSettings', () => {
       }),
     );
     const hook = await renderHookWithQuery(() => useUpdateHealthSettings());
+    const invalidate = jest.spyOn(hook.queryClient, 'invalidateQueries');
 
     await hook.run(() => hook.current.mutateAsync(selection));
 
+    expect(service.updateHealthSettings).toHaveBeenCalledWith(selection);
     expect(useUserProfileStore.getState()).toMatchObject({
       allergyIds: ['seafood', 'sesame', 'other'],
       healthConditionIds: ['diabetes', 'other'],
       dietaryPreferenceIds: ['vegan'],
       result: RESULT,
     });
+    // Dị ứng/bệnh lý ảnh hưởng gợi ý ở nhiều feature → làm mới mọi query đang hiển thị.
+    expect(invalidate).toHaveBeenCalledWith();
     await hook.unmount();
   });
 
@@ -249,16 +216,6 @@ describe('useUpdateWaterGoal', () => {
     expect(useUserProfileStore.getState().waterGoalMl).toBe(2400);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['water'] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['pet'] });
-    await hook.unmount();
-  });
-
-  test('bản mock (service trả null) → chỉ áp mục tiêu vào store', async () => {
-    service.updateWaterGoal.mockResolvedValue(null);
-    const hook = await renderHookWithQuery(() => useUpdateWaterGoal());
-
-    await hook.run(() => hook.current.mutateAsync(1800));
-
-    expect(useUserProfileStore.getState().waterGoalMl).toBe(1800);
     await hook.unmount();
   });
 

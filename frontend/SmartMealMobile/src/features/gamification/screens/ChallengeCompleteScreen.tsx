@@ -8,7 +8,7 @@ import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useChallengeDetail } from '../hooks/useChallenges';
-import { BADGE_DEFINITIONS_MOCK, COSTUME_DEFINITIONS_MOCK } from '../mocks/badges.mock';
+import { BADGE_DEFINITIONS, COSTUME_DEFINITIONS } from '../types/badge.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ChallengeComplete'>;
 
@@ -50,10 +50,10 @@ export function ChallengeCompleteScreen({ navigation, route }: Props) {
   }
 
   const badge = challenge.badgeId
-    ? BADGE_DEFINITIONS_MOCK.find(item => item.id === challenge.badgeId)
+    ? BADGE_DEFINITIONS.find(item => item.id === challenge.badgeId)
     : undefined;
   const costume = challenge.costumeId
-    ? COSTUME_DEFINITIONS_MOCK.find(item => item.id === challenge.costumeId)
+    ? COSTUME_DEFINITIONS.find(item => item.id === challenge.costumeId)
     : undefined;
 
   return (

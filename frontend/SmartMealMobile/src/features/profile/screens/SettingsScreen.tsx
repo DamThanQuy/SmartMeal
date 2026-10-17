@@ -23,6 +23,7 @@ import { usePremiumStore } from '@/state/premium/premiumStore';
 import { useTheme, type ThemeMode } from '@/theme/ThemeProvider';
 import { ProfileMenuRow } from '../components/ProfileMenuRow';
 import { useHealthConnectStatus } from '../hooks/useHealthConnect';
+import { summarizeReminders, useRemindersSettings } from '../hooks/useReminders';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'Settings'>;
 
@@ -47,6 +48,7 @@ export function SettingsScreen({ navigation }: Props) {
   const logout = useAuthStore(state => state.logout);
   const membershipStatus = usePremiumStore(state => state.status);
   const { data: healthConnect } = useHealthConnectStatus();
+  const { data: reminders } = useRemindersSettings();
 
   return (
     <ScreenContainer scroll>
@@ -104,7 +106,7 @@ export function SettingsScreen({ navigation }: Props) {
           <ProfileMenuRow
             icon={<Bell size={20} color={colors.primary} />}
             label="Nhắc nhở"
-            valueLabel="Bữa ăn, uống nước"
+            valueLabel={summarizeReminders(reminders)}
             onPress={() => navigation.navigate(MAIN_STACK_ROUTES.REMINDERS)}
           />
           <ProfileMenuRow
@@ -145,7 +147,7 @@ export function SettingsScreen({ navigation }: Props) {
           <AppText variant="h3">Dev</AppText>
           <ProfileMenuRow
             icon={<Wrench size={20} color={colors.primary} />}
-            label="Theme & mock scenario"
+            label="Theme & công cụ dev"
             onPress={() => navigation.navigate(MAIN_STACK_ROUTES.DEV)}
           />
         </AppCard>

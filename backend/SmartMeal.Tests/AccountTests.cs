@@ -130,6 +130,39 @@ public class AccountTests : IClassFixture<ApiFactory>
     }
 
     [DbFact]
+    public async Task Removing_the_avatar_clears_it_and_deletes_the_file()
+    {
+        var user = await _factory.RegisterUserAsync();
+        var avatarUrl = (await (await UploadAsync(user.Client, Png)).ReadEnvelopeAsync<UserPayload>()).Data!.AvatarUrl!;
+
+        var response = await user.Client.DeleteAsync("/api/auth/avatar");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Null((await response.ReadEnvelopeAsync<UserPayload>()).Data!.AvatarUrl);
+        Assert.Null((await (await user.Client.GetAsync("/api/auth/me")).ReadEnvelopeAsync<UserPayload>()).Data!.AvatarUrl);
+        Assert.Equal(HttpStatusCode.NotFound, (await _factory.CreateClient().GetAsync(new Uri(avatarUrl).PathAndQuery)).StatusCode);
+
+        // Chưa có ảnh mà xóa tiếp vẫn thành công; chưa đăng nhập thì 401.
+        Assert.Equal(HttpStatusCode.OK, (await user.Client.DeleteAsync("/api/auth/avatar")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _factory.CreateClient().DeleteAsync("/api/auth/avatar")).StatusCode);
+    }
+
+    [DbFact]
+    public async Task Deleting_personal_data_also_deletes_saved_meal_photos_but_keeps_the_avatar()
+    {
+        var user = await _factory.RegisterUserAsync();
+        (await UploadAsync(user.Client, Png)).EnsureSuccessStatusCode();
+        var mealFolder = Path.Combine(_factory.UploadsRoot, "meals", user.Id.ToString("N"));
+        Directory.CreateDirectory(mealFolder);
+        await File.WriteAllBytesAsync(Path.Combine(mealFolder, "photo.jpg"), Jpeg);
+
+        (await user.Client.DeleteAsync("/api/me/data")).EnsureSuccessStatusCode();
+
+        Assert.False(Directory.Exists(mealFolder));
+        Assert.Single(Directory.GetFiles(Path.Combine(_factory.UploadsRoot, "avatars", user.Id.ToString("N"))));
+    }
+
+    [DbFact]
     public async Task Avatar_upload_requires_authentication()
     {
         var response = await UploadAsync(_factory.CreateClient(), Png);

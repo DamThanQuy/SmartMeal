@@ -75,7 +75,7 @@ public static class DbInitializer
         {
             Title = "Cháo yến mạch ức gà rau củ",
             Description = "Món ăn sáng nhẹ bụng, hỗ trợ giảm cân và cung cấp năng lượng bền bỉ cho cả buổi sáng.",
-            ImageUrl = "https://images.unsplash.com/photo-1517673132405-a56a62b18caf",
+            ImageUrl = "https://images.unsplash.com/photo-1517673400267-0251440c45dc",
             Instructions = "1. Luộc chín ức gà và xé nhỏ.\n2. Nấu yến mạch với nước dùng gà trong 5-7 phút.\n3. Thêm ức gà, nêm gia vị vừa ăn và rắc hành ngò.",
             PrepTimeMinutes = 5,
             CookTimeMinutes = 10,
@@ -242,6 +242,7 @@ public static class DbInitializer
 
         await EnsureChallengeRulesAsync(db);
         await EnsureRecipeMealTypesAsync(db);
+        await EnsureRecipeImagesAsync(db);
         await EnsureSeedDishesAsync(db);
         await EnsureIngredientAllergensAsync(db);
         await EnsureFoodServingsAsync(db);
@@ -452,6 +453,32 @@ public static class DbInitializer
             {
                 recipe.MealTypes = mealTypes;
             }
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>Ảnh seed từng bị sai (ảnh cũ → ảnh đúng). Cháo yến mạch từng dùng ảnh chồng sách.</summary>
+    private static readonly Dictionary<string, string> ReplacedSeedImages = new()
+    {
+        ["https://images.unsplash.com/photo-1517673132405-a56a62b18caf"] = "https://images.unsplash.com/photo-1517673400267-0251440c45dc"
+    };
+
+    /// <summary>
+    /// Sửa ảnh sai cho DB đã seed từ trước (công thức chỉ seed khi bảng còn trống). Chỉ đổi đúng URL ảnh cũ nên
+    /// không ghi đè ảnh đã được thay tay; chạy lại an toàn.
+    /// </summary>
+    private static async Task EnsureRecipeImagesAsync(ApplicationDbContext db)
+    {
+        var wrongUrls = ReplacedSeedImages.Keys.ToList();
+        var recipes = await db.Recipes
+            .Where(r => r.ImageUrl != null && wrongUrls.Contains(r.ImageUrl))
+            .ToListAsync();
+        if (recipes.Count == 0) return;
+
+        foreach (var recipe in recipes)
+        {
+            recipe.ImageUrl = ReplacedSeedImages[recipe.ImageUrl!];
         }
 
         await db.SaveChangesAsync();

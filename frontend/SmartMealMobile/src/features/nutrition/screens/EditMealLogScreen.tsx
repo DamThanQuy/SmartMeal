@@ -5,6 +5,7 @@ import React, { useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { ErrorState, LoadingState, ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppBadge, AppButton, AppCard, AppChip, AppIconButton, AppInput, AppText } from '@/components/ui';
+import { RecipeImage } from '@/features/recipes';
 import { MAIN_STACK_ROUTES, MAIN_TAB_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { MEAL_TYPE_OPTIONS, type MealType } from '@/types/meal.types';
@@ -91,7 +92,11 @@ export function EditMealLogScreen({ navigation, route }: Props) {
       />
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerClassName="gap-lg py-xs">
         <View className="flex-row items-center gap-md">
-          <View className="h-[72px] w-[72px] items-center justify-center rounded-card bg-primary-soft" />
+          <RecipeImage
+            imageUrl={entry.imageUrl}
+            accessibilityLabel={`Ảnh ${entry.foodName}`}
+            className="h-[72px] w-[72px] rounded-card"
+          />
           <View className="gap-xxs">
             <AppText variant="h2">{entry.foodName}</AppText>
             {entry.aiConfirmed ? (

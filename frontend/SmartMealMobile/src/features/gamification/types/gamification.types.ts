@@ -1,6 +1,6 @@
 // BR-200→BR-212 — business_rule.md hiện chưa có đúng số BR này (chỉ có BR-230+ Premium); dựng
 // theo docs/design.md mục 36/37 (Gamification/Challenge) + design/Pet.dc.html. BR-202 ("không
-// cộng trùng XP cho cùng 1 sự kiện") áp dụng qua awardXpOnce trong gamificationService.
+// cộng trùng XP cho cùng 1 sự kiện") do server đảm bảo.
 
 export interface PetTaskItem {
   id: string;

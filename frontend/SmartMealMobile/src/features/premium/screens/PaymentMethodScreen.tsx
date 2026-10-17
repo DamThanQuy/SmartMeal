@@ -1,27 +1,79 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Check } from 'lucide-react-native';
+import { QrCode, Smartphone, Wallet } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { ErrorState, LoadingState, ScreenContainer, ScreenHeader } from '@/components/common';
-import { AppButton, AppCard, AppText } from '@/components/ui';
+import { AppBadge, AppButton, AppCard, AppText } from '@/components/ui';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useSubscriptionPlans } from '../hooks/useSubscription';
-import { PAYMENT_METHOD_OPTIONS } from '../mocks/premium.mock';
-import type { SelectablePaymentMethodId } from '../types/premium.types';
+import {
+  PAYMENT_METHOD_OPTIONS,
+  type PaymentMethodOption,
+  type SelectablePaymentMethodId,
+} from '../types/premium.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PaymentMethod'>;
 
-// design/PaymentMethod.dc.html (BR-241/242). Tách khỏi PremiumScreen (Đợt 13) — chọn gói xong
-// mới sang màn riêng chọn phương thức, khớp đúng luồng "Nâng cấp Pro → chọn thanh toán" trong
-// artboard thay vì gộp cả 2 bước trong 1 màn như bản Đợt 8 cũ.
-export function PaymentMethodScreen({ navigation, route }: Props) {
+const METHOD_ICON: Record<SelectablePaymentMethodId, (color: string) => React.ReactNode> = {
+  bank_app: color => <Smartphone size={20} color={color} />,
+  sepay: color => <QrCode size={20} color={color} />,
+  payos: color => <Wallet size={20} color={color} />,
+};
+
+interface PaymentMethodRowProps {
+  method: PaymentMethodOption;
+  selected: boolean;
+  onSelect: () => void;
+}
+
+function PaymentMethodRow({ method, selected, onSelect }: PaymentMethodRowProps) {
   const { colors } = useTheme();
+
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityLabel={method.label}
+      accessibilityHint={method.description}
+      accessibilityState={{ selected }}
+      onPress={onSelect}
+      className={`flex-row items-center gap-sm rounded-card p-md ${
+        selected ? 'border-2 border-primary bg-primary-soft' : 'border border-border bg-surface'
+      }`}
+    >
+      <View
+        className={`h-[40px] w-[40px] items-center justify-center rounded-md ${selected ? 'bg-surface' : 'bg-primary-soft'}`}
+      >
+        {METHOD_ICON[method.id](colors.primary)}
+      </View>
+      <View className="flex-1 gap-xxs">
+        <View className="flex-row flex-wrap items-center gap-xs">
+          <AppText variant="bodyMedium">{method.label}</AppText>
+          {method.recommended ? <AppBadge label="Đề xuất" /> : null}
+        </View>
+        <AppText variant="caption" color="secondary">
+          {method.description}
+        </AppText>
+      </View>
+      <View
+        className={`h-[22px] w-[22px] items-center justify-center rounded-full border-2 ${
+          selected ? 'border-primary' : 'border-border'
+        }`}
+      >
+        {selected ? <View className="h-[10px] w-[10px] rounded-full bg-primary" /> : null}
+      </View>
+    </Pressable>
+  );
+}
+
+// design/PaymentMethod.dc.html (BR-241/242). Tách khỏi PremiumScreen (Đợt 13) — chọn gói xong mới sang màn riêng chọn
+// phương thức. 3 phương thức cùng một kiểu ô chọn, chọn rồi bấm "Thanh toán": "Mở app ngân hàng" (đề xuất, chọn sẵn —
+// trên điện thoại không quét được QR trên chính màn hình) → BankApp; quét mã SePay / PayOS → PaymentPending.
+export function PaymentMethodScreen({ navigation, route }: Props) {
   const { planId } = route.params;
   const { data: plans, isLoading, isError, error, refetch } = useSubscriptionPlans();
-  // Mặc định chuyển khoản qua SePay: tiền vào thẳng tài khoản ngân hàng, xác nhận tự động.
-  const [paymentMethodId, setPaymentMethodId] = useState<SelectablePaymentMethodId>('sepay');
+  const [paymentMethodId, setPaymentMethodId] = useState<SelectablePaymentMethodId>(PAYMENT_METHOD_OPTIONS[0].id);
 
   if (isLoading) {
     return (
@@ -43,6 +95,14 @@ export function PaymentMethodScreen({ navigation, route }: Props) {
 
   const plan = plans.find(option => option.id === planId);
 
+  const pay = () => {
+    if (paymentMethodId === 'bank_app') {
+      navigation.navigate(MAIN_STACK_ROUTES.BANK_APP, { planId });
+      return;
+    }
+    navigation.navigate(MAIN_STACK_ROUTES.PAYMENT_PENDING, { planId, paymentMethodId });
+  };
+
   return (
     <ScreenContainer>
       <ScreenHeader title="Phương thức thanh toán" onBack={() => navigation.goBack()} />
@@ -60,36 +120,21 @@ export function PaymentMethodScreen({ navigation, route }: Props) {
           </AppText>
         </AppCard>
 
-        <View className="gap-sm">
+        <View accessibilityRole="radiogroup" className="gap-sm">
           <AppText variant="bodyMedium">Chọn phương thức</AppText>
-          {PAYMENT_METHOD_OPTIONS.map(method => {
-            const selected = method.id === paymentMethodId;
-            return (
-              <Pressable
-                key={method.id}
-                accessibilityRole="radio"
-                accessibilityLabel={method.label}
-                accessibilityState={{ selected }}
-                onPress={() => setPaymentMethodId(method.id)}
-                className={`flex-row items-center justify-between rounded-card p-md ${
-                  selected ? 'border-2 border-primary bg-primary-soft' : 'border border-border bg-surface'
-                }`}
-              >
-                <AppText variant="body">{method.label}</AppText>
-                {selected ? <Check size={20} color={colors.primary} strokeWidth={2.5} /> : null}
-              </Pressable>
-            );
-          })}
+          {PAYMENT_METHOD_OPTIONS.map(method => (
+            <PaymentMethodRow
+              key={method.id}
+              method={method}
+              selected={method.id === paymentMethodId}
+              onSelect={() => setPaymentMethodId(method.id)}
+            />
+          ))}
         </View>
       </ScrollView>
 
       <View className="gap-sm py-md">
-        <AppButton
-          label={`Thanh toán ${plan?.priceLabel ?? ''}`}
-          onPress={() =>
-            navigation.navigate(MAIN_STACK_ROUTES.PAYMENT_PENDING, { planId, paymentMethodId })
-          }
-        />
+        <AppButton label={`Thanh toán ${plan?.priceLabel ?? ''}`} onPress={pay} />
         <AppText variant="caption" color="secondary" className="text-center">
           Pro chỉ kích hoạt sau khi giao dịch được xác nhận.
         </AppText>

@@ -16,10 +16,12 @@ public class GamificationService : IGamificationService
     private const int ChallengeGraceDays = 7;
 
     private readonly ApplicationDbContext _db;
+    private readonly NotificationWriter _notifications;
 
-    public GamificationService(ApplicationDbContext db)
+    public GamificationService(ApplicationDbContext db, NotificationWriter notifications)
     {
         _db = db;
+        _notifications = notifications;
     }
 
     // ───────────────────────────── Pet ─────────────────────────────
@@ -264,7 +266,7 @@ public class GamificationService : IGamificationService
         await _db.SaveChangesAsync();
         foreach (var uc in finished)
         {
-            await NotificationWriter.TryAddAsync(_db, userId, NotificationCategories.Challenge,
+            await _notifications.TryAddAsync(userId, NotificationCategories.Challenge,
                 $"Hoàn thành thử thách: {uc.Challenge.Title}",
                 uc.Challenge.RewardExp > 0 ? $"Bé Mầm nhận +{uc.Challenge.RewardExp} XP. Làm tốt lắm!" : "Làm tốt lắm!",
                 $"challenge-{uc.ChallengeId}");
@@ -385,7 +387,7 @@ public class GamificationService : IGamificationService
         var body = costume is not null
             ? $"Bạn vừa mở khóa trang phục {costume.Title} cho Bé Mầm."
             : "Tiếp tục ghi bữa và uống đủ nước để Bé Mầm lớn nhanh hơn.";
-        return NotificationWriter.TryAddAsync(_db, userId, NotificationCategories.Pet, $"Bé Mầm đã lên Level {level}", body, $"level-{level}");
+        return _notifications.TryAddAsync(userId, NotificationCategories.Pet, $"Bé Mầm đã lên Level {level}", body, $"level-{level}");
     }
 
     // ───────────────────────────── Huy hiệu ─────────────────────────────
@@ -439,7 +441,7 @@ public class GamificationService : IGamificationService
             if (unlocked == 0) continue;
 
             var badge = GamificationCatalog.Badges.FirstOrDefault(b => b.Id == id);
-            await NotificationWriter.TryAddAsync(_db, userId, NotificationCategories.Badge,
+            await _notifications.TryAddAsync(userId, NotificationCategories.Badge,
                 $"Mở khóa huy hiệu: {badge?.Title ?? id}", badge?.Description ?? string.Empty, $"badge-{id}");
         }
     }

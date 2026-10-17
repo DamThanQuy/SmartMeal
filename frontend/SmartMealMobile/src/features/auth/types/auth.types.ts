@@ -29,12 +29,12 @@ export interface RegisterResult {
   email: string;
   /** Tài khoản vừa tạo; hasCompletedSurvey = false → đi tiếp Health Profile. */
   user: AuthUser;
-  /** true (mock) → màn Register chuyển sang OTP; false → vào thẳng wizard khảo sát: backend không
-   * có xác thực OTP (docs/fetch-api/part1 D2). */
+  /** true (server gửi được email xác minh) → màn Register chuyển sang OTP; false → vào thẳng wizard
+   * khảo sát. */
   requiresOtp: boolean;
 }
 
-/** Mục đích mã OTP: xác thực email lúc đăng ký (chỉ mock — BE không bắt OTP khi đăng ký) hoặc đặt lại mật khẩu. */
+/** Mục đích mã OTP: xác thực email lúc đăng ký (khi server bật xác minh email) hoặc đặt lại mật khẩu. */
 export type OtpPurpose = 'register' | 'reset-password';
 
 export interface VerifyOtpPayload {

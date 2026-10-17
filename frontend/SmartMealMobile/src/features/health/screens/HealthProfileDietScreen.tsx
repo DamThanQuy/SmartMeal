@@ -14,7 +14,7 @@ import { DIETARY_PREFERENCE_OPTIONS } from '../types/health.types';
 type Props = NativeStackScreenProps<AuthStackParamList, 'HealthProfileDiet'>;
 
 // design.md mục 31 bước 7/7 "Chế độ ăn" — chưa có artboard riêng, dựng theo mẫu chip.
-// BR-100. Đây là bước cuối nên "Tiếp tục" gọi luôn mock submit (BR-020→BR-024, BR-030).
+// BR-100. Đây là bước cuối nên "Tiếp tục" gửi luôn hồ sơ lên server (BR-020→BR-024, BR-030).
 export function HealthProfileDietScreen({ navigation }: Props) {
   const data = useHealthProfileForm(state => state.data);
   const updateData = useHealthProfileForm(state => state.updateData);

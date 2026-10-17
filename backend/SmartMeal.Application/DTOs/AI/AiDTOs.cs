@@ -17,6 +17,12 @@ public class SnapAndTrackResponseDto
 
     /// <summary>True khi đây là dữ liệu MẪU (chưa cấu hình Gemini, chỉ ở môi trường phát triển), không phải kết quả thật.</summary>
     public bool IsDemo { get; set; }
+
+    /// <summary>
+    /// URL ảnh vừa phân tích, đã lưu ở máy chủ — app gửi lại trong <c>imageUrl</c> khi ghi món để nhật ký hiện ảnh món.
+    /// Null nếu không lưu được ảnh.
+    /// </summary>
+    public string? ImageUrl { get; set; }
 }
 
 public class FridgeScannerResponseDto
@@ -56,6 +62,13 @@ public class VoiceLogResponseDto
     public double TotalCarbs { get; set; }
     public double TotalProtein { get; set; }
     public double TotalFat { get; set; }
+    public bool IsDemo { get; set; }
+}
+
+/// <summary>Bản chép lời tạm của đoạn đang ghi âm — app hiện dưới nút micro trong lúc người dùng nói.</summary>
+public class VoiceTranscriptDto
+{
+    public string Transcript { get; set; } = string.Empty;
     public bool IsDemo { get; set; }
 }
 

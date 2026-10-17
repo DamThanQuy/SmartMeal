@@ -1,11 +1,7 @@
 import { addWeeks, format, startOfWeek, subWeeks } from 'date-fns';
-import { selectService } from '@/services/api';
 import { mealPlannerApiService } from './mealPlannerService.api';
-import { mealPlannerMockService } from './mealPlannerService.mock';
 
-// Hook/screen chỉ import `mealPlannerService`; EXPO_PUBLIC_USE_MOCK_API quyết định dùng bản mock hay
-// gọi backend thật (xem serviceSelector.ts).
-export const mealPlannerService = selectService('mealPlannerService', mealPlannerMockService, mealPlannerApiService);
+export const mealPlannerService = mealPlannerApiService;
 
 /** Thứ Hai của tuần hiện tại (giờ máy), yyyy-MM-dd. */
 export function currentWeekStartIso(): string {

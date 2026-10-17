@@ -1,5 +1,5 @@
 ---
-description: Scaffold một feature module mới cho SmartMeal (src/features/<feature>/) đúng kiến trúc feature-based + layered, dùng mock data trên nhánh feat/mock-ui
+description: Scaffold một feature module mới cho SmartMeal (src/features/<feature>/) đúng kiến trúc feature-based + layered, gọi API thật (không mock)
 argument-hint: <tên-feature> [artboard1,artboard2,...]
 ---
 
@@ -28,18 +28,15 @@ Giao việc cho agent `rn-feature-scaffolder`, thực hiện đúng thứ tự:
    ├── hooks/
    ├── screens/
    ├── services/
-   ├── mocks/
    ├── types/
    └── index.ts
 ```
 
-5. **Service (mock UI)**:
-   - Trả Promise từ `mocks/`, delay 400–800 ms.
-   - Xử lý theo `MOCK_SCENARIO` trong `src/config/mock.ts` (`success | empty | error | slow`).
-   - Đúng 1 comment `// TODO: replace mock with real API` mỗi service.
-   - Không axios, không URL backend. Chữ ký hàm giữ nguyên như bản gọi API thật sau này.
+5. **Service**: `xService.api.ts` gọi `api` + `ENDPOINTS` (`src/services/api`), `x.mapper.ts` đổi DTO → type FE,
+   `xService.ts` export lại bản API. Không có mock: không tạo `mocks/`/`*.mock.ts`, không seed dữ liệu mẫu.
+   Backend chưa có endpoint → báo lại, không bịa dữ liệu.
 
-6. **Hook**: `useQuery` để đọc, `useMutation` cho hành động; chỉ gọi service, không import mocks.
+6. **Hook**: `useQuery` để đọc, `useMutation` cho hành động; chỉ gọi service.
    Query keys khai báo 1 chỗ trong feature.
 
 7. **Screen**: chỉ render UI + gọi hook + điều hướng. Dùng `ScreenContainer`, `LoadingState`,
@@ -56,14 +53,14 @@ Giao việc cho agent `rn-feature-scaffolder`, thực hiện đúng thứ tự:
 
 10. **Nghiệp vụ trên UI**: kết quả AI ghi "ước tính" (≈) và cần user xác nhận trước khi lưu;
     món chứa dị ứng phải bị lọc hoặc cảnh báo; không khẳng định "an toàn tuyệt đối";
-    premium chỉ mở khi thanh toán thành công. Camera/mic/barcode/Health: chỉ UI + nút giả lập kết quả.
+    premium chỉ mở khi thanh toán thành công. Native chưa dùng được trên Expo Go → báo rõ, không trả kết quả giả.
 
 11. **State dùng chung**: chỉ đưa vào `src/state/{auth,app}` khi nhiều feature thực sự cần.
 
 12. **Kiểm tra & cập nhật**: chạy `npx tsc --noEmit`, `npx expo lint`; cập nhật `docs/ui-progress.md`.
 
 13. **Báo cáo**:
-    - File đã tạo/sửa, nhóm theo layer (screens / hooks / services / mocks / types / navigation).
+    - File đã tạo/sửa, nhóm theo layer (screens / hooks / services / types / navigation).
     - Component/service dùng chung đã tái sử dụng hoặc vừa yêu cầu tạo.
     - Artboard đã dựng và chỗ lệch so với design.
     - BR-xxx đã áp dụng; điểm còn mơ hồ trong `business_rule.md` / `design.md` / API contract cần xác nhận.

@@ -26,7 +26,7 @@ const CALORIE_ADJUSTMENT_BY_GOAL: Record<HealthGoal, number> = {
 
 const MIN_CALORIE_TARGET = 1200;
 
-// BR-030 — tỉ lệ macro cố định (không đổi theo goal) để đơn giản hoá cho MVP mock.
+// BR-030 — tỉ lệ macro cố định (không đổi theo goal) để đơn giản hoá cho MVP.
 const MACRO_RATIO = { protein: 0.25, fat: 0.25, carbs: 0.5 };
 
 const KCAL_PER_GRAM_PROTEIN = 4;

@@ -9,6 +9,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using SmartMeal.API.Hubs;
 using SmartMeal.API.Infrastructure;
 using SmartMeal.Application.Services;
 using SmartMeal.Infrastructure.Data;
@@ -50,6 +51,8 @@ builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
     }
 
     options.UseNpgsql(connectionString);
+    // Thông báo ghi trong transaction chỉ được đẩy real-time sau khi commit (xem NotificationDispatcher).
+    options.AddInterceptors(sp.GetRequiredService<NotificationDispatcher>());
 });
 
 // 3. Dependency Injection
@@ -59,9 +62,10 @@ builder.Services.AddScoped<IAccountService, AccountService>();
 
 builder.Services.Configure<SubscriptionOptions>(builder.Configuration.GetSection(SubscriptionOptions.SectionName));
 
-// File người dùng tải lên (ảnh đại diện) lưu cục bộ dưới Storage:Root và phục vụ tĩnh tại /uploads.
+// File người dùng tải lên (ảnh đại diện, ảnh món ăn AI Snap) lưu cục bộ dưới Storage:Root và phục vụ tĩnh tại /uploads.
 builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.SectionName));
 builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
+builder.Services.AddScoped<IMealPhotoService, MealPhotoService>();
 
 // Gửi email: SMTP thật khi có Smtp:Host và địa chỉ gửi, ngược lại chỉ ghi log (Development in cả mã OTP).
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.SectionName));
@@ -89,6 +93,11 @@ builder.Services.AddScoped<IGroceryService, GroceryService>();
 builder.Services.AddScoped<IHealthSyncService, HealthSyncService>();
 builder.Services.AddScoped<IGamificationService, GamificationService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+// Thông báo trong app: ghi DB (NotificationWriter) rồi đẩy real-time qua SignalR tới thiết bị đang mở app (NotificationsHub).
+builder.Services.AddScoped<NotificationWriter>();
+builder.Services.AddScoped<NotificationDispatcher>();
+builder.Services.AddSingleton<INotificationPublisher, SignalRNotificationPublisher>();
+builder.Services.AddSignalR();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 // PayOS (chuyển khoản VietQR): khóa chỉ đặt qua biến môi trường PayOS__* — thiếu khóa thì phương thức PAYOS trả 503.
 builder.Services.Configure<PayOSOptions>(builder.Configuration.GetSection(PayOSOptions.SectionName));
@@ -152,6 +161,18 @@ builder.Services
         // 401/403 trả envelope ApiResponse thay vì body rỗng.
         bearer.Events = new JwtBearerEvents
         {
+            // WebSocket (SignalR) không gửi được header Authorization: app gửi token qua query access_token. Chỉ nhận ở hub để
+            // token không bị dùng qua URL (dễ lọt vào log) cho các endpoint khác.
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"].ToString();
+                if (accessToken.Length > 0 && context.HttpContext.Request.Path.StartsWithSegments(NotificationsHub.Path))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            },
             // Token còn hạn nhưng tài khoản đã bị xóa → từ chối ngay (thay vì lỗi khóa ngoại ở các thao tác sau).
             OnTokenValidated = async context =>
             {
@@ -264,6 +285,23 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0
         });
     });
+
+    // Phụ đề tạm khi ghi âm (không tính hạn mức AI): app gửi tối đa ~1 lần/giây trong lúc người dùng nói.
+    options.AddPolicy(RateLimitPolicies.VoiceTranscribe, httpContext =>
+    {
+        var permitsPerMinute = httpContext.RequestServices.GetRequiredService<IConfiguration>()
+            .GetValue("RateLimiting:VoiceTranscribePermitsPerMinute", 60);
+        var key = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? httpContext.Connection.RemoteIpAddress?.ToString()
+            ?? "unknown";
+
+        return RateLimitPartition.GetFixedWindowLimiter("voice-transcribe:" + key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = permitsPerMinute,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
 });
 
 // 7. Swagger với JWT
@@ -358,6 +396,7 @@ app.UseAuthorization();
 // Idempotency-Key cho request ghi dữ liệu (hàng đợi offline gửi lại không ghi trùng) — cần biết người dùng nên đặt sau xác thực.
 app.UseMiddleware<IdempotencyMiddleware>();
 app.MapControllers();
+app.MapHub<NotificationsHub>(NotificationsHub.Path);
 
 // Tự áp migration + seed khi khởi động. Development vẫn chạy được khi chưa bật database (để xem Swagger);
 // môi trường khác dừng ngay để không phục vụ trên schema cũ.

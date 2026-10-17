@@ -1,4 +1,3 @@
-import { ENV } from '@/config/env';
 import { MAIN_STACK_ROUTES, ROOT_ROUTES } from '@/constants/routes';
 import { healthProfileService } from '@/features/health';
 import { premiumService } from '@/features/premium';
@@ -64,12 +63,6 @@ export async function openSession(user: AuthUser): Promise<SessionOpenResult> {
  */
 export async function bootstrapSession(): Promise<void> {
   const auth = useAuthStore.getState();
-  // Mock không có phiên nào để khôi phục.
-  if (ENV.useMockApi) {
-    auth.setBootstrapStatus('ready');
-    return;
-  }
-
   try {
     const token = await tokenStorage.get();
     if (!token) {
@@ -153,11 +146,9 @@ function hasSession(state: AuthState): boolean {
  * Gọi 1 lần ở App.tsx: đăng ký handler 401 và tự dọn dữ liệu mỗi khi phiên kết thúc (đăng xuất
  * chủ động, "Đăng nhập lại" sau khi hết hạn, thoát Guest, xóa dữ liệu...) — dù nút đăng xuất nằm ở
  * màn nào cũng chỉ cần gọi authStore.logout(). Dọn: token, cache TanStack Query và dữ liệu người
- * dùng cục bộ (resetUserData). Chế độ mock giữ hành vi cũ (không dọn gì). Trả hàm hủy đăng ký.
+ * dùng cục bộ (resetUserData). Trả hàm hủy đăng ký.
  */
 export function startSessionLifecycle(): () => void {
-  if (ENV.useMockApi) return () => undefined;
-
   setUnauthorizedHandler(handleSessionExpired);
   const unsubscribe = useAuthStore.subscribe((state, previous) => {
     if (!hasSession(previous) || hasSession(state)) return;

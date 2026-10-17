@@ -4,7 +4,7 @@
  * review PR #9 S1); đọc nhãn và quét tủ lạnh gửi ảnh thật qua multipart (S2/S3). Backend Development
  * chưa cấu hình Gemini trả dữ liệu mẫu và phải gắn cờ isDemo. Chỉ chạy khi có LIVE_API_URL (xem test-utils/live.ts).
  */
-import { describeLive, installLiveBackend, uniqueEmail, writeLiveFixture } from '../../test-utils/live';
+import { activateProForTesting, describeLive, installLiveBackend, uniqueEmail, writeLiveFixture } from '../../test-utils/live';
 
 type AuthModule = typeof import('@/features/auth/services/authService');
 type HealthModule = typeof import('@/features/health/services/healthProfileService');
@@ -47,6 +47,8 @@ describeLive('scanner (backend thật)', () => {
       activityLevel: 'light',
     });
     useAuthStore.setState({ pendingUser: null, user, isAuthenticated: true });
+    // Quét tủ lạnh là tính năng Pro — máy chủ chặn tài khoản Free.
+    await activateProForTesting();
   }, 30_000);
 
   test('mã vạch không có trong CSDL → null để màn chuyển sang "Không tìm thấy sản phẩm"', async () => {

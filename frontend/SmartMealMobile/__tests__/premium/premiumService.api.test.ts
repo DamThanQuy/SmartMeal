@@ -5,6 +5,10 @@
  */
 import type { MembershipSnapshot } from '@/state/premium/premiumStore';
 
+// Mỗi test nạp lại module (jest.resetModules) — lần chạy đầu chưa có cache biên dịch, chạy song song với suite khác thì
+// test đầu tiên có thể quá 5 giây mặc định.
+jest.setTimeout(15000);
+
 const FREE: MembershipSnapshot = { status: 'free', planId: null, expiresAtIso: null };
 
 function status(snapshot: MembershipSnapshot) {
@@ -39,7 +43,7 @@ function loadService(appEnv: 'development' | 'production' = 'development') {
   const linking = { openURL: jest.fn().mockResolvedValue(undefined) };
 
   jest.resetModules();
-  jest.doMock('@/config/env', () => ({ ENV: { appEnv, useMockApi: false } }));
+  jest.doMock('@/config/env', () => ({ ENV: { appEnv } }));
   jest.doMock('react-native', () => ({ Linking: linking }));
   jest.doMock('@/services/api', () => ({
     api: apiMock,
@@ -172,6 +176,72 @@ describe('checkout SePay (chuyển khoản VietQR vào tài khoản ngân hàng)
   });
 });
 
+describe('checkout mở app ngân hàng (BANK_APP, không QR)', () => {
+  const BANK_APP_SESSION = { ...SEPAY_SESSION, paymentUrl: '', qrCodeUrl: null as unknown as string };
+
+  test('gửi BANK_APP, báo số tài khoản + nội dung + mã VietQR của ngân hàng nhận (không QR) rồi chờ server xác nhận', async () => {
+    jest.useFakeTimers();
+    const { service, apiMock, CONFIRM_POLL_INTERVAL_MS } = loadService('production');
+    routeSePay(
+      apiMock,
+      [{ status: 'Pending', isPaid: false }, { status: 'Paid', isPaid: true }],
+      { ...BANK_APP_SESSION, vietQrBankCode: 'mb' } as typeof BANK_APP_SESSION,
+    );
+    const onSession = jest.fn();
+
+    const pending = service.checkout?.('monthly', 'bank_app', { onSession });
+    await jest.advanceTimersByTimeAsync(CONFIRM_POLL_INTERVAL_MS * 2);
+    const result = await pending;
+
+    expect(apiMock.post).toHaveBeenCalledWith('/subscription/create-checkout-session', {
+      planId: 'PRO_MONTHLY',
+      paymentMethod: 'BANK_APP',
+    });
+    expect(onSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        qrCodeUrl: null,
+        bankTransfer: expect.objectContaining({
+          vietQrBankCode: 'mb',
+          accountNumber: '0123456789',
+          transferContent: 'SM7K2P9QXA',
+        }),
+      }),
+    );
+    expect(result).toMatchObject({ paymentMethodId: 'bank_app', membership: { status: 'premium' } });
+  });
+
+  test('"Tôi đã chuyển khoản"/quay lại app: trigger hỏi ngay không chờ hết nhịp; mỗi lần còn chờ thì báo onPending', async () => {
+    jest.useFakeTimers();
+    const { service, apiMock, CONFIRM_POLL_INTERVAL_MS } = loadService('production');
+    const { PaymentCheckTrigger } =
+      require('@/features/premium/services/paymentCheckTrigger') as typeof import('@/features/premium/services/paymentCheckTrigger');
+    routeSePay(
+      apiMock,
+      [{ status: 'Pending', isPaid: false }, { status: 'Pending', isPaid: false }, { status: 'Paid', isPaid: true }],
+      BANK_APP_SESSION,
+    );
+    const trigger = new PaymentCheckTrigger();
+    const onPending = jest.fn();
+    const checkStatusCalls = () =>
+      apiMock.get.mock.calls.filter(([url]) => String(url).startsWith('/subscription/check-status/')).length;
+
+    const pending = service.checkout?.('monthly', 'bank_app', { trigger, onPending });
+    await jest.advanceTimersByTimeAsync(0);
+    expect(checkStatusCalls()).toBe(1);
+    expect(onPending).toHaveBeenCalledTimes(1);
+
+    trigger.checkNow();                                            // chưa tới 3 giây vẫn hỏi lại ngay
+    await jest.advanceTimersByTimeAsync(0);
+    expect(checkStatusCalls()).toBe(2);
+    expect(onPending).toHaveBeenCalledTimes(2);
+
+    await jest.advanceTimersByTimeAsync(CONFIRM_POLL_INTERVAL_MS); // nhịp thường vẫn chạy
+    await expect(pending).resolves.toMatchObject({ membership: { status: 'premium' } });
+    expect(checkStatusCalls()).toBe(3);
+    expect(onPending).toHaveBeenCalledTimes(2);                    // đã trả tiền thì không báo "còn chờ"
+  });
+});
+
 describe('checkout PayOS (cổng thật: hiện QR, server hỏi PayOS)', () => {
   const PAYOS_SESSION = {
     sessionId: 'PAYOS_176000000000001',
@@ -227,6 +297,19 @@ describe('checkout PayOS (cổng thật: hiện QR, server hỏi PayOS)', () => 
       amountVnd: 79000,
     });
     expect(result).toMatchObject({ paymentMethodId: 'payos', membership: { status: 'premium', expiresAtIso: '2026-11-02' } });
+  });
+
+  test('gửi kèm deep link của app để PayOS chuyển về đúng app (Expo Go: exp://…/--/payment-result)', async () => {
+    const { service, apiMock } = loadService('development');
+    routePayOS(apiMock, [{ status: 'Paid', isPaid: true }]);
+
+    await service.checkout?.('monthly', 'payos', { returnUrl: 'exp://192.168.1.5:8081/--/payment-result' });
+
+    expect(apiMock.post).toHaveBeenCalledWith('/subscription/create-checkout-session', {
+      planId: 'PRO_MONTHLY',
+      paymentMethod: 'PAYOS',
+      returnUrl: 'exp://192.168.1.5:8081/--/payment-result',
+    });
   });
 
   test('PayOS báo đơn bị hủy/hết hạn → PaymentFailedError', async () => {

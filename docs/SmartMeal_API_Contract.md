@@ -19,7 +19,7 @@
 - **Enum** là chuỗi, so khớp không phân biệt hoa/thường và lưu/trả dạng chuẩn: `mealType` `Breakfast|Lunch|Dinner|Snack`; `logMethod` `Manual|AiImage|Voice|Barcode|Ocr`; xem cột "Ghi chú" của từng DTO.
 - **Danh mục theo mã**: `/meta/allergies|medical-conditions|tags` trả `{ id, code, name, description }`. Client gửi/nhận **id** nhưng nên ánh xạ theo **`code`** ổn định (vd. `seafood`, `peanut`, `diabetes`, `keto`), không hard-code id.
 - **Idempotency**: mọi `POST/PUT/PATCH/DELETE` của người dùng đã đăng nhập nhận header tùy chọn `Idempotency-Key` (1–100 ký tự `A-Z a-z 0-9 . _ : -`). Lần đầu chạy bình thường và phản hồi được lưu 24 giờ; gửi lại **cùng khóa + cùng nội dung** nhận lại đúng phản hồi đó kèm header `Idempotency-Replayed: true`, không ghi thêm. Cùng khóa khác nội dung → `409` `idempotency_key_reused`; lần đầu chưa xong → `409` `idempotency_in_progress`; khóa sai định dạng → `400` `idempotency_key_invalid`. Lỗi 5xx và lỗi tạm thời (408/409/423/429) không được lưu. App dùng cho hàng đợi offline khi ghi nhật ký (BR-261). Không gửi header thì như cũ (health-sync theo `(ngày, nguồn)`, yêu thích thực phẩm và webhook vốn idempotent).
-- **Upload**: `POST /auth/avatar` (field `file`, jpg/png/webp ≤ `Storage:MaxAvatarBytes`, mặc định 2 MB), `POST /ai/snap-and-track`, `/ai/fridge-scanner` và `/ai/scan-label` (field `image`, ≤ `Ai:MaxImageBytes`, mặc định 5 MB), `POST /ai/voice-log/audio` (field `audio`, WAV/AAC/M4A/MP3/OGG/FLAC/WebM, ≤ `Ai:MaxAudioBytes`, mặc định 10 MB). Loại file được nhận bằng nội dung file, không tin `Content-Type`.
+- **Upload**: `POST /auth/avatar` (field `file`, jpg/png/webp ≤ `Storage:MaxAvatarBytes`, mặc định 2 MB), `POST /ai/snap-and-track`, `/ai/fridge-scanner` và `/ai/scan-label` (field `image`, ≤ `Ai:MaxImageBytes`, mặc định 5 MB), `POST /ai/voice-log/audio` và `POST /ai/voice-log/transcribe` (field `audio`, WAV/AAC/M4A/MP3/OGG/FLAC/WebM, ≤ `Ai:MaxAudioBytes`, mặc định 10 MB). Loại file được nhận bằng nội dung file, không tin `Content-Type`.
 
 ## 2. Danh sách endpoint
 
@@ -38,6 +38,7 @@
 | Xác thực & tài khoản | GET | `/api/auth/me` | Cần đăng nhập | Thông tin tài khoản hiện tại (gồm gói Pro, đã làm khảo sát sức khỏe chưa). |
 | Xác thực & tài khoản | PUT | `/api/auth/profile` | Cần đăng nhập | Sửa họ tên / ảnh đại diện. |
 | Xác thực & tài khoản | POST | `/api/auth/avatar` | Cần đăng nhập | Tải ảnh đại diện (multipart, trường `file`; JPG/PNG/WebP, tối đa 2 MB) |
+| Xác thực & tài khoản | DELETE | `/api/auth/avatar` | Cần đăng nhập | Xóa ảnh đại diện (về chữ cái đầu của tên); file do hệ thống lưu bị xóa luôn. |
 | Xác thực & tài khoản | DELETE | `/api/auth/account` | Cần đăng nhập | Xóa vĩnh viễn tài khoản và dữ liệu (BR-271) |
 | Dữ liệu cá nhân | DELETE | `/api/me/data` | Cần đăng nhập | Xóa dữ liệu cá nhân (nhật ký, nước, hồ sơ sức khỏe và cân nặng, thực đơn, danh sách đi chợ, yêu thích/bộ sưu tập, pet và thử thách) nhưng giữ tài khoản |
 | Hồ sơ sức khỏe | POST | `/api/healthprofile/survey` | Cần đăng nhập | Khảo sát sức khỏe: tạo hồ sơ hoặc ghi đè toàn bộ |
@@ -98,10 +99,11 @@
 | Đi chợ | DELETE | `/api/grocery/clear-checked` | Cần đăng nhập | Dọn dẹp toàn bộ các món đồ đã đánh dấu mua (Clear Checked Items). |
 | Đi chợ | POST | `/api/grocery/complete` | Cần đăng nhập | Hoàn tất mua sắm: lưu chi phí thực tế, bỏ món đã mua, giữ/bỏ món chưa mua và có thể cộng thực đơn kỳ kế tiếp — một transaction. |
 | AI | GET | `/api/ai/quota` | Cần đăng nhập | Hạn mức AI còn lại hôm nay. |
-| AI | POST | `/api/ai/snap-and-track` | Cần đăng nhập | AI Snap & Track: ảnh đĩa thức ăn (multipart, trường `image`; JPG/PNG/WebP, tối đa 5 MB). |
+| AI | POST | `/api/ai/snap-and-track` | Cần đăng nhập | AI Snap & Track: ảnh đĩa thức ăn (multipart, trường `image`; JPG/PNG/WebP, tối đa 5 MB); ảnh được lưu lại, trả `imageUrl`. |
 | AI | POST | `/api/ai/fridge-scanner` | Cần đăng nhập | Fridge Scanner (**chỉ Pro**, Free → `403 pro_required`): ảnh nguyên liệu trong tủ lạnh (multipart, trường `image`). |
 | AI | POST | `/api/ai/voice-log` | Cần đăng nhập | Voice Log: văn bản (người dùng gõ hoặc đã nhận dạng trên máy) → món ăn kèm dinh dưỡng. |
 | AI | POST | `/api/ai/voice-log/audio` | Cần đăng nhập | Voice Log từ file ghi âm (multipart, trường `audio`, tối đa 10 MB): AI chép lời rồi bóc tách món; trả `transcript`. |
+| AI | POST | `/api/ai/voice-log/transcribe` | Cần đăng nhập | Phụ đề tạm khi đang ghi âm (multipart, trường `audio`): chỉ chép lời, không trừ lượt; giới hạn tần suất theo người dùng. |
 | AI | POST | `/api/ai/check-safety` | Cần đăng nhập | Kiểm tra an toàn sản phẩm theo dị ứng/bệnh lý của người dùng (BR-140); `barcode` tra trong CSDL (`404` `product_not_found` khi chưa có) |
 | AI | POST | `/api/ai/scan-label` | Cần đăng nhập | Đọc nhãn dinh dưỡng từ ảnh (multipart, trường `image`) rồi kiểm tra an toàn; không tính hạn mức. |
 | Bé Mầm: XP, thử thách, huy hiệu | GET | `/api/gamification/pet` | Cần đăng nhập | Trạng thái pet: cấp độ, XP, nhiệm vụ hôm nay |
@@ -114,6 +116,7 @@
 | Thông báo | GET | `/api/notifications` | Cần đăng nhập | Thông báo trong app (mới → cũ) kèm `unreadCount`; `date`, `limit` (1–100, mặc định 50). |
 | Thông báo | PATCH | `/api/notifications/{id}/read` | Cần đăng nhập | Đánh dấu một thông báo đã đọc (idempotent); của người khác → 404. |
 | Thông báo | POST | `/api/notifications/read-all` | Cần đăng nhập | Đánh dấu đã đọc tất cả; trả số thông báo vừa đánh dấu. |
+| Thông báo | WebSocket | `/api/hubs/notifications` | Cần đăng nhập | Hub SignalR: server đẩy sự kiện `notification` (NotificationDto) ngay khi tạo thông báo mới — xem mục "Thông báo real-time". |
 | Gói Pro & thanh toán | GET | `/api/subscription/plans` | Công khai | Bảng giá các gói Pro (giá, chu kỳ, quyền lợi) — nguồn duy nhất cho giá. |
 | Gói Pro & thanh toán | POST | `/api/subscription/create-checkout-session` | Cần đăng nhập | Tạo phiên thanh toán |
 | Gói Pro & thanh toán | POST | `/api/subscription/activate-mock` | Cần đăng nhập | Chỉ dùng khi phát triển: mô phỏng cổng thanh toán xác nhận |
@@ -244,6 +247,13 @@ Tải ảnh đại diện (multipart, trường `file`; JPG/PNG/WebP, tối đa 
 - **Quyền**: Cần đăng nhập
 - **Body (multipart/form-data)**: field `file` (file)
 - **Response `data`**: [UserDto](#schema-userdto)
+
+#### `DELETE /api/auth/avatar`
+
+Xóa ảnh đại diện (app hiện chữ cái đầu của tên). Ảnh do hệ thống lưu (`/uploads/avatars/...`) bị xóa khỏi ổ đĩa; ảnh ngoài (Google) chỉ bỏ liên kết. Chưa có ảnh thì vẫn trả thành công.
+
+- **Quyền**: Cần đăng nhập
+- **Response `data`**: [UserDto](#schema-userdto) (`avatarUrl = null`)
 
 #### `DELETE /api/auth/account`
 
@@ -897,7 +907,9 @@ Hoàn tất mua sắm: lưu chi phí thực tế (BR-174), bỏ các món đã m
 
 > Chưa cấu hình `Gemini:ApiKey`: ở Development trả dữ liệu **mẫu** với `isDemo: true` (cờ `Ai:AllowDemoFallback`); nơi khác trả `503` (chưa cấu hình). Đã có khóa mà Gemini lỗi thì trả `502` ở mọi môi trường (chỉ trả dữ liệu mẫu khi đặt `Ai:AllowDemoFallback=true`) thay vì giả vờ thành công. Model chính bị ngừng (404) hoặc quá tải (429/5xx) thì backend thử lần lượt các model trong `Gemini:FallbackModels`.
 
-> `voice-log` nhận **văn bản**; `voice-log/audio` nhận **file ghi âm** (≤ `Ai:MaxAudioBytes`, 10 MB) và trả thêm `transcript` — đoạn ghi âm không nghe ra món nào → `400` `voice_unrecognized` (không trừ lượt). Ảnh `snap-and-track`/`fridge-scanner`/`scan-label` ≤ `Ai:MaxImageBytes` (5 MB), chỉ JPG/PNG/WebP.
+> `voice-log` nhận **văn bản**; `voice-log/audio` nhận **file ghi âm** (≤ `Ai:MaxAudioBytes`, 10 MB) và trả thêm `transcript` — đoạn ghi âm không nghe ra món nào → `400` `voice_unrecognized` (không trừ lượt). `voice-log/transcribe` chỉ chép lời đoạn đang ghi (phụ đề dưới micro): **không trừ lượt** nhưng hết lượt vẫn trả `429` `ai_quota_exceeded`, và giới hạn tần suất theo người dùng (policy `voice-transcribe`, `RateLimiting:VoiceTranscribePermitsPerMinute`, mặc định 60/phút).
+
+> `snap-and-track` thành công thì ảnh được lưu ở `/uploads/meals/{userId}/...` và trả trong `imageUrl`; app gửi lại `imageUrl` khi ghi món để nhật ký hiện ảnh. Xóa món cuối cùng dùng ảnh → file ảnh bị xóa; `DELETE /me/data` và xóa tài khoản xóa toàn bộ ảnh món ăn của người dùng. Ảnh `snap-and-track`/`fridge-scanner`/`scan-label` ≤ `Ai:MaxImageBytes` (5 MB), chỉ JPG/PNG/WebP.
 
 > `check-safety` với `barcode`: tra sản phẩm trong **CSDL** (món hệ thống hoặc món người dùng tự nhập kèm mã vạch), không để AI đoán; `source = "database"`, `product` có thông tin sản phẩm, dinh dưỡng tính trên 100 g (`basis = "per100g"`). Chưa có sản phẩm → `404` `product_not_found` (trừ khi gửi kèm `ocrRawText`, khi đó AI phân tích văn bản nhãn). Cảnh báo dị ứng theo hồ sơ (`DANGER`) và cảnh báo vượt ngưỡng trên 100 g ở mục `ProductSafety` (`WARNING`, hoặc `DANGER` nếu người dùng có bệnh lý liên quan) do server tính bằng code.
 
@@ -910,7 +922,7 @@ Hạn mức AI còn lại hôm nay.
 
 #### `POST /api/ai/snap-and-track`
 
-AI Snap & Track: ảnh đĩa thức ăn (multipart, trường `image`; JPG/PNG/WebP, tối đa 5 MB).
+AI Snap & Track: ảnh đĩa thức ăn (multipart, trường `image`; JPG/PNG/WebP, tối đa 5 MB). Phân tích thành công thì ảnh được lưu lại và trả về trong `imageUrl` để app gắn vào món khi ghi nhật ký.
 
 - **Quyền**: Cần đăng nhập
 - **Body (multipart/form-data)**: field `image` (file)
@@ -939,6 +951,14 @@ Voice Log từ file ghi âm (multipart, trường `audio`; WAV/AAC/M4A/MP3/OGG/W
 - **Quyền**: Cần đăng nhập
 - **Body (multipart/form-data)**: field `audio` (file)
 - **Response `data`**: [VoiceLogResponseDto](#schema-voicelogresponsedto)
+
+#### `POST /api/ai/voice-log/transcribe`
+
+Phụ đề tạm khi đang ghi âm (multipart, trường `audio`): app gửi lại đoạn đã ghi vài giây một lần và hiện bản chép lời dưới nút micro. Chỉ chép lời, không bóc món; không trừ lượt AI (lượt được tính ở `voice-log/audio` khi người dùng nói xong) nhưng hết lượt thì trả `429` `ai_quota_exceeded`. Giới hạn tần suất theo người dùng (policy `voice-transcribe`).
+
+- **Quyền**: Cần đăng nhập
+- **Body (multipart/form-data)**: field `audio` (file)
+- **Response `data`**: [VoiceTranscriptDto](#schema-voicetranscriptdto)
 
 #### `POST /api/ai/check-safety`
 
@@ -1049,6 +1069,17 @@ Cởi trang phục đang mặc.
 
 > `GET /notifications` đánh giá lại tiến trình Bé Mầm như các endpoint gamification (`date` = hôm nay theo máy, ±1 ngày quanh UTC) và dọn thông báo quá 90 ngày. "Xóa dữ liệu cá nhân" xóa cả thông báo.
 
+> Sự kiện được đánh giá **ngay lúc ghi dữ liệu**, không đợi app đọc lại: ghi/sửa món (`/nutritiondiary/log`, `/log/batch`, `PUT /items/{id}` — theo ngày của món), uống nước (`/nutritiondiary/water`), đồng bộ bước (`/health-sync/steps-and-calories`) và đi chợ đều chạy đánh giá gamification sau khi lưu (lỗi đánh giá không làm hỏng thao tác chính).
+
+#### Thông báo real-time — `WebSocket /api/hubs/notifications`
+
+Hub SignalR (giao thức JSON). Mỗi thông báo mới được đẩy ngay tới **mọi thiết bị đang kết nối của đúng người dùng đó**, đúng một lần, và chỉ sau khi đã lưu vào database (thông báo ghi trong transaction — vd. lên cấp cùng lúc cộng XP — được gửi sau commit).
+
+- **Quyền**: Cần đăng nhập. App native gửi `Authorization: Bearer <token>` khi mở WebSocket; trình duyệt (Expo web) không gửi được header nên dùng query `?access_token=<token>` — query này **chỉ** được chấp nhận ở đường dẫn hub.
+- **Kết nối**: WebSocket, bỏ negotiate (`skipNegotiation: true`). Client chỉ nghe, không gọi method nào lên hub.
+- **Sự kiện server → app**: `notification` — payload là [NotificationDto](#schema-notificationdto), giống một phần tử của `GET /notifications`.
+- Không kết nối (app tắt, mất mạng) thì không nhận gì — thông báo vẫn nằm trong `GET /notifications`. App đọc lại danh sách mỗi lần kết nối (lại) để không sót.
+
 #### `GET /api/notifications`
 
 Thông báo của người dùng (mới → cũ) kèm số chưa đọc.
@@ -1081,13 +1112,17 @@ Thông báo của người dùng (mới → cũ) kèm số chưa đọc.
 
 ### Gói Pro & thanh toán
 
-> Gói: `PRO_MONTHLY` 79.000đ / 30 ngày, `PRO_YEARLY` 699.000đ / 365 ngày. Phương thức: `SEPAY`, `PAYOS` (đều là chuyển khoản VietQR). Quyền lợi Pro (máy chủ kiểm tra): AI không giới hạn lượt (Free 5 lượt/ngày), quét tủ lạnh (`/ai/fridge-scanner`) và tự tạo thực đơn tuần (`/mealplanner/auto-generate`) — Free gọi hai tính năng này nhận `403 pro_required`.
+> Gói: `PRO_MONTHLY` 79.000đ / 30 ngày, `PRO_YEARLY` 699.000đ / 365 ngày. Phương thức: `BANK_APP` (mở thẳng app ngân hàng, điền sẵn thông tin), `SEPAY` và `PAYOS` (chuyển khoản VietQR). Quyền lợi Pro (máy chủ kiểm tra): AI không giới hạn lượt (Free 5 lượt/ngày), quét tủ lạnh (`/ai/fridge-scanner`) và tự tạo thực đơn tuần (`/mealplanner/auto-generate`) — Free gọi hai tính năng này nhận `403 pro_required`.
 
 > Pro chỉ kích hoạt khi **cổng thanh toán xác nhận đã nhận tiền** (webhook của cổng hoặc máy chủ tự hỏi cổng) — BR-241/242. Mọi đường xác nhận dùng chung một bước idempotent nên Pro không bị cộng hạn hai lần. Các cổng giả lập trước đây (`VNPAY`/`MOMO`/`STRIPE` với URL tự dựng và webhook `/subscription/webhook` tự định nghĩa) đã bị bỏ.
 
 > **SePay** (`paymentMethod = SEPAY`): người dùng chuyển khoản thẳng vào tài khoản ngân hàng đã liên kết SePay. `create-checkout-session` trả `orderCode`, `qrCodeUrl` (ảnh VietQR đã điền sẵn số tiền và nội dung), `bankCode`, `accountNumber`, `accountName`, `transferContent` (mã thanh toán = `SePay:PaymentCodePrefix` + 8 ký tự, cũng là `sessionId`) và `expiresAt` (hạn hiển thị mã; tiền tới sau hạn vẫn được ghi nhận). Pro kích hoạt khi tiền vào đúng mã với số tiền đủ — qua `POST /subscription/sepay-webhook` (header `Authorization: Apikey {SePay:WebhookApiKey}`, sai → `401`) **hoặc** khi app gọi `check-status` và máy chủ tự hỏi API giao dịch của SePay (`SePay:ApiToken`, tối đa 1 lần / `SePay:StatusCheckIntervalSeconds` mỗi đơn). Mã được tìm cả trong trường `code` của SePay lẫn trong nội dung chuyển khoản (không phân biệt hoa thường, bỏ qua chữ/dấu ngân hàng chèn thêm). Chuyển thiếu tiền, tiền ra, nội dung không khớp đơn nào → `200 {"success": true}` nhưng không kích hoạt (ghi log để đối soát). Thiếu tài khoản nhận hoặc không có cách xác nhận nào → `503 sepay_not_configured`.
 
-> **PayOS** (`paymentMethod = PAYOS`, chuyển khoản VietQR) là cổng thật: `create-checkout-session` gọi PayOS tạo link và trả thêm `orderCode`, `qrCode` (chuỗi VietQR) và `qrCodeUrl` (ảnh QR). Pro chỉ kích hoạt khi PayOS xác nhận — qua `POST /subscription/payos-webhook` (chữ ký kiểm bằng `PayOS:ChecksumKey`, sai → `401`; webhook thử với mã đơn lạ → `200`) **hoặc** khi app gọi `GET /subscription/check-status/{orderCode}` và máy chủ hỏi thẳng PayOS thấy `PAID` với số tiền đủ (dùng được khi webhook không tới được máy chủ, vd. máy dev). Cả hai đường dùng chung một bước xác nhận idempotent nên Pro không bị cộng hạn hai lần. Thiếu khóa PayOS → `503 payos_not_configured`; PayOS lỗi khi tạo link → `502 payos_error`.
+> `BANK_TRANSFER` (chuyển khoản qua số tài khoản) **đã bỏ** — gộp vào `BANK_APP` (số tài khoản vẫn xem được ở đó). Không tạo đơn mới (`400`), nhưng webhook/`check-status` vẫn khớp tiền cho đơn `BANK_TRANSFER` cũ.
+
+> **Mở app ngân hàng** (`paymentMethod = BANK_APP`): cùng tài khoản SePay, cùng cách sinh mã nội dung và xác nhận như `SEPAY` nhưng không có QR (`qrCodeUrl = null`, `paymentUrl = ""`); lịch sử ghi `BANK_APP`. Mọi đơn chuyển khoản SePay trả thêm `vietQrBankCode` — mã VietQR viết thường của ngân hàng nhận (đổi từ `SePay:BankCode`, vd. `MBBank` → `mb`; không nhận ra → `null`). App ghép link `https://dl.vietqr.io/pay?app={appId}&ba={accountNumber}@{vietQrBankCode}&am={amountVnd}&tn={transferContent}&bn={accountName}&url={trang quay về}` để mở app ngân hàng người dùng chọn; app có "tự điền" (VietinBank, BIDV, OCB, ACB, MB) nhận sẵn thông tin, app khác chỉ được mở lên. `url` bắt buộc là http(s) (dùng `GET /subscription/payment-return`).
+
+> **PayOS** (`paymentMethod = PAYOS`, chuyển khoản VietQR) là cổng thật: `create-checkout-session` gọi PayOS tạo link và trả thêm `orderCode`, `qrCode` (chuỗi VietQR) và `qrCodeUrl` (ảnh QR). Pro chỉ kích hoạt khi PayOS xác nhận — qua `POST /subscription/payos-webhook` (chữ ký kiểm bằng `PayOS:ChecksumKey`, sai → `401`; webhook thử với mã đơn lạ → `200`) **hoặc** khi app gọi `GET /subscription/check-status/{orderCode}` và máy chủ hỏi thẳng PayOS thấy `PAID` với số tiền đủ (dùng được khi webhook không tới được máy chủ, vd. máy dev). Cả hai đường dùng chung một bước xác nhận idempotent nên Pro không bị cộng hạn hai lần. Thiếu khóa PayOS → `503 payos_not_configured`; PayOS lỗi khi tạo link → `502 payos_error`. App gửi kèm `returnUrl` là deep link của chính nó (`smartmealmobile://payment-result`; Expo Go `exp://…/--/payment-result`) để PayOS chuyển về đúng app; máy chủ chỉ nhận scheme `smartmealmobile` (và `exp`/`exps` ở Development), URL khác → `400 invalid_return_url`. App không điều hướng theo link này — màn chờ tự hỏi `check-status` khi app được mở lại.
 
 > `activate-mock` mô phỏng cổng thanh toán, **chỉ chạy ở Development** (hoặc khi `Subscription:AllowMockActivation = true`); nơi khác trả `404`. Gia hạn khi còn hạn thì cộng thêm vào cuối kỳ hiện tại.
 
@@ -1102,7 +1137,15 @@ Bảng giá các gói Pro (giá, chu kỳ, quyền lợi) — nguồn duy nhất
 
 #### `POST /api/subscription/create-checkout-session`
 
-Tạo phiên thanh toán (`SEPAY` hoặc `PAYOS`). Gói Pro chỉ được kích hoạt khi cổng thanh toán xác nhận đã nhận tiền (BR-241/242).
+Tạo phiên thanh toán (`BANK_APP`, `SEPAY` hoặc `PAYOS`).
+
+#### `GET /api/subscription/payment-return`
+
+Trang HTML app ngân hàng mở sau khi chuyển khoản (tham số `url` của link `dl.vietqr.io` — phải là http(s) thì ngân hàng mới điền sẵn). Chỉ có nút "Quay lại SmartMeal" tới `to` nếu `to` là deep link của app (`smartmealmobile://…`, Expo Go `exp://…` chỉ ở Development), ngược lại tới `smartmealmobile://payment-result`. Không xác nhận gì — Pro chỉ bật khi tiền vào.
+
+- **Quyền**: Công khai
+- **Query**: `to` (string, tùy chọn)
+- **Response**: `text/html` Gói Pro chỉ được kích hoạt khi cổng thanh toán xác nhận đã nhận tiền (BR-241/242).
 
 - **Quyền**: Cần đăng nhập
 - **Body (JSON)**: [CreateCheckoutSessionRequestDto](#schema-createcheckoutsessionrequestdto)
@@ -1185,7 +1228,7 @@ Khóa bí mật chỉ đặt qua biến môi trường (`Muc__Khoa`, dùng `__` 
 | `SePay:WebhookApiKey` / `SePay:ApiToken` | (trống) | **Bí mật** — chỉ đặt qua biến môi trường `SePay__*`. API Key xác thực webhook; API Token để máy chủ tự hỏi giao dịch khi webhook không tới được (máy dev). Cần ít nhất một trong hai. |
 | `SePay:PaymentCodePrefix` / `ExpiryMinutes` / `StatusCheckIntervalSeconds` | `SM` / 15 / 10 | Tiền tố mã thanh toán (đặt trùng "cấu trúc mã thanh toán" trên SePay), thời gian hiển thị mã QR, khoảng cách tối thiểu giữa hai lần hỏi API SePay cho một đơn. |
 | `PayOS:ClientId` / `PayOS:ApiKey` / `PayOS:ChecksumKey` | (trống = tắt PAYOS, trả 503) | Khóa PayOS (my.payos.vn → Kênh thanh toán). **Bí mật** — chỉ đặt qua biến môi trường `PayOS__*`. |
-| `PayOS:ReturnUrl` / `PayOS:CancelUrl` | `smartmeal://payment-success` / `smartmeal://payment-cancel` | Trang PayOS chuyển về sau khi thanh toán / khi hủy. |
+| `PayOS:ReturnUrl` / `PayOS:CancelUrl` | `smartmealmobile://payment-result` | Trang PayOS chuyển về sau khi thanh toán / khi hủy (deep link của app, scheme `smartmealmobile` trong app.json) — dùng khi app không gửi `returnUrl`. |
 | `Google:ClientId` | (trống = tắt đăng nhập Google, trả 503) | Web OAuth 2.0 Client ID dùng làm audience khi xác minh ID token; trùng `EXPO_PUBLIC_GOOGLE_CLIENT_ID` của app. Không phải bí mật. |
 | `OpenFoodFacts:Enabled` / `BaseUrl` / `UserAgent` / `TimeoutSeconds` | true / `https://world.openfoodfacts.org` / `SmartMeal/1.0 (PRM393 student project)` / 8 | Tra mã vạch chưa có trong CSDL qua Open Food Facts (không cần khóa). Lỗi mạng/timeout coi như không tìm thấy. |
 | `Gemini:ApiKey` / `Gemini:Model` / `Gemini:FallbackModels` | (trống) / `gemini-3.8-flash` / `gemini-flash-lite-latest` | Khóa Gemini, model multimodal dùng cho ảnh, text, audio và các model dự phòng (cách nhau bằng dấu phẩy, rỗng = tắt) khi model chính bị ngừng (404) hoặc quá tải (429/5xx). Key chỉ đặt ở backend bằng biến môi trường/secret manager; trống: AI trả dữ liệu mẫu ở Development, lỗi 503 ở nơi khác. |
@@ -1356,17 +1399,18 @@ Cần ít nhất một trong `barcode` hoặc `ocrRawText`.
 | Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
 |---|---|---|---|---|
 | `sessionId` | string? |  |  |  |
-| `orderCode` | int64? |  |  | Mã đơn (`SEPAY`, `PAYOS`) — dùng cho `check-status`. |
-| `paymentUrl` | string? |  |  | Với `PAYOS` là trang thanh toán PayOS; với `SEPAY` là ảnh VietQR. |
-| `qrCodeUrl` | string? |  |  | Ảnh mã QR để hiển thị. |
+| `orderCode` | int64? |  |  | Mã đơn (`SEPAY`, `PAYOS`, `BANK_APP`) — dùng cho `check-status`. |
+| `paymentUrl` | string? |  |  | Với `PAYOS` là trang thanh toán PayOS; với `SEPAY` là ảnh VietQR; `BANK_APP` rỗng. |
+| `qrCodeUrl` | string? |  |  | Ảnh mã QR để hiển thị; `BANK_APP` không có (null). |
 | `qrCode` | string? |  |  | Chuỗi VietQR gốc (chỉ có với `PAYOS`). |
 | `amountVnd` | number |  |  |  |
 | `message` | string? |  |  |  |
-| `bankCode` | string? |  |  | `SEPAY`: ngân hàng nhận tiền. |
-| `accountNumber` | string? |  |  | `SEPAY`: số tài khoản nhận tiền. |
-| `accountName` | string? |  |  | `SEPAY`: tên chủ tài khoản (để người dùng đối chiếu). |
-| `transferContent` | string? |  |  | `SEPAY`: nội dung chuyển khoản bắt buộc (mã thanh toán). |
-| `expiresAt` | datetime (ISO 8601 UTC)? |  |  | `SEPAY`: hết thời gian hiển thị mã; tiền tới sau hạn vẫn được ghi nhận. |
+| `bankCode` | string? |  |  | `SEPAY`, `BANK_APP`: ngân hàng nhận tiền. |
+| `accountNumber` | string? |  |  | `SEPAY`, `BANK_APP`: số tài khoản nhận tiền. |
+| `accountName` | string? |  |  | `SEPAY`, `BANK_APP`: tên chủ tài khoản (để người dùng đối chiếu). |
+| `transferContent` | string? |  |  | `SEPAY`, `BANK_APP`: nội dung chuyển khoản bắt buộc (mã thanh toán). |
+| `expiresAt` | datetime (ISO 8601 UTC)? |  |  | `SEPAY`, `BANK_APP`: hết thời gian hiển thị mã; tiền tới sau hạn vẫn được ghi nhận. |
+| `vietQrBankCode` | string? |  |  | `SEPAY`, `BANK_APP`: mã VietQR viết thường của ngân hàng nhận (vd. `mb`) cho link mở app ngân hàng `dl.vietqr.io`; `null` nếu không nhận ra. |
 
 <a id="schema-collectionsharedto"></a>
 #### CollectionShareDto
@@ -1410,7 +1454,8 @@ Cần ít nhất một trong `barcode` hoặc `ocrRawText`.
 | Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
 |---|---|---|---|---|
 | `planId` | string | có | ≥1 ký tự |  |
-| `paymentMethod` | string? |  |  | Chỉ nhận (không phân biệt hoa/thường): `SEPAY`, `PAYOS` |
+| `paymentMethod` | string? |  |  | Chỉ nhận (không phân biệt hoa/thường): `SEPAY`, `PAYOS`, `BANK_APP` |
+| `returnUrl` | string? |  | ≤500 ký tự | `PAYOS`: deep link của app để PayOS chuyển về sau khi thanh toán/hủy. Chỉ scheme `smartmealmobile` (và `exp`/`exps` ở Development); bỏ trống = `PayOS:ReturnUrl`. |
 
 <a id="schema-createcollectionrequestdto"></a>
 #### CreateCollectionRequestDto
@@ -2127,6 +2172,7 @@ Một mục danh mục (dị ứng, bệnh lý, chế độ ăn). `Code` là mã
 | `allergyWarnings` | string[]? |  |  |  |
 | `healthTips` | string? |  |  |  |
 | `isDemo` | bool |  |  | True khi đây là dữ liệu MẪU (chưa cấu hình Gemini, chỉ ở môi trường phát triển), không phải kết quả thật. |
+| `imageUrl` | string? |  |  | URL ảnh vừa phân tích, đã lưu ở máy chủ — app gửi lại trong `imageUrl` khi ghi món để nhật ký hiện ảnh món. Null nếu không lưu được ảnh. |
 
 <a id="schema-streakdaydto"></a>
 #### StreakDayDto
@@ -2315,6 +2361,14 @@ Cập nhật từng phần hồ sơ đã có. Trường không gửi (null) gi�
 | `totalCarbs` | number |  |  |  |
 | `totalProtein` | number |  |  |  |
 | `totalFat` | number |  |  |  |
+| `isDemo` | bool |  |  |  |
+
+<a id="schema-voicetranscriptdto"></a>
+#### VoiceTranscriptDto
+
+| Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| `transcript` | string? |  |  | Bản chép lời tạm của đoạn đang ghi (rỗng khi chưa nghe thấy lời nói). |
 | `isDemo` | bool |  |  |  |
 
 <a id="schema-waterdaydto"></a>

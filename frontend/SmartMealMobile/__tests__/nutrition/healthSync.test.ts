@@ -149,28 +149,3 @@ describe('healthSyncApiService.syncMetrics', () => {
     });
   });
 });
-
-describe('healthSyncMockService', () => {
-  test('số liệu mẫu của design: 6.240 bước, 180 kcal, đồng bộ lúc 08:30 giờ máy', async () => {
-    const { healthSyncMockService } =
-      require('@/features/nutrition/services/healthSyncService.mock') as typeof import('@/features/nutrition/services/healthSyncService.mock');
-
-    const activity = await healthSyncMockService.getDailySummary('2026-10-02');
-
-    expect(activity).toMatchObject({
-      dateIso: '2026-10-02',
-      steps: 6240,
-      caloriesBurned: 180,
-      hasSyncedData: true,
-    });
-    // BR-042: nguồn thứ hai trùng khung giờ nên không được cộng lần hai.
-    expect(activity.sourceDetails.map(source => [source.id, source.countsTowardBudget])).toEqual([
-      ['health-connect', true],
-      ['smart-watch', false],
-    ]);
-    expect(activity.activities).toHaveLength(2);
-    const syncedAt = new Date(activity.lastSyncedAt ?? '');
-    expect(syncedAt.getHours()).toBe(8);
-    expect(syncedAt.getMinutes()).toBe(30);
-  });
-});

@@ -1,6 +1,5 @@
 import { ENDPOINTS, api } from '@/services/api';
 import type { MetaItem } from '../types/health.api.types';
-import type { metaMockService } from './metaService.mock';
 
 // /meta/* trả { id, code, name, description }; chuẩn hóa description về null để FE khỏi xử lý undefined.
 function toMetaItems(items: MetaItem[]): MetaItem[] {
@@ -12,7 +11,7 @@ function toMetaItems(items: MetaItem[]): MetaItem[] {
   }));
 }
 
-export const metaApiService: Partial<typeof metaMockService> = {
+export const metaApiService = {
   async getAllergies() {
     return toMetaItems(await api.get<MetaItem[]>(ENDPOINTS.meta.allergies));
   },

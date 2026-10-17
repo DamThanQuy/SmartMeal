@@ -15,7 +15,23 @@ public static class SubscriptionCatalog
     /// <summary>SePay: chuyển khoản VietQR thẳng vào tài khoản ngân hàng đã liên kết SePay; SePay báo tiền vào.</summary>
     public const string SePay = "SEPAY";
 
-    public static readonly string[] PaymentMethods = { SePay, PayOS };
+    /// <summary>
+    /// Chuyển khoản qua số tài khoản — ĐÃ BỎ (thay bằng <see cref="BankApp"/>, vẫn xem được số tài khoản ở đó). Không tạo đơn
+    /// mới, chỉ còn để webhook/check-status vẫn khớp tiền cho đơn cũ: người đã chuyển khoản không bị mất tiền.
+    /// </summary>
+    public const string BankTransfer = "BANK_TRANSFER";
+
+    /// <summary>
+    /// Mở app ngân hàng: app mở thẳng app ngân hàng người dùng chọn (link dl.vietqr.io) với số tài khoản/số tiền/nội dung
+    /// điền sẵn. Tiền vào cùng tài khoản đã liên kết SePay nên được xác nhận y như <see cref="SePay"/>.
+    /// </summary>
+    public const string BankApp = "BANK_APP";
+
+    /// <summary>Phương thức tạo được đơn mới.</summary>
+    public static readonly string[] PaymentMethods = { SePay, PayOS, BankApp };
+
+    /// <summary>Các phương thức tiền vào tài khoản đã liên kết SePay — khớp đơn theo nội dung chuyển khoản.</summary>
+    public static readonly string[] SePayMethods = { SePay, BankTransfer, BankApp };
 
     public sealed record Plan(string Id, string Name, decimal PriceVnd, string BillingCycle, int DurationDays, bool IsPopular, string[] Features);
 
@@ -54,8 +70,15 @@ public class CreateCheckoutSessionRequestDto
     [Required(ErrorMessage = "planId là bắt buộc.")]
     public string PlanId { get; set; } = SubscriptionCatalog.ProMonthly;
 
-    [OneOfIgnoreCase("SEPAY", "PAYOS")]
-    public string PaymentMethod { get; set; } = SubscriptionCatalog.SePay; // SEPAY, PAYOS
+    [OneOfIgnoreCase("SEPAY", "PAYOS", "BANK_APP")]
+    public string PaymentMethod { get; set; } = SubscriptionCatalog.SePay; // SEPAY, PAYOS, BANK_APP
+
+    /// <summary>
+    /// PAYOS: deep link của app để PayOS chuyển về sau khi thanh toán/hủy (vd. <c>smartmealmobile://payment-result</c>, Expo Go
+    /// <c>exp://…/--/payment-result</c>). Chỉ nhận scheme của app (Expo Go chỉ ở Development); bỏ trống = cấu hình máy chủ.
+    /// </summary>
+    [StringLength(500, ErrorMessage = "returnUrl tối đa 500 ký tự.")]
+    public string? ReturnUrl { get; set; }
 }
 
 public class CheckoutSessionResponseDto
@@ -67,7 +90,7 @@ public class CheckoutSessionResponseDto
 
     public string PaymentUrl { get; set; } = string.Empty;
 
-    /// <summary>Ảnh mã QR (URL) để hiển thị trong app.</summary>
+    /// <summary>Ảnh mã QR (URL) để hiển thị trong app. BANK_APP không có QR (null).</summary>
     public string? QrCodeUrl { get; set; }
 
     /// <summary>Chuỗi VietQR gốc (chỉ có với PAYOS) — app có thể tự vẽ QR từ chuỗi này.</summary>
@@ -76,16 +99,22 @@ public class CheckoutSessionResponseDto
     public decimal AmountVnd { get; set; }
     public string Message { get; set; } = string.Empty;
 
-    /// <summary>SEPAY: ngân hàng, số tài khoản, tên chủ tài khoản nhận tiền — để người dùng chuyển tay nếu không quét được QR.</summary>
+    /// <summary>SEPAY, BANK_APP: ngân hàng, số tài khoản, tên chủ tài khoản nhận tiền — để người dùng chuyển tay.</summary>
     public string? BankCode { get; set; }
     public string? AccountNumber { get; set; }
     public string? AccountName { get; set; }
 
-    /// <summary>SEPAY: nội dung chuyển khoản bắt buộc (mã thanh toán) — sai nội dung thì máy chủ không khớp được đơn.</summary>
+    /// <summary>SEPAY, BANK_APP: nội dung chuyển khoản bắt buộc (mã thanh toán) — sai nội dung thì máy chủ không khớp được đơn.</summary>
     public string? TransferContent { get; set; }
 
-    /// <summary>SEPAY: hết thời gian hiển thị mã (UTC). Tiền tới sau hạn vẫn được ghi nhận.</summary>
+    /// <summary>SEPAY, BANK_APP: hết thời gian hiển thị mã (UTC). Tiền tới sau hạn vẫn được ghi nhận.</summary>
     public DateTime? ExpiresAt { get; set; }
+
+    /// <summary>
+    /// Mã VietQR viết thường của ngân hàng nhận tiền (vd. <c>mb</c>) — app ghép vào link <c>dl.vietqr.io/pay</c> để app ngân
+    /// hàng điền sẵn thông tin. Null nếu không nhận ra ngân hàng (app vẫn mở được app ngân hàng, người dùng tự nhập).
+    /// </summary>
+    public string? VietQrBankCode { get; set; }
 }
 
 /// <summary>Trạng thái một giao dịch của chính người dùng (<c>GET /subscription/check-status/{orderCode}</c>).</summary>

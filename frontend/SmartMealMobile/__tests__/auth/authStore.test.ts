@@ -4,9 +4,8 @@
  */
 import type { AuthUser } from '@/state/auth/authStore';
 
-function loadStore(useMockApi: boolean) {
+function loadStore() {
   jest.resetModules();
-  jest.doMock('@/config/env', () => ({ ENV: { useMockApi } }));
   return require('@/state/auth/authStore') as typeof import('@/state/auth/authStore');
 }
 
@@ -21,8 +20,8 @@ const USER: AuthUser = {
 };
 
 describe('trạng thái khởi tạo', () => {
-  test('chạy API thật → phải khôi phục phiên (loading), chưa đăng nhập', () => {
-    const { useAuthStore } = loadStore(false);
+  test('phải khôi phục phiên (loading), chưa đăng nhập', () => {
+    const { useAuthStore } = loadStore();
 
     expect(useAuthStore.getState()).toMatchObject({
       isAuthenticated: false,
@@ -33,17 +32,11 @@ describe('trạng thái khởi tạo', () => {
       sessionExpired: false,
     });
   });
-
-  test('chạy mock → không có phiên để khôi phục (ready)', () => {
-    const { useAuthStore } = loadStore(true);
-
-    expect(useAuthStore.getState().bootstrapStatus).toBe('ready');
-  });
 });
 
 describe('login / logout', () => {
   test('login đặt user, xóa pendingUser và lý do thoát gần nhất', () => {
-    const { useAuthStore } = loadStore(false);
+    const { useAuthStore } = loadStore();
     useAuthStore.setState({ pendingUser: USER, lastExitReason: 'expired' });
 
     useAuthStore.getState().login(USER);
@@ -58,7 +51,7 @@ describe('login / logout', () => {
   });
 
   test('logout xóa user/pendingUser, ghi lý do và mở lại cờ hết phiên', () => {
-    const { useAuthStore } = loadStore(false);
+    const { useAuthStore } = loadStore();
     useAuthStore.getState().login(USER);
     useAuthStore.getState().markSessionExpired();
 
@@ -74,7 +67,7 @@ describe('login / logout', () => {
   });
 
   test('logout mặc định là đăng xuất chủ động', () => {
-    const { useAuthStore } = loadStore(false);
+    const { useAuthStore } = loadStore();
     useAuthStore.getState().login(USER);
 
     useAuthStore.getState().logout();
@@ -83,7 +76,7 @@ describe('login / logout', () => {
   });
 
   test('Guest không có user thật', () => {
-    const { useAuthStore } = loadStore(false);
+    const { useAuthStore } = loadStore();
 
     useAuthStore.getState().continueAsGuest();
 
@@ -91,7 +84,7 @@ describe('login / logout', () => {
   });
 
   test('updateUser chỉ sửa họ tên và bỏ qua khi chưa đăng nhập', () => {
-    const { useAuthStore } = loadStore(false);
+    const { useAuthStore } = loadStore();
 
     useAuthStore.getState().updateUser({ fullName: 'Không ai' });
     expect(useAuthStore.getState().user).toBeNull();
@@ -104,7 +97,7 @@ describe('login / logout', () => {
 
 describe('getCurrentUserId', () => {
   test('ưu tiên user đã đăng nhập, rồi tới tài khoản đang onboarding, không có → null', () => {
-    const { useAuthStore, getCurrentUserId } = loadStore(false);
+    const { useAuthStore, getCurrentUserId } = loadStore();
     expect(getCurrentUserId()).toBeNull();
 
     useAuthStore.getState().setPendingUser({ ...USER, id: 'pending-1', hasCompletedSurvey: false });
@@ -120,7 +113,7 @@ describe('getCurrentUserId', () => {
 
 describe('bootstrapStatus', () => {
   test('setBootstrapStatus đổi trạng thái khôi phục phiên', () => {
-    const { useAuthStore } = loadStore(false);
+    const { useAuthStore } = loadStore();
 
     useAuthStore.getState().setBootstrapStatus('failed');
     expect(useAuthStore.getState().bootstrapStatus).toBe('failed');

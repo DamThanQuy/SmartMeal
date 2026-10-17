@@ -10,8 +10,14 @@ import type {
 } from '../types/health.api.types';
 import {
   EMPTY_PROFILE_EXTRAS,
+  type BasicInfoUpdate,
   type HealthProfileExtras,
+  type HealthProfileFormData,
+  type HealthProfileResult,
+  type HealthSelection,
   type HydratedHealthProfile,
+  type WeightHistoryEntry,
+  type WeightRecordInput,
 } from '../types/health.types';
 import {
   extrasFromSelection,
@@ -25,7 +31,6 @@ import {
   toSelectionUpdateRequest,
   toSurveyRequest,
 } from './health.mapper';
-import type { healthProfileMockService } from './healthProfileService.mock';
 import { getMetaCatalog } from './metaCatalog';
 import type { MetaCatalog } from './metaLookup';
 import { profileExtrasStorage } from './profileExtrasStorage';
@@ -47,12 +52,11 @@ async function hydrated(
   return { snapshot: fromHealthProfileDto(dto, catalog), extras: await loadLocalExtras(userId) };
 }
 
-// Bản gọi backend thật (docs/fetch-api/part1 §6, §9). Chỉ khai báo hàm đã nối API; hàm còn lại tự
-// rơi về bản mock trong healthProfileService.ts.
-export const healthProfileApiService: Partial<typeof healthProfileMockService> = {
+// Gọi backend thật (docs/fetch-api/part1 §6, §9).
+export const healthProfileApiService = {
   // POST /healthprofile/survey — BE lưu NGÀY SINH, dị ứng, bệnh lý, chế độ ăn và tính BMI/BMR/TDEE/macro
   // (BR-022). Chỉ lựa chọn "Khác" (BE không có mục tương ứng) giữ cục bộ theo user.
-  async submitHealthProfile(formData) {
+  async submitHealthProfile(formData: HealthProfileFormData): Promise<HealthProfileResult> {
     const catalog = await getMetaCatalog();
     const dto = await api.post<HealthProfileDto, HealthSurveyRequest>(
       ENDPOINTS.healthProfile.survey,
@@ -63,7 +67,7 @@ export const healthProfileApiService: Partial<typeof healthProfileMockService> =
   },
 
   // GET /healthprofile — null khi tài khoản chưa làm khảo sát (BE trả 404).
-  async getHealthProfile(userId) {
+  async getHealthProfile(userId: string): Promise<HydratedHealthProfile | null> {
     try {
       const [dto, catalog] = await Promise.all([
         api.get<HealthProfileDto>(ENDPOINTS.healthProfile.base),
@@ -77,14 +81,14 @@ export const healthProfileApiService: Partial<typeof healthProfileMockService> =
   },
 
   // GET /healthprofile/weight-history — BE trả cũ → mới, mapper đảo lại mới → cũ.
-  async getWeightHistory() {
+  async getWeightHistory(): Promise<WeightHistoryEntry[]> {
     const dto = await api.get<WeightHistoryResponse>(ENDPOINTS.healthProfile.weightHistory);
     return fromWeightHistoryDto(dto);
   },
 
   // POST /healthprofile/weight-log rồi GET /healthprofile: response của weight-log chỉ có điểm
   // cân nặng, chỉ số mới (BMI/BMR/TDEE/macro) do BE tính lại và phải đọc ở GET.
-  async recordWeight(input) {
+  async recordWeight(input: WeightRecordInput): Promise<HydratedHealthProfile> {
     await api.post<WeightPointDto, WeightLogRequest>(ENDPOINTS.healthProfile.weightLog, {
       weightKg: input.weightKg,
       recordedAt: toRecordedAtIso(input.dateIso),
@@ -98,7 +102,7 @@ export const healthProfileApiService: Partial<typeof healthProfileMockService> =
 
   // PUT /healthprofile { gender, dateOfBirth, heightCm } — BE sửa đúng các trường đó, tính lại chỉ số
   // và KHÔNG thêm dòng cân nặng (trước đây phải gửi lại cả hồ sơ bằng POST /survey).
-  async updateBasicInfo(update) {
+  async updateBasicInfo(update: BasicInfoUpdate): Promise<HydratedHealthProfile> {
     const [dto, catalog] = await Promise.all([
       api.put<HealthProfileDto, UpdateHealthProfileRequest>(
         ENDPOINTS.healthProfile.profile,
@@ -111,7 +115,7 @@ export const healthProfileApiService: Partial<typeof healthProfileMockService> =
 
   // PUT /healthprofile { allergyIds, medicalConditionIds, dietaryPreferenceIds } — danh sách rỗng là
   // "xóa hết". Mục "Khác" (BE không có) chỉ lưu ở máy.
-  async updateHealthSettings(selection) {
+  async updateHealthSettings(selection: HealthSelection): Promise<HydratedHealthProfile> {
     const catalog = await getMetaCatalog();
     const dto = await api.put<HealthProfileDto, UpdateHealthProfileRequest>(
       ENDPOINTS.healthProfile.profile,
@@ -124,7 +128,7 @@ export const healthProfileApiService: Partial<typeof healthProfileMockService> =
 
   // PUT /healthprofile { waterGoalMl } — mục tiêu nước/ngày (500–10000 ml) nằm trong hồ sơ trên
   // server nên đổi ở đây là đổi cho mọi nơi đọc nó (nhật ký nước, nhiệm vụ của Bé Mầm).
-  async updateWaterGoal(waterGoalMl) {
+  async updateWaterGoal(waterGoalMl: number): Promise<HydratedHealthProfile> {
     const [dto, catalog] = await Promise.all([
       api.put<HealthProfileDto, UpdateHealthProfileRequest>(ENDPOINTS.healthProfile.profile, {
         waterGoalMl,

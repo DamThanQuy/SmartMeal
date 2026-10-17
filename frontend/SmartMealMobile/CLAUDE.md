@@ -7,7 +7,7 @@
 SmartMeal là mobile app (Expo managed workflow, chạy qua Expo Go + TypeScript) về dinh dưỡng, AI meal logging, sức khỏe, meal planning và gamification.
 Backend: ASP.NET Core .NET 8 + PostgreSQL. Mobile **không bao giờ** gọi trực tiếp database hoặc AI provider.
 
-Nhánh hiện tại `feat/mock-ui`: dựng toàn bộ UI bằng dữ liệu giả lập, **không gọi API**. Xem mục 8.
+App luôn gọi backend thật — **không có dữ liệu giả lập (mock)** trong code app. Xem mục 8.
 
 ## 2. Tài liệu nguồn (bắt buộc đọc trước khi code)
 
@@ -17,7 +17,7 @@ Nhánh hiện tại `feat/mock-ui`: dựng toàn bộ UI bằng dữ liệu gi�
 | 2 | `docs/design.md` | Design system, màu, spacing, typography, UI/UX |
 | 3 | `docs/structure_system.md` | Kiến trúc thư mục, feature-based, layering, giới hạn Expo Go |
 | 4 | `docs/tech_stack.md` | Công nghệ, Definition of Done |
-| 5 | `docs/SmartMeal_API_Contract.md` | Shape dữ liệu (mock phải khớp) |
+| 5 | `docs/SmartMeal_API_Contract.md` | Shape dữ liệu của API |
 | 6 | `design/README.md`, `design/screens.json`, `design/*.dc.html` | Mockup UI 73 màn (390px) — v2, thêm 26 màn so với bản v1 (47 màn) |
 | 7 | `docs/ui-progress.md` | Tiến độ dựng UI theo từng artboard |
 
@@ -50,9 +50,9 @@ Screen → Hook → Feature Service → API Client / Native Service → Backend 
 src/
 ├── assets/{images,icons,illustrations,fonts}
 ├── components/{ui,common}/
-├── config/          # env.ts, api.ts, mock.ts, app.ts
+├── config/          # env.ts, api.ts, app.ts
 ├── constants/       # routes.ts, storage.ts, ...
-├── features/<feature>/{components,hooks,screens,services,types,mocks,index.ts}
+├── features/<feature>/{components,hooks,screens,services,types,index.ts}
 ├── hooks/
 ├── navigation/      # AppNavigator, AuthNavigator, MainNavigator, types.ts, linking.ts
 ├── services/{api,storage,permissions,notifications,analytics}
@@ -94,24 +94,23 @@ Không có `android/`, `ios/` khi còn ở chế độ Expo Go — Expo tự qu�
 3. **TypeScript chuẩn mobile**: strict, không `any`, props qua interface, tránh re-render thừa, SafeArea, touch target ≥ 44, `accessibilityLabel` cho icon button. Chi tiết: `@.claude/rules/typescript-mobile.md`.
 4. **State & API đúng layer**: TanStack Query / Zustand / Axios / RHF+Zod đúng vai trò, storage qua AsyncStorage/expo-secure-store, không gọi API trong component. Chi tiết: `@.claude/rules/state-and-api.md`.
 
-## 8. Mock UI (nhánh `feat/mock-ui`)
+## 8. Dữ liệu: luôn từ backend, không mock
 
-- **Không gọi API thật**: không Axios request, không URL backend.
-- Mock data: `src/features/<feature>/mocks/*.mock.ts`, shape khớp `docs/SmartMeal_API_Contract.md`. Lấy số liệu mẫu từ design (1.420 kcal, Bún bò, Gà kho, Bé Mầm…).
-- Service vẫn đúng layer: `useX()` → `xService.getX()` trả Promise từ mock, delay 400–800 ms.
-  Đánh dấu `// TODO: replace mock with real API` **đúng 1 chỗ** trong service.
-- Hook dùng TanStack Query với `queryFn` là service mock. Hành động (lưu, xóa, xác nhận, check-off) dùng `useMutation` cập nhật cache/state local.
-- Không hard-code mock data trong Screen/UI component.
-- `src/config/mock.ts`: `MOCK_SCENARIO = 'success' | 'empty' | 'error' | 'slow'`. Service mock trả kết quả theo scenario để xem đủ mọi state. Có công tắc trong màn Dev.
-- Đăng nhập mock: bấm Đăng nhập → vào MainNavigator, không kiểm tra thật.
-- Camera / mic / barcode / Health Connect: chỉ dựng UI + nút "giả lập kết quả", chưa gọi native (kể cả Expo SDK) thật.
-- **Xóa dữ liệu cá nhân (BR-271)**: `src/state/resetUserData.ts` là registry chung — mọi store/service
-  giữ **dữ liệu của user hiện tại** (nhật ký ăn uống, hồ sơ sức khỏe, yêu thích/bộ sưu tập, meal plan,
-  grocery, gamification, AI usage, và các store tương tự tạo ở phase sau như `waterStore`, `challenges`...)
-  **PHẢI** gọi `registerUserDataReset(name, fn)` lúc module load để đăng ký hàm reset về giá trị khởi
-  tạo/seed. `DeleteDataScreen` chỉ gọi `resetUserData()` một lần, không biết danh sách store cụ thể.
-  KHÔNG đăng ký: `authStore`, `appStore` (theme/ngôn ngữ), `premiumStore` và lịch sử giao dịch thanh
-  toán (dữ liệu thanh toán được giữ lại theo BR-271).
+- App **không có chế độ mock**: không có `mocks/`, `*.mock.ts`, `config/mock.ts` hay cờ `EXPO_PUBLIC_USE_MOCK_API`.
+  Chạy app cần backend (`docker compose up` ở thư mục gốc repo) — xem `.env.example`.
+- Service đúng layer: `useX()` → `xService.getX()` → `api` (`src/services/api`). Mỗi feature có
+  `xService.api.ts` (gọi API) + `x.mapper.ts` (DTO → type FE); `xService.ts` chỉ export lại bản API để hook/screen
+  import cố định một chỗ.
+- **Không bịa số liệu**: tài khoản mới phải thấy trạng thái rỗng (Empty state), không seed dữ liệu mẫu của
+  design vào store/service. Chức năng chưa có API hoặc chưa đọc được native (Health Connect cần Dev Client…) thì
+  báo rõ "chưa hỗ trợ", không trả kết quả giả.
+- Hằng số tĩnh của UI (gói Pro, danh sách huy hiệu…) đặt trong `types/*.types.ts` của feature, không đặt tên `*_MOCK`.
+- Test dùng `jest.doMock`/fixture riêng trong `__tests__` hoặc `test-utils/` — không thêm dữ liệu giả vào `src/`.
+- **Xóa dữ liệu cá nhân (BR-271)**: `src/state/resetUserData.ts` là registry chung — store giữ **dữ liệu
+  của user hiện tại** ở máy (hồ sơ sức khỏe, hàng đợi offline, kế hoạch đã đổi…) **PHẢI** gọi
+  `registerUserDataReset(name, fn)` lúc module load để đăng ký hàm reset về trạng thái rỗng. Đăng xuất và
+  `DeleteDataScreen` gọi `resetUserData()` một lần, không biết danh sách store cụ thể.
+  KHÔNG đăng ký: `authStore`, `appStore`, `premiumStore` (dữ liệu thanh toán được giữ lại theo BR-271).
 
 ## 9. Native services & giới hạn Expo Go
 
@@ -122,8 +121,8 @@ Chỉ dùng module nằm trong Expo SDK, cô lập qua service (`services/permis
 | Camera (AI Snap, Fridge Scanner) | `expo-camera` | Đủ dùng trên Expo Go |
 | Chọn ảnh từ thư viện | `expo-image-picker` | Đủ dùng trên Expo Go |
 | Barcode | `expo-camera` (barcode scanning) hoặc `expo-barcode-scanner` | Đủ dùng trên Expo Go |
-| OCR nhãn dinh dưỡng | — (ML Kit không chạy trên Expo Go) | Tạm mock, chưa gọi OCR thật |
-| Health Connect / HealthKit | — (cần Dev Client) | Tạm mock |
+| OCR nhãn dinh dưỡng | — (ML Kit không chạy trên Expo Go) | Gửi ảnh lên Backend (AI) đọc nhãn |
+| Health Connect / HealthKit | — (cần Dev Client) | Chưa đọc được trên Expo Go — báo rõ "cần Dev Client", số liệu hôm nay lấy từ Backend |
 | Notifications | `expo-notifications` | Push token thật cần Dev Client/EAS |
 | Ghi âm (Voice Logging) | `expo-audio` | Gửi audio lên Backend xử lý |
 | Secure storage | `expo-secure-store` | Access/refresh token |

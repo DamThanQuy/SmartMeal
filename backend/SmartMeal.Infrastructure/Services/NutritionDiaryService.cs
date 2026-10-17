@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using SmartMeal.Application.Common;
 using SmartMeal.Application.Common.Models;
@@ -23,10 +24,20 @@ public class NutritionDiaryService : INutritionDiaryService
     private static readonly string[] LogMethods = { "Manual", "AiImage", "Voice", "Barcode", "Ocr" };
 
     private readonly ApplicationDbContext _db;
+    private readonly IGamificationService _gamification;
+    private readonly IMealPhotoService _mealPhotos;
+    private readonly ILogger<NutritionDiaryService> _logger;
 
-    public NutritionDiaryService(ApplicationDbContext db)
+    public NutritionDiaryService(
+        ApplicationDbContext db,
+        IGamificationService gamification,
+        IMealPhotoService mealPhotos,
+        ILogger<NutritionDiaryService> logger)
     {
         _db = db;
+        _gamification = gamification;
+        _mealPhotos = mealPhotos;
+        _logger = logger;
     }
 
     // ───────────────────────────── Ghi món ─────────────────────────────
@@ -49,6 +60,7 @@ public class NutritionDiaryService : INutritionDiaryService
         var item = NewItem(dto, diary.Id);
         _db.DiaryItems.Add(item);
         await _db.SaveChangesAsync();
+        await _gamification.EvaluateAfterChangeAsync(_logger, userId, dto.LogDate, "diary");
 
         return ApiResponse<DiaryItemDto>.Ok(ToDto(item, diary), "Ghi nhận bữa ăn thành công.");
     }
@@ -86,6 +98,7 @@ public class NutritionDiaryService : INutritionDiaryService
 
         _db.DiaryItems.AddRange(items);
         await _db.SaveChangesAsync();
+        await _gamification.EvaluateAfterChangeAsync(_logger, userId, dto.LogDate, "diary");
 
         return ApiResponse<List<DiaryItemDto>>.Ok(items.Select(i => ToDto(i, diary)).ToList(), "Ghi nhận bữa ăn thành công.");
     }
@@ -142,6 +155,7 @@ public class NutritionDiaryService : INutritionDiaryService
         if (dto.ProteinGrams.HasValue) item.ProteinGrams = dto.ProteinGrams.Value;
 
         await _db.SaveChangesAsync();
+        await _gamification.EvaluateAfterChangeAsync(_logger, userId, diary.LogDate, "diary");
 
         return ApiResponse<DiaryItemDto>.Ok(ToDto(item, diary), "Cập nhật món ăn thành công.");
     }
@@ -159,6 +173,7 @@ public class NutritionDiaryService : INutritionDiaryService
 
         _db.DiaryItems.Remove(item);
         await _db.SaveChangesAsync();
+        await _mealPhotos.DeleteIfUnusedAsync(userId, item.ImageUrl);
 
         return ApiResponse<bool>.Ok(true, "Xóa thành công.");
     }
@@ -283,6 +298,7 @@ public class NutritionDiaryService : INutritionDiaryService
 
         _db.WaterLogs.Add(waterLog);
         await _db.SaveChangesAsync();
+        await _gamification.EvaluateAfterChangeAsync(_logger, userId, targetDate, "water");
 
         var summary = await BuildWaterSummaryAsync(userId, targetDate);
         summary.EntryId = waterLog.Id;

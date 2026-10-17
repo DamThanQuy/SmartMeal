@@ -10,7 +10,6 @@ import type { MainStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { AddIngredientRow } from '../components/AddIngredientRow';
 import { useScanFridge } from '../hooks/useScanner';
-import { CameraPermissionDeniedError } from '../services/scannerService';
 import type { FridgeScanResult } from '../types/scanner.types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'Fridge'>;
@@ -32,11 +31,6 @@ export function FridgeScreen({ route, navigation }: Props) {
         setResult(scanned);
         setConfirmedIds(new Set(scanned.ingredients.filter(item => item.status === 'confirmed').map(i => i.id)));
         setHasConfirmedForRecipes(false);
-      },
-      onError: error => {
-        if (error instanceof CameraPermissionDeniedError) {
-          navigation.replace(MAIN_STACK_ROUTES.STATE_PERMISSION, { returnTo: 'Fridge' });
-        }
       },
     });
   };

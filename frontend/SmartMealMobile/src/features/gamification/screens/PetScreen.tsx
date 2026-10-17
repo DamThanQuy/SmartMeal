@@ -94,7 +94,7 @@ function StreakDay({ label, done, index }: StreakDayProps) {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 // design/Pet.dc.html + be-mam/index.tsx (design v2 — Bé Mầm giai đoạn 1-4, XP burst,
-// Chuỗi ngày, Nhiệm vụ). Refactored theo kiến trúc dự án: hook → service → mock (không gọi API).
+// Chuỗi ngày, Nhiệm vụ). Theo kiến trúc dự án: hook → service → API (/gamification/*).
 export function PetScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const { data: pet, isLoading, isError, error, refetch } = usePetState();

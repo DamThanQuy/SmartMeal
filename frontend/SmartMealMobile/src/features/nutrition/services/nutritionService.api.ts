@@ -2,6 +2,7 @@ import { getMetaCatalog } from '@/features/health';
 import { ENDPOINTS, api } from '@/services/api';
 import { getIncludeActivityCalories } from '@/state/user/userProfileStore';
 import type { PagedResult } from '@/types/api';
+import type { MealType } from '@/types/meal.types';
 import { addDaysIso } from '@/utils/date';
 import type {
   CreateFoodRequestDto,
@@ -13,7 +14,15 @@ import type {
   UpdateDiaryItemRequestDto,
   WeeklyProgressDto,
 } from '../types/nutrition.api.types';
-import type { DiaryDaySummary, FoodItem } from '../types/nutrition.types';
+import type {
+  DiaryDaySummary,
+  FoodItem,
+  FoodSearchFilter,
+  MealLogEntry,
+  NewFoodInput,
+  NewMealLogInput,
+  WeeklyProgressSummary,
+} from '../types/nutrition.types';
 import { findEntryById } from '../utils/diary';
 import { scaleNutritionByGrams } from '../utils/nutritionMath';
 import { healthSyncService } from './healthSyncService';
@@ -27,7 +36,6 @@ import {
   toLogMealBatchRequest,
   toUpdateDiaryItemRequest,
 } from './nutrition.mapper';
-import type { nutritionMockService } from './nutritionService.mock';
 
 // Bản gọi backend thật (docs/fetch-api/part1 §7): nhật ký (ghi cả bữa một lần, sửa bằng PUT, tiến
 // độ tuần kèm macro) và danh mục thực phẩm (tìm theo scope, yêu thích, món tự nhập).
@@ -59,7 +67,7 @@ async function toFoodItem(dto: FoodItemDto): Promise<FoodItem> {
   return fromFoodDto(dto, allergies.codeById);
 }
 
-export const nutritionApiService: Partial<typeof nutritionMockService> = {
+export const nutritionApiService = {
   // GET /nutritiondiary/daily + GET /health-sync/daily-summary (song song).
   getDiaryDay: fetchDiaryDay,
 
@@ -67,7 +75,12 @@ export const nutritionApiService: Partial<typeof nutritionMockService> = {
   // (một transaction), nên không còn trạng thái "lưu được một phần" cần xử lý ở FE.
   // `idempotencyKey` → header Idempotency-Key: gửi lại cùng khóa (hàng đợi offline) thì máy chủ trả lại
   // kết quả lần đầu, không ghi trùng (F12). Payload phải giống hệt lần đầu — mapper không chứa giờ gửi.
-  async addLogEntries(dateIso, mealType, inputs, options) {
+  async addLogEntries(
+    dateIso: string,
+    mealType: MealType,
+    inputs: NewMealLogInput[],
+    options?: { idempotencyKey?: string },
+  ): Promise<MealLogEntry[]> {
     if (inputs.length === 0) return [];
 
     const created = await api.post<DiaryItemDto[], LogMealBatchRequestDto>(
@@ -81,7 +94,11 @@ export const nutritionApiService: Partial<typeof nutritionMockService> = {
   // PUT /nutritiondiary/items/{id} — BE chỉ đổi các trường có mặt. Đổi khối lượng thì dinh dưỡng
   // phải tính lại từ nutritionPerGram của chính bản ghi (BR-053) nên cần đọc bản ghi hiện tại;
   // chỉ đổi bữa thì không cần.
-  async updateLogEntry(dateIso, entryId, patch) {
+  async updateLogEntry(
+    dateIso: string,
+    entryId: string,
+    patch: { grams?: number; mealType?: MealType },
+  ): Promise<MealLogEntry> {
     let request: UpdateDiaryItemRequestDto = toUpdateDiaryItemRequest({ mealType: patch.mealType });
 
     if (patch.grams !== undefined) {
@@ -110,13 +127,13 @@ export const nutritionApiService: Partial<typeof nutritionMockService> = {
   },
 
   // DELETE /nutritiondiary/items/{id}.
-  async deleteLogEntry(_dateIso, entryId) {
+  async deleteLogEntry(_dateIso: string, entryId: string): Promise<void> {
     await api.delete<boolean>(ENDPOINTS.nutritionDiary.item(entryId));
   },
 
   // GET /foods?search=&scope=all|recent|favorite|mine&page=1&pageSize=20 — bộ lọc của màn tìm món
   // trùng với `scope` của BE (BE tìm không dấu: "pho" ra "Phở").
-  async searchFoods(query, filter) {
+  async searchFoods(query: string, filter: FoodSearchFilter): Promise<FoodItem[]> {
     const search = query.trim();
     const page = await api.get<PagedResult<FoodItemDto>>(ENDPOINTS.foods.list, {
       params: { search: search || undefined, scope: filter, page: 1, pageSize: FOOD_PAGE_SIZE },
@@ -125,12 +142,12 @@ export const nutritionApiService: Partial<typeof nutritionMockService> = {
   },
 
   // GET /foods/{id} — gồm món do chính người dùng tự nhập.
-  async getFoodById(foodId) {
+  async getFoodById(foodId: string): Promise<FoodItem | undefined> {
     return toFoodItem(await api.get<FoodItemDto>(ENDPOINTS.foods.byId(foodId)));
   },
 
   // POST /foods — món tự nhập (BR-121): BE gắn "do người dùng nhập", chưa xác minh, chỉ chủ sở hữu thấy.
-  async createFood(input) {
+  async createFood(input: NewFoodInput): Promise<FoodItem> {
     return toFoodItem(
       await api.post<FoodItemDto, CreateFoodRequestDto>(
         ENDPOINTS.foods.list,
@@ -140,7 +157,7 @@ export const nutritionApiService: Partial<typeof nutritionMockService> = {
   },
 
   // POST|DELETE /foods/{id}/favorite — idempotent: bấm lặp vẫn ra đúng trạng thái yêu cầu.
-  async setFoodFavorite(foodId, isFavorite) {
+  async setFoodFavorite(foodId: string, isFavorite: boolean): Promise<boolean> {
     const result = isFavorite
       ? await api.post<FoodFavoriteDto>(ENDPOINTS.foods.favorite(foodId))
       : await api.delete<FoodFavoriteDto>(ENDPOINTS.foods.favorite(foodId));
@@ -148,7 +165,7 @@ export const nutritionApiService: Partial<typeof nutritionMockService> = {
   },
 
   // GET /nutritiondiary/weekly-progress?startDate= — 7 ngày kết thúc ở `dateIso`.
-  async getWeeklyProgress(dateIso) {
+  async getWeeklyProgress(dateIso: string): Promise<WeeklyProgressSummary> {
     const dto = await api.get<WeeklyProgressDto>(ENDPOINTS.nutritionDiary.weeklyProgress, {
       params: { startDate: addDaysIso(dateIso, -(WEEK_LENGTH_DAYS - 1)) },
     });
@@ -156,7 +173,7 @@ export const nutritionApiService: Partial<typeof nutritionMockService> = {
   },
 
   // GET /nutritiondiary/progress?startDate=&endDate= — 30 ngày kết thúc ở `dateIso` (tab "Tháng").
-  async getMonthlyProgress(dateIso) {
+  async getMonthlyProgress(dateIso: string): Promise<WeeklyProgressSummary> {
     const dto = await api.get<WeeklyProgressDto>(ENDPOINTS.nutritionDiary.progress, {
       params: { startDate: addDaysIso(dateIso, -(MONTH_LENGTH_DAYS - 1)), endDate: dateIso },
     });

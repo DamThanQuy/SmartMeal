@@ -12,5 +12,6 @@ export * from './screens/SessionRestoreErrorScreen';
 export * from './services/sessionService';
 export * from './hooks/useUpdateProfile';
 export * from './hooks/useUploadAvatar';
+export * from './hooks/useRemoveAvatar';
 export * from './hooks/useDeleteMyData';
 export * from './hooks/useDeleteAccount';

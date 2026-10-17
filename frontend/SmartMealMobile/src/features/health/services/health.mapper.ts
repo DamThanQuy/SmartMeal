@@ -80,7 +80,7 @@ export function selectionFromForm(formData: HealthProfileFormData): HealthSelect
   };
 }
 
-/** 7 bước wizard → hồ sơ. Giá trị chưa chọn dùng cùng mặc định với bản mock cũ. */
+/** 7 bước wizard → hồ sơ (giá trị chưa chọn dùng mặc định trung tính). */
 export function profileInputFromForm(formData: HealthProfileFormData): HealthProfileInput {
   const { day, month, year } = formData.dateOfBirth;
   const weightKg = Number(formData.weightKg);
@@ -226,32 +226,6 @@ export function approximateDateOfBirth(age: number, today: Date = new Date()): D
 /** Giữ ngày sinh đang có nếu vẫn khớp tuổi BE, không thì ước lượng (chỉ khi BE chưa có ngày sinh). */
 export function resolveDateOfBirth(current: Date, age: number, today: Date = new Date()): Date {
   return calculateAge(current, today) === age ? current : approximateDateOfBirth(age, today);
-}
-
-/**
- * Snapshot dựng từ hồ sơ phía FE + kết quả tính sẵn — dùng cho bản mock (không có server trả về).
- * Biết ngày sinh thật nên gắn luôn `dateOfBirth`.
- */
-export function snapshotFromInput(
-  input: HealthProfileInput,
-  result: HealthProfileResult,
-  today: Date = new Date(),
-): HealthProfileSnapshot {
-  return {
-    gender: input.gender,
-    age: calculateAge(input.dateOfBirth, today),
-    dateOfBirth: input.dateOfBirth,
-    heightCm: input.heightCm,
-    weightKg: input.weightKg,
-    goalWeightKg: input.goalWeightKg,
-    activityLevel: input.activityLevel,
-    goal: input.goal,
-    allergyIds: input.allergyIds,
-    healthConditionIds: input.healthConditionIds,
-    dietaryPreferenceIds: input.dietaryPreferenceIds,
-    otherAllergies: input.otherAllergies,
-    result,
-  };
 }
 
 /** Lịch sử cân nặng: mới → cũ (BE trả cũ → mới); ngày theo giờ máy chứ không theo UTC. */
