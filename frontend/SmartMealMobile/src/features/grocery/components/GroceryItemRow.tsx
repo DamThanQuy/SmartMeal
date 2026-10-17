@@ -1,3 +1,4 @@
+import { haptic } from '@/utils/haptics';
 import { Check } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, View } from 'react-native';
@@ -22,7 +23,10 @@ export function GroceryItemRow({ item, onToggle }: GroceryItemRowProps) {
       accessibilityRole="checkbox"
       accessibilityLabel={item.name}
       accessibilityState={{ checked: purchased }}
-      onPress={onToggle}
+      onPress={() => {
+      haptic.selection();
+      onToggle();
+    }}
       className="min-h-[48px] flex-row items-center gap-sm border-t border-border py-xs"
     >
       <View
