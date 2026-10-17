@@ -10,6 +10,12 @@ using SmartMeal.Infrastructure.Data;
 
 namespace SmartMeal.Infrastructure.Services;
 
+/// <summary>
+/// Dịch vụ quản lý toàn bộ hệ thống trò chơi hóa (Gamification) của ứng dụng SmartMeal.
+/// Bao gồm thú cưng sức khỏe (Health Pet - Bé Mầm), tính chuỗi ngày ghi chép liên tục (Streak),
+/// tham gia và đánh giá thử thách sức khỏe (Challenges), mở khóa danh hiệu huy hiệu (Badges),
+/// trang bị ngoại trang (Costumes) và tích lũy điểm kinh nghiệm (XP) bảo đảm tính idempotent.
+/// </summary>
 public class GamificationService : IGamificationService
 {
     /// <summary>Số ngày sau khi hết khung mà tiến độ thử thách vẫn còn được tính.</summary>
@@ -18,6 +24,11 @@ public class GamificationService : IGamificationService
     private readonly ApplicationDbContext _db;
     private readonly NotificationWriter _notifications;
 
+    /// <summary>
+    /// Khởi tạo instance mới của <see cref="GamificationService"/>.
+    /// </summary>
+    /// <param name="db">DbContext kết nối cơ sở dữ liệu ứng dụng.</param>
+    /// <param name="notifications">Dịch vụ ghi thông báo đẩy về thành tựu, thăng cấp thú cưng hoặc huy hiệu mới.</param>
     public GamificationService(ApplicationDbContext db, NotificationWriter notifications)
     {
         _db = db;
@@ -26,6 +37,14 @@ public class GamificationService : IGamificationService
 
     // ───────────────────────────── Pet ─────────────────────────────
 
+    /// <summary>
+    /// Lấy thông tin trạng thái hiện tại của thú cưng sức khỏe (Bé Mầm).
+    /// Bao gồm cấp độ (Level), điểm kinh nghiệm (XP), giai đoạn tiến hóa (Baby/Teen/Adult), tâm trạng (Happy/Hungry),
+    /// trang phục đang mặc, điểm dinh dưỡng trong ngày và danh sách nhiệm vụ hằng ngày (bữa sáng, protein, nước).
+    /// </summary>
+    /// <param name="userId">Định danh người dùng sở hữu thú cưng.</param>
+    /// <param name="date">Ngày truy vấn trạng thái (mặc định hôm nay).</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa thông tin trạng thái thú cưng.</returns>
     public async Task<ApiResponse<HealthPetStatusDto>> GetPetStatusAsync(Guid userId, DateOnly? date = null)
     {
         var today = ResolveToday(date);
@@ -82,6 +101,13 @@ public class GamificationService : IGamificationService
 
     // ───────────────────────────── Streak ─────────────────────────────
 
+    /// <summary>
+    /// Lấy thông tin chuỗi ngày liên tiếp người dùng ghi nhật ký dinh dưỡng (Streak).
+    /// Bao gồm chuỗi ngày hiện tại, chuỗi ngày dài nhất từng đạt, tổng số ngày hoạt động và lịch sử 7 ngày gần nhất.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng.</param>
+    /// <param name="date">Ngày mốc kiểm tra (mặc định hôm nay).</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa thông tin trạng thái Streak.</returns>
     public async Task<ApiResponse<StreakStatusDto>> GetStreakStatusAsync(Guid userId, DateOnly? date = null)
     {
         var today = ResolveToday(date);
@@ -107,6 +133,12 @@ public class GamificationService : IGamificationService
 
     // ───────────────────────────── Thử thách ─────────────────────────────
 
+    /// <summary>
+    /// Lấy danh sách toàn bộ các thử thách sức khỏe đang hoạt động cùng tiến độ tham gia của người dùng.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng.</param>
+    /// <param name="date">Ngày kiểm tra tiến độ (mặc định hôm nay).</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa danh sách thử thách và tiến độ.</returns>
     public async Task<ApiResponse<List<ChallengeDto>>> GetChallengesAsync(Guid userId, DateOnly? date = null)
     {
         var today = ResolveToday(date);
@@ -114,6 +146,14 @@ public class GamificationService : IGamificationService
         return ApiResponse<List<ChallengeDto>>.Ok(await BuildChallengeListAsync(userId, today));
     }
 
+    /// <summary>
+    /// Đăng ký tham gia một thử thách sức khỏe (Uống nước, Ăn sạch, Đi bộ...). Thao tác mang tính idempotent;
+    /// nếu thử thách cũ đã quá hạn mà chưa hoàn thành, hàm sẽ tự động thiết lập lại khung thời gian mới cho người dùng.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng đăng ký.</param>
+    /// <param name="challengeId">Mã định danh thử thách.</param>
+    /// <param name="date">Ngày bắt đầu tham gia (mặc định hôm nay).</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa thông tin thử thách đã tham gia thành công.</returns>
     public async Task<ApiResponse<ChallengeDto>> JoinChallengeAsync(Guid userId, Guid challengeId, DateOnly? date = null)
     {
         var today = ResolveToday(date);
@@ -155,6 +195,12 @@ public class GamificationService : IGamificationService
 
     // ───────────────────────────── Huy hiệu & trang phục ─────────────────────────────
 
+    /// <summary>
+    /// Lấy tổng kết danh sách các huy hiệu danh dự và trang phục của thú cưng, bao gồm trạng thái đã mở khóa và điều kiện nhận.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng.</param>
+    /// <param name="date">Ngày kiểm tra điều kiện mở khóa (mặc định hôm nay).</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa thông tin tổng hợp huy hiệu và trang phục.</returns>
     public async Task<ApiResponse<BadgesSummaryDto>> GetBadgesAsync(Guid userId, DateOnly? date = null)
     {
         var today = ResolveToday(date);
@@ -162,6 +208,14 @@ public class GamificationService : IGamificationService
         return ApiResponse<BadgesSummaryDto>.Ok(await BuildBadgesSummaryAsync(userId, today));
     }
 
+    /// <summary>
+    /// Mặc hoặc cởi trang phục (Costume) cho thú cưng sức khỏe Bé Mầm.
+    /// Kiểm tra người dùng đã đạt điều kiện mở khóa trang phục đó hay chưa trước khi áp dụng.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng.</param>
+    /// <param name="costumeId">Mã trang phục muốn mặc (để trống hoặc null nếu muốn cởi trang phục về mặc định).</param>
+    /// <param name="date">Ngày kiểm tra điều kiện (mặc định hôm nay).</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa tổng kết huy hiệu và trang phục sau khi thay đổi.</returns>
     public async Task<ApiResponse<BadgesSummaryDto>> EquipCostumeAsync(Guid userId, string? costumeId, DateOnly? date = null)
     {
         var today = ResolveToday(date);
@@ -196,6 +250,12 @@ public class GamificationService : IGamificationService
 
     // ───────────────────────────── Đánh giá sự kiện ─────────────────────────────
 
+    /// <summary>
+    /// Đánh giá lại toàn bộ trạng thái Gamification của người dùng theo ngày chỉ định (hoặc hôm nay).
+    /// Được gọi tự động sau khi người dùng ghi bữa ăn, uống nước, đi chợ hoặc đồng bộ sức khỏe.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng.</param>
+    /// <param name="date">Ngày cần đánh giá.</param>
     public async Task EvaluateAsync(Guid userId, DateOnly? date = null) =>
         await EvaluateCoreAsync(userId, ResolveToday(date));
 
@@ -279,6 +339,9 @@ public class GamificationService : IGamificationService
         return new EvaluationState(todayStats, waterGoal, proteinTarget);
     }
 
+    /// <summary>
+    /// Kiểm tra xem số liệu của một ngày có thỏa mãn mục tiêu của thử thách hay không.
+    /// </summary>
     private static bool IsDaySatisfied(Challenge challenge, DayStats day)
     {
         if (challenge.TargetValuePerDay <= 0) return false;
@@ -291,6 +354,9 @@ public class GamificationService : IGamificationService
         };
     }
 
+    /// <summary>
+    /// Tải tổng hợp số liệu thực tế theo từng ngày (bữa sáng, số nhóm bữa, calo, protein, nước, bước chân) trong một khoảng thời gian.
+    /// </summary>
     private async Task<Dictionary<DateOnly, DayStats>> LoadDayStatsAsync(Guid userId, DateOnly from, DateOnly to)
     {
         var items = await _db.DiaryItems.AsNoTracking()
@@ -380,6 +446,7 @@ public class GamificationService : IGamificationService
         return true;
     }
 
+    /// <summary>Gửi thông báo đẩy khi thú cưng thăng cấp và kiểm tra trang phục mới mở khóa.</summary>
     private Task NotifyLevelUpAsync(Guid userId, int level)
     {
         var costume = GamificationCatalog.Costumes.FirstOrDefault(c => GamificationCatalog.IsCostumeUnlocked(c.Id, level, 0, 0)
@@ -392,6 +459,7 @@ public class GamificationService : IGamificationService
 
     // ───────────────────────────── Huy hiệu ─────────────────────────────
 
+    /// <summary>Đánh giá toàn bộ điều kiện mở khóa các huy hiệu thành tựu và lưu vào cơ sở dữ liệu nếu đạt.</summary>
     private async Task UnlockBadgesAsync(Guid userId, DateOnly today, int waterGoal, double proteinTarget)
     {
         var have = (await _db.UserBadges.Where(b => b.UserId == userId).Select(b => b.BadgeId).ToListAsync()).ToHashSet();
@@ -446,6 +514,7 @@ public class GamificationService : IGamificationService
         }
     }
 
+    /// <summary>Xây dựng DTO tổng hợp huy hiệu và trang phục hiện có của người dùng.</summary>
     private async Task<BadgesSummaryDto> BuildBadgesSummaryAsync(Guid userId, DateOnly today)
     {
         var pet = await _db.HealthPets.AsNoTracking().FirstAsync(p => p.UserId == userId);
@@ -485,6 +554,7 @@ public class GamificationService : IGamificationService
 
     // ───────────────────────────── Nội bộ ─────────────────────────────
 
+    /// <summary>Xây dựng danh sách thử thách hiển thị kèm tiến độ ngày và trạng thái tham gia.</summary>
     private async Task<List<ChallengeDto>> BuildChallengeListAsync(Guid userId, DateOnly today)
     {
         var challenges = await _db.Challenges.AsNoTracking().Where(c => c.IsActive).OrderBy(c => c.DurationDays).ThenBy(c => c.Title).ToListAsync();
@@ -561,6 +631,7 @@ public class GamificationService : IGamificationService
         return requested;
     }
 
+    /// <summary>Kiểm tra xem ngoại lệ có phải là vi phạm ràng buộc khóa duy nhất trong PostgreSQL hay không.</summary>
     private static bool IsUniqueViolation(DbUpdateException ex) =>
         ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 }

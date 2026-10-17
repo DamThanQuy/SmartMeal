@@ -17,6 +17,12 @@ using SmartMeal.Infrastructure.Options;
 
 namespace SmartMeal.Infrastructure.Services;
 
+/// <summary>
+/// Dịch vụ trí tuệ nhân tạo Gemini AI Vision và Multi-modal.
+/// Thực hiện nhận diện món ăn từ hình ảnh (Snap & Track), quét nguyên liệu tủ lạnh gợi ý công thức nấu (Fridge Scanner),
+/// bóc tách nhật ký ăn uống từ giọng nói tiếng Việt, kiểm tra an toàn thực phẩm và đọc nhãn dinh dưỡng (Nutrition Facts OCR).
+/// Hỗ trợ cơ chế dự phòng nhiều model (Fallback Models) và suy nghĩ nhanh (thinkingLevel).
+/// </summary>
 public class GeminiAiVisionService : IAiVisionService
 {
     private readonly HttpClient _httpClient;
@@ -89,6 +95,16 @@ public class GeminiAiVisionService : IAiVisionService
         List<string> Conditions,
         List<string> ConditionCodes);
 
+    /// <summary>
+    /// Khởi tạo instance mới của <see cref="GeminiAiVisionService"/>.
+    /// </summary>
+    /// <param name="httpClient">HttpClient dùng để gọi API Gemini của Google.</param>
+    /// <param name="config">Cấu hình hệ thống (Gemini API key, model chính, model dự phòng, thinking level).</param>
+    /// <param name="db">DbContext kết nối cơ sở dữ liệu ứng dụng.</param>
+    /// <param name="logger">Logger ghi log hoạt động của dịch vụ AI.</param>
+    /// <param name="ai">Tùy chọn cấu hình AI.</param>
+    /// <param name="productLimits">Tùy chọn ngưỡng giới hạn an toàn sản phẩm (đường, muối, chất béo).</param>
+    /// <param name="environment">Môi trường máy chủ (Development/Production).</param>
     public GeminiAiVisionService(
         HttpClient httpClient,
         IConfiguration config,
@@ -146,6 +162,14 @@ public class GeminiAiVisionService : IAiVisionService
 
     // ───────────────────────────── Snap & Track ─────────────────────────────
 
+    /// <summary>
+    /// Phân tích ảnh chụp món ăn (Snap &amp; Track): nhận diện tên món ăn, ước tính khối lượng (g), tính toán calo và macro,
+    /// liệt kê nguyên liệu phát hiện được, đối chiếu cảnh báo dị ứng cá nhân và đưa ra lời khuyên dinh dưỡng.
+    /// </summary>
+    /// <param name="imageBytes">Mảng byte dữ liệu hình ảnh món ăn.</param>
+    /// <param name="contentType">Định dạng MIME của ảnh (vd: image/jpeg, image/png).</param>
+    /// <param name="userId">Định danh người dùng (tùy chọn, dùng để cá nhân hóa cảnh báo dị ứng/bệnh lý).</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa kết quả nhận diện món ăn.</returns>
     public async Task<ApiResponse<SnapAndTrackResponseDto>> SnapAndTrackAsync(byte[] imageBytes, string contentType, Guid? userId = null)
     {
         var health = await LoadHealthContextAsync(userId);
@@ -207,6 +231,13 @@ Lưu ý quan trọng:
 
     // ───────────────────────────── Fridge ─────────────────────────────
 
+    /// <summary>
+    /// Phân tích ảnh chụp các nguyên liệu có trong tủ lạnh/nhà bếp (Fridge Scanner) và gợi ý 2-3 món ăn có thể nấu được ngay
+    /// kèm danh sách nguyên liệu thiếu và hướng dẫn nấu nhanh.
+    /// </summary>
+    /// <param name="imageBytes">Mảng byte dữ liệu hình ảnh tủ lạnh.</param>
+    /// <param name="contentType">Định dạng MIME của ảnh.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa danh sách nguyên liệu và công thức gợi ý.</returns>
     public async Task<ApiResponse<FridgeScannerResponseDto>> ScanFridgeAsync(byte[] imageBytes, string contentType)
     {
         var prompt = @"
@@ -259,6 +290,12 @@ Trả về JSON chính xác theo schema sau:
 
     // ───────────────────────────── Voice ─────────────────────────────
 
+    /// <summary>
+    /// Bóc tách thông tin bữa ăn từ đoạn văn bản người dùng nói bằng tiếng Việt (Voice Transcript Log).
+    /// Tự động phân loại bữa ăn (Sáng, Trưa, Tối, Phụ), bóc tách danh sách món, ước lượng khối lượng và tính toán macro dinh dưỡng.
+    /// </summary>
+    /// <param name="transcript">Đoạn văn bản ghi lời nói của người dùng.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa danh sách món ăn bóc tách được.</returns>
     public async Task<ApiResponse<VoiceLogResponseDto>> ParseVoiceLogAsync(string transcript)
     {
         if (string.IsNullOrWhiteSpace(transcript))
@@ -322,9 +359,13 @@ Trả về JSON chính xác theo schema:
     // ───────────────────────────── Check safety ─────────────────────────────
 
     /// <summary>
-    /// Phân tích VĂN BẢN nhãn (đã OCR). Mã vạch trần không được gửi cho AI để "đoán" sản phẩm — tra mã vạch đi qua
-    /// <see cref="ProductSafetyService"/> (CSDL).
+    /// Phân tích văn bản nhãn sản phẩm (OCR) để kiểm tra mức độ an toàn đối với sức khỏe người dùng (dị ứng, bệnh lý nền)
+    /// và bóc tách các chỉ số dinh dưỡng (Nutrition Facts).
+    /// Mã vạch trần không được gửi cho AI để đoán sản phẩm mà đi qua <see cref="ProductSafetyService"/> để tra cứu CSDL chính xác.
     /// </summary>
+    /// <param name="dto">Dữ liệu yêu cầu chứa văn bản OCR quét từ nhãn sản phẩm.</param>
+    /// <param name="userId">Định danh người dùng (tùy chọn, dùng để tải hồ sơ bệnh lý và dị ứng cá nhân).</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa kết quả đánh giá an toàn thực phẩm và cảnh báo dị ứng/bệnh lý.</returns>
     public async Task<ApiResponse<CheckSafetyResponseDto>> CheckSafetyAsync(CheckSafetyRequestDto dto, Guid? userId = null)
     {
         if (string.IsNullOrWhiteSpace(dto.OcrRawText))
@@ -374,6 +415,14 @@ Hãy phân tích thành phần sản phẩm, bóc tách dinh dưỡng và kiểm
 
     // ───────────────────────────── Đọc nhãn dinh dưỡng từ ảnh (BR-130) ─────────────────────────────
 
+    /// <summary>
+    /// Phân tích hình ảnh bao bì/nhãn dinh dưỡng sản phẩm (Nutrition Facts) bằng Gemini Vision AI (BR-130).
+    /// Đọc chính xác văn bản OCR, nhận diện tên sản phẩm, bảng thành phần và khẩu phần dinh dưỡng, đồng thời đối chiếu hồ sơ dị ứng/bệnh lý.
+    /// </summary>
+    /// <param name="imageBytes">Mảng byte dữ liệu hình ảnh nhãn thực phẩm.</param>
+    /// <param name="contentType">Định dạng MIME của hình ảnh (vd: image/jpeg, image/png).</param>
+    /// <param name="userId">Định danh người dùng (tùy chọn, dùng để tải hồ sơ sức khỏe cá nhân).</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa thông tin dinh dưỡng trích xuất và cảnh báo an toàn sức khỏe.</returns>
     public async Task<ApiResponse<CheckSafetyResponseDto>> ScanLabelAsync(byte[] imageBytes, string contentType, Guid? userId = null)
     {
         var health = await LoadHealthContextAsync(userId);
@@ -428,6 +477,13 @@ Thêm vào JSON hai trường ""ocrText"" và ""productName"" như mô tả ở 
 
     // ───────────────────────────── Voice từ file ghi âm ─────────────────────────────
 
+    /// <summary>
+    /// Phân tích tập tin âm thanh ghi âm giọng nói của người dùng (Voice Audio Log) bằng Gemini Multimodal API.
+    /// Tự động chép lời (transcript) và bóc tách cấu trúc bữa ăn, danh sách món, ước lượng khối lượng và tính toán năng lượng/macro.
+    /// </summary>
+    /// <param name="audioBytes">Mảng byte dữ liệu âm thanh người dùng nói về bữa ăn.</param>
+    /// <param name="contentType">Định dạng MIME của tập tin âm thanh (vd: audio/m4a, audio/mp3, audio/wav).</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa transcript và các món ăn bóc tách được.</returns>
     public async Task<ApiResponse<VoiceLogResponseDto>> ParseVoiceAudioAsync(byte[] audioBytes, string contentType)
     {
         var prompt = $@"
@@ -477,6 +533,12 @@ Thêm trường ""transcript"" (chuỗi) vào JSON.
             : UpstreamFailed<VoiceLogResponseDto>();
     }
 
+    /// <summary>
+    /// Chép nguyên văn lời nói của người dùng từ tập tin âm thanh thành chuỗi văn bản tiếng Việt có dấu câu (Speech-to-Text Transcription).
+    /// </summary>
+    /// <param name="audioBytes">Mảng byte dữ liệu âm thanh người dùng nói.</param>
+    /// <param name="contentType">Định dạng MIME của tập tin âm thanh.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa chuỗi văn bản transcript chép lời.</returns>
     public async Task<ApiResponse<VoiceTranscriptDto>> TranscribeAudioAsync(byte[] audioBytes, string contentType)
     {
         const string prompt = @"
@@ -682,6 +744,13 @@ Trả về JSON chính xác theo schema: { ""transcript"": ""câu người dùng
 
     // ───────────────────────────── Gemini API ─────────────────────────────
 
+    /// <summary>
+    /// Gửi yêu cầu phân tích đa phương thức (hình ảnh hoặc âm thanh kết hợp văn bản prompt) tới Google Gemini API.
+    /// </summary>
+    /// <param name="prompt">Lời nhắc chi tiết kèm định dạng JSON schema mong muốn.</param>
+    /// <param name="imageBytes">Mảng byte dữ liệu hình ảnh hoặc âm thanh.</param>
+    /// <param name="contentType">MIME type của dữ liệu.</param>
+    /// <returns>Chuỗi JSON trả về từ mô hình Gemini hoặc null nếu lỗi.</returns>
     private async Task<string?> CallGeminiVisionApiAsync(string prompt, byte[] imageBytes, string contentType)
     {
         var requestBody = new
@@ -710,6 +779,11 @@ Trả về JSON chính xác theo schema: { ""transcript"": ""câu người dùng
         return await PostToGeminiAsync(requestBody);
     }
 
+    /// <summary>
+    /// Gửi yêu cầu phân tích văn bản thuần (Text prompt) tới Google Gemini API.
+    /// </summary>
+    /// <param name="prompt">Lời nhắc kèm nội dung dữ liệu văn bản cần phân tích.</param>
+    /// <returns>Chuỗi JSON trả về từ mô hình Gemini hoặc null nếu lỗi.</returns>
     private async Task<string?> CallGeminiTextApiAsync(string prompt)
     {
         var requestBody = new
@@ -732,6 +806,11 @@ Trả về JSON chính xác theo schema: { ""transcript"": ""câu người dùng
         return generationConfig;
     }
 
+    /// <summary>
+    /// Thực hiện gửi yêu cầu HTTP POST tới Google Gemini API với cơ chế tự động chuyển đổi danh sách model dự phòng (fallback) và kiểm soát timeout.
+    /// </summary>
+    /// <param name="requestBody">Đối tượng dữ liệu yêu cầu gửi tới endpoint generateContent của Gemini.</param>
+    /// <returns>Chuỗi JSON kết quả trích xuất từ Gemini hoặc null nếu tất cả model đều thất bại.</returns>
     private async Task<string?> PostToGeminiAsync(object requestBody)
     {
         // Hết tổng thời gian thì ném OperationCanceledException — nơi gọi ghi log và báo lỗi upstream.
@@ -793,6 +872,11 @@ Trả về JSON chính xác theo schema: { ""transcript"": ""câu người dùng
     private static bool ShouldTryNextModel(HttpStatusCode status) =>
         status is HttpStatusCode.NotFound or HttpStatusCode.TooManyRequests || (int)status >= 500;
 
+    /// <summary>
+    /// Trích xuất nội dung văn bản JSON từ cấu trúc phản hồi candidates của Google Gemini API, lọc bỏ phần suy nghĩ (thought) của mô hình reasoning.
+    /// </summary>
+    /// <param name="response">Phản hồi HTTP từ Gemini API.</param>
+    /// <returns>Chuỗi JSON trả về hoặc null nếu phản hồi rỗng hoặc sai cấu trúc.</returns>
     private static async Task<string?> ExtractGeminiJsonTextAsync(HttpResponseMessage response)
     {
         var root = await response.Content.ReadFromJsonAsync<JsonElement>();

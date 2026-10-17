@@ -20,12 +20,24 @@ public sealed class NotificationDispatcher : DbTransactionInterceptor
     private readonly ILogger<NotificationDispatcher> _logger;
     private readonly List<(Guid UserId, NotificationDto Notification)> _afterCommit = new();
 
+    /// <summary>
+    /// Khởi tạo dispatcher điều phối thông báo với publisher real-time và logger.
+    /// </summary>
+    /// <param name="publisher">Kênh phát thông báo thời gian thực (SignalR hoặc Web Push).</param>
+    /// <param name="logger">Logger ghi nhận cảnh báo nếu phát sinh lỗi khi gửi.</param>
     public NotificationDispatcher(INotificationPublisher publisher, ILogger<NotificationDispatcher> logger)
     {
         _publisher = publisher;
         _logger = logger;
     }
 
+    /// <summary>
+    /// Điều phối gửi thông báo: nếu đang có database transaction thì xếp hàng chờ commit thành công mới gửi;
+    /// nếu không có transaction thì gửi ngay lập tức tới người dùng.
+    /// </summary>
+    /// <param name="database">Facade cơ sở dữ liệu để kiểm tra trạng thái transaction hiện thời.</param>
+    /// <param name="userId">Định danh người dùng nhận thông báo.</param>
+    /// <param name="notification">Dữ liệu thông báo cần gửi.</param>
     public Task DispatchAsync(DatabaseFacade database, Guid userId, NotificationDto notification)
     {
         if (database.CurrentTransaction is null) return PublishAsync(userId, notification);

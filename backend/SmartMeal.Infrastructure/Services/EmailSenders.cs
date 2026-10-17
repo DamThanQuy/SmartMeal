@@ -9,16 +9,28 @@ using SmartMeal.Infrastructure.Options;
 
 namespace SmartMeal.Infrastructure.Services;
 
-/// <summary>Gửi email thật qua SMTP (cấu hình ở mục "Smtp").</summary>
+/// <summary>
+/// Dịch vụ gửi email thực tế qua giao thức SMTP (cấu hình trong appsettings tại mục "Smtp").
+/// Hỗ trợ xác thực bảo mật SSL/TLS, gửi email kích hoạt tài khoản và mã OTP đặt lại mật khẩu.
+/// </summary>
 public sealed class SmtpEmailSender : IEmailSender
 {
     private readonly SmtpOptions _options;
 
+    /// <summary>
+    /// Khởi tạo dịch vụ gửi email SMTP với cấu hình máy chủ SmtpOptions.
+    /// </summary>
+    /// <param name="options">Tùy chọn cấu hình máy chủ SMTP (Host, Port, User, Password, SenderAddress...).</param>
     public SmtpEmailSender(IOptions<SmtpOptions> options)
     {
         _options = options.Value;
     }
 
+    /// <summary>
+    /// Gửi thông điệp email bất đồng bộ qua máy chủ SMTP được chỉ định.
+    /// </summary>
+    /// <param name="message">Thông tin email bao gồm người nhận, tiêu đề và nội dung văn bản.</param>
+    /// <param name="cancellationToken">Token hủy thao tác gửi email.</param>
     public async Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
     {
         using var client = new SmtpClient(_options.Host, _options.Port)
@@ -55,12 +67,23 @@ public sealed class LogOnlyEmailSender : IEmailSender
     private readonly ILogger<LogOnlyEmailSender> _logger;
     private readonly IHostEnvironment _environment;
 
+    /// <summary>
+    /// Khởi tạo dịch vụ giả lập ghi log email với ILogger và IHostEnvironment.
+    /// </summary>
+    /// <param name="logger">Logger để ghi lại thông tin email.</param>
+    /// <param name="environment">Môi trường máy chủ (Development hoặc Production).</param>
     public LogOnlyEmailSender(ILogger<LogOnlyEmailSender> logger, IHostEnvironment environment)
     {
         _logger = logger;
         _environment = environment;
     }
 
+    /// <summary>
+    /// Giả lập việc gửi email bằng cách ghi log nội dung email trong môi trường Development và cảnh báo ở các môi trường khác.
+    /// </summary>
+    /// <param name="message">Thông tin email bao gồm người nhận, tiêu đề và nội dung.</param>
+    /// <param name="cancellationToken">Token hủy thao tác.</param>
+    /// <returns>Tác vụ hoàn thành ngay lập tức.</returns>
     public Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
     {
         if (_environment.IsDevelopment())

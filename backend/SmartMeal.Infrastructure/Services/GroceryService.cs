@@ -9,6 +9,11 @@ using SmartMeal.Infrastructure.Data;
 
 namespace SmartMeal.Infrastructure.Services;
 
+/// <summary>
+/// Dịch vụ quản lý danh sách đi chợ (Grocery List) của người dùng.
+/// Cung cấp tính năng tự động tổng hợp nguyên liệu từ thực đơn theo khoảng ngày (quy đổi đơn vị kg->g, l->ml, gộp trùng),
+/// quản lý các món tự thêm thủ công, đánh giá chi phí ước tính, ghi nhận lịch sử chuyến đi chợ (Grocery Trip) và tích hợp Gamification.
+/// </summary>
 public class GroceryService : IGroceryService
 {
     /// <summary>Khoảng ngày tối đa khi tạo danh sách từ thực đơn (chặn request quét cả năm).</summary>
@@ -19,6 +24,13 @@ public class GroceryService : IGroceryService
     private readonly ILogger<GroceryService> _logger;
     private readonly NotificationWriter _notifications;
 
+    /// <summary>
+    /// Khởi tạo instance mới của <see cref="GroceryService"/>.
+    /// </summary>
+    /// <param name="db">DbContext kết nối cơ sở dữ liệu ứng dụng.</param>
+    /// <param name="gamification">Dịch vụ Gamification cập nhật thành tựu người dùng khi hoàn tất đi chợ.</param>
+    /// <param name="logger">Logger ghi log hoạt động của dịch vụ.</param>
+    /// <param name="notifications">Dịch vụ ghi thông báo đẩy cho người dùng.</param>
     public GroceryService(ApplicationDbContext db, IGamificationService gamification, ILogger<GroceryService> logger, NotificationWriter notifications)
     {
         _db = db;
@@ -27,6 +39,12 @@ public class GroceryService : IGroceryService
         _notifications = notifications;
     }
 
+    /// <summary>
+    /// Lấy danh sách đi chợ hiện tại của người dùng, phân nhóm theo danh mục nguyên liệu (Rau củ, Thịt cá, Sữa trứng, Gia vị...)
+    /// kèm tổng số món, số món đã mua, tổng chi phí ước tính và chuyến đi chợ gần nhất.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa thông tin tổng hợp danh sách đi chợ.</returns>
     public async Task<ApiResponse<GrocerySummaryDto>> GetGroceryListAsync(Guid userId)
     {
         var items = await _db.GroceryItems
@@ -61,6 +79,13 @@ public class GroceryService : IGroceryService
         return ApiResponse<GrocerySummaryDto>.Ok(summary, "Lấy danh sách đi chợ thành công.");
     }
 
+    /// <summary>
+    /// Tự động quét và tổng hợp toàn bộ nguyên liệu từ các thực đơn (Meal Plans) trong khoảng thời gian chỉ định (tối đa 31 ngày).
+    /// Hỗ trợ gộp nguyên liệu cùng loại, chuẩn hóa đơn vị đo lường và tính toán chi phí dự kiến.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng.</param>
+    /// <param name="dto">Dữ liệu yêu cầu gồm ngày bắt đầu, ngày kết thúc và tùy chọn làm trống danh sách cũ.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa danh sách đi chợ sau khi tạo mới.</returns>
     public async Task<ApiResponse<GrocerySummaryDto>> GenerateFromMealPlanAsync(Guid userId, GenerateGroceryRequestDto dto)
     {
         var rangeError = ValidateRange(dto.StartDate, dto.EndDate);
@@ -79,6 +104,14 @@ public class GroceryService : IGroceryService
         return await GetGroceryListAsync(userId);
     }
 
+    /// <summary>
+    /// Hoàn tất chuyến đi chợ: lưu lịch sử chuyến đi (<see cref="GroceryTrip"/>), xóa các món đã đánh dấu mua,
+    /// tùy chọn giữ lại các món chưa mua (carry-over) hoặc nối tiếp thêm nguyên liệu cho kỳ thực đơn tiếp theo.
+    /// Kích hoạt cập nhật thành tựu Gamification.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng.</param>
+    /// <param name="dto">Dữ liệu hoàn tất gồm chi phí thực tế, tùy chọn giữ món chưa mua và thông tin kỳ tiếp theo.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa tổng hợp danh sách đi chợ sau khi kết thúc chuyến đi.</returns>
     public async Task<ApiResponse<GrocerySummaryDto>> CompleteShoppingAsync(Guid userId, CompleteGroceryRequestDto dto)
     {
         DateOnly? nextEnd = null;
@@ -265,6 +298,12 @@ public class GroceryService : IGroceryService
         return true;
     }
 
+    /// <summary>
+    /// Thêm một món hàng/nguyên liệu tùy chỉnh do người dùng tự nhập thủ công vào danh sách đi chợ.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng.</param>
+    /// <param name="dto">Dữ liệu món hàng tự thêm gồm tên, số lượng, đơn vị, danh mục và giá ước tính.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa thông tin món hàng vừa thêm.</returns>
     public async Task<ApiResponse<GroceryItemDto>> AddCustomItemAsync(Guid userId, AddCustomGroceryItemDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.IngredientName))
@@ -289,6 +328,14 @@ public class GroceryService : IGroceryService
         return ApiResponse<GroceryItemDto>.Ok(ToDto(item), $"Đã thêm '{item.IngredientName}' vào danh sách đi chợ.");
     }
 
+    /// <summary>
+    /// Đánh dấu hoặc bỏ đánh dấu một món hàng đã mua trong danh sách đi chợ.
+    /// Kích hoạt cập nhật Gamification.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng.</param>
+    /// <param name="itemId">Mã định danh món hàng cần cập nhật trạng thái.</param>
+    /// <param name="isChecked">Trạng thái đã mua (true) hoặc chưa mua (false).</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa thông tin món hàng đã cập nhật.</returns>
     public async Task<ApiResponse<GroceryItemDto>> ToggleItemCheckedAsync(Guid userId, Guid itemId, bool isChecked)
     {
         var item = await _db.GroceryItems.Include(g => g.Recipe).FirstOrDefaultAsync(g => g.Id == itemId && g.UserId == userId);
@@ -304,6 +351,12 @@ public class GroceryService : IGroceryService
         return ApiResponse<GroceryItemDto>.Ok(ToDto(item), item.IsChecked ? "Đã đánh dấu đã mua." : "Đã bỏ đánh dấu mua.");
     }
 
+    /// <summary>
+    /// Đánh dấu đã mua hoặc bỏ đánh dấu cho toàn bộ các món hàng trong danh sách đi chợ của người dùng.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng.</param>
+    /// <param name="isChecked">Trạng thái đã mua muốn áp dụng cho toàn bộ danh sách.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> chứa tổng hợp danh sách đi chợ sau khi cập nhật.</returns>
     public async Task<ApiResponse<GrocerySummaryDto>> SetAllCheckedAsync(Guid userId, bool isChecked)
     {
         await _db.GroceryItems
@@ -316,6 +369,12 @@ public class GroceryService : IGroceryService
         return summary;
     }
 
+    /// <summary>
+    /// Xóa một món hàng khỏi danh sách đi chợ theo mã định danh.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng.</param>
+    /// <param name="itemId">Mã định danh món hàng cần xóa.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> xác nhận kết quả xóa thành công.</returns>
     public async Task<ApiResponse<bool>> DeleteItemAsync(Guid userId, Guid itemId)
     {
         var item = await _db.GroceryItems.FirstOrDefaultAsync(g => g.Id == itemId && g.UserId == userId);
@@ -330,6 +389,11 @@ public class GroceryService : IGroceryService
         return ApiResponse<bool>.Ok(true, "Đã xóa nguyên liệu khỏi danh sách đi chợ.");
     }
 
+    /// <summary>
+    /// Xóa toàn bộ các món hàng đã được đánh dấu mua khỏi danh sách đi chợ.
+    /// </summary>
+    /// <param name="userId">Định danh người dùng.</param>
+    /// <returns>Đối tượng <see cref="ApiResponse{T}"/> xác nhận dọn dẹp thành công.</returns>
     public async Task<ApiResponse<bool>> ClearCheckedItemsAsync(Guid userId)
     {
         await _db.GroceryItems.Where(g => g.UserId == userId && g.IsChecked).ExecuteDeleteAsync();
@@ -392,6 +456,7 @@ public class GroceryService : IGroceryService
             : unitPrice * (decimal)amount;
     }
 
+    /// <summary>Chuyển đổi thực thể <see cref="GroceryItem"/> sang DTO <see cref="GroceryItemDto"/>.</summary>
     private static GroceryItemDto ToDto(GroceryItem item) => new()
     {
         Id = item.Id,
@@ -406,6 +471,7 @@ public class GroceryService : IGroceryService
         IsManual = item.MergedFromRecipeCount == 0
     };
 
+    /// <summary>Chuyển đổi thực thể <see cref="GroceryTrip"/> sang DTO <see cref="GroceryTripDto"/>.</summary>
     private static GroceryTripDto ToTripDto(GroceryTrip trip) => new()
     {
         Id = trip.Id,
@@ -418,6 +484,7 @@ public class GroceryService : IGroceryService
         CompletedAt = trip.CompletedAt
     };
 
+    /// <summary>Ánh xạ phân loại nguyên liệu từ dữ liệu thô sang nhóm danh mục chuẩn tiếng Việt.</summary>
     private static string MapIngredientCategory(string rawCategory) => rawCategory.ToLowerInvariant() switch
     {
         "vegetable" or "fruit" or "rau củ" or "rau" => "Rau củ & Trái cây",
