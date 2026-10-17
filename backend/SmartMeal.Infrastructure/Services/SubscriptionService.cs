@@ -35,6 +35,7 @@ public class SubscriptionService : ISubscriptionService
     private readonly IPayOSGateway _payOS;
     private readonly ISePayGateway _sePay;
     private readonly ILogger<SubscriptionService> _logger;
+    private readonly NotificationWriter _notifications;
 
     /// <summary>
     /// Khởi tạo instance mới của <see cref="SubscriptionService"/>.
@@ -45,13 +46,15 @@ public class SubscriptionService : ISubscriptionService
     /// <param name="payOS">Cổng thanh toán PayOS.</param>
     /// <param name="sePay">Cổng thanh toán tự động VietQR SePay.</param>
     /// <param name="logger">Logger phục vụ ghi vết các sự kiện đối soát thanh toán.</param>
+    /// <param name="notifications">Dịch vụ ghi thông báo nội bộ hệ thống.</param>
     public SubscriptionService(
         ApplicationDbContext db,
         IOptions<SubscriptionOptions> options,
         IHostEnvironment environment,
         IPayOSGateway payOS,
         ISePayGateway sePay,
-        ILogger<SubscriptionService> logger)
+        ILogger<SubscriptionService> logger,
+        NotificationWriter notifications)
     {
         _db = db;
         _options = options.Value;
@@ -59,6 +62,7 @@ public class SubscriptionService : ISubscriptionService
         _payOS = payOS;
         _sePay = sePay;
         _logger = logger;
+        _notifications = notifications;
     }
 
     /// <summary>
@@ -689,7 +693,7 @@ public class SubscriptionService : ISubscriptionService
     /// Tạo và gửi thông báo chúc mừng kích hoạt thành công gói SmartMeal Pro vào hòm thư thông báo nội bộ của người dùng.
     /// </summary>
     private Task NotifyActivatedAsync(Guid userId, SubscriptionCatalog.Plan plan, Guid transactionId) =>
-        NotificationWriter.TryAddAsync(_db, userId, NotificationCategories.Premium, "Đã kích hoạt SmartMeal Pro",
+        _notifications.TryAddAsync(userId, NotificationCategories.Premium, "Đã kích hoạt SmartMeal Pro",
             $"{plan.Name}: thêm {plan.DurationDays} ngày dùng toàn bộ tính năng Pro.", $"subscription-{transactionId}");
 
     /// <summary>
