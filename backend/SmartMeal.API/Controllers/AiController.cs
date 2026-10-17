@@ -29,6 +29,7 @@ public class AiController : ControllerBase
     private readonly IAiQuotaService _quota;
     private readonly IMealPhotoService _mealPhotos;
     private readonly AiOptions _options;
+    private readonly StorageOptions _storage;
 
     /// <summary>
     /// Khởi tạo instance mới của <see cref="AiController"/>.
@@ -36,8 +37,16 @@ public class AiController : ControllerBase
     /// <param name="aiVisionService">Dịch vụ thị giác máy tính và xử lý ngôn ngữ tự nhiên Gemini AI.</param>
     /// <param name="productSafety">Dịch vụ kiểm tra mức độ an toàn của sản phẩm dựa trên dị ứng và bệnh lý người dùng.</param>
     /// <param name="quota">Dịch vụ quản lý và theo dõi hạn mức gọi AI trong ngày của người dùng.</param>
+    /// <param name="mealPhotos">Dịch vụ lưu trữ ảnh chụp món ăn.</param>
     /// <param name="options">Tùy chọn cấu hình hệ thống AI (giới hạn dung lượng ảnh, âm thanh, v.v.).</param>
-    public AiController(IAiVisionService aiVisionService, IProductSafetyService productSafety, IAiQuotaService quota, IOptions<AiOptions> options)
+    /// <param name="storage">Cấu hình lưu trữ tệp tin (StorageOptions).</param>
+    public AiController(
+        IAiVisionService aiVisionService,
+        IProductSafetyService productSafety,
+        IAiQuotaService quota,
+        IMealPhotoService mealPhotos,
+        IOptions<AiOptions> options,
+        IOptions<StorageOptions> storage)
     {
         _aiVisionService = aiVisionService;
         _productSafety = productSafety;
@@ -261,8 +270,9 @@ public class AiController : ControllerBase
     /// <param name="kind">Mã phân loại tính năng AI (ví dụ: 'snap', 'fridge', 'voice') dùng để thống kê.</param>
     /// <param name="action">Hàm delegate thực thi tác vụ AI.</param>
     /// <param name="requiresPro">Cờ chỉ định tính năng có bắt buộc phải nâng cấp tài khoản Pro hay không.</param>
+    /// <param name="countsAsUse">Cờ chỉ định có tính lượt sử dụng hay không.</param>
     /// <returns>ActionResult chứa phản hồi kết quả nghiệp vụ.</returns>
-    private async Task<ActionResult<ApiResponse<T>>> RunWithQuotaAsync<T>(string kind, Func<Guid, Task<ApiResponse<T>>> action, bool requiresPro = false)
+    private async Task<ActionResult<ApiResponse<T>>> RunWithQuotaAsync<T>(string kind, Func<Guid, Task<ApiResponse<T>>> action, bool requiresPro = false, bool countsAsUse = true)
     {
         if (!this.TryGetUserId(out var userId)) return this.InvalidSession<T>();
 

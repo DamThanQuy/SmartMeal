@@ -12,6 +12,14 @@ using SmartMeal.Infrastructure.Options;
 
 namespace SmartMeal.Infrastructure.Services;
 
+/// <summary>
+/// Dịch vụ quản lý chu kỳ sống của mật khẩu và quy trình xác thực mã OTP qua Email:
+/// - Xử lý luồng Quên mật khẩu (Forgot Password): Gửi mã OTP 6 chữ số qua Email.
+/// - Gửi lại mã OTP (Resend OTP) có kiểm soát khoảng thời gian chờ (cooldown) để chống spam gửi thư.
+/// - Xác minh OTP: Áp dụng cơ chế băm HMAC-SHA256 kết hợp email + purpose + code, kiểm soát số lần thử sai tối đa.
+/// - Cấp phát 'ResetToken' sử dụng một lần (One-Time Token) để đặt lại mật khẩu mới.
+/// - Cập nhật mật khẩu mới, kích hoạt cờ xác minh email và thu hồi toàn bộ các phiên đăng nhập cũ để bảo vệ tài khoản.
+/// </summary>
 public class PasswordService : IPasswordService
 {
     private const string InvalidOtpMessage = "Mã xác thực không đúng hoặc đã hết hạn.";
@@ -23,6 +31,14 @@ public class PasswordService : IPasswordService
     private readonly AuthOptions _auth;
     private readonly byte[] _hmacKey;
 
+    /// <summary>
+    /// Khởi tạo instance mới của <see cref="PasswordService"/>.
+    /// </summary>
+    /// <param name="db">Database context của ứng dụng.</param>
+    /// <param name="email">Dịch vụ gửi email thông báo mã OTP.</param>
+    /// <param name="logger">Logger phục vụ ghi log theo dõi và bắt lỗi gửi thư.</param>
+    /// <param name="auth">Cấu hình thời hạn OTP, thời gian chờ gửi lại và số lần thử sai tối đa.</param>
+    /// <param name="jwt">Cấu hình JWT chứa khóa bí mật dùng làm HMAC key mã hóa OTP.</param>
     public PasswordService(
         ApplicationDbContext db,
         IEmailSender email,
@@ -37,9 +53,23 @@ public class PasswordService : IPasswordService
         _hmacKey = Encoding.UTF8.GetBytes(jwt.Value.Key);
     }
 
+    /// <summary>
+    /// Tiếp nhận yêu cầu quên mật khẩu từ người dùng:
+    /// Tự động sinh mã OTP 6 chữ số và gửi về hòm thư Email với mục đích 'reset-password'.
+    /// Luôn trả về thông báo thành công chung để bảo vệ quyền riêng tư, tránh làm lộ thông tin email nào đã đăng ký.
+    /// </summary>
+    /// <param name="dto">Dữ liệu chứa địa chỉ email yêu cầu đặt lại mật khẩu.</param>
+    /// <returns>True kèm thông báo hướng dẫn người dùng kiểm tra hòm thư.</returns>
     public Task<ApiResponse<bool>> ForgotPasswordAsync(ForgotPasswordRequestDto dto) =>
         SendOtpAsync(dto.Email, OtpPurposes.ResetPassword);
 
+    /// <summary>
+    /// Yêu cầu gửi lại mã xác thực OTP (dùng cho 'reset-password' hoặc 'verify-email'):
+    /// Kiểm tra khoảng thời gian chờ (cooldown) tính từ lần gửi trước đó để ngăn chặn việc lạm dụng gửi thư liên tục.
+    /// Vô hiệu hóa các mã OTP cũ chưa dùng của cùng email và mục đích đó.
+    /// </summary>
+    /// <param name="dto">Dữ liệu gồm email và mục đích nhận mã OTP.</param>
+    /// <returns>True nếu yêu cầu được tiếp nhận.</returns>
     public async Task<ApiResponse<bool>> ResendOtpAsync(ResendOtpRequestDto dto)
     {
         var purpose = OtpPurposes.Canonical(dto.Purpose);
@@ -51,6 +81,15 @@ public class PasswordService : IPasswordService
         return await SendOtpAsync(dto.Email, purpose);
     }
 
+    /// <summary>
+    /// Xác thực mã OTP người dùng nhập vào:
+    /// - Kiểm tra mã có đúng, còn hạn và chưa từng được sử dụng.
+    /// - Nếu nhập sai: Tăng số lần thử sai (Attempts); nếu vượt ngưỡng cho phép thì vô hiệu hóa mã OTP ngay lập tức.
+    /// - Nếu là luồng xác minh email ('verify-email'): Cập nhật cờ 'IsEmailVerified = true' cho tài khoản.
+    /// - Nếu là luồng đặt lại mật khẩu ('reset-password'): Sinh mã 'ResetToken' ngẫu nhiên dùng một lần có thời hạn ngắn để cấp quyền đặt mật khẩu mới.
+    /// </summary>
+    /// <param name="dto">Dữ liệu xác minh gồm email, mục đích và mã OTP 6 số.</param>
+    /// <returns>Đối tượng <see cref="VerifyOtpResponseDto"/> chứa kết quả xác minh và resetToken (nếu có).</returns>
     public async Task<ApiResponse<VerifyOtpResponseDto>> VerifyOtpAsync(VerifyOtpRequestDto dto)
     {
         var purpose = OtpPurposes.Canonical(dto.Purpose);
@@ -117,6 +156,15 @@ public class PasswordService : IPasswordService
             "Xác minh thành công. Hãy đặt mật khẩu mới.");
     }
 
+    /// <summary>
+    /// Đặt lại mật khẩu mới cho tài khoản dựa trên 'ResetToken' hợp lệ:
+    /// - Kiểm tra mã ResetToken khớp trong CSDL, còn hạn sử dụng và đánh dấu token là đã dùng (chống tấn công Replay).
+    /// - Mã hóa mật khẩu mới bằng BCrypt và lưu vào tài khoản.
+    /// - Tự động kích hoạt cờ IsEmailVerified = true vì người dùng vừa chứng minh quyền sở hữu hòm thư.
+    /// - Đặt lại bộ đếm đăng nhập sai về 0 và thu hồi toàn bộ các phiên đăng nhập cũ trên mọi thiết bị.
+    /// </summary>
+    /// <param name="dto">Dữ liệu gồm Email, ResetToken và Mật khẩu mới.</param>
+    /// <returns>True nếu đặt lại mật khẩu thành công.</returns>
     public async Task<ApiResponse<bool>> ResetPasswordAsync(ResetPasswordRequestDto dto)
     {
         var email = NormalizeEmail(dto.Email);
@@ -157,8 +205,11 @@ public class PasswordService : IPasswordService
     // ───────────────────────────── Nội bộ ─────────────────────────────
 
     /// <summary>
-    /// Tạo và gửi OTP. Luôn trả cùng một thông báo thành công dù email có đăng ký hay không, hay đang trong thời gian
-    /// chờ gửi lại, để không lộ thông tin tài khoản.
+    /// Tạo và gửi mã OTP ngẫu nhiên 6 chữ số qua Email:
+    /// - Kiểm tra tài khoản tồn tại và thời gian chờ giữa 2 lần gửi liên tiếp.
+    /// - Lưu mã băm HMAC-SHA256 của OTP vào bảng OtpVerifications kèm mốc hết hạn.
+    /// - Gửi nội dung thư qua dịch vụ IEmailSender.
+    /// - Luôn trả về phản hồi thành công chung để không làm lộ sự tồn tại của email.
     /// </summary>
     private async Task<ApiResponse<bool>> SendOtpAsync(string rawEmail, string purpose)
     {
@@ -214,16 +265,22 @@ public class PasswordService : IPasswordService
         return ApiResponse<bool>.Ok(true, message);
     }
 
+    /// <summary>Chuẩn hóa địa chỉ email về chữ thường và xóa khoảng trắng.</summary>
     private static string NormalizeEmail(string email) => (email ?? string.Empty).Trim().ToLowerInvariant();
 
-    /// <summary>HMAC-SHA256(email|purpose|code) với khóa bí mật của máy chủ: DB bị lộ cũng không suy ra được mã 6 số.</summary>
+    /// <summary>
+    /// Tính toán mã băm HMAC-SHA256(email|purpose|code) kết hợp với khóa bảo mật bí mật của hệ thống:
+    /// Đảm bảo ngay cả khi cơ sở dữ liệu bị lộ, kẻ tấn công cũng không thể suy ngược lại mã OTP 6 số.
+    /// </summary>
     private string HashCode(string email, string purpose, string code) =>
         Convert.ToHexString(HMACSHA256.HashData(_hmacKey, Encoding.UTF8.GetBytes($"{email}|{purpose}|{code}")));
 
+    /// <summary>So sánh an toàn thời gian cố định hai chuỗi mã băm Hex.</summary>
     private static bool Matches(string storedHex, string candidateHex) =>
         storedHex.Length == candidateHex.Length &&
         CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(storedHex), Encoding.ASCII.GetBytes(candidateHex));
 
+    /// <summary>Sinh chuỗi token ngẫu nhiên 32 byte được mã hóa base64url an toàn.</summary>
     private static string NewRawToken() =>
         Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 }

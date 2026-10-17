@@ -8,6 +8,14 @@ using SmartMeal.Infrastructure.Data;
 
 namespace SmartMeal.Infrastructure.Services;
 
+/// <summary>
+/// Dịch vụ quản lý hồ sơ sức khỏe và tính toán chỉ số dinh dưỡng sinh học (Health Profile &amp; Biometrics):
+/// - Khảo sát sức khỏe ban đầu (Submit Survey): Khởi tạo hoặc cập nhật toàn diện hồ sơ thể trạng người dùng.
+/// - Thuật toán tính toán dinh dưỡng sinh học: BMI, BMR theo công thức Mifflin-St Jeor, TDEE và mục tiêu Calo/Macro (Carbs, Protein, Fat) hàng ngày.
+/// - Cập nhật từng phần (Partial Update) thông tin sức khỏe, mức độ vận động và mục tiêu thể hình.
+/// - Đồng bộ quan hệ N-N danh mục dị ứng thực phẩm, bệnh lý nền và chế độ ăn kiêng.
+/// - Ghi nhận lịch sử cân nặng (Weight Log), tự động cập nhật cân nặng hiện tại và truy xuất biểu đồ biến thiên cân nặng theo thời gian.
+/// </summary>
 public class HealthProfileService : IHealthProfileService
 {
     private const double WeightEpsilonKg = 0.001;
@@ -15,6 +23,10 @@ public class HealthProfileService : IHealthProfileService
 
     private readonly ApplicationDbContext _db;
 
+    /// <summary>
+    /// Khởi tạo instance mới của <see cref="HealthProfileService"/>.
+    /// </summary>
+    /// <param name="db">Database context của ứng dụng.</param>
     public HealthProfileService(ApplicationDbContext db)
     {
         _db = db;
@@ -22,6 +34,18 @@ public class HealthProfileService : IHealthProfileService
 
     // ───────────────────────────── Khảo sát (tạo / ghi đè toàn bộ) ─────────────────────────────
 
+    /// <summary>
+    /// Nộp kết quả khảo sát sức khỏe (Onboarding Survey):
+    /// - Chuẩn hóa và kiểm tra tính hợp lệ của giới tính, mức độ vận động và mục tiêu thể hình.
+    /// - Tính toán tuổi chính xác từ DateOfBirth (hoặc Age).
+    /// - Xác thực các khóa ngoại AllergyIds, MedicalConditionIds, DietaryPreferenceIds trong CSDL.
+    /// - Tính toán lại toàn bộ chỉ số sinh học (BMI, BMR, TDEE, Calo, Macros) và lượng nước khuyến nghị.
+    /// - Đồng bộ danh sách dị ứng, bệnh lý và sở thích ăn uống.
+    /// - Tự động tạo điểm ghi cân nặng ban đầu vào lịch sử cân nặng (WeightHistory).
+    /// </summary>
+    /// <param name="userId">Mã định danh duy nhất của người dùng.</param>
+    /// <param name="dto">Dữ liệu khảo sát sức khỏe toàn diện.</param>
+    /// <returns>Đối tượng <see cref="HealthProfileDto"/> hồ sơ sức khỏe vừa được lưu.</returns>
     public async Task<ApiResponse<HealthProfileDto>> SubmitSurveyAsync(Guid userId, HealthSurveyRequestDto dto)
     {
         var gender = HealthOptions.Canonical(dto.Gender, HealthOptions.Genders);
@@ -94,6 +118,15 @@ public class HealthProfileService : IHealthProfileService
 
     // ───────────────────────────── Cập nhật từng phần ─────────────────────────────
 
+    /// <summary>
+    /// Cập nhật từng phần hồ sơ sức khỏe đã tồn tại của người dùng:
+    /// - Chỉ cập nhật các trường có mặt trong DTO request (Partial Patch).
+    /// - Tự động tính toán lại BMI, BMR, TDEE và mục tiêu Calories / Macros nếu có thay đổi về chiều cao, cân nặng, mục tiêu hoặc mức độ vận động.
+    /// - Tự động bổ sung bản ghi biến động cân nặng nếu người dùng cập nhật CurrentWeightKg mới.
+    /// </summary>
+    /// <param name="userId">Mã định danh duy nhất của người dùng.</param>
+    /// <param name="dto">Dữ liệu các trường cần cập nhật.</param>
+    /// <returns>Hồ sơ sức khỏe <see cref="HealthProfileDto"/> sau khi cập nhật.</returns>
     public async Task<ApiResponse<HealthProfileDto>> UpdateProfileAsync(Guid userId, UpdateHealthProfileRequestDto dto)
     {
         var profile = await LoadProfileAsync(userId);
@@ -190,6 +223,12 @@ public class HealthProfileService : IHealthProfileService
         return ApiResponse<HealthProfileDto>.Ok(await MapToDtoAsync(profile.Id), "Cập nhật hồ sơ sức khỏe thành công.");
     }
 
+    /// <summary>
+    /// Lấy thông tin hồ sơ sức khỏe chi tiết của người dùng:
+    /// Trả về toàn bộ các chỉ số thể trạng, phân loại BMI, định mức Calories/Macros và danh sách dị ứng, bệnh lý.
+    /// </summary>
+    /// <param name="userId">Mã định danh duy nhất của người dùng.</param>
+    /// <returns>Đối tượng <see cref="HealthProfileDto"/> chứa hồ sơ sức khỏe đầy đủ.</returns>
     public async Task<ApiResponse<HealthProfileDto>> GetProfileAsync(Guid userId)
     {
         var profile = await _db.HealthProfiles.AsNoTracking().FirstOrDefaultAsync(hp => hp.UserId == userId);
@@ -203,6 +242,15 @@ public class HealthProfileService : IHealthProfileService
 
     // ───────────────────────────── Cân nặng ─────────────────────────────
 
+    /// <summary>
+    /// Ghi nhận điểm đo cân nặng mới vào lịch sử thể trạng (Weight Log):
+    /// - Lưu mốc cân nặng và thời điểm đo vào bảng WeightHistories.
+    /// - Nếu thời điểm đo mới nhất lớn hơn hoặc bằng lần đo gần nhất: Tự động cập nhật CurrentWeightKg trong hồ sơ sức khỏe và tính lại BMI tức thời.
+    /// - Tính toán độ lệch chênh lệch so với cân nặng mục tiêu (DiffFromTargetKg).
+    /// </summary>
+    /// <param name="userId">Mã định danh người dùng.</param>
+    /// <param name="dto">Dữ liệu ghi cân nặng (kg) và thời điểm đo.</param>
+    /// <returns>Đối tượng <see cref="WeightPointDto"/> chứa điểm đo vừa tạo.</returns>
     public async Task<ApiResponse<WeightPointDto>> LogWeightAsync(Guid userId, WeightLogRequestDto dto)
     {
         var profile = await _db.HealthProfiles.FirstOrDefaultAsync(hp => hp.UserId == userId);
@@ -244,6 +292,14 @@ public class HealthProfileService : IHealthProfileService
         return ApiResponse<WeightPointDto>.Ok(pointDto, "Ghi nhận cân nặng thành công.");
     }
 
+    /// <summary>
+    /// Lấy lịch sử diễn biến cân nặng theo thời gian phục vụ vẽ biểu đồ:
+    /// - Sắp xếp theo trình tự thời gian tăng dần.
+    /// - Thống kê cân nặng khởi điểm (InitialWeightKg), cân nặng hiện tại, cân nặng mục tiêu và tổng số kg đã tăng/giảm.
+    /// </summary>
+    /// <param name="userId">Mã định danh người dùng.</param>
+    /// <param name="days">Số ngày gần nhất cần trích xuất (tùy chọn).</param>
+    /// <returns>Đối tượng <see cref="WeightHistoryResponseDto"/> chứa danh sách lịch sử đo và các thống kê tổng quát.</returns>
     public async Task<ApiResponse<WeightHistoryResponseDto>> GetWeightHistoryAsync(Guid userId, int? days = null)
     {
         var profile = await _db.HealthProfiles
@@ -284,14 +340,17 @@ public class HealthProfileService : IHealthProfileService
 
     // ───────────────────────────── Nội bộ ─────────────────────────────
 
+    /// <summary>Lấy ngày hiện tại dạng DateOnly theo giờ UTC.</summary>
     private static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow);
 
+    /// <summary>Truy vấn hồ sơ sức khỏe đầy đủ kèm các quan hệ liên kết N-N từ database.</summary>
     private Task<HealthProfile?> LoadProfileAsync(Guid userId) => _db.HealthProfiles
         .Include(hp => hp.UserAllergies)
         .Include(hp => hp.UserConditions)
         .Include(hp => hp.DietaryPreferences)
         .FirstOrDefaultAsync(hp => hp.UserId == userId);
 
+    /// <summary>Giải quyết và xác thực tuổi người dùng từ ngày sinh hoặc số tuổi trực tiếp (từ 13 đến 100 tuổi).</summary>
     private static bool TryResolveAge(DateOnly? dateOfBirth, int? age, DateOnly today, out int resolved, out string? error)
     {
         resolved = 0;
@@ -325,6 +384,7 @@ public class HealthProfileService : IHealthProfileService
         return false;
     }
 
+    /// <summary>Lấy số tuổi hiệu lực của người dùng tính đến ngày hiện tại.</summary>
     private static int EffectiveAge(HealthProfile profile, DateOnly today) =>
         profile.DateOfBirth is { } dob ? NutritionCalculator.CalculateAge(dob, today) : profile.Age;
 
@@ -344,9 +404,11 @@ public class HealthProfileService : IHealthProfileService
         profile.UpdatedAt = DateTime.UtcNow;
     }
 
+    /// <summary>Kiểm tra xem cân nặng có sự thay đổi thực sự so với mức cân cũ hay không (vượt ngưỡng sai số Epsilon).</summary>
     private static bool WeightChanged(double? previous, double current) =>
         previous is null || Math.Abs(previous.Value - current) > WeightEpsilonKg;
 
+    /// <summary>Khởi tạo điểm đo cân nặng mới.</summary>
     private static WeightHistory NewWeightPoint(HealthProfile profile) => new()
     {
         HealthProfileId = profile.Id,
@@ -354,6 +416,7 @@ public class HealthProfileService : IHealthProfileService
         RecordedAt = DateTime.UtcNow
     };
 
+    /// <summary>Chuyển đổi thời gian DateTime về chuẩn DateTimeKind.Utc.</summary>
     private static DateTime ToUtc(DateTime value) => value.Kind switch
     {
         DateTimeKind.Utc => value,
@@ -407,6 +470,7 @@ public class HealthProfileService : IHealthProfileService
         return null;
     }
 
+    /// <summary>Ánh xạ thực thể HealthProfile sang HealthProfileDto đầy đủ.</summary>
     private async Task<HealthProfileDto> MapToDtoAsync(Guid profileId)
     {
         var profile = await _db.HealthProfiles

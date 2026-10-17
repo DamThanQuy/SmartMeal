@@ -15,9 +15,18 @@ using SmartMeal.Infrastructure.Options;
 
 namespace SmartMeal.Infrastructure.Services;
 
+/// <summary>
+/// Dịch vụ quản lý các gói đăng ký hội viên SmartMeal Pro và tích hợp các cổng thanh toán số (PayOS &amp; SePay VietQR):
+/// - Cung cấp danh mục gói cước hội viên (Tháng, Năm, Trọn đời).
+/// - Khởi tạo phiên thanh toán (Checkout Session) qua cổng PayOS hoặc quét mã VietQR tự động qua SePay.
+/// - Xử lý Webhook tức thời từ PayOS và SePay khi nhận được chuyển khoản ngân hàng.
+/// - Cơ chế thăm dò (Polling) đối soát giao dịch dự phòng khi Webhook gặp sự cố mạng.
+/// - Kích hoạt gói Pro, gia hạn dồn ngày sử dụng nếu gói cũ còn hạn, và gửi thông báo hệ thống.
+/// - Quản lý lịch sử giao dịch và hủy tự động gia hạn gói cước.
+/// </summary>
 public class SubscriptionService : ISubscriptionService
 {
-    /// <summary>PayOS giới hạn mô tả chuyển khoản 25 ký tự.</summary>
+    /// <summary>PayOS giới hạn mô tả chuyển khoản tối đa 25 ký tự theo quy định Napas.</summary>
     private const int PayOSDescriptionMaxLength = 25;
 
     private readonly ApplicationDbContext _db;
@@ -28,6 +37,16 @@ public class SubscriptionService : ISubscriptionService
     private readonly ILogger<SubscriptionService> _logger;
     private readonly NotificationWriter _notifications;
 
+    /// <summary>
+    /// Khởi tạo instance mới của <see cref="SubscriptionService"/>.
+    /// </summary>
+    /// <param name="db">Database context của ứng dụng để ghi nhận giao dịch và cập nhật trạng thái User.</param>
+    /// <param name="options">Tùy chọn cấu hình gói đăng ký và môi trường thanh toán.</param>
+    /// <param name="environment">Môi trường máy chủ (Development/Staging/Production).</param>
+    /// <param name="payOS">Cổng thanh toán PayOS.</param>
+    /// <param name="sePay">Cổng thanh toán tự động VietQR SePay.</param>
+    /// <param name="logger">Logger phục vụ ghi vết các sự kiện đối soát thanh toán.</param>
+    /// <param name="notifications">Dịch vụ ghi thông báo nội bộ hệ thống.</param>
     public SubscriptionService(
         ApplicationDbContext db,
         IOptions<SubscriptionOptions> options,
@@ -38,16 +57,25 @@ public class SubscriptionService : ISubscriptionService
         NotificationWriter notifications)
     {
         _db = db;
-        _notifications = notifications;
         _options = options.Value;
         _environment = environment;
         _payOS = payOS;
         _sePay = sePay;
         _logger = logger;
+        _notifications = notifications;
     }
 
+    /// <summary>
+    /// Cờ kiểm tra xem có cho phép kích hoạt Pro giả lập (Mock Activation) hay không.
+    /// Chỉ bật khi được cấu hình rõ ràng hoặc đang chạy trên môi trường Development.
+    /// </summary>
     private bool MockActivationAllowed => _options.AllowMockActivation ?? _environment.IsDevelopment();
 
+    /// <summary>
+    /// Lấy danh sách toàn bộ các gói đăng ký SmartMeal Pro đang được mở bán:
+    /// Bao gồm giá tiền (VNĐ), chu kỳ thanh toán, huy hiệu nổi bật và danh sách đặc quyền tính năng.
+    /// </summary>
+    /// <returns>Danh sách các gói cước <see cref="SubscriptionPlanDto"/>.</returns>
     public Task<ApiResponse<List<SubscriptionPlanDto>>> GetPlansAsync()
     {
         var plans = SubscriptionCatalog.Plans.Select(p => new SubscriptionPlanDto
@@ -63,6 +91,15 @@ public class SubscriptionService : ISubscriptionService
         return Task.FromResult(ApiResponse<List<SubscriptionPlanDto>>.Ok(plans));
     }
 
+    /// <summary>
+    /// Khởi tạo phiên thanh toán nâng cấp gói Pro cho người dùng:
+    /// - Kiểm tra tính hợp lệ của mã gói (planId) và phương thức thanh toán ('payos' hoặc 'sepay').
+    /// - Tạo bản ghi giao dịch thanh toán (PaymentTransaction) ở trạng thái 'Pending'.
+    /// - Sinh liên kết thanh toán PayOS hoặc mã chuyển khoản VietQR kèm nội dung đối soát SePay duy nhất.
+    /// </summary>
+    /// <param name="userId">Mã định danh của người dùng yêu cầu nâng cấp.</param>
+    /// <param name="dto">Dữ liệu yêu cầu gồm mã gói cước và phương thức thanh toán.</param>
+    /// <returns>Đối tượng <see cref="CheckoutSessionResponseDto"/> chứa URL thanh toán, mã QR và thông tin chuyển khoản.</returns>
     public async Task<ApiResponse<CheckoutSessionResponseDto>> CreateCheckoutSessionAsync(Guid userId, CreateCheckoutSessionRequestDto dto)
     {
         var plan = SubscriptionCatalog.Find(dto.PlanId);
@@ -86,21 +123,19 @@ public class SubscriptionService : ISubscriptionService
             return ApiResponse<CheckoutSessionResponseDto>.Fail("Không tìm thấy thông tin tài khoản.", null, ApiErrorKind.NotFound);
         }
 
-        if (method != SubscriptionCatalog.PayOS)
-        {
-            return await CreateSePayCheckoutAsync(userId, plan, method);
-        }
-
-        var returnUrl = dto.ReturnUrl?.Trim();
-        if (!string.IsNullOrEmpty(returnUrl) && !AppDeepLink.IsAllowed(returnUrl, _environment.IsDevelopment()))
-        {
-            return ApiResponse<CheckoutSessionResponseDto>.Fail(
-                "returnUrl không hợp lệ: chỉ nhận deep link của app SmartMeal.", new List<string> { "invalid_return_url" });
-        }
-
-        return await CreatePayOSCheckoutAsync(userId, plan, string.IsNullOrEmpty(returnUrl) ? null : returnUrl);
+        return method == SubscriptionCatalog.PayOS
+            ? await CreatePayOSCheckoutAsync(userId, plan)
+            : await CreateSePayCheckoutAsync(userId, plan);
     }
 
+    /// <summary>
+    /// Kích hoạt giả lập gói Pro ngay lập tức mà không cần qua cổng thanh toán thực tế:
+    /// Chỉ khả dụng trên môi trường Development hoặc kiểm thử nội bộ phục vụ phát triển ứng dụng di động.
+    /// Tuyệt đối bị vô hiệu hóa trên môi trường Production để ngăn chặn nâng cấp trái phép.
+    /// </summary>
+    /// <param name="userId">Mã người dùng cần kích hoạt.</param>
+    /// <param name="planId">Mã gói cước muốn kích hoạt giả lập.</param>
+    /// <returns>True nếu kích hoạt thành công.</returns>
     public async Task<ApiResponse<bool>> ActivateProPlanAsync(Guid userId, string planId)
     {
         // Ngoài môi trường phát triển endpoint này coi như không tồn tại: không ai được tự nâng cấp không thanh toán.
@@ -137,18 +172,23 @@ public class SubscriptionService : ISubscriptionService
 
     // ───────────────────────────── SePay (chuyển khoản VietQR) ─────────────────────────────
 
-    /// <summary>Ký tự của mã thanh toán: bỏ 0/O/1/I dễ nhầm khi người dùng phải gõ tay nội dung chuyển khoản.</summary>
+    /// <summary>Bảng chữ cái sinh mã chuyển khoản SePay: loại trừ 0, O, 1, I để tránh nhầm lẫn khi người dùng gõ tay.</summary>
     private const string SePayCodeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private const int SePayCodeLength = 8;
 
-    /// <summary>Lần cuối hỏi API giao dịch SePay cho từng đơn — app hỏi trạng thái mỗi 3 giây, không gọi SePay dồn dập.</summary>
+    /// <summary>Bộ đệm ghi nhớ mốc thời gian hỏi trạng thái SePay gần nhất cho từng đơn hàng nhằm chống spam API.</summary>
     private static readonly ConcurrentDictionary<Guid, DateTime> SePayLastQueriedAt = new();
 
     /// <summary>
-    /// Đơn chuyển khoản vào tài khoản đã liên kết SePay. <paramref name="method"/> = SEPAY: kèm mã VietQR để quét;
-    /// BANK_APP: không QR — số tài khoản + nội dung + <c>vietQrBankCode</c> để app mở app ngân hàng điền sẵn thông tin.
+    /// Tạo phiên thanh toán chuyển khoản ngân hàng tự động qua cổng SePay:
+    /// - Sinh mã chuyển khoản ngẫu nhiên (SessionId) không trùng lặp và mã đơn hàng (OrderCode).
+    /// - Tạo mã VietQR chứa đầy đủ thông tin: Ngân hàng, Số tài khoản, Số tiền chính xác và Nội dung chuyển khoản.
+    /// - Lưu giao dịch Pending vào database.
     /// </summary>
-    private async Task<ApiResponse<CheckoutSessionResponseDto>> CreateSePayCheckoutAsync(Guid userId, SubscriptionCatalog.Plan plan, string method)
+    /// <param name="userId">Mã người dùng mua gói.</param>
+    /// <param name="plan">Thông tin gói cước người dùng lựa chọn.</param>
+    /// <returns>Đối tượng phản hồi chứa mã QR VietQR và thông tin chuyển khoản.</returns>
+    private async Task<ApiResponse<CheckoutSessionResponseDto>> CreateSePayCheckoutAsync(Guid userId, SubscriptionCatalog.Plan plan)
     {
         if (!_sePay.IsConfigured)
         {
@@ -166,11 +206,10 @@ public class SubscriptionService : ISubscriptionService
             }
 
             var transfer = _sePay.BuildTransferInfo(plan.PriceVnd, code);
-            var withQr = method == SubscriptionCatalog.SePay;
             // Mã thanh toán chính là nội dung chuyển khoản; SessionId duy nhất nên mỗi mã chỉ khớp một đơn.
-            var transaction = NewTransaction(userId, plan, method, code);
+            var transaction = NewTransaction(userId, plan, SubscriptionCatalog.SePay, code);
             transaction.OrderCode = orderCode;
-            transaction.CheckoutUrl = withQr ? transfer.QrImageUrl : null;
+            transaction.CheckoutUrl = transfer.QrImageUrl;
             _db.PaymentTransactions.Add(transaction);
             await _db.SaveChangesAsync();
 
@@ -179,24 +218,30 @@ public class SubscriptionService : ISubscriptionService
             {
                 SessionId = code,
                 OrderCode = orderCode,
-                PaymentUrl = withQr ? transfer.QrImageUrl : string.Empty,
-                QrCodeUrl = withQr ? transfer.QrImageUrl : null,
+                PaymentUrl = transfer.QrImageUrl,
+                QrCodeUrl = transfer.QrImageUrl,
                 AmountVnd = plan.PriceVnd,
                 BankCode = transfer.BankCode,
                 AccountNumber = transfer.AccountNumber,
                 AccountName = transfer.AccountName,
                 TransferContent = code,
                 ExpiresAt = transaction.CreatedAt.AddMinutes(_sePay.ExpiryMinutes),
-                VietQrBankCode = VietQrBanks.FindCode(transfer.BankCode),
-                Message = withQr
-                    ? $"Quét mã VietQR bằng app ngân hàng, hoặc chuyển {amount}đ với nội dung {code}. Gói Pro được kích hoạt ngay khi nhận được tiền."
-                    : $"Chuyển {amount}đ tới số tài khoản {transfer.AccountNumber} ({transfer.BankCode}) với nội dung {code}. Gói Pro được kích hoạt ngay khi nhận được tiền."
+                Message = $"Quét mã VietQR bằng app ngân hàng, hoặc chuyển {amount}đ với nội dung {code}. Gói Pro được kích hoạt ngay khi nhận được tiền."
             });
         }
 
         return ApiResponse<CheckoutSessionResponseDto>.Fail("Không tạo được mã thanh toán, vui lòng thử lại.");
     }
 
+    /// <summary>
+    /// Tiếp nhận và xử lý Webhook thông báo biến động số dư từ hệ thống SePay:
+    /// - Xác thực mã API Key Webhook gửi từ SePay qua Authorization header.
+    /// - Bóc tách nội dung giao dịch ngân hàng để trích xuất mã đơn hàng.
+    /// - Đối soát số tiền thực tế nhận được với giá trị gói cước và kích hoạt Pro tức thì.
+    /// </summary>
+    /// <param name="authorizationHeader">Giá trị header Authorization chứa SePay API Key.</param>
+    /// <param name="rawBody">Chuỗi JSON gốc do SePay Webhook bắn tới.</param>
+    /// <returns>True nếu xử lý Webhook thành công.</returns>
     public async Task<ApiResponse<bool>> HandleSePayWebhookAsync(string? authorizationHeader, string rawBody)
     {
         if (!_sePay.IsConfigured)
@@ -220,7 +265,7 @@ public class SubscriptionService : ISubscriptionService
         var transaction = candidates.Count == 0
             ? null
             : await _db.PaymentTransactions.FirstOrDefaultAsync(t =>
-                SubscriptionCatalog.SePayMethods.Contains(t.PaymentMethod) && candidates.Contains(t.SessionId));
+                t.PaymentMethod == SubscriptionCatalog.SePay && candidates.Contains(t.SessionId));
         if (transaction is null)
         {
             _logger.LogInformation("SePay transfer {TransferId} ({Amount}đ) does not match any SePay order.", transfer.Id, transfer.Amount);
@@ -230,7 +275,12 @@ public class SubscriptionService : ISubscriptionService
         return await ApplySePayTransferAsync(transaction, transfer);
     }
 
-    /// <summary>Đơn SePay còn chờ: hỏi API giao dịch của SePay (giới hạn tần suất) và xác nhận nếu đã có tiền vào đúng mã.</summary>
+    /// <summary>
+    /// Chủ động truy vấn danh sách giao dịch SePay (Polling Fallback):
+    /// Dùng khi thiết bị người dùng kiểm tra trạng thái mà Webhook chưa kịp bắn tới (hoặc môi trường dev local).
+    /// Áp dụng cơ chế giới hạn tần suất (Throttle) để không gây quá tải API SePay.
+    /// </summary>
+    /// <param name="transaction">Bản ghi giao dịch đang ở trạng thái Pending cần kiểm tra.</param>
     private async Task CheckSePayTransferAsync(PaymentTransaction transaction)
     {
         var now = DateTime.UtcNow;
@@ -265,7 +315,15 @@ public class SubscriptionService : ISubscriptionService
         }
     }
 
-    /// <summary>Đủ tiền → Paid + kích hoạt Pro (idempotent); thiếu tiền → giữ chờ, ghi log để đối soát thủ công.</summary>
+    /// <summary>
+    /// Áp dụng kết quả chuyển khoản SePay vào đơn hàng:
+    /// - Kiểm tra số tiền chuyển thực tế có đủ bằng giá trị gói cước hay không.
+    /// - Nếu đủ tiền: chuyển trạng thái đơn hàng sang 'Paid' và kích hoạt thời hạn Pro cho người dùng.
+    /// - Nếu thiếu tiền: giữ nguyên đơn ở trạng thái Pending và ghi log để ban quản trị đối soát thủ công.
+    /// </summary>
+    /// <param name="transaction">Giao dịch thanh toán cần đối soát.</param>
+    /// <param name="transfer">Dữ liệu khoản tiền vào từ SePay.</param>
+    /// <returns>True nếu xử lý thành công.</returns>
     private async Task<ApiResponse<bool>> ApplySePayTransferAsync(PaymentTransaction transaction, SePayIncomingTransfer transfer)
     {
         if (transaction.Status == PaymentStatuses.Paid)
@@ -287,9 +345,11 @@ public class SubscriptionService : ISubscriptionService
     }
 
     /// <summary>
-    /// Các mã thanh toán có thể có trong một khoản tiền vào: mã SePay tự nhận ra (<c>code</c>) và mọi chuỗi "tiền tố + 8 ký tự"
-    /// trong nội dung chuyển khoản. Ngân hàng hay chèn thêm chữ/dấu chấm hoặc viết hoa, nên so trên chuỗi chỉ còn chữ-số in hoa.
+    /// Phân tích và trích xuất danh sách các mã thanh toán tiềm năng có trong nội dung chuyển khoản ngân hàng:
+    /// Xử lý chuẩn hóa chuỗi (bỏ dấu cách, dấu chấm, ký tự đặc biệt) để tránh lỗi người dùng gõ sai định dạng.
     /// </summary>
+    /// <param name="transfer">Dữ liệu biến động số dư ngân hàng.</param>
+    /// <returns>Danh sách các chuỗi mã thanh toán ứng viên.</returns>
     private List<string> SePayCodeCandidates(SePayIncomingTransfer transfer)
     {
         var prefix = _sePay.PaymentCodePrefix;
@@ -312,7 +372,16 @@ public class SubscriptionService : ISubscriptionService
 
     // ───────────────────────────── PayOS ─────────────────────────────
 
-    private async Task<ApiResponse<CheckoutSessionResponseDto>> CreatePayOSCheckoutAsync(Guid userId, SubscriptionCatalog.Plan plan, string? returnUrl)
+    /// <summary>
+    /// Tạo phiên thanh toán trực tuyến qua cổng PayOS:
+    /// - Tạo mã đơn hàng duy nhất dạng số nguyên dương theo quy định của PayOS.
+    /// - Gọi API PayOS SDK tạo Payment Link kèm mã QR thanh toán Napas 24/7.
+    /// - Lưu bản ghi giao dịch Pending và trả về đường link thanh toán cho client.
+    /// </summary>
+    /// <param name="userId">Mã người dùng mua gói.</param>
+    /// <param name="plan">Thông tin gói cước người dùng lựa chọn.</param>
+    /// <returns>Đối tượng phản hồi chứa CheckoutUrl và mã QR PayOS.</returns>
+    private async Task<ApiResponse<CheckoutSessionResponseDto>> CreatePayOSCheckoutAsync(Guid userId, SubscriptionCatalog.Plan plan)
     {
         if (!_payOS.IsConfigured)
         {
@@ -336,7 +405,7 @@ public class SubscriptionService : ISubscriptionService
             PayOSPaymentLink link;
             try
             {
-                link = await _payOS.CreatePaymentLinkAsync(orderCode, amount, description, plan.Name, returnUrl);
+                link = await _payOS.CreatePaymentLinkAsync(orderCode, amount, description, plan.Name);
             }
             catch (Exception ex)
             {
@@ -368,6 +437,15 @@ public class SubscriptionService : ISubscriptionService
         return ApiResponse<CheckoutSessionResponseDto>.Fail("Không tạo được mã đơn thanh toán, vui lòng thử lại.");
     }
 
+    /// <summary>
+    /// Kiểm tra trạng thái giao dịch thanh toán theo mã đơn hàng (OrderCode):
+    /// - Chỉ cho phép người dùng sở hữu giao dịch mới có quyền tra cứu.
+    /// - Nếu đơn hàng đang ở trạng thái 'Pending', dịch vụ sẽ chủ động gọi API sang PayOS hoặc SePay để cập nhật kết quả mới nhất.
+    /// - Tự động kích hoạt Pro nếu trạng thái thanh toán đã thành công.
+    /// </summary>
+    /// <param name="userId">Mã định danh người dùng yêu cầu.</param>
+    /// <param name="orderCode">Mã đơn hàng cần kiểm tra.</param>
+    /// <returns>Đối tượng <see cref="PaymentTransactionStatusDto"/> phản ánh trạng thái đơn hàng và cờ IsPaid.</returns>
     public async Task<ApiResponse<PaymentTransactionStatusDto>> CheckPaymentStatusAsync(Guid userId, long orderCode)
     {
         // Chỉ chủ giao dịch được xem; giao dịch của người khác coi như không tồn tại.
@@ -403,8 +481,8 @@ public class SubscriptionService : ISubscriptionService
             }
         }
 
-        // SePay/mở app ngân hàng: dự phòng khi webhook không tới được máy chủ (vd. máy dev) — tự hỏi API giao dịch của SePay.
-        if (transaction.Status == PaymentStatuses.Pending && SubscriptionCatalog.SePayMethods.Contains(transaction.PaymentMethod) && _sePay.CanQueryTransactions)
+        // SePay: dự phòng khi webhook không tới được máy chủ (vd. máy dev) — tự hỏi API giao dịch của SePay.
+        if (transaction.Status == PaymentStatuses.Pending && transaction.PaymentMethod == SubscriptionCatalog.SePay && _sePay.CanQueryTransactions)
         {
             await CheckSePayTransferAsync(transaction);
         }
@@ -420,6 +498,14 @@ public class SubscriptionService : ISubscriptionService
         });
     }
 
+    /// <summary>
+    /// Tiếp nhận và xử lý Webhook thanh toán gửi đến từ máy chủ PayOS:
+    /// - Kiểm tra tính toàn vẹn và chữ ký điện tử HMAC-SHA256 của Webhook payload bằng Checksum Key.
+    /// - Tìm giao dịch tương ứng theo OrderCode.
+    /// - Cập nhật trạng thái 'Paid' và kích hoạt thời hạn Pro cho tài khoản người dùng.
+    /// </summary>
+    /// <param name="rawBody">Toàn bộ chuỗi JSON thô nhận được trong body của Webhook request.</param>
+    /// <returns>True nếu xử lý Webhook thành công.</returns>
     public async Task<ApiResponse<bool>> HandlePayOSWebhookAsync(string rawBody)
     {
         if (!_payOS.IsConfigured)
@@ -458,9 +544,14 @@ public class SubscriptionService : ISubscriptionService
     }
 
     /// <summary>
-    /// Ghi nhận giao dịch đã thanh toán và kích hoạt/gia hạn Pro cho chủ giao dịch (dùng chung cho mọi cổng). Idempotent: giao
-    /// dịch đã Paid thì không làm gì. Trả thông báo lỗi hoặc null khi thành công.
+    /// Ghi nhận giao dịch đã thanh toán và kích hoạt/gia hạn gói Pro cho người dùng (Logic dùng chung cho mọi cổng thanh toán):
+    /// - Đảm bảo tính Idempotent: Sử dụng câu lệnh ExecuteUpdateAsync có điều kiện để giải quyết tranh chấp (Race Condition)
+    ///   khi Webhook và client Polling đến cùng một lúc, cam đoan thời hạn Pro không bao giờ bị cộng thừa 2 lần.
+    /// - Kích hoạt gói Pro, cập nhật ngày hết hạn và tạo thông báo chúc mừng tới người dùng.
     /// </summary>
+    /// <param name="transaction">Đối tượng giao dịch thanh toán.</param>
+    /// <param name="providerTransactionId">Mã tham chiếu giao dịch từ phía đối tác thanh toán.</param>
+    /// <returns>Chuỗi thông báo lỗi nếu thất bại, hoặc null nếu xác nhận thành công.</returns>
     private async Task<string?> ConfirmPaidAsync(PaymentTransaction transaction, string? providerTransactionId)
     {
         if (transaction.Status == PaymentStatuses.Paid)
@@ -508,6 +599,12 @@ public class SubscriptionService : ISubscriptionService
         return null;
     }
 
+    /// <summary>
+    /// Lấy thông tin trạng thái gói đăng ký hiện tại của người dùng:
+    /// Kiểm tra gói Pro còn hiệu lực hay đã hết hạn, ngày hết hạn và mã gói đang sử dụng.
+    /// </summary>
+    /// <param name="userId">Mã định danh người dùng.</param>
+    /// <returns>Đối tượng <see cref="SubscriptionStatusDto"/> chi tiết trạng thái Pro.</returns>
     public async Task<ApiResponse<SubscriptionStatusDto>> GetStatusAsync(Guid userId)
     {
         var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
@@ -519,6 +616,12 @@ public class SubscriptionService : ISubscriptionService
         return ApiResponse<SubscriptionStatusDto>.Ok(ToStatus(user, DateTime.UtcNow));
     }
 
+    /// <summary>
+    /// Lấy lịch sử tất cả các giao dịch thanh toán gói Pro của người dùng:
+    /// Sắp xếp theo thứ tự giao dịch mới nhất lên đầu, bao gồm số tiền, cổng thanh toán và trạng thái.
+    /// </summary>
+    /// <param name="userId">Mã định danh người dùng.</param>
+    /// <returns>Danh sách các giao dịch thanh toán <see cref="PaymentTransactionDto"/>.</returns>
     public async Task<ApiResponse<List<PaymentTransactionDto>>> GetTransactionsAsync(Guid userId)
     {
         var list = await _db.PaymentTransactions
@@ -541,6 +644,12 @@ public class SubscriptionService : ISubscriptionService
         return ApiResponse<List<PaymentTransactionDto>>.Ok(list);
     }
 
+    /// <summary>
+    /// Hủy đăng ký gia hạn tự động gói Pro của người dùng:
+    /// Chuyển trạng thái gói sang 'Cancelled'. Người dùng vẫn tiếp tục được hưởng trọn vẹn đặc quyền Pro cho đến hết thời hạn đã thanh toán.
+    /// </summary>
+    /// <param name="userId">Mã định danh người dùng.</param>
+    /// <returns>Trạng thái gói cước sau khi hủy gia hạn.</returns>
     public async Task<ApiResponse<SubscriptionStatusDto>> CancelAsync(Guid userId)
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
@@ -564,6 +673,10 @@ public class SubscriptionService : ISubscriptionService
 
     // ───────────────────────────── Nội bộ ─────────────────────────────
 
+    /// <summary>
+    /// Khởi tạo một đối tượng bản ghi giao dịch thanh toán mới với các giá trị mặc định chuẩn:
+    /// Sinh mã băm bảo mật UserRef (SHA-256) để bảo vệ quyền riêng tư người dùng trong log thanh toán.
+    /// </summary>
     private static PaymentTransaction NewTransaction(Guid userId, SubscriptionCatalog.Plan plan, string method, string sessionId) => new()
     {
         UserId = userId,
@@ -576,11 +689,18 @@ public class SubscriptionService : ISubscriptionService
         CreatedAt = DateTime.UtcNow
     };
 
+    /// <summary>
+    /// Tạo và gửi thông báo chúc mừng kích hoạt thành công gói SmartMeal Pro vào hòm thư thông báo nội bộ của người dùng.
+    /// </summary>
     private Task NotifyActivatedAsync(Guid userId, SubscriptionCatalog.Plan plan, Guid transactionId) =>
         _notifications.TryAddAsync(userId, NotificationCategories.Premium, "Đã kích hoạt SmartMeal Pro",
             $"{plan.Name}: thêm {plan.DurationDays} ngày dùng toàn bộ tính năng Pro.", $"subscription-{transactionId}");
 
-    /// <summary>Kích hoạt/gia hạn Pro: cộng thời hạn vào cuối kỳ hiện tại nếu còn hạn, ngược lại tính từ bây giờ.</summary>
+    /// <summary>
+    /// Thuật toán kích hoạt và gia hạn thời hạn Pro:
+    /// Nếu gói Pro của người dùng hiện vẫn còn hạn, thời hạn mới sẽ được cộng nối tiếp vào sau ngày hết hạn cũ.
+    /// Nếu gói Pro đã hết hạn hoặc chưa từng đăng ký, thời hạn mới sẽ được tính từ thời điểm hiện tại.
+    /// </summary>
     private static void Activate(User user, SubscriptionCatalog.Plan plan, DateTime now)
     {
         var start = user.IsProActive(now) && user.ProExpiresAt is { } current ? current : now;
@@ -591,6 +711,9 @@ public class SubscriptionService : ISubscriptionService
         user.UpdatedAt = now;
     }
 
+    /// <summary>
+    /// Chuyển đổi thực thể User sang DTO trạng thái gói cước (SubscriptionStatusDto).
+    /// </summary>
     private static SubscriptionStatusDto ToStatus(User user, DateTime now) => new()
     {
         Status = user.EffectiveSubscriptionStatus(now),

@@ -12,6 +12,15 @@ using SmartMeal.Infrastructure.Options;
 
 namespace SmartMeal.Infrastructure.Services;
 
+/// <summary>
+/// Dịch vụ xử lý toàn bộ nghiệp vụ xác thực danh tính và quản trị phiên làm việc của người dùng:
+/// - Đăng ký tài khoản mới bằng Email/Mật khẩu với mã hóa BCrypt an toàn.
+/// - Đăng nhập tài khoản với cơ chế bảo vệ chống tấn công Brute-force (khóa tài khoản tạm thời khi sai nhiều lần).
+/// - Đăng nhập hoặc tạo mới tài khoản qua Google Identity SSO (Google ID Token).
+/// - Quản lý chu kỳ sống JWT Token: Cấp phát Access Token và Refresh Token Rotation (sử dụng 1 lần, phát hiện tái sử dụng trái phép).
+/// - Đăng xuất và thu hồi phiên làm việc trên các thiết bị.
+/// - Cập nhật thông tin hồ sơ và đổi mật khẩu kèm cơ chế thu hồi phiên cũ an toàn.
+/// </summary>
 public class AuthService : IAuthService
 {
     private const string InvalidCredentialsMessage = "Email hoặc mật khẩu không chính xác.";
@@ -32,6 +41,17 @@ public class AuthService : IAuthService
     private readonly IPasswordService _passwords;
     private readonly SmtpOptions _smtp;
 
+    /// <summary>
+    /// Khởi tạo instance mới của <see cref="AuthService"/>.
+    /// </summary>
+    /// <param name="db">Database context của ứng dụng.</param>
+    /// <param name="jwtService">Dịch vụ cấp phát và ký số JWT Access Token.</param>
+    /// <param name="attempts">Dịch vụ theo dõi và khóa tạm thời tài khoản khi đăng nhập thất bại liên tiếp.</param>
+    /// <param name="googleTokenValidator">Dịch vụ xác thực tính hợp lệ của Google ID Token với máy chủ Google.</param>
+    /// <param name="passwords">Dịch vụ quản lý mật khẩu và mã OTP qua email.</param>
+    /// <param name="jwt">Cấu hình tham số JWT (thời hạn Access Token, Refresh Token).</param>
+    /// <param name="auth">Cấu hình các quy tắc xác thực hệ thống.</param>
+    /// <param name="smtp">Cấu hình máy chủ gửi email.</param>
     public AuthService(
         ApplicationDbContext db,
         IJwtTokenService jwtService,
@@ -61,6 +81,15 @@ public class AuthService : IAuthService
     private Task SendEmailVerificationCodeAsync(string email) =>
         _passwords.ResendOtpAsync(new ResendOtpRequestDto { Email = email, Purpose = OtpPurposes.VerifyEmail });
 
+    /// <summary>
+    /// Đăng ký tài khoản người dùng mới bằng Email và Mật khẩu:
+    /// - Kiểm tra tính duy nhất của địa chỉ Email (chống trùng lặp).
+    /// - Mã hóa mật khẩu người dùng bằng giải thuật BCrypt.
+    /// - Tự động phát hành bộ JWT tokens để người dùng tiếp tục luồng khảo sát sức khỏe.
+    /// - Gửi mã OTP xác minh địa chỉ email nếu hệ thống yêu cầu xác thực email.
+    /// </summary>
+    /// <param name="dto">Thông tin đăng ký của người dùng.</param>
+    /// <returns>Đối tượng <see cref="AuthResponseDto"/> chứa Access Token, Refresh Token và thông tin User.</returns>
     public async Task<ApiResponse<AuthResponseDto>> RegisterAsync(RegisterRequestDto dto)
     {
         var email = NormalizeEmail(dto.Email);
@@ -105,6 +134,16 @@ public class AuthService : IAuthService
         return ApiResponse<AuthResponseDto>.Ok(response, $"Đăng ký thành công. Mã xác thực đã được gửi tới {email}.");
     }
 
+    /// <summary>
+    /// Đăng nhập hệ thống bằng Email và Mật khẩu:
+    /// - Bảo vệ chống rò rỉ thời gian (Timing Attack): Chạy hàm kiểm tra mật khẩu giả lập Dummy hash khi email không tồn tại.
+    /// - Kiểm tra trạng thái khóa tạm thời (Lockout) nếu tài khoản đã nhập sai quá số lần cho phép.
+    /// - Xác thực tính chính xác của mật khẩu bằng BCrypt Verify.
+    /// - Kiểm tra trạng thái xác thực email (nếu hệ thống yêu cầu).
+    /// - Cấp mới bộ JWT tokens và xóa bỏ các lần thử sai trước đó khi đăng nhập thành công.
+    /// </summary>
+    /// <param name="dto">Dữ liệu đăng nhập gồm Email và Mật khẩu.</param>
+    /// <returns>Đối tượng <see cref="AuthResponseDto"/> chứa Access Token và thông tin User.</returns>
     public async Task<ApiResponse<AuthResponseDto>> LoginAsync(LoginRequestDto dto)
     {
         var email = NormalizeEmail(dto.Email);
@@ -146,6 +185,14 @@ public class AuthService : IAuthService
         return ApiResponse<AuthResponseDto>.Ok(await IssueTokensAsync(user, hasSurvey), "Đăng nhập thành công.");
     }
 
+    /// <summary>
+    /// Đăng nhập hoặc tự động tạo tài khoản thông qua Google SSO:
+    /// - Gọi dịch vụ Google Token Validator để kiểm tra chữ ký và tính hợp lệ của IdToken từ Google.
+    /// - Tự động liên kết tài khoản nếu email đã tồn tại và đã xác minh, hoặc tạo tài khoản mới nếu chưa có.
+    /// - Cấp phát bộ JWT tokens đăng nhập ngay lập tức.
+    /// </summary>
+    /// <param name="dto">Dữ liệu chứa chuỗi Google IdToken nhận từ client SDK.</param>
+    /// <returns>Đối tượng <see cref="AuthResponseDto"/> chứa Access Token và thông tin tài khoản.</returns>
     public async Task<ApiResponse<AuthResponseDto>> GoogleLoginAsync(GoogleAuthRequestDto dto)
     {
         GoogleIdentity identity;
@@ -216,6 +263,16 @@ public class AuthService : IAuthService
 
     // ───────────────────────────── Phiên: refresh / đăng xuất ─────────────────────────────
 
+    /// <summary>
+    /// Làm mới phiên đăng nhập (Refresh Token):
+    /// - Tìm và xác thực Refresh Token trong cơ sở dữ liệu bằng mã băm SHA-256.
+    /// - Áp dụng cơ chế Refresh Token Rotation: Thu hồi token hiện tại ngay khi sử dụng.
+    /// - Phát hiện tái sử dụng trái phép (Token Reuse Detection): Nếu token đã bị thu hồi từ trước bị gửi lại sau khoảng ân hạn,
+    ///   hệ thống lập tức thu hồi toàn bộ các Refresh Token của người dùng để bảo vệ tài khoản khỏi bị chiếm đoạt.
+    /// - Cấp mới cặp Access Token và Refresh Token cho phiên tiếp theo.
+    /// </summary>
+    /// <param name="dto">Dữ liệu chứa chuỗi Refresh Token hiện tại.</param>
+    /// <returns>Cặp Access Token và Refresh Token mới.</returns>
     public async Task<ApiResponse<AuthResponseDto>> RefreshAsync(RefreshTokenRequestDto dto)
     {
         var now = DateTime.UtcNow;
@@ -275,6 +332,12 @@ public class AuthService : IAuthService
         return ApiResponse<AuthResponseDto>.Ok(response, "Gia hạn phiên đăng nhập thành công.");
     }
 
+    /// <summary>
+    /// Đăng xuất tài khoản người dùng:
+    /// Thu hồi Refresh Token tương ứng để vô hiệu hóa phiên làm việc của thiết bị hiện tại. Thao tác mang tính idempotent.
+    /// </summary>
+    /// <param name="refreshToken">Chuỗi Refresh Token cần thu hồi.</param>
+    /// <returns>True nếu đăng xuất thành công.</returns>
     public async Task<ApiResponse<bool>> LogoutAsync(string? refreshToken)
     {
         // Idempotent: token không có hoặc không tồn tại vẫn coi như đã đăng xuất.
@@ -292,6 +355,12 @@ public class AuthService : IAuthService
 
     // ───────────────────────────── Hồ sơ tài khoản ─────────────────────────────
 
+    /// <summary>
+    /// Lấy thông tin tài khoản chi tiết của người dùng theo UserId:
+    /// Bao gồm họ tên, email, avatar, trạng thái gói cước Pro và cờ kiểm tra đã hoàn thành khảo sát sức khỏe chưa.
+    /// </summary>
+    /// <param name="userId">Mã định danh duy nhất của người dùng.</param>
+    /// <returns>Đối tượng <see cref="UserDto"/> chứa thông tin tài khoản.</returns>
     public async Task<ApiResponse<UserDto>> GetCurrentUserAsync(Guid userId)
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
@@ -301,6 +370,13 @@ public class AuthService : IAuthService
         return ApiResponse<UserDto>.Ok(ToUserDto(user, hasSurvey));
     }
 
+    /// <summary>
+    /// Cập nhật thông tin hồ sơ người dùng (Họ tên, đường dẫn URL ảnh đại diện):
+    /// Kiểm tra tính hợp lệ của định dạng URL ảnh đại diện trước khi lưu vào cơ sở dữ liệu.
+    /// </summary>
+    /// <param name="userId">Mã định danh duy nhất của người dùng.</param>
+    /// <param name="dto">Dữ liệu cập nhật hồ sơ.</param>
+    /// <returns>Hồ sơ người dùng sau khi đã cập nhật.</returns>
     public async Task<ApiResponse<UserDto>> UpdateProfileAsync(Guid userId, UpdateProfileRequestDto dto)
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
@@ -335,6 +411,15 @@ public class AuthService : IAuthService
         return ApiResponse<UserDto>.Ok(ToUserDto(user, hasSurvey), "Cập nhật thông tin tài khoản thành công.");
     }
 
+    /// <summary>
+    /// Đổi mật khẩu tài khoản khi người dùng đã đăng nhập:
+    /// - Kiểm tra tính chính xác của mật khẩu hiện tại bằng BCrypt.
+    /// - Tích hợp bộ đếm thử sai mật khẩu: khóa tạm thời nếu nhập sai mật khẩu cũ liên tiếp quá số lần quy định.
+    /// - Đặt lại mật khẩu mới, thu hồi toàn bộ phiên đăng nhập cũ trên mọi thiết bị và cấp mới token cho phiên hiện tại.
+    /// </summary>
+    /// <param name="userId">Mã định danh duy nhất của người dùng.</param>
+    /// <param name="dto">Dữ liệu mật khẩu hiện tại và mật khẩu mới.</param>
+    /// <returns>Bộ JWT tokens mới cập nhật cho phiên làm việc hiện tại.</returns>
     public async Task<ApiResponse<AuthResponseDto>> ChangePasswordAsync(Guid userId, ChangePasswordRequestDto dto)
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
@@ -388,11 +473,14 @@ public class AuthService : IAuthService
 
     // ───────────────────────────── Nội bộ ─────────────────────────────
 
+    /// <summary>Chuẩn hóa địa chỉ email về chữ thường và xóa khoảng trắng thừa.</summary>
     private static string NormalizeEmail(string email) => (email ?? string.Empty).Trim().ToLowerInvariant();
 
+    /// <summary>Kiểm tra xem ngoại lệ DbUpdateException có phải do trùng khóa duy nhất (Unique Violation) trong Postgres hay không.</summary>
     private static bool IsUniqueViolation(DbUpdateException ex) =>
         ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 
+    /// <summary>Sinh phản hồi thông báo tài khoản bị khóa tạm thời kèm thời gian chờ mở khóa.</summary>
     private static ApiResponse<AuthResponseDto> LockedResponse(TimeSpan remaining)
     {
         // (dùng chung cho đăng nhập và đổi mật khẩu)
@@ -403,6 +491,7 @@ public class AuthService : IAuthService
             ApiErrorKind.Locked);
     }
 
+    /// <summary>Chuyển đổi thực thể User sang DTO UserDto.</summary>
     private static UserDto ToUserDto(User user, bool hasCompletedSurvey) => UserMapper.ToDto(user, hasCompletedSurvey);
 
     /// <summary>Phát hành cặp access + refresh token mới; nếu thay thế một refresh token cũ thì ghi nhận liên kết xoay vòng.</summary>
@@ -441,6 +530,7 @@ public class AuthService : IAuthService
     private static string NewRawToken() =>
         Convert.ToBase64String(RandomNumberGenerator.GetBytes(48)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
+    /// <summary>Băm chuỗi token ngẫu nhiên bằng thuật toán SHA-256 trước khi lưu vào CSDL.</summary>
     internal static string HashToken(string token) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 }

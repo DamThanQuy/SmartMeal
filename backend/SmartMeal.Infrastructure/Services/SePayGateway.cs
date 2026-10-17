@@ -11,20 +11,29 @@ using SmartMeal.Infrastructure.Options;
 namespace SmartMeal.Infrastructure.Services;
 
 /// <summary>
-/// Cài đặt <see cref="ISePayGateway"/>: ảnh VietQR từ dịch vụ QR của SePay, webhook xác thực bằng API Key
-/// (<c>Authorization: Apikey ...</c>) và API giao dịch <c>GET /userapi/transactions/list</c> (<c>Authorization: Bearer ...</c>).
+/// Cổng kết nối tích hợp dịch vụ thanh toán chuyển khoản ngân hàng tự động SePay (VietQR API):
+/// - Tạo ảnh mã VietQR động tích hợp đầy đủ số tài khoản, mã ngân hàng, số tiền và nội dung chuyển khoản duy nhất.
+/// - Tiếp nhận và xác thực tính hợp lệ của Webhook biến động số dư ngân hàng qua header 'Authorization: Apikey ...'.
+/// - Chủ động tra cứu danh sách lịch sử giao dịch tiền vào từ SePay Open API (<c>GET /userapi/transactions/list</c>) để đối soát dự phòng khi Webhook gặp sự cố.
 /// </summary>
 public sealed class SePayGateway : ISePayGateway
 {
-    /// <summary>SePay ghi thời gian giao dịch theo giờ Việt Nam.</summary>
+    /// <summary>Chênh lệch múi giờ Việt Nam (+7 UTC) dùng để chuyển đổi mốc thời gian truy vấn SePay.</summary>
     private static readonly TimeSpan VietnamOffset = TimeSpan.FromHours(7);
 
+    /// <summary>Tiền tố scheme của header xác thực API Key từ SePay Webhook.</summary>
     private const string ApiKeyScheme = "Apikey ";
 
     private readonly HttpClient _httpClient;
     private readonly SePayOptions _options;
     private readonly ILogger<SePayGateway> _logger;
 
+    /// <summary>
+    /// Khởi tạo instance mới của <see cref="SePayGateway"/>.
+    /// </summary>
+    /// <param name="httpClient">Http Client dùng để gọi REST API sang SePay.</param>
+    /// <param name="options">Tùy chọn cấu hình SePay (Số tài khoản, ngân hàng, ApiToken, WebhookApiKey).</param>
+    /// <param name="logger">Logger phục vụ ghi log theo dõi giao dịch và bắt lỗi kết nối.</param>
     public SePayGateway(HttpClient httpClient, IOptions<SePayOptions> options, ILogger<SePayGateway> logger)
     {
         _httpClient = httpClient;
@@ -32,12 +41,38 @@ public sealed class SePayGateway : ISePayGateway
         _logger = logger;
     }
 
+    /// <summary>
+    /// Cờ kiểm tra cấu hình cơ bản của SePay đã đầy đủ (có cấu hình tài khoản ngân hàng nhận tiền) hay chưa.
+    /// </summary>
     public bool IsConfigured => _options.IsConfigured;
+
+    /// <summary>
+    /// Cờ kiểm tra dịch vụ có khả năng chủ động gọi API lấy danh sách giao dịch hay không (yêu cầu cấu hình ApiToken).
+    /// </summary>
     public bool CanQueryTransactions => _options.HasBankAccount && _options.CanQueryTransactions;
+
+    /// <summary>
+    /// Tiền tố mã thanh toán (ví dụ: 'SM') gắn ở đầu chuỗi nội dung chuyển khoản.
+    /// </summary>
     public string PaymentCodePrefix => _options.PaymentCodePrefix.Trim().ToUpperInvariant();
+
+    /// <summary>
+    /// Thời gian hết hạn của phiên chuyển khoản (tính theo phút, mặc định 15 phút).
+    /// </summary>
     public int ExpiryMinutes => _options.ExpiryMinutes;
+
+    /// <summary>
+    /// Khoảng thời gian tối thiểu giữa 2 lần client gọi hỏi trạng thái đơn hàng (tính bằng giây) để tránh spam API.
+    /// </summary>
     public int StatusCheckIntervalSeconds => _options.StatusCheckIntervalSeconds;
 
+    /// <summary>
+    /// Khởi tạo thông tin chuyển khoản VietQR:
+    /// - Sinh URL ảnh mã QR VietQR động từ dịch vụ VietQR của SePay kèm các tham số tài khoản, số tiền và nội dung chuyển khoản.
+    /// </summary>
+    /// <param name="amountVnd">Số tiền cần thanh toán tính bằng VNĐ.</param>
+    /// <param name="transferContent">Chuỗi mã nội dung chuyển khoản duy nhất đại diện cho đơn hàng.</param>
+    /// <returns>Đối tượng <see cref="SePayTransferInfo"/> chứa URL ảnh QR, số tài khoản, mã ngân hàng và tên chủ tài khoản.</returns>
     public SePayTransferInfo BuildTransferInfo(decimal amountVnd, string transferContent)
     {
         var accountNumber = _options.AccountNumber.Trim();
@@ -52,6 +87,14 @@ public sealed class SePayGateway : ISePayGateway
         return new SePayTransferInfo($"{_options.QrImageBaseUrl.TrimEnd('/')}?{query}", bankCode, accountNumber, accountName);
     }
 
+    /// <summary>
+    /// Đọc và giải mã dữ liệu Webhook thông báo biến động số dư nhận được từ SePay:
+    /// - Kiểm tra tính hợp lệ của Authorization header bằng so sánh an toàn thời gian cố định (Fixed-time equals).
+    /// - Bóc tách giao dịch tiền vào ('transferType == in'), số tiền và nội dung chuyển khoản.
+    /// </summary>
+    /// <param name="authorizationHeader">Header Authorization kèm API Key.</param>
+    /// <param name="rawBody">Chuỗi JSON gốc của Webhook payload.</param>
+    /// <returns>Đối tượng <see cref="SePayWebhookResult"/> chứa cờ Authorized và dữ liệu khoản tiền chuyển vào.</returns>
     public SePayWebhookResult ReadWebhook(string? authorizationHeader, string rawBody)
     {
         if (!IsAuthorized(authorizationHeader))
@@ -79,6 +122,13 @@ public sealed class SePayGateway : ISePayGateway
         }
     }
 
+    /// <summary>
+    /// Chủ động gọi REST API sang hệ thống SePay để lấy danh sách các giao dịch tiền vào từ một thời điểm nhất định:
+    /// Dùng trong cơ chế Polling dự phòng khi Webhook gặp sự cố hoặc máy chủ thử nghiệm không có IP public.
+    /// </summary>
+    /// <param name="sinceUtc">Mốc thời gian UTC bắt đầu lọc giao dịch.</param>
+    /// <param name="cancellationToken">CancellationToken hủy tác vụ bất đồng bộ.</param>
+    /// <returns>Danh sách các giao dịch tiền vào <see cref="SePayIncomingTransfer"/> thỏa mãn điều kiện.</returns>
     public async Task<IReadOnlyList<SePayIncomingTransfer>> GetIncomingTransfersAsync(DateTime sinceUtc, CancellationToken cancellationToken = default)
     {
         if (!CanQueryTransactions)
@@ -115,6 +165,10 @@ public sealed class SePayGateway : ISePayGateway
             .ToList();
     }
 
+    /// <summary>
+    /// Kiểm tra tính chính xác của Authorization header Webhook từ SePay:
+    /// Áp dụng thuật toán so sánh thời gian cố định <see cref="CryptographicOperations.FixedTimeEquals"/> để chống tấn công Timing Attack.
+    /// </summary>
     private bool IsAuthorized(string? authorizationHeader)
     {
         if (!_options.CanVerifyWebhook || string.IsNullOrWhiteSpace(authorizationHeader))
@@ -133,15 +187,23 @@ public sealed class SePayGateway : ISePayGateway
             Encoding.UTF8.GetBytes(_options.WebhookApiKey.Trim()));
     }
 
-    /// <summary>Chỉ nhận khoản tiền vào có id và số tiền dương.</summary>
+    /// <summary>
+    /// Chuyển đổi dữ liệu JSON thô thành đối tượng giao dịch SePayIncomingTransfer:
+    /// Chỉ chấp nhận các bản ghi có mã ID hợp lệ và số tiền lớn hơn 0.
+    /// </summary>
     private static SePayIncomingTransfer? ToTransfer(string? id, decimal amount, string? content, string? code, string? reference) =>
         string.IsNullOrWhiteSpace(id) || amount <= 0
             ? null
             : new SePayIncomingTransfer(id, amount, content ?? string.Empty, EmptyToNull(code), EmptyToNull(reference));
 
+    /// <summary>
+    /// Chuẩn hóa chuỗi văn bản: trả về null nếu chuỗi rỗng hoặc chỉ toàn khoảng trắng.
+    /// </summary>
     private static string? EmptyToNull(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    /// <summary>SePay có thể trả số dưới dạng chuỗi ("79000.00") — đọc cả hai.</summary>
+    /// <summary>
+    /// Đọc thuộc tính kiểu chuỗi từ JsonElement (hỗ trợ cả trường hợp trường đó trả về dạng số trong JSON).
+    /// </summary>
     private static string? GetString(JsonElement element, string name) =>
         element.TryGetProperty(name, out var value)
             ? value.ValueKind switch
@@ -152,6 +214,9 @@ public sealed class SePayGateway : ISePayGateway
             }
             : null;
 
+    /// <summary>
+    /// Đọc thuộc tính kiểu số thực (decimal) từ JsonElement (hỗ trợ cả kiểu số lẫn chuỗi số dạng "79000.00").
+    /// </summary>
     private static decimal GetDecimal(JsonElement element, string name)
     {
         if (!element.TryGetProperty(name, out var value))
