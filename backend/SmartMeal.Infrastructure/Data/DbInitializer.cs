@@ -5,7 +5,7 @@ using SmartMeal.Domain.Entities;
 
 namespace SmartMeal.Infrastructure.Data;
 
-public static class DbInitializer
+public static partial class DbInitializer
 {
     /// <summary>Email tài khoản dùng thử cho môi trường phát triển (app mock đăng nhập bằng tài khoản này).</summary>
     public const string DevAccountEmail = "smartmealuser@gmail.com";
@@ -244,6 +244,7 @@ public static class DbInitializer
         await EnsureRecipeMealTypesAsync(db);
         await EnsureRecipeImagesAsync(db);
         await EnsureSeedDishesAsync(db);
+        await EnsureExpandedRecipesAsync(db);
         await EnsureIngredientAllergensAsync(db);
         await EnsureFoodServingsAsync(db);
         await EnsureFoodSearchTextAsync(db);
