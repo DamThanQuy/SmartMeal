@@ -47,7 +47,7 @@ services:
       Storage__Root: /app/uploads
       # Expo web (npx expo start --web) gọi API từ trình duyệt. 8082 là cổng Expo Web đang khai báo cho
       # Google Sign-In (Authorized JavaScript origins) — đổi cổng thì sửa cả hai nơi.
-      Cors__AllowedOrigins: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081,http://localhost:8082,http://localhost:19006}
+      Cors__AllowedOrigins: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8081,http://localhost:8082,http://localhost:19006}
     ports:
       # Mở trên mọi địa chỉ để điện thoại cùng Wi-Fi gọi được http://<IP-máy>:5000/api
       - "5000:8080"
@@ -71,6 +71,19 @@ services:
       postgres:
         condition: service_healthy
 
+  # 4. SmartMeal Admin Web Portal — http://localhost:3000
+  admin-web:
+    build:
+      context: ./frontend/admin-web
+      dockerfile: Dockerfile
+    container_name: smartmeal_admin
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend-api
+
 volumes:
   postgres_data:
   api_uploads:
+
