@@ -77,6 +77,20 @@ public class ApplicationDbContext : DbContext
             .HasIndex(d => new { d.UserId, d.LogDate, d.MealType })
             .IsUnique();
 
+        // DiaryItem indexes: tối ưu hóa tốc độ truy vấn danh sách món ăn theo bữa và kiểm tra dọn ảnh mồ côi
+        modelBuilder.Entity<DiaryItem>()
+            .HasIndex(i => i.NutritionDiaryId);
+
+        modelBuilder.Entity<DiaryItem>()
+            .HasIndex(i => i.ImageUrl);
+
+        // Recipe indexes: tối ưu hóa phân trang, sắp xếp và tìm kiếm công thức
+        modelBuilder.Entity<Recipe>()
+            .HasIndex(r => r.Title);
+
+        modelBuilder.Entity<Recipe>()
+            .HasIndex(r => r.CreatedAt);
+
         // Thực đơn: mỗi (người dùng, ngày, bữa) chỉ có một món — chặn việc các request song song xếp trùng ô.
         modelBuilder.Entity<MealPlan>()
             .HasIndex(m => new { m.UserId, m.PlanDate, m.MealType })
@@ -291,6 +305,7 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<Ingredient>().HasIndex(i => i.OwnerUserId);
         modelBuilder.Entity<Ingredient>().HasIndex(i => i.Barcode);
+        modelBuilder.Entity<Ingredient>().HasIndex(i => i.Name);
 
         modelBuilder.Entity<FoodServing>()
             .HasOne(s => s.Ingredient)

@@ -15,6 +15,8 @@ import { fromQuotaDto, fromSnapResponse, fromVoiceResponse } from './ai.mapper';
 // Bản gọi backend thật (docs/fetch-api/part1 §12). Mọi /ai/* cần đăng nhập; Free có hạn mức lượt/ngày
 // (BE trả 429 khi hết), Pro không giới hạn. BE chỉ ghi nhận lượt khi AI trả kết quả THÀNH CÔNG.
 
+import { optimizeMealImage } from './imageOptimizer';
+
 export const NO_IMAGE_MESSAGE = 'Chưa có ảnh để phân tích. Hãy chụp hoặc chọn lại ảnh món ăn.';
 export const VOICE_UNSUPPORTED_MESSAGE =
   'Nhận dạng giọng nói chưa được hỗ trợ trên bản này. Bạn có thể ghi món thủ công hoặc chụp ảnh món ăn.';
@@ -42,13 +44,14 @@ export const aiApiService = {
   // BE đếm lượt khi AI thành công, FE không tự trừ.
   async recordUsage(): Promise<void> {},
 
-  // POST /ai/snap-and-track (multipart, trường `image`; JPG/PNG/WebP tối đa 5 MB). Gemini có thể mất
-  // 5–20 giây nên dùng timeout dài. Không có ảnh thì không có gì để gửi (không trả kết quả giả).
+  // POST /ai/snap-and-track (multipart, trường `image`; JPG/PNG/WebP tối đa 5 MB).
+  // Tự động nén và resize ảnh trước khi gửi để tối ưu tốc độ truyền tải và xử lý AI.
   async analyzeMealPhoto(mealType: MealType, imageUri?: string): Promise<AIAnalysisResult> {
     if (!imageUri) throw new Error(NO_IMAGE_MESSAGE);
 
+    const optimizedUri = await optimizeMealImage(imageUri);
     const form = new FormData();
-    form.append('image', { uri: imageUri, name: 'meal.jpg', type: 'image/jpeg' } as unknown as Blob);
+    form.append('image', { uri: optimizedUri, name: 'meal.jpg', type: 'image/jpeg' } as unknown as Blob);
     const dto = await api.post<SnapAndTrackResponseDto, FormData>(ENDPOINTS.ai.snapAndTrack, form, {
       timeout: API_CONFIG.aiTimeout,
     });

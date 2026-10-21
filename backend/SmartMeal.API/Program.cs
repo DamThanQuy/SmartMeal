@@ -55,6 +55,9 @@ builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
     options.AddInterceptors(sp.GetRequiredService<NotificationDispatcher>());
 });
 
+// Cache trong bộ nhớ phục vụ tối ưu hóa master data (Meta, Recipes)
+builder.Services.AddMemoryCache();
+
 // 3. Dependency Injection
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<ILoginAttemptTracker, LoginAttemptTracker>();

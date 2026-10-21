@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.Meta;
 using SmartMeal.Infrastructure.Data;
@@ -12,20 +13,29 @@ namespace SmartMeal.API.Controllers;
 /// - Danh mục bệnh lý nền dinh dưỡng (Medical Conditions): Tiểu đường, cao huyết áp, gout, đau dạ dày, v.v.
 /// - Danh mục thẻ phân loại món ăn (Tags): Eat Clean, Keto, Low Carb, Chay, v.v.
 /// Dữ liệu công khai, không yêu cầu đăng nhập, mỗi mục có trường 'Code' định danh ổn định giúp client mapping giao diện đa ngôn ngữ.
+/// Tự động cache trong bộ nhớ (In-Memory Cache) 12 giờ để đạt hiệu năng tối đa và giảm tải truy vấn DB.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class MetaController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
+    private readonly IMemoryCache _cache;
+
+    private const string AllergiesCacheKey = "meta_allergies";
+    private const string ConditionsCacheKey = "meta_conditions";
+    private const string TagsCacheKey = "meta_tags";
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(12);
 
     /// <summary>
     /// Khởi tạo instance mới của <see cref="MetaController"/>.
     /// </summary>
     /// <param name="db">Database Context truy xuất trực tiếp bảng danh mục hệ thống.</param>
-    public MetaController(ApplicationDbContext db)
+    /// <param name="cache">Bộ nhớ đệm In-Memory để lưu kết quả danh mục tĩnh.</param>
+    public MetaController(ApplicationDbContext db, IMemoryCache cache)
     {
         _db = db;
+        _cache = cache;
     }
 
     /// <summary>
@@ -36,11 +46,15 @@ public class MetaController : ControllerBase
     [HttpGet("allergies")]
     public async Task<ActionResult<ApiResponse<List<MetaItemDto>>>> GetAllergies()
     {
-        var list = await _db.Allergies.AsNoTracking()
-            .OrderBy(a => a.Id)
-            .Select(a => new MetaItemDto { Id = a.Id, Code = a.Code, Name = a.Name, Description = a.Description })
-            .ToListAsync();
-        return Ok(ApiResponse<List<MetaItemDto>>.Ok(list));
+        var list = await _cache.GetOrCreateAsync(AllergiesCacheKey, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+            return await _db.Allergies.AsNoTracking()
+                .OrderBy(a => a.Id)
+                .Select(a => new MetaItemDto { Id = a.Id, Code = a.Code, Name = a.Name, Description = a.Description })
+                .ToListAsync();
+        });
+        return Ok(ApiResponse<List<MetaItemDto>>.Ok(list ?? new List<MetaItemDto>()));
     }
 
     /// <summary>
@@ -51,11 +65,15 @@ public class MetaController : ControllerBase
     [HttpGet("medical-conditions")]
     public async Task<ActionResult<ApiResponse<List<MetaItemDto>>>> GetMedicalConditions()
     {
-        var list = await _db.MedicalConditions.AsNoTracking()
-            .OrderBy(c => c.Id)
-            .Select(c => new MetaItemDto { Id = c.Id, Code = c.Code, Name = c.Name, Description = c.Description })
-            .ToListAsync();
-        return Ok(ApiResponse<List<MetaItemDto>>.Ok(list));
+        var list = await _cache.GetOrCreateAsync(ConditionsCacheKey, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+            return await _db.MedicalConditions.AsNoTracking()
+                .OrderBy(c => c.Id)
+                .Select(c => new MetaItemDto { Id = c.Id, Code = c.Code, Name = c.Name, Description = c.Description })
+                .ToListAsync();
+        });
+        return Ok(ApiResponse<List<MetaItemDto>>.Ok(list ?? new List<MetaItemDto>()));
     }
 
     /// <summary>
@@ -66,10 +84,14 @@ public class MetaController : ControllerBase
     [HttpGet("tags")]
     public async Task<ActionResult<ApiResponse<List<MetaItemDto>>>> GetTags()
     {
-        var list = await _db.Tags.AsNoTracking()
-            .OrderBy(t => t.Id)
-            .Select(t => new MetaItemDto { Id = t.Id, Code = t.Code, Name = t.Name })
-            .ToListAsync();
-        return Ok(ApiResponse<List<MetaItemDto>>.Ok(list));
+        var list = await _cache.GetOrCreateAsync(TagsCacheKey, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+            return await _db.Tags.AsNoTracking()
+                .OrderBy(t => t.Id)
+                .Select(t => new MetaItemDto { Id = t.Id, Code = t.Code, Name = t.Name })
+                .ToListAsync();
+        });
+        return Ok(ApiResponse<List<MetaItemDto>>.Ok(list ?? new List<MetaItemDto>()));
     }
 }
