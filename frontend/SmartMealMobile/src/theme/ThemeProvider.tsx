@@ -43,7 +43,9 @@ export interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children, onReady }: ThemeProviderProps) {
-  const [fontsLoaded, fontError] = useFonts({
+  // Vẫn gọi useFonts để font Inter được nạp sẵn, nhưng không chặn render: nếu font chưa sẵn sàng
+  // thì dùng fallback của hệ thống, còn chờ font làm splash screen bị treo vô hạn trên một số máy.
+  useFonts({
     'Inter-Regular': require('../../assets/fonts/Inter-Regular.ttf'),
     'Inter-SemiBold': require('../../assets/fonts/Inter-SemiBold.ttf'),
     'Inter-Bold': require('../../assets/fonts/Inter-Bold.ttf'),
@@ -94,9 +96,8 @@ export function ThemeProvider({ children, onReady }: ThemeProviderProps) {
     [mode, resolvedScheme, colors],
   );
 
-  // Chưa đọc xong theme mode lưu trước đó → không render children (App.tsx giữ splash screen
-  // hiển thị cho tới khi onReady() được gọi ở trên), tránh hiển thị theme sai rồi lại đổi.
-  if (!isHydrated || (!fontsLoaded && !fontError)) {
+  // Đọc xong theme mode lưu trước đó thì cho phép render ngay (font Inter có thể tải ngầm hoặc fallback hệ thống)
+  if (!isHydrated) {
     return null;
   }
 
