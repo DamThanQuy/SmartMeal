@@ -97,11 +97,11 @@ export function AICameraScreen({ navigation, route }: Props) {
         <View className="flex-row items-center justify-between">
           <AppIconButton
             accessibilityLabel="Đóng"
-            icon={<X size={22} color={colors.onPrimary} />}
-            className="bg-on-primary/15"
+            icon={<X size={22} color={colors.onOverlay} />}
+            className="bg-on-overlay/15"
             onPress={() => navigation.goBack()}
           />
-          <AppText variant="bodyMedium" className="text-on-primary font-semibold">
+          <AppText variant="bodyMedium" className="text-on-overlay font-semibold">
             Chụp món ăn
           </AppText>
           <View className="w-10" />
@@ -111,10 +111,10 @@ export function AICameraScreen({ navigation, route }: Props) {
           <View className="h-[80px] w-[80px] items-center justify-center rounded-full bg-primary-soft shadow-md">
             <Camera size={40} color={colors.primary} />
           </View>
-          <AppText variant="h2" className="text-center text-on-primary">
+          <AppText variant="h2" className="text-center text-on-overlay">
             Cần quyền truy cập máy ảnh
           </AppText>
-          <AppText variant="body" className="text-center text-on-primary/80">
+          <AppText variant="body" className="text-center text-on-overlay/80">
             SmartMeal cần quyền dùng camera để chụp và tự động phân tích hàm lượng dinh dưỡng, calo trong đĩa ăn của bạn.
           </AppText>
 
@@ -142,7 +142,7 @@ export function AICameraScreen({ navigation, route }: Props) {
             />
           </View>
 
-          <AppText variant="caption" className="text-center text-on-primary/60 mt-xs">
+          <AppText variant="caption" className="text-center text-on-overlay/60 mt-xs">
             Lưu ý: Nếu dùng Expo Go, hãy chắc chắn ứng dụng Expo Go đã được cấp quyền Camera trong Cài đặt của điện thoại.
           </AppText>
         </View>
@@ -167,16 +167,16 @@ export function AICameraScreen({ navigation, route }: Props) {
         <View className="flex-row items-center justify-between px-md pt-[52px]">
           <AppIconButton
             accessibilityLabel="Đóng"
-            icon={<X size={22} color={colors.onPrimary} />}
+            icon={<X size={22} color={colors.onOverlay} />}
             className="bg-overlay/40"
             onPress={() => navigation.goBack()}
           />
-          <AppText variant="bodyMedium" className="text-on-primary font-semibold">
+          <AppText variant="bodyMedium" className="text-on-overlay font-semibold">
             Chụp món ăn
           </AppText>
           <AppIconButton
             accessibilityLabel="Đèn flash"
-            icon={<Zap size={22} color={torch ? '#FACC15' : colors.onPrimary} />}
+            icon={<Zap size={22} color={torch ? '#FACC15' : colors.onOverlay} />}
             className={torch ? 'bg-overlay/70 border border-yellow-400/60' : 'bg-overlay/40'}
             onPress={() => setTorch(prev => !prev)}
           />
@@ -184,14 +184,14 @@ export function AICameraScreen({ navigation, route }: Props) {
 
         {/* Khung ngắm đĩa ăn */}
         <View className="items-center justify-center gap-sm">
-          <View className="h-[290px] w-[290px] rounded-full border-2 border-dashed border-on-primary/80 shadow-lg" />
+          <View className="h-[290px] w-[290px] rounded-full border-2 border-dashed border-on-overlay/80 shadow-lg" />
           <View className="rounded-full bg-overlay/50 px-md py-xs">
-            <AppText variant="body" className="text-on-primary">
+            <AppText variant="body" className="text-on-overlay">
               Đặt đĩa ăn vào khung · chụp từ trên xuống
             </AppText>
           </View>
           <View className="rounded-full bg-overlay/50 px-sm py-xxs">
-            <AppText variant="caption" className="text-on-primary opacity-90">
+            <AppText variant="caption" className="text-on-overlay opacity-90">
               {isUnlimited ? 'Pro: dùng AI không giới hạn' : `Còn ${remaining}/${limit} lượt AI hôm nay`}
             </AppText>
           </View>
@@ -201,7 +201,7 @@ export function AICameraScreen({ navigation, route }: Props) {
         <View className="flex-row items-center justify-around px-md pb-[48px] pt-lg bg-overlay/30">
           <AppIconButton
             accessibilityLabel="Chọn từ thư viện ảnh"
-            icon={<ImageIcon size={22} color={colors.onPrimary} />}
+            icon={<ImageIcon size={22} color={colors.onOverlay} />}
             className="bg-overlay/50"
             onPress={handlePickImage}
             disabled={isCapturing}
@@ -211,17 +211,17 @@ export function AICameraScreen({ navigation, route }: Props) {
             accessibilityLabel="Chụp"
             onPress={handleCapture}
             disabled={isCapturing}
-            className="h-[76px] w-[76px] items-center justify-center rounded-full border-4 border-on-primary active:scale-95"
+            className="h-[76px] w-[76px] items-center justify-center rounded-full border-4 border-on-overlay active:scale-95"
           >
             {isCapturing ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <View className="h-[60px] w-[60px] rounded-full bg-on-primary" />
+              <View className="h-[60px] w-[60px] rounded-full bg-on-overlay" />
             )}
           </Pressable>
           <AppIconButton
             accessibilityLabel="Đổi camera"
-            icon={<RefreshCw size={22} color={colors.onPrimary} />}
+            icon={<RefreshCw size={22} color={colors.onOverlay} />}
             className="bg-overlay/50"
             onPress={() => setFacing(prev => (prev === 'back' ? 'front' : 'back'))}
             disabled={isCapturing}

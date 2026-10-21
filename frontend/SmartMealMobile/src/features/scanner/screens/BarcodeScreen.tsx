@@ -1,3 +1,4 @@
+import { haptic } from '@/utils/haptics';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import { Camera, X } from 'lucide-react-native';
@@ -42,8 +43,10 @@ export function BarcodeScreen({ navigation, route }: Props) {
     scanBarcode.mutate(code, {
       onSuccess: result => {
         if (result) {
+          haptic.success();
           setProduct(result);
         } else {
+          haptic.warning();
           navigation.replace(MAIN_STACK_ROUTES.PRODUCT_NOT_FOUND, { barcode: code, mealType });
         }
       },
@@ -112,14 +115,14 @@ export function BarcodeScreen({ navigation, route }: Props) {
         <View className="absolute left-md top-[52px]">
           <AppIconButton
             accessibilityLabel="Đóng máy quét"
-            icon={<X size={22} color={colors.onPrimary} />}
-            className="bg-on-primary/15"
+            icon={<X size={22} color={colors.onOverlay} />}
+            className="bg-on-overlay/15"
             onPress={() => navigation.navigate(MAIN_STACK_ROUTES.QUICK_LOG, { mealType })}
           />
         </View>
-        <View className="mt-xl h-[130px] w-[240px] rounded-lg border-2 border-on-primary" />
+        <View className="mt-xl h-[130px] w-[240px] rounded-lg border-2 border-on-overlay" />
         {permission?.granted ? (
-          <AppText variant="body" className="text-on-primary">
+          <AppText variant="body" className="text-on-overlay">
             {scanBarcode.isPending ? 'Đang tra cứu…' : 'Đưa mã vạch vào khung'}
           </AppText>
         ) : (

@@ -20,7 +20,7 @@ import { MacroStatGrid } from '@/features/nutrition';
 import { useUnreadNotificationsCount } from '@/features/profile/hooks/useNotifications';
 import { MAIN_STACK_ROUTES, MAIN_TAB_ROUTES } from '@/constants/routes';
 import type { MainStackParamList, MainTabParamList } from '@/navigation/types';
-import { MEAL_TYPE_TITLES } from '@/types/meal.types';
+import { getMealTypeForHour, MEAL_TYPE_TITLES } from '@/types/meal.types';
 import { useAuthStore } from '@/state/auth/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { ActivityCard } from '../components/ActivityCard';
@@ -292,6 +292,11 @@ export function DashboardScreen(_props: Props) {
                 mealType: 'dinner',
               })
             }
+            onScan={() =>
+              navigation.navigate(MAIN_STACK_ROUTES.BARCODE, {
+                mealType: getMealTypeForHour(now.getHours()),
+              })
+            }
           />
         </View>
 
@@ -338,6 +343,8 @@ export function DashboardScreen(_props: Props) {
                   .join(', ')}
                 calories={totalCalories}
                 macroLine={`P ${totalProtein}g · C ${totalCarbs}g · F ${totalFat}g`}
+                // Món trong bữa xếp theo giờ ghi (cũ → mới): lấy ảnh chụp gần nhất.
+                imageUrl={section.entries.findLast(entry => entry.imageUrl)?.imageUrl}
                 onPress={() =>
                   navigation.navigate(MAIN_STACK_ROUTES.MAIN_TABS, {
                     screen: MAIN_TAB_ROUTES.DIARY,

@@ -77,11 +77,11 @@ export function OCRCameraScreen({ navigation, route }: Props) {
         <View className="flex-row items-center justify-between px-md pt-[52px]">
           <AppIconButton
             accessibilityLabel="Đóng"
-            icon={<X size={22} color={colors.onPrimary} />}
-            className="bg-on-primary/15"
+            icon={<X size={22} color={colors.onOverlay} />}
+            className="bg-on-overlay/15"
             onPress={() => navigation.navigate(MAIN_STACK_ROUTES.QUICK_LOG, { mealType })}
           />
-          <AppText variant="bodyMedium" className="text-on-primary">
+          <AppText variant="bodyMedium" className="text-on-overlay">
             Quét sản phẩm
           </AppText>
           <View className="h-[44px] w-[44px]" />
@@ -96,26 +96,26 @@ export function OCRCameraScreen({ navigation, route }: Props) {
         </View>
 
         <View className="flex-1 items-center justify-center gap-md px-lg">
-          <View className="h-[240px] w-[300px] items-start rounded-lg border-2 border-dashed border-on-primary/80 p-sm">
-            <AppText variant="caption" className="rounded-pill bg-on-primary/15 px-sm py-xxs text-on-primary">
+          <View className="h-[240px] w-[300px] items-start rounded-lg border-2 border-dashed border-on-overlay/80 p-sm">
+            <AppText variant="caption" className="rounded-pill bg-on-overlay/15 px-sm py-xxs text-on-overlay">
               Nutrition Facts
             </AppText>
           </View>
           <View className="items-center gap-sm rounded-lg bg-overlay/50 px-md py-sm">
-            <AppText variant="body" className="text-center text-on-primary">
+            <AppText variant="body" className="text-center text-on-overlay">
               Đặt bảng thành phần dinh dưỡng vào khung
             </AppText>
             <View className="flex-row gap-md">
               {TIPS.map(tip => (
                 <View key={tip} className="flex-row items-center gap-xxs">
-                  <CheckCircle2 size={14} color={colors.onPrimary} />
-                  <AppText variant="caption" className="text-on-primary opacity-80">
+                  <CheckCircle2 size={14} color={colors.onOverlay} />
+                  <AppText variant="caption" className="text-on-overlay opacity-80">
                     {tip}
                   </AppText>
                 </View>
               ))}
             </View>
-            <AppText variant="caption" className="text-center text-on-primary opacity-80">
+            <AppText variant="caption" className="text-center text-on-overlay opacity-80">
               Chữ nhỏ? Để máy xa hơn một chút rồi chụm 2 ngón để phóng to
             </AppText>
           </View>
@@ -132,8 +132,8 @@ export function OCRCameraScreen({ navigation, route }: Props) {
         <View className="flex-row items-center justify-around px-md pb-[48px] pt-lg">
           <AppIconButton
             accessibilityLabel="Chọn từ thư viện ảnh"
-            icon={<ImageIcon size={22} color={colors.onPrimary} />}
-            className="bg-on-primary/15"
+            icon={<ImageIcon size={22} color={colors.onOverlay} />}
+            className="bg-on-overlay/15"
             disabled={busy}
             onPress={() => void handlePick()}
           />
@@ -143,14 +143,14 @@ export function OCRCameraScreen({ navigation, route }: Props) {
             accessibilityState={{ busy, disabled: !canUseCamera }}
             disabled={busy || !canUseCamera}
             onPress={() => void handleCapture()}
-            className={`h-[76px] w-[76px] items-center justify-center rounded-full border-4 border-on-primary ${canUseCamera ? '' : 'opacity-40'}`}
+            className={`h-[76px] w-[76px] items-center justify-center rounded-full border-4 border-on-overlay ${canUseCamera ? '' : 'opacity-40'}`}
           >
-            <View className="h-[60px] w-[60px] rounded-full bg-on-primary" />
+            <View className="h-[60px] w-[60px] rounded-full bg-on-overlay" />
           </Pressable>
           <AppIconButton
             accessibilityLabel={torch ? 'Tắt đèn flash' : 'Bật đèn flash'}
-            icon={<Zap size={22} color={torch ? colors.warning : colors.onPrimary} />}
-            className="bg-on-primary/15"
+            icon={<Zap size={22} color={torch ? colors.warning : colors.onOverlay} />}
+            className="bg-on-overlay/15"
             disabled={!canUseCamera}
             onPress={toggleTorch}
           />

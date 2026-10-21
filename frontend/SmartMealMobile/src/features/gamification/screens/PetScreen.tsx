@@ -1,3 +1,4 @@
+import { haptic } from '@/utils/haptics';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Check, ChevronRight, Flame, Lock, Trophy } from 'lucide-react-native';
 import React, { useRef } from 'react';
@@ -102,6 +103,16 @@ export function PetScreen({ navigation }: Props) {
   // XP burst local state (không lưu vào store — chỉ visual feedback)
   const [bursts, setBursts] = React.useState<{ id: number; label: string; tone: 'water' | 'leaf' }[]>([]);
   const burstIdRef = useRef(0);
+  const prevLevelRef = useRef<number | null>(null);
+  React.useEffect(() => {
+    if (pet?.level) {
+      if (prevLevelRef.current !== null && pet.level > prevLevelRef.current) {
+        haptic.success();
+      }
+      prevLevelRef.current = pet.level;
+    }
+  }, [pet?.level]);
+
 
   // Hero card bounce scale khi nhận XP
   const heroScale = useSharedValue(1);
@@ -117,6 +128,7 @@ export function PetScreen({ navigation }: Props) {
   };
 
   const showBurst = (label: string, tone: 'water' | 'leaf') => {
+    haptic.medium();
     burstIdRef.current += 1;
     const id = burstIdRef.current;
     setBursts(prev => [...prev, { id, label, tone }]);

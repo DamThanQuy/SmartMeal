@@ -71,19 +71,19 @@ export function FridgeCameraScreen({ navigation }: Props) {
         <View className="flex-row items-center justify-between px-md pt-[52px]">
           <AppIconButton
             accessibilityLabel="Đóng"
-            icon={<X size={22} color={colors.onPrimary} />}
-            className="bg-on-primary/15"
+            icon={<X size={22} color={colors.onOverlay} />}
+            className="bg-on-overlay/15"
             onPress={() => navigation.goBack()}
           />
-          <AppText variant="bodyMedium" className="text-on-primary">
+          <AppText variant="bodyMedium" className="text-on-overlay">
             Quét tủ lạnh
           </AppText>
           <View className="flex-row items-center gap-xs">
             <AppBadge label="Pro" icon={<ShieldCheck size={14} color={colors.onPrimarySoft} />} />
             <AppIconButton
               accessibilityLabel={torch ? 'Tắt đèn flash' : 'Bật đèn flash'}
-              icon={<Zap size={22} color={torch ? colors.warning : colors.onPrimary} />}
-              className="bg-on-primary/15"
+              icon={<Zap size={22} color={torch ? colors.warning : colors.onOverlay} />}
+              className="bg-on-overlay/15"
               disabled={!canUseCamera}
               onPress={toggleTorch}
             />
@@ -91,13 +91,13 @@ export function FridgeCameraScreen({ navigation }: Props) {
         </View>
 
         <View className="flex-1 items-center justify-center gap-md px-lg">
-          <View className="h-[300px] w-[300px] items-end justify-end rounded-lg border-2 border-on-primary/75 p-sm">
-            <AppText variant="caption" className="rounded-pill bg-on-primary/15 px-sm py-xxs text-on-primary">
+          <View className="h-[300px] w-[300px] items-end justify-end rounded-lg border-2 border-on-overlay/75 p-sm">
+            <AppText variant="caption" className="rounded-pill bg-on-overlay/15 px-sm py-xxs text-on-overlay">
               Ngăn mát
             </AppText>
           </View>
           <View className="rounded-lg bg-overlay/50 px-md py-sm">
-            <AppText variant="body" className="text-center text-on-primary">
+            <AppText variant="body" className="text-center text-on-overlay">
               Mở cửa tủ, chụp toàn cảnh từng ngăn để nhận diện đủ nguyên liệu
             </AppText>
           </View>
@@ -118,19 +118,19 @@ export function FridgeCameraScreen({ navigation }: Props) {
                     key={uri}
                     source={{ uri }}
                     accessibilityLabel={`Ảnh ${index + 1}`}
-                    className="h-[56px] w-[56px] rounded-md border-2 border-on-primary"
+                    className="h-[56px] w-[56px] rounded-md border-2 border-on-overlay"
                   />
                 ))}
               </View>
-              <AppText variant="caption" className="text-on-primary opacity-80">
+              <AppText variant="caption" className="text-on-overlay opacity-80">
                 {isFull ? `${photoUris.length} ảnh (tối đa)` : `${photoUris.length} ảnh · chụp thêm ngăn đông, ngăn rau`}
               </AppText>
             </View>
           ) : null}
 
           <View className="flex-row items-center gap-xxs">
-            <ShieldCheck size={14} color={colors.onPrimary} />
-            <AppText variant="caption" className="text-on-primary opacity-80">
+            <ShieldCheck size={14} color={colors.onOverlay} />
+            <AppText variant="caption" className="text-on-overlay opacity-80">
               Bạn cần xác nhận nguyên liệu trước khi gợi ý món
             </AppText>
           </View>
@@ -139,8 +139,8 @@ export function FridgeCameraScreen({ navigation }: Props) {
         <View className="flex-row items-center justify-around px-md pb-[48px] pt-lg">
           <AppIconButton
             accessibilityLabel="Chọn từ thư viện ảnh"
-            icon={<ImageIcon size={22} color={colors.onPrimary} />}
-            className="bg-on-primary/15"
+            icon={<ImageIcon size={22} color={colors.onOverlay} />}
+            className="bg-on-overlay/15"
             disabled={busy || isFull}
             onPress={() => void addPhoto(pickFromLibrary)}
           />
@@ -150,9 +150,9 @@ export function FridgeCameraScreen({ navigation }: Props) {
             accessibilityState={{ busy, disabled: isFull || !canUseCamera }}
             disabled={busy || isFull || !canUseCamera}
             onPress={() => void addPhoto(capture)}
-            className={`h-[76px] w-[76px] items-center justify-center rounded-full border-4 border-on-primary ${canUseCamera && !isFull ? '' : 'opacity-40'}`}
+            className={`h-[76px] w-[76px] items-center justify-center rounded-full border-4 border-on-overlay ${canUseCamera && !isFull ? '' : 'opacity-40'}`}
           >
-            <View className="h-[60px] w-[60px] rounded-full bg-on-primary" />
+            <View className="h-[60px] w-[60px] rounded-full bg-on-overlay" />
           </Pressable>
           <AppButton
             label={`Xong · ${photoUris.length}`}
