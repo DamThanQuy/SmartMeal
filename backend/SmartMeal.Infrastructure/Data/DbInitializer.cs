@@ -13,6 +13,12 @@ public static partial class DbInitializer
     /// <summary>Mật khẩu mặc định của tài khoản dev; đổi bằng cấu hình <c>Seed:DevAccountPassword</c>.</summary>
     public const string DefaultDevPassword = "Smartmeal@123";
 
+    /// <summary>Email tài khoản Quản trị viên (Admin) cho hệ thống Admin Web.</summary>
+    public const string AdminAccountEmail = "admin@smartmeal.com";
+
+    /// <summary>Mật khẩu mặc định của tài khoản admin.</summary>
+    public const string DefaultAdminPassword = "Admin@123456";
+
     /// <param name="seedDevAccount">Chỉ bật ở môi trường Development: tạo tài khoản dùng thử có mật khẩu đã biết. TUYỆT ĐỐI không bật khi triển khai thật.</param>
     /// <param name="devAccountPassword">Mật khẩu cho tài khoản dev (mặc định <see cref="DefaultDevPassword"/>).</param>
     public static async Task SeedAsync(ApplicationDbContext db, bool seedDevAccount = false, string? devAccountPassword = null)
@@ -240,6 +246,8 @@ public static partial class DbInitializer
             await EnsureDevAccountAsync(db, devAccountPassword ?? DefaultDevPassword);
         }
 
+        await EnsureAdminAccountAsync(db, DefaultAdminPassword);
+
         await EnsureChallengeRulesAsync(db);
         await EnsureRecipeMealTypesAsync(db);
         await EnsureRecipeImagesAsync(db);
@@ -296,6 +304,36 @@ public static partial class DbInitializer
         db.Users.Add(user);
         db.HealthProfiles.Add(profile);
         await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Đảm bảo tài khoản Quản trị viên (Admin) luôn tồn tại với quyền Admin và trạng thái kích hoạt đầy đủ.
+    /// </summary>
+    public static async Task EnsureAdminAccountAsync(ApplicationDbContext db, string password)
+    {
+        var existing = await db.Users.FirstOrDefaultAsync(u => u.Email == AdminAccountEmail);
+        if (existing is null)
+        {
+            var adminUser = new User
+            {
+                Email = AdminAccountEmail,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+                FullName = "Quản Trị Viên (Admin)",
+                Role = "Admin",
+                IsEmailVerified = true,
+                IsPro = true,
+                SubscriptionStatus = SubscriptionStatuses.Premium,
+                ProExpiresAt = DateTime.UtcNow.AddYears(10)
+            };
+            db.Users.Add(adminUser);
+            await db.SaveChangesAsync();
+        }
+        else if (existing.Role != "Admin")
+        {
+            existing.Role = "Admin";
+            existing.IsEmailVerified = true;
+            await db.SaveChangesAsync();
+        }
     }
 
     // Luật chấm của ba thử thách mẫu (dữ liệu cũ tạo trước khi có cột Category/TargetValuePerDay nên mọi dòng đều là EatClean, mục tiêu 0).
