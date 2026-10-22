@@ -44,9 +44,9 @@ jobs:
           Write-Host "=========================================="
           Write-Host "[2/4] Building and recreating backend-api container..."
           Write-Host "=========================================="
-          docker compose up -d --build backend-api
+          docker-compose up -d --build backend-api
           if ($LASTEXITCODE -ne 0) {
-            Write-Error "[FAIL] docker compose up failed with exit code $LASTEXITCODE"
+            Write-Error "[FAIL] docker-compose up failed with exit code $LASTEXITCODE"
             exit $LASTEXITCODE
           }
           Write-Host "[OK] Container backend-api built and started."
