@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { api, authStorage } from '../../services/api'
 
-function jsonResponse(body, status = 200) {
+function jsonResponse(body, status = 200, headers = {}) {
   return {
     ok: status >= 200 && status < 300,
     status,
+    headers: new Headers(headers),
     json: async () => body,
   }
 }
@@ -142,6 +143,41 @@ describe('api.login', () => {
 
     expect(authStorage.getToken()).toBeNull()
   })
+
+  it('không gửi token cũ khi đăng nhập', async () => {
+    authStorage.setToken('stale-token')
+
+    await api.login('admin@smartmeal.com', 'Secret@123')
+
+    expect(lastInit().headers.Authorization).toBeUndefined()
+  })
+
+  it('sai mật khẩu (401) chỉ ném lỗi đăng nhập, không phát sự kiện hết phiên', async () => {
+    const listener = vi.fn()
+    window.addEventListener('smartmeal_admin_unauthorized', listener)
+    fetchMock.mockResolvedValueOnce(jsonResponse({ success: false, message: 'Email hoặc mật khẩu không chính xác.' }, 401))
+
+    await expect(api.login('admin@smartmeal.com', 'sai')).rejects.toThrow('Email hoặc mật khẩu không chính xác.')
+
+    expect(listener).not.toHaveBeenCalled()
+    window.removeEventListener('smartmeal_admin_unauthorized', listener)
+  })
+})
+
+describe('danh sách phân trang (getUsers / getRecipes / getTransactions)', () => {
+  it.each(['getUsers', 'getRecipes', 'getTransactions'])('%s trả { items, total } với total từ header X-Total-Count', async (fn) => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ success: true, data: [{ id: 'a' }, { id: 'b' }] }, 200, { 'X-Total-Count': '56' }))
+
+    await expect(api[fn]({ page: 1, pageSize: 2 })).resolves.toEqual({ items: [{ id: 'a' }, { id: 'b' }], total: 56 })
+  })
+
+  it('thiếu header tổng số thì total = số bản ghi đã nhận; không có data thì danh sách rỗng', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ success: true, data: [{ id: 'a' }] }))
+    await expect(api.getUsers()).resolves.toEqual({ items: [{ id: 'a' }], total: 1 })
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ success: true, data: null }, 200, { 'X-Total-Count': '0' }))
+    await expect(api.getRecipes()).resolves.toEqual({ items: [], total: 0 })
+  })
 })
 
 describe('api — URL, phương thức và payload của từng chức năng', () => {
@@ -180,7 +216,7 @@ describe('api — URL, phương thức và payload của từng chức năng', (
   it('các hàm danh sách trả mảng rỗng khi backend không có data', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ success: true, data: null }))
 
-    for (const fn of ['getUsers', 'getRecipes', 'getPlans', 'getTransactions', 'getChallenges', 'getBadges', 'getXpEvents']) {
+    for (const fn of ['getPlans', 'getChallenges', 'getBadges', 'getXpEvents']) {
       await expect(api[fn]()).resolves.toEqual([])
     }
   })

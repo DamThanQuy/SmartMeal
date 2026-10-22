@@ -93,6 +93,7 @@ export const activity = {
   serverUptimeHours: 31.5,
   serverTimeUtc: '2026-10-22T03:00:00Z',
   databaseStatus: 'Healthy',
+  databaseLatencyMs: 3.2,
   totalAiRequestsToday: 17,
   recentAiLogs: [{ id: 'a1', userFullName: 'Lan Anh', userEmail: 'lan@example.com', kind: 'snap', createdAt: '2026-10-22T02:00:00Z' }],
   recentDiaryLogs: [{ id: 'd1', userFullName: 'Minh', mealType: 'Lunch', calories: 512.7, date: '2026-10-22T02:30:00Z' }],
@@ -138,7 +139,7 @@ export const engagement = {
 export function setupApi(api) {
   api.login.mockResolvedValue({ token: 'jwt', user: adminUser })
   api.getStats.mockResolvedValue(stats)
-  api.getUsers.mockResolvedValue(users)
+  api.getUsers.mockResolvedValue({ items: users, total: users.length })
   api.getUserDetail.mockResolvedValue(userDetail)
   api.updateUserStatus.mockResolvedValue({ success: true })
   api.updateUserRole.mockResolvedValue({ success: true })
@@ -146,13 +147,13 @@ export function setupApi(api) {
   api.deleteUser.mockResolvedValue({ success: true })
   api.banUser.mockResolvedValue({ success: true })
   api.moderateAccount.mockResolvedValue({ success: true })
-  api.getRecipes.mockResolvedValue(recipes)
+  api.getRecipes.mockResolvedValue({ items: recipes, total: recipes.length })
   api.getRecipeDetail.mockResolvedValue(recipeDetail)
   api.createRecipe.mockResolvedValue({ id: 'r-new' })
   api.updateRecipe.mockResolvedValue({ id: 'r1' })
   api.deleteRecipe.mockResolvedValue({ success: true })
   api.getPlans.mockResolvedValue(plans)
-  api.getTransactions.mockResolvedValue(transactions)
+  api.getTransactions.mockResolvedValue({ items: transactions, total: transactions.length })
   api.approveTransaction.mockResolvedValue({ success: true })
   api.getChallenges.mockResolvedValue(challenges)
   api.createChallenge.mockResolvedValue({ id: 'c-new' })
@@ -165,6 +166,9 @@ export function setupApi(api) {
   api.getRevenueReport.mockResolvedValue(revenue)
   api.getEngagementAnalytics.mockResolvedValue(engagement)
 }
+
+/** Một trang của danh sách phân trang, đúng hình dạng api.getUsers / getRecipes / getTransactions trả về. */
+export const listPage = (items, total = items.length) => ({ items, total })
 
 /** Tạo n bản ghi để kiểm tra phân trang. */
 export function manyUsers(n) {

@@ -48,17 +48,18 @@ export default function RewardsView({ onNotify }) {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [chData, bdData, xpData, uData] = await Promise.all([
+      const [chData, bdData, xpData, userPage] = await Promise.all([
         api.getChallenges(),
         api.getBadges(),
         api.getXpEvents(),
         api.getUsers({ pageSize: 50 })
       ]);
+      const uData = userPage?.items || [];
       setChallenges(chData);
       setBadges(bdData);
       setXpEvents(xpData);
-      setUsers(uData || []);
-      if (uData && uData.length > 0 && !grantUserId) {
+      setUsers(uData);
+      if (uData.length > 0 && !grantUserId) {
         setGrantUserId(uData[0].id);
       }
     } catch (err) {
@@ -537,10 +538,10 @@ export default function RewardsView({ onNotify }) {
                       value={challengeForm.category}
                       onChange={(e) => setChallengeForm({ ...challengeForm, category: e.target.value })}
                     >
-                      <option value="EatClean">Ăn Sạch (Eat Clean)</option>
-                      <option value="DrinkWater">Uống Nước (Hydration)</option>
-                      <option value="NoSugar">Kiêng Đường (No Sugar)</option>
-                      <option value="Exercise">Vận Động (Workout/Steps)</option>
+                      {/* Chỉ các loại app chấm được tiến độ mỗi ngày (backend: ChallengeCategories). */}
+                      <option value="EatClean">Ăn Sạch — số nhóm bữa ghi mỗi ngày</option>
+                      <option value="DrinkWater">Uống Nước — ml mỗi ngày</option>
+                      <option value="Exercise">Vận Động — số bước mỗi ngày</option>
                     </select>
                   </div>
 

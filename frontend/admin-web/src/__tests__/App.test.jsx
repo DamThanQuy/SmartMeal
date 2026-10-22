@@ -9,6 +9,13 @@ vi.mock('../services/api', async (importOriginal) => (await import('../test/mock
 
 const pageTitle = () => screen.getByRole('heading', { level: 2, name: (_, el) => el.classList.contains('page-title') })
 
+// Trang đăng nhập không còn điền sẵn tài khoản: nhập email / mật khẩu rồi bấm đăng nhập.
+async function submitLogin(user, email = 'boss@smartmeal.vn', password = 'S3cret-Pass!') {
+  await user.type(screen.getByPlaceholderText('admin@smartmeal.com'), email)
+  await user.type(screen.getByPlaceholderText('••••••••'), password)
+  await user.click(screen.getByRole('button', { name: /Đăng Nhập Quản Trị/ }))
+}
+
 function loginAsStoredAdmin() {
   authStorage.setToken('jwt-stored')
   authStorage.setUser(adminUser)
@@ -32,7 +39,7 @@ describe('App — đăng nhập / đăng xuất', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /Đăng Nhập Quản Trị/ }))
+    await submitLogin(user)
 
     expect(await screen.findByText(`Chào mừng Quản trị viên ${adminUser.fullName}!`)).toBeInTheDocument()
     expect(pageTitle()).toHaveTextContent('Bảng Điều Khiển Tổng Quan')
@@ -82,7 +89,7 @@ describe('App — đăng nhập / đăng xuất', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /Đăng Nhập Quản Trị/ }))
+    await submitLogin(user)
 
     expect(await screen.findByText('Email hoặc mật khẩu không chính xác.')).toBeInTheDocument()
     expect(screen.queryByText('Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.')).not.toBeInTheDocument()

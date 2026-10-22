@@ -28,6 +28,18 @@ describe('SystemActivityView', () => {
     expect(within(statCard('Thời Gian Uptime Máy Chủ')).getByText('31.5 giờ')).toBeInTheDocument()
     expect(within(statCard('Yêu Cầu AI Hôm Nay')).getByText('17')).toBeInTheDocument()
     expect(within(statCard('Cảnh Báo An Ninh')).getByText('2')).toBeInTheDocument()
+    expect(within(statCard('Cơ Sở Dữ Liệu PostgreSQL')).getByText('Kiểm tra kết nối: 3.2 ms')).toBeInTheDocument()
+  })
+
+  it('DB không kết nối được / thiếu số đo → báo đúng, không hiện số giả', async () => {
+    api.getSystemActivity.mockResolvedValue({ ...activity, databaseStatus: 'Unavailable', databaseLatencyMs: null, serverUptimeHours: null })
+    render(<SystemActivityView onNotify={onNotify} />)
+
+    const db = statCard('Cơ Sở Dữ Liệu PostgreSQL')
+    expect(await within(db).findByText('Unavailable')).toBeInTheDocument()
+    expect(within(db).getByText('Chưa đo được kết nối')).toBeInTheDocument()
+    expect(within(statCard('Thời Gian Uptime Máy Chủ')).getByText('—')).toBeInTheDocument()
+    expect(screen.queryByText(/24 giờ/)).not.toBeInTheDocument()
   })
 
   it('nhật ký AI, bữa ăn (kcal làm tròn) và sự kiện an ninh phân loại khóa / dò mật khẩu', async () => {
@@ -152,7 +164,7 @@ describe('RevenueReportView', () => {
 
     expect(from).toHaveValue('')
     await waitFor(() => expect(api.getRevenueReport).toHaveBeenCalledTimes(3))
-    // setTimeout(loadReport, 50) dùng closure cũ → vẫn gửi ngày cũ dù ô ngày đã trống.
+    // Phải nạp với ngày trống ngay, không dùng lại ngày cũ của lần render trước.
     expect(api.getRevenueReport).toHaveBeenLastCalledWith('', '')
   })
 

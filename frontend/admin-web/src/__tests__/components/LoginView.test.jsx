@@ -103,11 +103,24 @@ describe('LoginView', () => {
   })
 
   it('[Bảo mật] trang đăng nhập không điền sẵn / không in ra mật khẩu của tài khoản admin', () => {
-    // Backend seed admin@smartmeal.com / Admin@123456 ở MỌI môi trường (không chỉ Development) —
-    // nếu trang công khai in sẵn mật khẩu này, bất kỳ ai mở cổng Admin đều đăng nhập được.
+    // Trang đăng nhập là trang công khai: không được điền sẵn hay in ra mật khẩu admin (kể cả mật khẩu mẫu của
+    // Development) — nếu không, ai mở cổng Admin cũng đăng nhập được.
     const { container } = render(<LoginView onLoginSuccess={vi.fn()} />)
 
     expect(passwordInput()).toHaveValue('')
     expect(container.textContent).not.toContain('Admin@123456')
+  })
+
+  it('[Bảo mật] bản build production không có nút điền tài khoản admin mẫu', async () => {
+    // DEV_ACCOUNT được tính lúc import → nạp lại module với import.meta.env.DEV = false (như `vite build`).
+    vi.stubEnv('DEV', false)
+    vi.resetModules()
+    const { default: ProductionLoginView } = await import('../../components/LoginView')
+
+    render(<ProductionLoginView onLoginSuccess={vi.fn()} />)
+
+    expect(screen.queryByRole('button', { name: /Điền Tài Khoản Admin Mặc Định/ })).not.toBeInTheDocument()
+    expect(emailInput()).toHaveValue('')
+    vi.unstubAllEnvs()
   })
 })

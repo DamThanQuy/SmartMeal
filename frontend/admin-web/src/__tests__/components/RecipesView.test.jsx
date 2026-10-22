@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RecipesView from '../../components/RecipesView'
 import { api } from '../../services/api'
-import { recipeDetail, recipes, setupApi } from '../../test/fixtures'
+import { listPage, recipeDetail, recipes, setupApi } from '../../test/fixtures'
 
 vi.mock('../../services/api', async (importOriginal) => (await import('../../test/mockApi.js')).mockApiModule(importOriginal))
 
@@ -73,7 +73,7 @@ describe('RecipesView — lưới món ăn & bộ lọc', () => {
   })
 
   it('không có món → hiện thông báo trống; lỗi tải → onNotify error', async () => {
-    api.getRecipes.mockResolvedValueOnce([])
+    api.getRecipes.mockResolvedValueOnce(listPage([]))
     render(<RecipesView onNotify={onNotify} />)
     expect(await screen.findByText('Không tìm thấy món ăn nào')).toBeInTheDocument()
 
@@ -84,15 +84,14 @@ describe('RecipesView — lưới món ăn & bộ lọc', () => {
 
   it('có hơn 16 món thì admin chuyển được sang trang 2', async () => {
     const page1 = Array.from({ length: 16 }, (_, i) => ({ ...recipes[1], id: `r${i}`, title: `Món ${i}` }))
-    api.getRecipes.mockImplementation(async ({ page }) => (page === 1 ? page1 : [recipes[0]]))
+    api.getRecipes.mockImplementation(async ({ page }) => (page === 1 ? listPage(page1, 17) : listPage([recipes[0]], 17)))
     const user = userEvent.setup()
     render(<RecipesView onNotify={onNotify} />)
     await screen.findByText('Món 0')
 
-    // DB đã có 56 món (seed) — không có phân trang thì 40 món còn lại không thể xem / sửa / xóa từ lưới.
-    const next = screen.queryByRole('button', { name: /Trang sau|Sau|Tiếp|›|»|^2$/ })
-    expect(next).not.toBeNull()
-    await user.click(next)
+    // DB đã có 56 món (seed) — phải xem / sửa / xóa được cả món ngoài trang đầu.
+    expect(screen.getByText('Hiển thị 1–16 / 17 món ăn')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Trang sau' }))
     await waitFor(() => expect(api.getRecipes).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 })))
   })
 })
@@ -206,7 +205,7 @@ describe('RecipesView — thêm món', () => {
     const user = await renderLoaded()
     await openCreate(user)
 
-    // Backend: Tag quick = "Nhanh Gọn (< 15 phút)"; app mobile cũng lọc ≤ 15 phút. Ghi "Dưới 20p" khiến admin gắn nhầm món 16–19 phút.
+    // Backend: Tag quick = "Nhanh Gọn (< 15 phút)"; app mobile cũng lọc ≤ 15 phút — nhãn trên form phải cùng mốc.
     expect(within(modal()).getByText(/Nhanh/).textContent).toMatch(/15/)
   })
 })

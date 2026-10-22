@@ -15,15 +15,19 @@ import {
   Minus
 } from 'lucide-react';
 import { api } from '../services/api';
+import Pagination from './Pagination';
 
+const PAGE_SIZE = 16;
+
+// Đúng tên tag ở backend (bảng Tags) — app mobile hiển thị và lọc theo cùng định nghĩa.
 const AVAILABLE_TAGS = [
   { code: 'eatClean', name: 'Eat Clean' },
   { code: 'keto', name: 'Keto' },
   { code: 'vegan', name: 'Thuần Chay (Vegan)' },
-  { code: 'highProtein', name: 'Giàu Đạm (High Protein)' },
-  { code: 'quick', name: 'Nhanh Dưới 20p' },
+  { code: 'highProtein', name: 'Tăng Cơ (High Protein)' },
+  { code: 'quick', name: 'Nhanh Gọn (< 15 phút)' },
   { code: 'budget', name: 'Tiết Kiệm Ngân Sách' },
-  { code: 'lowCarb', name: 'Ít Tinh Bột (Low Carb)' },
+  { code: 'lowCarb', name: 'Low-Carb' },
   { code: 'vegetarian', name: 'Ăn Chay (Vegetarian)' },
 ];
 
@@ -34,6 +38,7 @@ export default function RecipesView({ onNotify, initialOpenAdd = false, onResetA
   const [mealFilter, setMealFilter] = useState('all');
   const [diffFilter, setDiffFilter] = useState('all');
   const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
   // Modal State
   const [showModal, setShowModal] = useState(false);
@@ -68,13 +73,14 @@ export default function RecipesView({ onNotify, initialOpenAdd = false, onResetA
       setLoading(true);
       const params = {
         page,
-        pageSize: 16,
+        pageSize: PAGE_SIZE,
         search,
         mealType: mealFilter !== 'all' ? mealFilter : '',
         difficulty: diffFilter !== 'all' ? diffFilter : ''
       };
-      const data = await api.getRecipes(params);
-      setRecipes(data);
+      const { items, total: count } = await api.getRecipes(params);
+      setRecipes(items);
+      setTotal(count);
     } catch (err) {
       onNotify('Lỗi tải danh sách món ăn: ' + err.message, 'error');
     } finally {
@@ -240,7 +246,7 @@ export default function RecipesView({ onNotify, initialOpenAdd = false, onResetA
             className="form-input"
             placeholder="Tìm theo tên món ăn, mô tả..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
         </div>
 
@@ -248,7 +254,7 @@ export default function RecipesView({ onNotify, initialOpenAdd = false, onResetA
           <select
             className="form-select"
             value={mealFilter}
-            onChange={(e) => setMealFilter(e.target.value)}
+            onChange={(e) => { setMealFilter(e.target.value); setPage(1); }}
             style={{ width: '135px' }}
           >
             <option value="all">Mọi bữa ăn</option>
@@ -261,7 +267,7 @@ export default function RecipesView({ onNotify, initialOpenAdd = false, onResetA
           <select
             className="form-select"
             value={diffFilter}
-            onChange={(e) => setDiffFilter(e.target.value)}
+            onChange={(e) => { setDiffFilter(e.target.value); setPage(1); }}
             style={{ width: '130px' }}
           >
             <option value="all">Mọi độ khó</option>
@@ -411,6 +417,10 @@ export default function RecipesView({ onNotify, initialOpenAdd = false, onResetA
             </div>
           ))}
         </div>
+      )}
+
+      {!loading && (
+        <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} itemLabel="món ăn" />
       )}
 
       {/* Modal: Thêm / Sửa Món Ăn */}

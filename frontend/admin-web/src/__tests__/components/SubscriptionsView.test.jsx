@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SubscriptionsView from '../../components/SubscriptionsView'
 import { api } from '../../services/api'
-import { setupApi, transactions } from '../../test/fixtures'
+import { listPage, setupApi, transactions } from '../../test/fixtures'
 
 vi.mock('../../services/api', async (importOriginal) => (await import('../../test/mockApi.js')).mockApiModule(importOriginal))
 
@@ -109,7 +109,7 @@ describe('SubscriptionsView — giao dịch', () => {
   })
 
   it('không có giao dịch → thông báo trống; lỗi tải → onNotify error', async () => {
-    api.getTransactions.mockResolvedValueOnce([])
+    api.getTransactions.mockResolvedValueOnce(listPage([]))
     render(<SubscriptionsView onNotify={onNotify} />)
     expect(await screen.findByText('Không tìm thấy giao dịch nào.')).toBeInTheDocument()
 
@@ -120,14 +120,13 @@ describe('SubscriptionsView — giao dịch', () => {
 
   it('có hơn 20 giao dịch thì admin chuyển được sang trang 2', async () => {
     const page1 = Array.from({ length: 20 }, (_, i) => ({ ...transactions[0], id: `tx${i}`, orderCode: 1000 + i }))
-    api.getTransactions.mockImplementation(async ({ page }) => (page === 1 ? page1 : [transactions[1]]))
+    api.getTransactions.mockImplementation(async ({ page }) => (page === 1 ? listPage(page1, 21) : listPage([transactions[1]], 21)))
     const user = userEvent.setup()
     render(<SubscriptionsView onNotify={onNotify} />)
     await screen.findByText('#1000')
 
-    const next = screen.queryByRole('button', { name: /Trang sau|Sau|Tiếp|›|»|^2$/ })
-    expect(next).not.toBeNull()
-    await user.click(next)
+    expect(screen.getByText('Hiển thị 1–20 / 21 giao dịch')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Trang sau' }))
     await waitFor(() => expect(api.getTransactions).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 })))
   })
 })

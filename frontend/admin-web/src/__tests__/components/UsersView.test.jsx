@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import UsersView from '../../components/UsersView'
 import { api } from '../../services/api'
-import { manyUsers, setupApi, userDetail, users } from '../../test/fixtures'
+import { listPage, manyUsers, setupApi, userDetail, users } from '../../test/fixtures'
 
 vi.mock('../../services/api', async (importOriginal) => (await import('../../test/mockApi.js')).mockApiModule(importOriginal))
 
@@ -39,7 +39,7 @@ describe('UsersView — danh sách & bộ lọc', () => {
   })
 
   it('đang tải → hiện thông báo tải; không có kết quả → hiện thông báo trống', async () => {
-    api.getUsers.mockResolvedValue([])
+    api.getUsers.mockResolvedValue(listPage([]))
     render(<UsersView onNotify={onNotify} />)
 
     expect(screen.getByText('Đang tải danh sách người dùng...')).toBeInTheDocument()
@@ -67,16 +67,29 @@ describe('UsersView — danh sách & bộ lọc', () => {
   })
 
   it('có hơn 15 người dùng thì admin chuyển được sang trang 2', async () => {
-    api.getUsers.mockImplementation(async ({ page }) => (page === 1 ? manyUsers(15) : [users[0]]))
+    api.getUsers.mockImplementation(async ({ page }) => (page === 1 ? listPage(manyUsers(15), 16) : listPage([users[0]], 16)))
     const user = userEvent.setup()
     render(<UsersView onNotify={onNotify} />)
     await screen.findByText('Người dùng 0')
 
-    // Màn hình có state `page` nhưng không có điều khiển phân trang → người dùng thứ 16 trở đi không bao giờ hiện ra.
-    const next = screen.queryByRole('button', { name: /Trang sau|Sau|Tiếp|›|»|^2$/ })
-    expect(next).not.toBeNull()
-    await user.click(next)
+    // Tổng số lấy từ header X-Total-Count: 16 người → 2 trang; người thứ 16 phải xem được.
+    expect(screen.getByText('Hiển thị 1–15 / 16 người dùng')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Trang sau' }))
     await waitFor(() => expect(api.getUsers).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 })))
+    expect(await screen.findByText('Lan Anh')).toBeInTheDocument()
+  })
+
+  it('đổi bộ lọc khi đang ở trang 2 thì quay về trang 1', async () => {
+    api.getUsers.mockImplementation(async ({ page }) => (page === 1 ? listPage(manyUsers(15), 40) : listPage(manyUsers(15), 40)))
+    const user = userEvent.setup()
+    render(<UsersView onNotify={onNotify} />)
+    await screen.findByText('Người dùng 0')
+    await user.click(screen.getByRole('button', { name: 'Trang sau' }))
+    await waitFor(() => expect(api.getUsers).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 })))
+
+    await user.selectOptions(screen.getAllByRole('combobox')[0], 'Admin')
+
+    await waitFor(() => expect(api.getUsers).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, role: 'Admin' })))
   })
 })
 
@@ -237,6 +250,17 @@ describe('UsersView — UC1 Ban user', () => {
 })
 
 describe('UsersView — UC2 Moderate account', () => {
+  it('tài khoản đang bị cấm: không mặc định gỡ khóa khi kiểm duyệt (giữ lệnh cấm)', async () => {
+    const user = await renderLoaded()
+
+    await user.click(within(await rowOf('Spam Bot')).getByTitle('Kiểm duyệt tài khoản (Moderate Account)'))
+    const [, clearLockout] = within(modal()).getAllByRole('checkbox')
+    expect(clearLockout).not.toBeChecked()
+    await user.click(screen.getByRole('button', { name: 'Lưu Thay Đổi Kiểm Duyệt' }))
+
+    expect(api.moderateAccount).toHaveBeenCalledWith('u3', expect.objectContaining({ clearLockout: false }))
+  })
+
   it('mở form với dữ liệu hiện tại, gửi tên đã trim, vai trò và mật khẩu mới', async () => {
     const user = await renderLoaded()
 

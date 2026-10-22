@@ -18,8 +18,9 @@ export const authStorage = {
   }
 };
 
-async function request(endpoint, options = {}) {
-  const token = authStorage.getToken();
+// anonymous: request không gửi token (đăng nhập) — 401 lúc đó là sai mật khẩu, không phải phiên hết hạn.
+async function send(endpoint, options = {}, { anonymous = false } = {}) {
+  const token = anonymous ? null : authStorage.getToken();
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -34,7 +35,7 @@ async function request(endpoint, options = {}) {
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    if (response.status === 401) {
+    if (response.status === 401 && token) {
       authStorage.clear();
       window.dispatchEvent(new Event('smartmeal_admin_unauthorized'));
     }
@@ -42,7 +43,20 @@ async function request(endpoint, options = {}) {
     throw new Error(errorMsg);
   }
 
-  return data;
+  return { data, response };
+}
+
+async function request(endpoint, options = {}, config = {}) {
+  return (await send(endpoint, options, config)).data;
+}
+
+// Danh sách phân trang: backend trả trang hiện tại trong `data` và tổng số bản ghi ở header X-Total-Count.
+async function requestPage(endpoint) {
+  const { data, response } = await send(endpoint);
+  const items = data?.data || [];
+  const header = response.headers?.get?.('X-Total-Count');
+  const total = header ? Number(header) : NaN;
+  return { items, total: Number.isFinite(total) ? total : items.length };
 }
 
 export const api = {
@@ -51,7 +65,7 @@ export const api = {
     const res = await request('/admin/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
-    });
+    }, { anonymous: true });
     if (res.data?.token) {
       authStorage.setToken(res.data.token);
       authStorage.setUser(res.data.user);
@@ -65,11 +79,10 @@ export const api = {
     return res.data;
   },
 
-  // Users Management
+  // Users Management — trả { items, total }
   getUsers: async (params = {}) => {
     const query = new URLSearchParams(params).toString();
-    const res = await request(`/admin/users?${query}`);
-    return res.data || [];
+    return requestPage(`/admin/users?${query}`);
   },
 
   getUserDetail: async (id) => {
@@ -108,11 +121,10 @@ export const api = {
     return res;
   },
 
-  // Recipes Management
+  // Recipes Management — trả { items, total }
   getRecipes: async (params = {}) => {
     const query = new URLSearchParams(params).toString();
-    const res = await request(`/admin/recipes?${query}`);
-    return res.data || [];
+    return requestPage(`/admin/recipes?${query}`);
   },
 
   getRecipeDetail: async (id) => {
@@ -149,10 +161,10 @@ export const api = {
     return res.data || [];
   },
 
+  // trả { items, total }
   getTransactions: async (params = {}) => {
     const query = new URLSearchParams(params).toString();
-    const res = await request(`/admin/transactions?${query}`);
-    return res.data || [];
+    return requestPage(`/admin/transactions?${query}`);
   },
 
   approveTransaction: async (id) => {

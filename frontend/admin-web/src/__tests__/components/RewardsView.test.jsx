@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RewardsView from '../../components/RewardsView'
 import { api } from '../../services/api'
-import { challenges, setupApi, users, xpEvents } from '../../test/fixtures'
+import { challenges, listPage, setupApi, users, xpEvents } from '../../test/fixtures'
 
 vi.mock('../../services/api', async (importOriginal) => (await import('../../test/mockApi.js')).mockApiModule(importOriginal))
 
@@ -168,7 +168,7 @@ describe('RewardsView — huy hiệu & tặng XP', () => {
   })
 
   it('không có người dùng → báo phải chọn người nhận', async () => {
-    api.getUsers.mockResolvedValue([])
+    api.getUsers.mockResolvedValue(listPage([]))
     const user = await renderLoaded()
 
     await user.click(tab(/Tặng Điểm XP/))

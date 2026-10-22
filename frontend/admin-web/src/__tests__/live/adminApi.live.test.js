@@ -132,7 +132,8 @@ describeLive('Admin Web ↔ backend thật (services/api.js)', () => {
       const found = await api.getUsers({ page: 1, pageSize: 15, search: appUser.email, role: '', status: '', subscription: '' })
       const detail = await api.getUserDetail(appUser.id)
 
-      expect(found.map((u) => u.id)).toEqual([appUser.id])
+      expect(found.items.map((u) => u.id)).toEqual([appUser.id])
+      expect(found.total).toBe(1)
       expect(detail.email).toBe(appUser.email)
       expect(detail.healthProfile).toBeNull()
       expect(detail.diariesCount).toBe(0)
@@ -149,8 +150,20 @@ describeLive('Admin Web ↔ backend thật (services/api.js)', () => {
       const unbanned = await raw('/auth/login', { method: 'POST', body: { email: appUser.email, password: appUser.password } })
 
       expect(banned.status).toBe(423)
-      expect(listed.map((u) => u.id)).toEqual([appUser.id])
+      expect(listed.items.map((u) => u.id)).toEqual([appUser.id])
       expect(unbanned.status).toBe(200)
+    })
+
+    it('UC1: người đang đăng nhập bị cấm thì token và refresh token mất hiệu lực ngay', async () => {
+      await ensureSession()
+      const appUser = await registerAppUser('ban-session')
+      const login = await raw('/auth/login', { method: 'POST', body: { email: appUser.email, password: appUser.password } })
+      expect((await raw('/auth/me', { token: login.json.data.token })).status).toBe(200)
+
+      await api.banUser(appUser.id, true, 'Spam', 1)
+
+      expect((await raw('/auth/me', { token: login.json.data.token })).status).toBe(401)
+      expect((await raw('/auth/refresh', { method: 'POST', body: { refreshToken: login.json.data.refreshToken } })).status).toBe(401)
     })
 
     it('UC2: kiểm duyệt đổi tên + đặt lại mật khẩu, người dùng đăng nhập bằng mật khẩu mới', async () => {
@@ -214,10 +227,18 @@ describeLive('Admin Web ↔ backend thật (services/api.js)', () => {
 
     it('mọi tag trên form Admin đều tồn tại ở backend', async () => {
       await ensureSession()
-      const recipe = await api.createRecipe({ ...recipeForm(`Live Tags ${Date.now()}`), tagCodes: WEB_TAG_CODES })
+      // Tag quick chỉ nhận món ≤ 15 phút: 5 phút chuẩn bị + 10 phút nấu.
+      const recipe = await api.createRecipe({ ...recipeForm(`Live Tags ${Date.now()}`), prepTimeMinutes: 5, cookTimeMinutes: 10, tagCodes: WEB_TAG_CODES })
       created.recipes.push(recipe.id)
 
       expect([...recipe.tagCodes].sort()).toEqual([...WEB_TAG_CODES].sort())
+    })
+
+    it('gắn tag "Nhanh Gọn" cho món nấu quá 15 phút → backend từ chối kèm lý do', async () => {
+      await ensureSession()
+
+      await expect(api.createRecipe({ ...recipeForm(`Live Slow ${Date.now()}`), tagCodes: ['quick'] }))
+        .rejects.toThrow(/Nhanh Gọn.*15 phút/)
     })
 
     it('trùng tên món → thông báo lỗi của backend hiển thị nguyên văn', async () => {
@@ -237,8 +258,8 @@ describeLive('Admin Web ↔ backend thật (services/api.js)', () => {
       const hit = await api.getRecipes({ page: 1, pageSize: 16, search: tag, mealType: 'Snack', difficulty: 'Medium' })
       const miss = await api.getRecipes({ page: 1, pageSize: 16, search: tag, mealType: 'Breakfast', difficulty: '' })
 
-      expect(hit.map((r) => r.id)).toEqual([recipe.id])
-      expect(miss).toEqual([])
+      expect(hit.items.map((r) => r.id)).toEqual([recipe.id])
+      expect(miss).toEqual({ items: [], total: 0 })
     })
   })
 
@@ -259,13 +280,14 @@ describeLive('Admin Web ↔ backend thật (services/api.js)', () => {
       expect(checkout.status).toBe(200)
 
       const pending = await api.getTransactions({ page: 1, pageSize: 20, status: 'Pending', search: appUser.email })
-      expect(pending).toHaveLength(1)
-      await api.approveTransaction(pending[0].id)
+      expect(pending.items).toHaveLength(1)
+      await api.approveTransaction(pending.items[0].id)
       const status = await raw('/subscription/status', { token: appUser.token })
       const paid = await api.getTransactions({ status: 'Paid', search: appUser.email })
 
       expect(status.json.data).toMatchObject({ isPro: true, planId: 'PRO_MONTHLY' })
-      expect(paid.map((t) => t.id)).toEqual([pending[0].id])
+      expect(paid.items.map((t) => t.id)).toEqual([pending.items[0].id])
+      await expect(api.approveTransaction(pending.items[0].id)).rejects.toThrow('Giao dịch đã được thanh toán trước đó, không thể duyệt lại.')
     })
 
     it('thử thách: tạo từ form mặc định → sửa → xóa, app thấy thử thách khi đang mở', async () => {
@@ -323,6 +345,25 @@ describeLive('Admin Web ↔ backend thật (services/api.js)', () => {
       expect(report.successRatePercentage).toBeGreaterThanOrEqual(0)
       expect(report.successRatePercentage).toBeLessThanOrEqual(100)
       expect(report.successfulTransactions).toBeLessThanOrEqual(report.totalTransactions)
+    })
+
+    it('lọc doanh thu theo khoảng ngày trước khi có dữ liệu → 0đ, biểu đồ đủ từng ngày', async () => {
+      await ensureSession()
+      const report = await api.getRevenueReport('2020-01-01', '2020-01-31')
+
+      expect(report.totalRevenue).toBe(0)
+      expect(report.totalTransactions).toBe(0)
+      expect(report.revenueByPeriod).toHaveLength(31)
+    })
+
+    it('giám sát hệ thống báo trạng thái DB thật và uptime của tiến trình API', async () => {
+      await ensureSession()
+      const activity = await api.getSystemActivity()
+
+      expect(activity.databaseStatus).toBe('Healthy')
+      expect(activity.databaseLatencyMs).toBeGreaterThanOrEqual(0)
+      expect(activity.serverUptimeHours).toBeGreaterThanOrEqual(0)
+      expect(activity.serverUptimeHours).toBeLessThan(24 * 365)
     })
   })
 })
