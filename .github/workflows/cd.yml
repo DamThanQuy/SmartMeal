@@ -7,7 +7,7 @@ on:
       - 'backend/**'
       - 'docker-compose.yml'
       - '.github/workflows/cd.yml'
-  workflow_dispatch: # Cho phép kích hoạt thủ công từ tab Actions trên GitHub
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -26,15 +26,15 @@ jobs:
         shell: powershell
         run: |
           Write-Host "=========================================="
-          Write-Host "1. Kiểm tra cấu hình môi trường (.env)..."
+          Write-Host "[1/4] Checking environment configuration (.env)..."
           Write-Host "=========================================="
           $masterEnv = "C:\Users\tkm2\SmartMeal\backend\.env"
           if (Test-Path $masterEnv) {
-            Write-Host "✓ Tìm thấy file .env chuẩn tại: $masterEnv"
+            Write-Host "[OK] Master .env found at $masterEnv"
             Copy-Item -Path $masterEnv -Destination "backend\.env" -Force
-            Write-Host "✓ Đã sao chép an toàn vào thư mục build (backend\.env)."
+            Write-Host "[OK] Copied .env into workspace build directory."
           } else {
-            Write-Error "CRITICAL: Không tìm thấy file .env gốc tại $masterEnv!"
+            Write-Error "[FAIL] Master .env NOT found at $masterEnv!"
             exit 1
           }
 
@@ -42,31 +42,31 @@ jobs:
         shell: powershell
         run: |
           Write-Host "=========================================="
-          Write-Host "2. Khởi động Docker Compose Build & Deploy..."
+          Write-Host "[2/4] Building and recreating backend-api container..."
           Write-Host "=========================================="
           docker compose up -d --build backend-api
           if ($LASTEXITCODE -ne 0) {
-            Write-Error "docker compose up thất bại với mã lỗi $LASTEXITCODE"
+            Write-Error "[FAIL] docker compose up failed with exit code $LASTEXITCODE"
             exit $LASTEXITCODE
           }
-          Write-Host "✓ Container backend-api đã được build và kích hoạt thành công!"
+          Write-Host "[OK] Container backend-api built and started."
 
       - name: Clean Dangling Images
         shell: powershell
         run: |
           Write-Host "=========================================="
-          Write-Host "3. Dọn dẹp Docker images cũ (prune)..."
+          Write-Host "[3/4] Cleaning dangling images (docker image prune)..."
           Write-Host "=========================================="
           docker image prune -f
-          Write-Host "✓ Đã dọn dẹp bộ nhớ đệm image thành công."
+          Write-Host "[OK] Image cleanup completed."
 
       - name: Health Check & Swagger Validation
         shell: powershell
         run: |
           Write-Host "=========================================="
-          Write-Host "4. Chạy Health Check & Kiểm tra API..."
+          Write-Host "[4/4] Performing health check..."
           Write-Host "=========================================="
-          Write-Host "Chờ 15 giây để ASP.NET Core hoàn thành Database Migration & khởi động..."
+          Write-Host "Waiting 15 seconds for ASP.NET Core to complete DB migrations & warm up..."
           Start-Sleep -Seconds 15
 
           $url = "http://localhost:5000/swagger/v1/swagger.json"
@@ -74,28 +74,28 @@ jobs:
           $success = $false
 
           for ($i = 1; $i -le $maxRetries; $i++) {
-            Write-Host "Lần thử $i/$maxRetries: Đang kiểm tra endpoint $url..."
+            Write-Host "Attempt $i/$maxRetries: Checking endpoint $url..."
             try {
               $res = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 10
               if ($res.StatusCode -eq 200) {
-                Write-Host "✓ Swagger Endpoint phản hồi HTTP 200 OK!"
+                Write-Host "[OK] Swagger endpoint returned HTTP 200 OK!"
                 $success = $true
                 break
               }
             } catch {
-              Write-Host "Chưa sẵn sàng, thử lại sau 5 giây... (Lỗi: $($_.Exception.Message))"
+              Write-Host "Endpoint not ready yet, retrying in 5s... ($($_.Exception.Message))"
               Start-Sleep -Seconds 5
             }
           }
 
           if (-not $success) {
-            Write-Error "CRITICAL: Health Check thất bại! Không thể kết nối tới Swagger sau $maxRetries lần thử."
+            Write-Error "[FAIL] Health check failed after $maxRetries attempts!"
             docker ps --filter "name=smartmeal_api"
             docker logs --tail 50 smartmeal_api
             exit 1
           }
 
           Write-Host "=========================================="
-          Write-Host "🚀 DEPLOY HOÀN TẤT THÀNH CÔNG 100%!"
+          Write-Host "[SUCCESS] DEPLOY COMPLETED SUCCESSFULLY 100%!"
           Write-Host "=========================================="
           docker ps --filter "name=smartmeal"
