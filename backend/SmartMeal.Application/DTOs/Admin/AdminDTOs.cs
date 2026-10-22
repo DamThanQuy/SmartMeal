@@ -84,7 +84,11 @@ public class AdminUpdateUserSubscriptionDto
 {
     public bool IsPro { get; set; }
     public string? PlanId { get; set; } = "PRO_MONTHLY";
+
+    [Range(1, 3650, ErrorMessage = "Số ngày Pro phải từ 1 đến 3650.")]
     public int? DurationDays { get; set; } = 30;
+
+    /// <summary>Không còn dùng: cấp Pro luôn đặt trạng thái Premium, hủy Pro luôn về Free.</summary>
     public string? Status { get; set; } = "Premium";
 }
 
@@ -94,11 +98,23 @@ public class AdminRecipeIngredientInputDto
     public string Name { get; set; } = string.Empty;
     public string Category { get; set; } = "Other";
     public string Unit { get; set; } = "g";
+
+    [Range(0, 100000, ErrorMessage = "Số lượng nguyên liệu không được âm.")]
     public double Amount { get; set; } = 100;
+
+    [Range(0, 1000, ErrorMessage = "Calo / 100g phải từ 0 đến 1000.")]
     public double CaloriesPer100g { get; set; }
+
+    [Range(0, 100, ErrorMessage = "Protein / 100g phải từ 0 đến 100.")]
     public double ProteinPer100g { get; set; }
+
+    [Range(0, 100, ErrorMessage = "Carbs / 100g phải từ 0 đến 100.")]
     public double CarbsPer100g { get; set; }
+
+    [Range(0, 100, ErrorMessage = "Fat / 100g phải từ 0 đến 100.")]
     public double FatPer100g { get; set; }
+
+    [Range(typeof(decimal), "0", "100000000", ErrorMessage = "Giá nguyên liệu không được âm.")]
     public decimal EstimatedPriceVnd { get; set; }
 }
 
@@ -125,16 +141,38 @@ public class AdminCreateRecipeDto
     public string Description { get; set; } = string.Empty;
     public string ImageUrl { get; set; } = string.Empty;
     public string Instructions { get; set; } = string.Empty;
+
+    [Range(0, 1440, ErrorMessage = "Thời gian chuẩn bị phải từ 0 đến 1440 phút.")]
     public int PrepTimeMinutes { get; set; } = 10;
+
+    [Range(0, 1440, ErrorMessage = "Thời gian nấu phải từ 0 đến 1440 phút.")]
     public int CookTimeMinutes { get; set; } = 15;
+
+    [Range(1, 100, ErrorMessage = "Khẩu phần phải từ 1 đến 100.")]
     public int Servings { get; set; } = 1;
-    public string Difficulty { get; set; } = "Easy"; // Easy, Medium, Hard
+
+    /// <summary>App chỉ hiểu 3 mức độ khó này.</summary>
+    [Required(ErrorMessage = "Độ khó là bắt buộc.")]
+    [RegularExpression("^(Easy|Medium|Hard)$", ErrorMessage = "Độ khó phải là Easy, Medium hoặc Hard.")]
+    public string Difficulty { get; set; } = "Easy";
+
     public bool IsPremium { get; set; }
-    public string MealTypes { get; set; } = "Breakfast"; // Breakfast, Lunch, Dinner, Snack
+
+    /// <summary>Danh sách phân tách bằng dấu phẩy, mỗi phần tử thuộc Breakfast / Lunch / Dinner / Snack (kiểm tra ở controller).</summary>
+    public string MealTypes { get; set; } = "Breakfast";
+
+    [Range(0, 10000, ErrorMessage = "Calo mỗi khẩu phần phải từ 0 đến 10000.")]
     public double CaloriesPerServing { get; set; }
+
+    [Range(0, 1000, ErrorMessage = "Protein mỗi khẩu phần phải từ 0 đến 1000 g.")]
     public double ProteinPerServing { get; set; }
+
+    [Range(0, 1000, ErrorMessage = "Carbs mỗi khẩu phần phải từ 0 đến 1000 g.")]
     public double CarbsPerServing { get; set; }
+
+    [Range(0, 1000, ErrorMessage = "Fat mỗi khẩu phần phải từ 0 đến 1000 g.")]
     public double FatPerServing { get; set; }
+
     public List<string> TagCodes { get; set; } = new();
     public List<AdminRecipeIngredientInputDto> Ingredients { get; set; } = new();
 }
@@ -242,7 +280,7 @@ public class AdminCreateChallengeDto
     public string Description { get; set; } = string.Empty;
     public string ImageUrl { get; set; } = string.Empty;
     public int DurationDays { get; set; } = 7;
-    public string Category { get; set; } = "EatClean"; // EatClean, DrinkWater, NoSugar, Exercise
+    public string Category { get; set; } = "EatClean"; // một trong ChallengeCategories.All: EatClean, DrinkWater, Exercise
     public int TargetValuePerDay { get; set; } = 3;
     public int RewardExp { get; set; } = 150;
     public string RewardBadge { get; set; } = "Clean Eater";
@@ -284,9 +322,15 @@ public class AdminGrantXpRequestDto
 // ==========================================
 public class AdminSystemActivityDto
 {
+    /// <summary>Số giờ tiến trình API đã chạy (tính từ lúc khởi động).</summary>
     public double ServerUptimeHours { get; set; }
     public DateTime ServerTimeUtc { get; set; } = DateTime.UtcNow;
+
+    /// <summary>"Healthy" khi kết nối được PostgreSQL, "Unavailable" khi không.</summary>
     public string DatabaseStatus { get; set; } = "Healthy";
+
+    /// <summary>Thời gian (ms) của lần kiểm tra kết nối database vừa đo; null khi không kết nối được.</summary>
+    public double? DatabaseLatencyMs { get; set; }
     public int TotalAiRequestsToday { get; set; }
     public Dictionary<string, int> AiRequestsByKind { get; set; } = new();
     public List<AdminAiLogItemDto> RecentAiLogs { get; set; } = new();

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -35,6 +36,9 @@ public interface IJwtTokenService
 /// </summary>
 public class JwtTokenService : IJwtTokenService
 {
+    /// <summary>Claim mang <see cref="User.TokenVersion"/>; token thiếu claim này được coi là phiên bản 0.</summary>
+    public const string TokenVersionClaim = "token_version";
+
     private readonly JwtOptions _options;
 
     /// <summary>
@@ -65,6 +69,7 @@ public class JwtTokenService : IJwtTokenService
             new(ClaimTypes.Email, user.Email),
             new(ClaimTypes.Name, user.FullName),
             new(ClaimTypes.Role, user.Role),
+            new(TokenVersionClaim, user.TokenVersion.ToString(CultureInfo.InvariantCulture), ClaimValueTypes.Integer32),
             // Chỉ để tham khảo: sẽ cũ sau khi nâng cấp/hết hạn. Nguồn đáng tin là GET /auth/me.
             new("isPro", user.IsProActive(DateTime.UtcNow).ToString().ToLower())
         };

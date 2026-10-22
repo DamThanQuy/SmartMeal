@@ -58,7 +58,7 @@ public sealed record AdminSecurityEvent(string EventType, string TargetUser, str
 
 public sealed record AdminSystemActivity(
     double ServerUptimeHours, DateTime ServerTimeUtc, string DatabaseStatus, int TotalAiRequestsToday,
-    List<AdminDiaryActivity> RecentDiaryLogs, List<AdminSecurityEvent> RecentSecurityEvents);
+    List<AdminDiaryActivity> RecentDiaryLogs, List<AdminSecurityEvent> RecentSecurityEvents, double? DatabaseLatencyMs = null);
 
 public sealed record AdminRevenuePeriod(string PeriodLabel, decimal AmountVnd, int TransactionCount);
 
@@ -284,6 +284,32 @@ public class AdminApiTests : IClassFixture<ApiFactory>
     }
 
     [DbFact]
+    public async Task The_admin_account_is_created_with_the_configured_password()
+    {
+        using var configured = new ApiFactory().WithSetting("Seed:AdminPassword", "Configured-Adm1n!");
+        var client = configured.CreateClient();
+
+        var withConfigured = await AdminLoginAsync(client, DbInitializer.AdminAccountEmail, "Configured-Adm1n!");
+        var withDefault = await AdminLoginAsync(client, DbInitializer.AdminAccountEmail, DbInitializer.DefaultAdminPassword);
+
+        Assert.Equal(HttpStatusCode.OK, withConfigured.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, withDefault.StatusCode);
+    }
+
+    [DbFact]
+    public async Task Seeding_the_admin_over_an_existing_regular_account_takes_it_away_from_its_registrant()
+    {
+        // Ai đó đăng ký trước bằng email sẽ dùng làm admin: khi seed, tài khoản được nâng quyền nhưng mật khẩu và mọi
+        // phiên của người đăng ký trước đều mất hiệu lực.
+        var squatter = await _factory.RegisterUserAsync();
+        await WithDbAsync(_factory, db => DbInitializer.EnsureAdminAccountAsync(db, "Seeded-Adm1n!", squatter.Email));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await AdminLoginAsync(_factory.CreateClient(), squatter.Email, squatter.Password)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await squatter.Client.GetAsync("/api/admin/stats")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await AdminLoginAsync(_factory.CreateClient(), squatter.Email, "Seeded-Adm1n!")).StatusCode);
+    }
+
+    [DbFact]
     public async Task Every_admin_endpoint_requires_a_token()
     {
         var anonymous = _factory.CreateClient();
@@ -428,7 +454,30 @@ public class AdminApiTests : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.NotFound, (await admin.Client.PutJsonAsync($"/api/admin/users/{id}/ban", new { isBanned = true })).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await admin.Client.PutJsonAsync($"/api/admin/users/{id}/moderate", new { fullName = "X" })).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await admin.Client.PutJsonAsync($"/api/admin/users/{id}/subscription", new { isPro = true })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.Client.PutJsonAsync($"/api/admin/users/{id}/status", new { isLocked = false })).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await admin.Client.DeleteAsync($"/api/admin/users/{id}")).StatusCode);
+    }
+
+    [DbFact]
+    public async Task Expired_pro_users_are_listed_separately_and_users_without_a_profile_have_an_empty_detail()
+    {
+        var admin = await CreateAdminAsync();
+        var tag = Guid.NewGuid().ToString("N")[..10];
+        var expired = await _factory.RegisterUserAsync(fullName: $"Expired {tag}");
+        await WithDbAsync(_factory, db => db.Users.Where(u => u.Id == expired.Id).ExecuteUpdateAsync(s => s
+            .SetProperty(u => u.IsPro, true)
+            .SetProperty(u => u.ProPlanId, "PRO_MONTHLY")
+            .SetProperty(u => u.ProExpiresAt, DateTime.UtcNow.AddDays(-3))));
+
+        var expiredList = await GetDataAsync<List<AdminUserItem>>(admin.Client, $"/api/admin/users?search={tag}&subscription=expired");
+        var premiumList = await GetDataAsync<List<AdminUserItem>>(admin.Client, $"/api/admin/users?search={tag}&subscription=premium");
+        var detail = await GetDataAsync<AdminUserDetail>(admin.Client, $"/api/admin/users/{expired.Id}");
+
+        Assert.Equal(new[] { expired.Id }, expiredList.Select(u => u.Id));
+        Assert.False(expiredList[0].IsPro);
+        Assert.Empty(premiumList);
+        Assert.Null(detail.HealthProfile);
+        Assert.Equal((0, 0, 0), (detail.DiariesCount, detail.FavoritesCount, detail.MealPlansCount));
     }
 
     [DbFact]
@@ -457,6 +506,40 @@ public class AdminApiTests : IClassFixture<ApiFactory>
         // Token cũ vẫn mang claim Role=Admin: thu hồi quyền phải có hiệu lực ngay, không đợi token hết hạn.
         var response = await other.Client.GetAsync("/api/admin/users");
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [DbFact]
+    public async Task A_promoted_user_gets_admin_access_with_the_token_already_issued()
+    {
+        var admin = await CreateAdminAsync();
+        var user = await _factory.RegisterUserAsync();
+        Assert.Equal(HttpStatusCode.Forbidden, (await user.Client.GetAsync("/api/admin/stats")).StatusCode);
+
+        await DataAsync<bool>(await admin.Client.PutJsonAsync($"/api/admin/users/{user.Id}/role", new { role = "Admin" }));
+
+        Assert.Equal(HttpStatusCode.OK, (await user.Client.GetAsync("/api/admin/stats")).StatusCode);
+    }
+
+    [DbFact]
+    public async Task An_unknown_role_is_rejected_instead_of_silently_demoting()
+    {
+        var admin = await CreateAdminAsync();
+        var other = await CreateAdminAsync();
+
+        var response = await admin.Client.PutJsonAsync($"/api/admin/users/{other.Id}/role", new { role = "SuperAdmin" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await other.Client.GetAsync("/api/admin/stats")).StatusCode);
+    }
+
+    [DbFact]
+    public async Task An_admin_cannot_demote_their_own_account_through_moderation()
+    {
+        var admin = await CreateAdminAsync();
+
+        var response = await admin.Client.PutJsonAsync($"/api/admin/users/{admin.Id}/moderate", new { role = "User" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [DbFact]
@@ -496,6 +579,19 @@ public class AdminApiTests : IClassFixture<ApiFactory>
     }
 
     [DbFact]
+    public async Task Locking_an_account_signs_it_out_everywhere()
+    {
+        var admin = await CreateAdminAsync();
+        var user = await _factory.RegisterUserAsync();
+
+        await DataAsync<bool>(await admin.Client.PutJsonAsync($"/api/admin/users/{user.Id}/status", new { isLocked = true }));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await user.Client.GetAsync("/api/auth/me")).StatusCode);
+        var refresh = await _factory.CreateClient().PostJsonAsync("/api/auth/refresh", new { refreshToken = user.RefreshToken });
+        Assert.Equal(HttpStatusCode.Unauthorized, refresh.StatusCode);
+    }
+
+    [DbFact]
     public async Task Granting_and_revoking_pro_is_reflected_in_the_users_subscription_status()
     {
         var admin = await CreateAdminAsync();
@@ -511,6 +607,18 @@ public class AdminApiTests : IClassFixture<ApiFactory>
         Assert.InRange(granted.ProExpiresAt!.Value, DateTime.UtcNow.AddDays(364), DateTime.UtcNow.AddDays(366));
         Assert.False(revoked.IsPro);
         Assert.Equal("Free", revoked.Status);
+    }
+
+    [DbFact]
+    public async Task Granting_pro_rejects_an_unknown_plan()
+    {
+        var admin = await CreateAdminAsync();
+        var user = await _factory.RegisterUserAsync();
+
+        var response = await admin.Client.PutJsonAsync($"/api/admin/users/{user.Id}/subscription", new { isPro = true, planId = "PRO_LIFETIME", durationDays = 30 });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.False((await GetDataAsync<SubscriptionStatusPayload>(user.Client, "/api/subscription/status")).IsPro);
     }
 
     [DbTheory]
@@ -742,6 +850,27 @@ public class AdminApiTests : IClassFixture<ApiFactory>
     }
 
     [DbFact]
+    public async Task The_quick_tag_is_only_accepted_for_recipes_of_at_most_15_minutes()
+    {
+        var admin = await CreateAdminAsync();
+        var quickTitle = "Món nhanh " + Guid.NewGuid().ToString("N")[..6];
+
+        // RecipeBody: chuẩn bị 5 + nấu 10 = 15 phút → hợp lệ; món nấu 20 phút (tổng 25 phút) thì bị từ chối.
+        var slow = await admin.Client.PostJsonAsync("/api/admin/recipes", new
+        {
+            title = "Món chậm " + Guid.NewGuid().ToString("N")[..6], description = "", imageUrl = "", instructions = "",
+            prepTimeMinutes = 5, cookTimeMinutes = 20, servings = 1, difficulty = "Easy", isPremium = false, mealTypes = "Lunch",
+            caloriesPerServing = 300, proteinPerServing = 20, carbsPerServing = 30, fatPerServing = 10,
+            tagCodes = new[] { "quick" }, ingredients = Array.Empty<object>()
+        });
+        var quick = await CreateRecipeAsync(admin.Client, body: RecipeBody(quickTitle, tagCodes: new[] { "quick" }));
+
+        Assert.Equal(HttpStatusCode.BadRequest, slow.StatusCode);
+        Assert.Contains("15", (await slow.ReadEnvelopeAsync<object>()).Message);
+        Assert.Equal(new[] { "quick" }, quick.TagCodes);
+    }
+
+    [DbFact]
     public async Task Recipe_list_filters_by_search_meal_type_difficulty_and_premium()
     {
         var admin = await CreateAdminAsync();
@@ -819,11 +948,25 @@ public class AdminApiTests : IClassFixture<ApiFactory>
         var user = await _factory.RegisterUserAsync();
         var created = await CreateRecipeAsync(admin.Client);
         var entry = await LogMealAsync(user.Client, created.Title, 420, created.Id);
+        var groceryId = Guid.NewGuid();
+        await WithDbAsync(_factory, async db =>
+        {
+            db.GroceryItems.Add(new GroceryItem { Id = groceryId, UserId = user.Id, IngredientName = "Ức gà phi lê", Amount = 150, RecipeId = created.Id });
+            await db.SaveChangesAsync();
+        });
 
         var response = await admin.Client.DeleteAsync($"/api/admin/recipes/{created.Id}");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        await WithDbAsync(_factory, async db => Assert.True(await db.DiaryItems.AnyAsync(d => d.Id == entry.Id)));
+        await WithDbAsync(_factory, async db =>
+        {
+            var diary = await db.DiaryItems.AsNoTracking().SingleAsync(d => d.Id == entry.Id);
+            var grocery = await db.GroceryItems.AsNoTracking().SingleAsync(g => g.Id == groceryId);
+            Assert.Null(diary.RecipeId);
+            Assert.Equal(created.Title, diary.FoodName);
+            Assert.Equal(420, diary.Calories);
+            Assert.Null(grocery.RecipeId);
+        });
     }
 
     // ───────────────────────────── Gói & giao dịch ─────────────────────────────
@@ -883,11 +1026,26 @@ public class AdminApiTests : IClassFixture<ApiFactory>
 
         await DataAsync<bool>(await admin.Client.PutAsync($"/api/admin/transactions/{txId}/approve", null));
         var once = (await GetDataAsync<SubscriptionStatusPayload>(user.Client, "/api/subscription/status")).ProExpiresAt!.Value;
-        await admin.Client.PutAsync($"/api/admin/transactions/{txId}/approve", null);
+        var again = await admin.Client.PutAsync($"/api/admin/transactions/{txId}/approve", null);
         var twice = (await GetDataAsync<SubscriptionStatusPayload>(user.Client, "/api/subscription/status")).ProExpiresAt!.Value;
 
         // Một lần thanh toán 79.000đ chỉ được 30 ngày Pro, duyệt lại (bấm 2 lần, hai admin cùng duyệt) không cộng thêm.
+        Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
         Assert.InRange(twice, once.AddMinutes(-1), once.AddMinutes(1));
+    }
+
+    [DbFact]
+    public async Task Approving_a_transaction_notifies_the_user_like_a_gateway_payment()
+    {
+        var admin = await CreateAdminAsync();
+        var user = await _factory.RegisterUserAsync();
+        var txId = await AddTransactionAsync(_factory, user.Id, PaymentStatuses.Pending);
+
+        await DataAsync<bool>(await admin.Client.PutAsync($"/api/admin/transactions/{txId}/approve", null));
+
+        // Duyệt tay đi qua cùng luồng xác nhận với webhook SePay/PayOS nên người dùng nhận thông báo kích hoạt Pro.
+        var inbox = await GetDataAsync<NotificationListPayload>(user.Client, "/api/notifications");
+        Assert.Contains(inbox.Items, n => n.Category == NotificationCategories.Premium && n.Title.Contains("Pro"));
     }
 
     [DbFact]
@@ -967,6 +1125,74 @@ public class AdminApiTests : IClassFixture<ApiFactory>
     }
 
     [DbFact]
+    public async Task Updating_a_challenge_validates_its_category_and_keeps_omitted_fields()
+    {
+        var admin = await CreateAdminAsync();
+        var created = await DataAsync<AdminChallenge>(await admin.Client.PostJsonAsync("/api/admin/rewards/challenges", new
+        {
+            title = "Bước chân " + Guid.NewGuid().ToString("N")[..6], description = "", category = "exercise", durationDays = 7,
+            targetValuePerDay = 8000, rewardExp = 100, rewardBadge = "Walker", isActive = true
+        }));
+
+        var invalid = await admin.Client.PutJsonAsync($"/api/admin/rewards/challenges/{created.Id}", new
+        {
+            title = created.Title, description = "", category = "NoSugar", durationDays = 7, targetValuePerDay = 8000, rewardExp = 100, isActive = true
+        });
+        await DataAsync<bool>(await admin.Client.PutJsonAsync($"/api/admin/rewards/challenges/{created.Id}", new
+        {
+            title = created.Title, description = "Mới", imageUrl = "https://img.example.com/walk.jpg", category = "", durationDays = 10,
+            targetValuePerDay = 9000, rewardExp = 120, rewardBadge = "", isActive = false
+        }));
+        var updated = (await GetDataAsync<List<AdminChallenge>>(admin.Client, "/api/admin/rewards/challenges")).Single(c => c.Id == created.Id);
+
+        Assert.Equal("Exercise", created.Category); // chuẩn hóa hoa / thường
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        Assert.Equal("Exercise", updated.Category); // để trống thì giữ loại cũ
+        Assert.Equal("https://img.example.com/walk.jpg", updated.ImageUrl);
+        Assert.Equal("Walker", updated.RewardBadge);
+        Assert.False(updated.IsActive);
+    }
+
+    [DbFact]
+    public async Task Unknown_recipes_and_challenges_return_404_and_invalid_recipe_updates_are_rejected()
+    {
+        var admin = await CreateAdminAsync();
+        var id = Guid.NewGuid();
+        var recipe = await CreateRecipeAsync(admin.Client);
+
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.Client.PutJsonAsync($"/api/admin/recipes/{id}", RecipeBody("Không có " + id))).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.Client.PutJsonAsync($"/api/admin/recipes/{recipe.Id}", RecipeBody(recipe.Title, mealTypes: "Lunch,Brunch"))).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.Client.PutJsonAsync($"/api/admin/rewards/challenges/{id}", new { title = "X", description = "", durationDays = 7, targetValuePerDay = 1, rewardExp = 10, isActive = true })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.Client.DeleteAsync($"/api/admin/rewards/challenges/{id}")).StatusCode);
+    }
+
+    [DbFact]
+    public async Task Updating_a_recipe_can_add_a_new_ingredient_and_change_its_image()
+    {
+        var admin = await CreateAdminAsync();
+        var recipe = await CreateRecipeAsync(admin.Client);
+        var newIngredient = "Nấm đùi gà " + Guid.NewGuid().ToString("N")[..6];
+        var body = new
+        {
+            title = recipe.Title, description = "", imageUrl = "https://img.example.com/new.jpg", instructions = "", prepTimeMinutes = 5,
+            cookTimeMinutes = 10, servings = 1, difficulty = "Easy", isPremium = true, mealTypes = "dinner, Dinner, snack",
+            caloriesPerServing = 200, proteinPerServing = 10, carbsPerServing = 20, fatPerServing = 5, tagCodes = Array.Empty<string>(),
+            ingredients = new object[] { new { name = newIngredient, category = "", unit = "", amount = 0, caloriesPer100g = 35, proteinPer100g = 3, carbsPer100g = 6, fatPer100g = 0.4, estimatedPriceVnd = 9000 } }
+        };
+
+        var updated = await DataAsync<AdminRecipe>(await admin.Client.PutJsonAsync($"/api/admin/recipes/{recipe.Id}", body));
+
+        Assert.Equal("https://img.example.com/new.jpg", updated.ImageUrl);
+        Assert.Equal("Dinner,Snack", updated.MealTypes); // chuẩn hóa và bỏ trùng
+        Assert.True(updated.IsPremium);
+        var ingredient = Assert.Single(updated.Ingredients);
+        Assert.Equal(newIngredient, ingredient.Name);
+        Assert.Equal(100, ingredient.Amount); // số lượng 0 → mặc định 100
+        Assert.Equal("Other", ingredient.Category);
+        Assert.Equal("g", ingredient.Unit);
+    }
+
+    [DbFact]
     public async Task Granting_xp_levels_up_the_pet_and_is_logged_as_an_admin_reward()
     {
         var admin = await CreateAdminAsync();
@@ -1035,6 +1261,9 @@ public class AdminApiTests : IClassFixture<ApiFactory>
 
         // API trong test vừa khởi động (vài phút) — số giờ uptime phải nhỏ hơn 1, không phải "giờ trong ngày + 24".
         Assert.InRange(activity.ServerUptimeHours, 0, 1);
+        Assert.Equal("Healthy", activity.DatabaseStatus);
+        Assert.NotNull(activity.DatabaseLatencyMs);
+        Assert.True(activity.DatabaseLatencyMs >= 0);
     }
 
     // ───────────────────────────── UC5: Báo cáo doanh thu ─────────────────────────────
@@ -1080,6 +1309,22 @@ public class AdminApiTests : IClassFixture<ApiFactory>
 
         Assert.Equal(123000, report.TotalRevenue);
         Assert.Equal(1, report.SuccessfulTransactions);
+        // Biểu đồ theo từng ngày của khoảng đã chọn.
+        Assert.Equal(31, report.RevenueByPeriod.Count);
+        Assert.Equal(123000, report.RevenueByPeriod.Single(p => p.PeriodLabel == "15/01").AmountVnd);
+    }
+
+    [DbFact]
+    public async Task Revenue_report_groups_long_ranges_by_month_and_rejects_reversed_ranges()
+    {
+        var admin = await CreateAdminAsync();
+
+        var yearly = await GetDataAsync<AdminRevenueReport>(admin.Client, "/api/admin/reports/revenue?startDate=2025-01-01&endDate=2025-12-31");
+        var reversed = await admin.Client.GetAsync("/api/admin/reports/revenue?startDate=2025-02-01&endDate=2025-01-01");
+
+        Assert.Equal(12, yearly.RevenueByPeriod.Count);
+        Assert.Equal("01/2025", yearly.RevenueByPeriod[0].PeriodLabel);
+        Assert.Equal(HttpStatusCode.BadRequest, reversed.StatusCode);
     }
 
     // ───────────────────────────── UC6: Phân tích tương tác ─────────────────────────────

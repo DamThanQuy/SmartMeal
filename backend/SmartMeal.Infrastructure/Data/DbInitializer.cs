@@ -13,15 +13,22 @@ public static partial class DbInitializer
     /// <summary>Mật khẩu mặc định của tài khoản dev; đổi bằng cấu hình <c>Seed:DevAccountPassword</c>.</summary>
     public const string DefaultDevPassword = "Smartmeal@123";
 
-    /// <summary>Email tài khoản Quản trị viên (Admin) cho hệ thống Admin Web.</summary>
+    /// <summary>Email mặc định của tài khoản Quản trị viên (Admin) cho Admin Web; đổi bằng cấu hình <c>Seed:AdminEmail</c>.</summary>
     public const string AdminAccountEmail = "admin@smartmeal.com";
 
-    /// <summary>Mật khẩu mặc định của tài khoản admin.</summary>
+    /// <summary>Mật khẩu admin mẫu — CHỈ dùng ở Development. Môi trường khác phải khai báo <c>Seed:AdminPassword</c>.</summary>
     public const string DefaultAdminPassword = "Admin@123456";
 
     /// <param name="seedDevAccount">Chỉ bật ở môi trường Development: tạo tài khoản dùng thử có mật khẩu đã biết. TUYỆT ĐỐI không bật khi triển khai thật.</param>
     /// <param name="devAccountPassword">Mật khẩu cho tài khoản dev (mặc định <see cref="DefaultDevPassword"/>).</param>
-    public static async Task SeedAsync(ApplicationDbContext db, bool seedDevAccount = false, string? devAccountPassword = null)
+    /// <param name="adminPassword">Mật khẩu tài khoản Admin; null/rỗng = không tạo tài khoản Admin.</param>
+    /// <param name="adminEmail">Email tài khoản Admin (mặc định <see cref="AdminAccountEmail"/>).</param>
+    public static async Task SeedAsync(
+        ApplicationDbContext db,
+        bool seedDevAccount = false,
+        string? devAccountPassword = null,
+        string? adminPassword = null,
+        string? adminEmail = null)
     {
         if (!db.Recipes.Any())
         {
@@ -246,7 +253,10 @@ public static partial class DbInitializer
             await EnsureDevAccountAsync(db, devAccountPassword ?? DefaultDevPassword);
         }
 
-        await EnsureAdminAccountAsync(db, DefaultAdminPassword);
+        if (!string.IsNullOrWhiteSpace(adminPassword))
+        {
+            await EnsureAdminAccountAsync(db, adminPassword, adminEmail);
+        }
 
         await EnsureChallengeRulesAsync(db);
         await EnsureRecipeMealTypesAsync(db);
@@ -307,16 +317,19 @@ public static partial class DbInitializer
     }
 
     /// <summary>
-    /// Đảm bảo tài khoản Quản trị viên (Admin) luôn tồn tại với quyền Admin và trạng thái kích hoạt đầy đủ.
+    /// Đảm bảo tài khoản Quản trị viên (Admin) tồn tại với quyền Admin. Admin đã có thì giữ nguyên mật khẩu (có thể đã
+    /// được đổi). Email trùng một tài khoản thường (ai đó đã đăng ký trước bằng email admin) thì vẫn nâng quyền nhưng
+    /// đặt lại mật khẩu theo cấu hình và thu hồi mọi phiên — người đăng ký trước không giữ được quyền Admin.
     /// </summary>
-    public static async Task EnsureAdminAccountAsync(ApplicationDbContext db, string password)
+    public static async Task EnsureAdminAccountAsync(ApplicationDbContext db, string password, string? email = null)
     {
-        var existing = await db.Users.FirstOrDefaultAsync(u => u.Email == AdminAccountEmail);
+        var adminEmail = string.IsNullOrWhiteSpace(email) ? AdminAccountEmail : email.Trim().ToLowerInvariant();
+        var existing = await db.Users.FirstOrDefaultAsync(u => u.Email == adminEmail);
         if (existing is null)
         {
             var adminUser = new User
             {
-                Email = AdminAccountEmail,
+                Email = adminEmail,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
                 FullName = "Quản Trị Viên (Admin)",
                 Role = "Admin",
@@ -330,9 +343,18 @@ public static partial class DbInitializer
         }
         else if (existing.Role != "Admin")
         {
+            var now = DateTime.UtcNow;
             existing.Role = "Admin";
             existing.IsEmailVerified = true;
+            existing.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
+            existing.FailedLoginCount = 0;
+            existing.LockoutEnd = null;
+            existing.TokenVersion++;
+            existing.UpdatedAt = now;
             await db.SaveChangesAsync();
+            await db.RefreshTokens
+                .Where(t => t.UserId == existing.Id && t.RevokedAt == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now));
         }
     }
 

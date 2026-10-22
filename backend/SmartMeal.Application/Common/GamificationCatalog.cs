@@ -28,6 +28,31 @@ public static class GamificationRules
     };
 }
 
+/// <summary>
+/// Loại thử thách có dữ liệu thật để chấm mỗi ngày (xem GamificationService.IsDaySatisfied). Loại khác không bao giờ
+/// hoàn thành được nên không được tạo.
+/// </summary>
+public static class ChallengeCategories
+{
+    /// <summary>Mục tiêu = ml nước mỗi ngày.</summary>
+    public const string DrinkWater = "DrinkWater";
+
+    /// <summary>Mục tiêu = số nhóm bữa (sáng/trưa/tối/phụ) đã ghi mỗi ngày.</summary>
+    public const string EatClean = "EatClean";
+
+    /// <summary>Mục tiêu = số bước chân mỗi ngày.</summary>
+    public const string Exercise = "Exercise";
+
+    public static readonly IReadOnlyList<string> All = new[] { DrinkWater, EatClean, Exercise };
+
+    /// <summary>Trả dạng chuẩn ("drinkwater" → "DrinkWater") hoặc null nếu không phải loại được hỗ trợ.</summary>
+    public static string? Normalize(string? value)
+    {
+        var trimmed = value?.Trim();
+        return All.FirstOrDefault(c => string.Equals(c, trimmed, StringComparison.OrdinalIgnoreCase));
+    }
+}
+
 public sealed record BadgeDefinition(string Id, string Title, string Description);
 
 public sealed record CostumeDefinition(string Id, string Title, string UnlockDescription);

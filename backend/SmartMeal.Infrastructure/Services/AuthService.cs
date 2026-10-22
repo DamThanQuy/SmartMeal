@@ -146,33 +146,11 @@ public class AuthService : IAuthService
     /// <returns>Đối tượng <see cref="AuthResponseDto"/> chứa Access Token và thông tin User.</returns>
     public async Task<ApiResponse<AuthResponseDto>> LoginAsync(LoginRequestDto dto)
     {
-        var email = NormalizeEmail(dto.Email);
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email);
-        var now = DateTime.UtcNow;
-
-        if (user is null || string.IsNullOrEmpty(user.PasswordHash))
+        var (user, failure) = await VerifyCredentialsAsync(dto.Email, dto.Password);
+        if (user is null)
         {
-            BCrypt.Net.BCrypt.Verify(dto.Password, DummyPasswordHash);
-            return ApiResponse<AuthResponseDto>.Fail(InvalidCredentialsMessage, null, ApiErrorKind.Unauthorized);
+            return failure!;
         }
-
-        // Đang bị khóa: không kiểm mật khẩu (kể cả đúng) để không giúp kẻ dò mật khẩu.
-        if (_attempts.RemainingLockout(user, now) is { } remaining)
-        {
-            return LockedResponse(remaining);
-        }
-
-        if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-        {
-            if (await _attempts.RegisterFailureAsync(user, now) is { } lockedUntil)
-            {
-                return LockedResponse(lockedUntil - now);
-            }
-
-            return ApiResponse<AuthResponseDto>.Fail(InvalidCredentialsMessage, null, ApiErrorKind.Unauthorized);
-        }
-
-        await _attempts.ResetAsync(user);
 
         // Chỉ báo sau khi mật khẩu đúng (không giúp dò tài khoản); gửi mã mới để người dùng xác minh rồi đăng nhập lại.
         if (EmailVerificationRequired && !user.IsEmailVerified)
@@ -183,6 +161,67 @@ public class AuthService : IAuthService
 
         var hasSurvey = await _db.HealthProfiles.AnyAsync(hp => hp.UserId == user.Id);
         return ApiResponse<AuthResponseDto>.Ok(await IssueTokensAsync(user, hasSurvey), "Đăng nhập thành công.");
+    }
+
+    /// <summary>
+    /// Đăng nhập cổng Admin Web: cùng cơ chế chống dò mật khẩu và cùng loại phiên (access + refresh token lưu DB) như
+    /// đăng nhập app; chỉ cấp phiên cho tài khoản có vai trò Admin (403 với tài khoản thường, sau khi mật khẩu đúng).
+    /// </summary>
+    /// <param name="dto">Email và mật khẩu quản trị viên.</param>
+    /// <returns>Đối tượng <see cref="AuthResponseDto"/> chứa Access Token, Refresh Token và thông tin admin.</returns>
+    public async Task<ApiResponse<AuthResponseDto>> AdminLoginAsync(LoginRequestDto dto)
+    {
+        var (user, failure) = await VerifyCredentialsAsync(dto.Email, dto.Password);
+        if (user is null)
+        {
+            return failure!;
+        }
+
+        if (!string.Equals(user.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return ApiResponse<AuthResponseDto>.Fail("Tài khoản của bạn không có quyền Quản trị viên (Admin).", null, ApiErrorKind.Forbidden);
+        }
+
+        var hasSurvey = await _db.HealthProfiles.AnyAsync(hp => hp.UserId == user.Id);
+        return ApiResponse<AuthResponseDto>.Ok(await IssueTokensAsync(user, hasSurvey), "Đăng nhập quản trị viên thành công.");
+    }
+
+    /// <summary>
+    /// Kiểm tra email + mật khẩu (dùng chung cho đăng nhập app và cổng Admin):
+    /// - Email không tồn tại: vẫn chạy BCrypt với hash giả để thời gian phản hồi như nhau (chống dò email).
+    /// - Đang bị khóa: không kiểm mật khẩu (kể cả đúng) để không giúp kẻ dò mật khẩu.
+    /// - Sai mật khẩu: tăng bộ đếm, đủ ngưỡng thì khóa tạm thời (423); đúng thì xóa bộ đếm.
+    /// </summary>
+    /// <returns>Người dùng khi mật khẩu đúng, ngược lại phản hồi lỗi để trả thẳng cho client.</returns>
+    private async Task<(User? User, ApiResponse<AuthResponseDto>? Failure)> VerifyCredentialsAsync(string emailInput, string password)
+    {
+        var email = NormalizeEmail(emailInput);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email);
+        var now = DateTime.UtcNow;
+
+        if (user is null || string.IsNullOrEmpty(user.PasswordHash))
+        {
+            BCrypt.Net.BCrypt.Verify(password, DummyPasswordHash);
+            return (null, ApiResponse<AuthResponseDto>.Fail(InvalidCredentialsMessage, null, ApiErrorKind.Unauthorized));
+        }
+
+        if (_attempts.RemainingLockout(user, now) is { } remaining)
+        {
+            return (null, LockedResponse(remaining));
+        }
+
+        if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+        {
+            if (await _attempts.RegisterFailureAsync(user, now) is { } lockedUntil)
+            {
+                return (null, LockedResponse(lockedUntil - now));
+            }
+
+            return (null, ApiResponse<AuthResponseDto>.Fail(InvalidCredentialsMessage, null, ApiErrorKind.Unauthorized));
+        }
+
+        await _attempts.ResetAsync(user);
+        return (user, null);
     }
 
     /// <summary>

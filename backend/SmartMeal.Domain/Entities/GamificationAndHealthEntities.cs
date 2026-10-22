@@ -78,7 +78,7 @@ public class Challenge
     public string Description { get; set; } = string.Empty;
     public string ImageUrl { get; set; } = string.Empty;
     public int DurationDays { get; set; } = 7;
-    public string Category { get; set; } = "EatClean"; // EatClean, DrinkWater, NoSugar, Exercise
+    public string Category { get; set; } = "EatClean"; // EatClean, DrinkWater, Exercise (ChallengeCategories)
     public int TargetValuePerDay { get; set; }
     public int RewardExp { get; set; } = 150;
     public string RewardBadge { get; set; } = "Clean Eater";

@@ -176,20 +176,41 @@ builder.Services
 
                 return Task.CompletedTask;
             },
-            // Token còn hạn nhưng tài khoản đã bị xóa → từ chối ngay (thay vì lỗi khóa ngoại ở các thao tác sau).
+            // Token còn hạn nhưng tài khoản đã bị xóa, hoặc phiên đã bị thu hồi (admin cấm / khóa / đặt lại mật khẩu
+            // → TokenVersion tăng) → từ chối ngay. Vai trò lấy từ DB chứ không tin claim trong token, để nâng / hạ
+            // quyền có hiệu lực ngay với cả token đã cấp.
             OnTokenValidated = async context =>
             {
-                if (!Guid.TryParse(context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                if (context.Principal?.Identity is not ClaimsIdentity identity
+                    || !Guid.TryParse(identity.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
                 {
                     context.Fail("invalid_subject");
                     return;
                 }
 
                 var db = context.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
-                if (!await db.Users.AsNoTracking().AnyAsync(u => u.Id == userId, context.HttpContext.RequestAborted))
+                var account = await db.Users.AsNoTracking()
+                    .Where(u => u.Id == userId)
+                    .Select(u => new { u.Role, u.TokenVersion })
+                    .FirstOrDefaultAsync(context.HttpContext.RequestAborted);
+                if (account is null)
                 {
                     context.Fail("user_not_found");
+                    return;
                 }
+
+                var tokenVersion = int.TryParse(identity.FindFirst(JwtTokenService.TokenVersionClaim)?.Value, out var v) ? v : 0;
+                if (tokenVersion != account.TokenVersion)
+                {
+                    context.Fail("token_revoked");
+                    return;
+                }
+
+                foreach (var role in identity.FindAll(identity.RoleClaimType).ToList())
+                {
+                    identity.RemoveClaim(role);
+                }
+                identity.AddClaim(new Claim(identity.RoleClaimType, account.Role));
             },
             OnChallenge = async context =>
             {
@@ -411,10 +432,20 @@ await using (var scope = app.Services.CreateAsyncScope())
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         await db.Database.MigrateAsync();
         // Tài khoản dùng thử (smartmealuser@gmail.com) có mật khẩu đã biết nên CHỈ được tạo ở môi trường Development.
+        // Tài khoản Admin: môi trường thật chỉ tạo khi khai báo Seed:AdminPassword (không có mật khẩu mặc định);
+        // Development dùng mật khẩu mẫu nếu không khai báo.
+        var adminPassword = app.Configuration["Seed:AdminPassword"];
+        if (string.IsNullOrWhiteSpace(adminPassword) && app.Environment.IsDevelopment())
+        {
+            adminPassword = DbInitializer.DefaultAdminPassword;
+        }
+
         await DbInitializer.SeedAsync(
             db,
             seedDevAccount: app.Environment.IsDevelopment(),
-            devAccountPassword: app.Configuration["Seed:DevAccountPassword"]);
+            devAccountPassword: app.Configuration["Seed:DevAccountPassword"],
+            adminPassword: adminPassword,
+            adminEmail: app.Configuration["Seed:AdminEmail"]);
         logger.LogInformation("[Database] Migration and seed applied successfully.");
     }
     catch (Exception ex) when (app.Environment.IsDevelopment())
