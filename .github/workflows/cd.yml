@@ -74,7 +74,7 @@ jobs:
           $success = $false
 
           for ($i = 1; $i -le $maxRetries; $i++) {
-            Write-Host "Attempt $i/$maxRetries: Checking endpoint $url..."
+            Write-Host "Attempt ${i}/${maxRetries} - Checking endpoint ${url}..."
             try {
               $res = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 10
               if ($res.StatusCode -eq 200) {
@@ -89,7 +89,7 @@ jobs:
           }
 
           if (-not $success) {
-            Write-Error "[FAIL] Health check failed after $maxRetries attempts!"
+            Write-Error "[FAIL] Health check failed after ${maxRetries} attempts!"
             docker ps --filter "name=smartmeal_api"
             docker logs --tail 50 smartmeal_api
             exit 1
