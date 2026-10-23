@@ -347,10 +347,10 @@ public class GamificationService : IGamificationService
         if (challenge.TargetValuePerDay <= 0) return false;
         return challenge.Category switch
         {
-            "DrinkWater" => day.WaterMl >= challenge.TargetValuePerDay,
-            "EatClean" => day.MealGroups >= challenge.TargetValuePerDay,
-            "Exercise" => day.Steps >= challenge.TargetValuePerDay,
-            _ => false // NoSugar và các loại khác chưa có dữ liệu để chấm
+            ChallengeCategories.DrinkWater => day.WaterMl >= challenge.TargetValuePerDay,
+            ChallengeCategories.EatClean => day.MealGroups >= challenge.TargetValuePerDay,
+            ChallengeCategories.Exercise => day.Steps >= challenge.TargetValuePerDay,
+            _ => false // dữ liệu cũ thuộc loại không được hỗ trợ (Admin không còn tạo được loại này)
         };
     }
 

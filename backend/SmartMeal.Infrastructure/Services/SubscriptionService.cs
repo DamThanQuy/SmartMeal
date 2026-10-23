@@ -563,6 +563,30 @@ public class SubscriptionService : ISubscriptionService
     }
 
     /// <summary>
+    /// Quản trị viên xác nhận tay một giao dịch (vd. khách chuyển khoản nhưng webhook không tới): đi qua đúng luồng
+    /// <see cref="ConfirmPaidAsync"/> của cổng thanh toán — giao dịch đã Paid trả 409 và không cộng thêm ngày Pro.
+    /// </summary>
+    /// <param name="transactionId">Mã giao dịch cần duyệt.</param>
+    public async Task<ApiResponse<bool>> ApproveTransactionAsync(Guid transactionId)
+    {
+        var transaction = await _db.PaymentTransactions.FirstOrDefaultAsync(t => t.Id == transactionId);
+        if (transaction is null)
+        {
+            return ApiResponse<bool>.Fail("Không tìm thấy giao dịch thanh toán.", null, ApiErrorKind.NotFound);
+        }
+
+        if (transaction.Status == PaymentStatuses.Paid)
+        {
+            return ApiResponse<bool>.Fail("Giao dịch đã được thanh toán trước đó, không thể duyệt lại.", null, ApiErrorKind.Conflict);
+        }
+
+        var confirmError = await ConfirmPaidAsync(transaction, transaction.ProviderTransactionId ?? "admin-approval");
+        return confirmError is null
+            ? ApiResponse<bool>.Ok(true, "Đã duyệt giao dịch thành công và kích hoạt gói Pro cho người dùng.")
+            : ApiResponse<bool>.Fail(confirmError);
+    }
+
+    /// <summary>
     /// Ghi nhận giao dịch đã thanh toán và kích hoạt/gia hạn gói Pro cho người dùng (Logic dùng chung cho mọi cổng thanh toán):
     /// - Đảm bảo tính Idempotent: Sử dụng câu lệnh ExecuteUpdateAsync có điều kiện để giải quyết tranh chấp (Race Condition)
     ///   khi Webhook và client Polling đến cùng một lúc, cam đoan thời hạn Pro không bao giờ bị cộng thừa 2 lần.

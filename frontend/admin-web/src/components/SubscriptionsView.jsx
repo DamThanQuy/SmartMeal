@@ -13,6 +13,9 @@ import {
   ArrowUpRight
 } from 'lucide-react';
 import { api } from '../services/api';
+import Pagination from './Pagination';
+
+const PAGE_SIZE = 20;
 
 export default function SubscriptionsView({ onNotify }) {
   const [plans, setPlans] = useState([]);
@@ -21,17 +24,19 @@ export default function SubscriptionsView({ onNotify }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [approvingId, setApprovingId] = useState(null);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [plansData, txData] = await Promise.all([
+      const [plansData, txPage] = await Promise.all([
         api.getPlans(),
-        api.getTransactions({ page, pageSize: 20, status: statusFilter !== 'all' ? statusFilter : '', search })
+        api.getTransactions({ page, pageSize: PAGE_SIZE, status: statusFilter !== 'all' ? statusFilter : '', search })
       ]);
       setPlans(plansData);
-      setTransactions(txData);
+      setTransactions(txPage.items);
+      setTotal(txPage.total);
     } catch (err) {
       onNotify('Lỗi tải dữ liệu gói & giao dịch: ' + err.message, 'error');
     } finally {
@@ -182,14 +187,14 @@ export default function SubscriptionsView({ onNotify }) {
                 className="form-input"
                 placeholder="Tìm mã đơn, email..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               />
             </div>
 
             <select
               className="form-select"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
               style={{ width: '150px' }}
             >
               <option value="all">Mọi trạng thái</option>
@@ -301,6 +306,8 @@ export default function SubscriptionsView({ onNotify }) {
             </tbody>
           </table>
         </div>
+
+        <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} itemLabel="giao dịch" />
       </div>
     </div>
   );

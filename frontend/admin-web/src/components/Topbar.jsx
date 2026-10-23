@@ -7,8 +7,8 @@ export default function Topbar({ title, onRefresh, isRefreshing, onOpenAddRecipe
       <h2 className="page-title">{title}</h2>
 
       <div className="topbar-actions">
-        <div className="badge-environment" title="Kết nối trực tiếp tới Backend ASP.NET Core API">
-          <span>Hệ thống trực tuyến (Port 5000)</span>
+        <div className="badge-environment" title="Kết nối tới Backend ASP.NET Core API qua /api">
+          <span>Hệ thống trực tuyến</span>
         </div>
 
         <button

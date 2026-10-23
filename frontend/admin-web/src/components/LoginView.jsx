@@ -2,9 +2,13 @@ import React, { useState } from 'react';
 import { UtensilsCrossed, Lock, Mail, ShieldCheck, ArrowRight, Sparkles } from 'lucide-react';
 import { api } from '../services/api';
 
+// Tài khoản admin mẫu do backend tự tạo ở Development. Chỉ có trong bản `vite dev`: khi build production
+// import.meta.env.DEV = false nên cả nhánh này (và mật khẩu) bị loại khỏi bundle.
+const DEV_ACCOUNT = import.meta.env.DEV ? { email: 'admin@smartmeal.com', password: 'Admin@123456' } : null;
+
 export default function LoginView({ onLoginSuccess }) {
-  const [email, setEmail] = useState('admin@smartmeal.com');
-  const [password, setPassword] = useState('Admin@123456');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -29,8 +33,8 @@ export default function LoginView({ onLoginSuccess }) {
   };
 
   const handleFillDemo = () => {
-    setEmail('admin@smartmeal.com');
-    setPassword('Admin@123456');
+    setEmail(DEV_ACCOUNT.email);
+    setPassword(DEV_ACCOUNT.password);
     setError('');
   };
 
@@ -106,20 +110,22 @@ export default function LoginView({ onLoginSuccess }) {
           </button>
         </form>
 
-        <div style={{ marginTop: '24px', paddingTop: '18px', borderTop: '1px solid var(--border-glass)', textAlign: 'center' }}>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-            onClick={handleFillDemo}
-          >
-            <Sparkles size={14} style={{ color: '#fbbf24' }} />
-            <span>Điền Tài Khoản Admin Mặc Định</span>
-          </button>
-          <div style={{ fontSize: '0.74rem', color: 'var(--text-dim)', marginTop: '8px' }}>
-            Tài khoản mẫu: <code>admin@smartmeal.com</code> / <code>Admin@123456</code>
+        {DEV_ACCOUNT && (
+          <div style={{ marginTop: '24px', paddingTop: '18px', borderTop: '1px solid var(--border-glass)', textAlign: 'center' }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              onClick={handleFillDemo}
+            >
+              <Sparkles size={14} style={{ color: '#fbbf24' }} />
+              <span>Điền Tài Khoản Admin Mặc Định</span>
+            </button>
+            <div style={{ fontSize: '0.74rem', color: 'var(--text-dim)', marginTop: '8px' }}>
+              Chỉ hiện ở môi trường phát triển.
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -1,0 +1,101 @@
+name: CD - Deploy to Home Server (tkm2)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/cd.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy Backend & Database on tkm2
+    runs-on: [self-hosted, windows, tkm2]
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Verify Environment Configuration
+        shell: powershell
+        run: |
+          Write-Host "=========================================="
+          Write-Host "[1/4] Checking environment configuration (.env)..."
+          Write-Host "=========================================="
+          $masterEnv = "C:\Users\tkm2\SmartMeal\backend\.env"
+          if (Test-Path $masterEnv) {
+            Write-Host "[OK] Master .env found at $masterEnv"
+            Copy-Item -Path $masterEnv -Destination "backend\.env" -Force
+            Write-Host "[OK] Copied .env into workspace build directory."
+          } else {
+            Write-Error "[FAIL] Master .env NOT found at $masterEnv!"
+            exit 1
+          }
+
+      - name: Deploy Backend Container
+        shell: powershell
+        run: |
+          Write-Host "=========================================="
+          Write-Host "[2/4] Building and recreating backend-api container..."
+          Write-Host "=========================================="
+          docker-compose up -d --build backend-api
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "[FAIL] docker-compose up failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
+          Write-Host "[OK] Container backend-api built and started."
+
+      - name: Clean Dangling Images
+        shell: powershell
+        run: |
+          Write-Host "=========================================="
+          Write-Host "[3/4] Cleaning dangling images (docker image prune)..."
+          Write-Host "=========================================="
+          docker image prune -f
+          Write-Host "[OK] Image cleanup completed."
+
+      - name: Health Check & Swagger Validation
+        shell: powershell
+        run: |
+          Write-Host "=========================================="
+          Write-Host "[4/4] Performing health check..."
+          Write-Host "=========================================="
+          Write-Host "Waiting 15 seconds for ASP.NET Core to complete DB migrations & warm up..."
+          Start-Sleep -Seconds 15
+
+          $url = "http://localhost:5000/swagger/v1/swagger.json"
+          $maxRetries = 6
+          $success = $false
+
+          for ($i = 1; $i -le $maxRetries; $i++) {
+            Write-Host "Attempt ${i}/${maxRetries} - Checking endpoint ${url}..."
+            try {
+              $res = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 10
+              if ($res.StatusCode -eq 200) {
+                Write-Host "[OK] Swagger endpoint returned HTTP 200 OK!"
+                $success = $true
+                break
+              }
+            } catch {
+              Write-Host "Endpoint not ready yet, retrying in 5s... ($($_.Exception.Message))"
+              Start-Sleep -Seconds 5
+            }
+          }
+
+          if (-not $success) {
+            Write-Error "[FAIL] Health check failed after ${maxRetries} attempts!"
+            docker ps --filter "name=smartmeal_api"
+            docker logs --tail 50 smartmeal_api
+            exit 1
+          }
+
+          Write-Host "=========================================="
+          Write-Host "[SUCCESS] DEPLOY COMPLETED SUCCESSFULLY 100%!"
+          Write-Host "=========================================="
+          docker ps --filter "name=smartmeal"

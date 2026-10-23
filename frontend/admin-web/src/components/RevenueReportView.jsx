@@ -20,10 +20,11 @@ export default function RevenueReportView({ onNotify }) {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const loadReport = async () => {
+  // Nhận ngày qua tham số: "Đặt lại" cần nạp ngay với ngày trống, trước khi state kịp cập nhật.
+  const loadReport = async (from = startDate, to = endDate) => {
     try {
       setLoading(true);
-      const data = await api.getRevenueReport(startDate, endDate);
+      const data = await api.getRevenueReport(from, to);
       setReport(data);
     } catch (err) {
       onNotify('Lỗi tải báo cáo doanh thu: ' + err.message, 'error');
@@ -109,7 +110,7 @@ export default function RevenueReportView({ onNotify }) {
           />
         </div>
 
-        <button className="btn btn-primary btn-sm" onClick={loadReport}>
+        <button className="btn btn-primary btn-sm" onClick={() => loadReport()}>
           <Filter size={14} />
           <span>Lọc Báo Cáo</span>
         </button>
@@ -120,7 +121,7 @@ export default function RevenueReportView({ onNotify }) {
             onClick={() => {
               setStartDate('');
               setEndDate('');
-              setTimeout(loadReport, 50);
+              loadReport('', '');
             }}
           >
             Đặt lại

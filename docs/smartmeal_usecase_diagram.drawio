@@ -1,0 +1,154 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="b9E1A59A7m4kBoiFTMab" name="Page-1">
+    <mxGraphModel dx="2438" dy="1348" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0" adaptiveColors="auto">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="sys_boundary" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=40;fontSize=18;fillColor=#f8fafc;strokeColor=#0284c7;strokeWidth=2;align=center;rounded=1;" value="&lt;b&gt;Smart Meal System&lt;/b&gt;" vertex="1">
+          <mxGeometry height="1180" width="960" x="220" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_login" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e0f2fe;strokeColor=#0284c7;fontSize=13;fontStyle=1;" value="Login" vertex="1">
+          <mxGeometry height="60" width="160" x="60" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_homepage" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e0f2fe;strokeColor=#0284c7;fontSize=13;fontStyle=1;" value="View HomePage" vertex="1">
+          <mxGeometry height="60" width="160" x="60" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_register" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e0f2fe;strokeColor=#0284c7;fontSize=13;fontStyle=1;" value="Register" vertex="1">
+          <mxGeometry height="60" width="160" x="60" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_profile" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontSize=13;fontStyle=1;" value="Manage Profile" vertex="1">
+          <mxGeometry height="60" width="180" x="720" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_ai_snap" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontSize=13;strokeWidth=2;" value="&lt;b&gt;AI Snap &amp;amp; Nutrition Analyze&lt;/b&gt;" vertex="1">
+          <mxGeometry height="65" width="200" x="710" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_fridge_scan" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fffbeb;strokeColor=#d97706;fontSize=12;" value="Fridge Camera Scan" vertex="1">
+          <mxGeometry height="65" width="180" x="420" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_diary" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontSize=12;strokeWidth=2;" value="&lt;b&gt;&amp;nbsp;Log Nutrition Diary (Calories/Macros)&lt;/b&gt;" vertex="1">
+          <mxGeometry height="65" width="200" x="710" y="245" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_meal_plan" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontSize=13;strokeWidth=2;" value="&lt;b&gt;Manage Meal Plan&lt;/b&gt;" vertex="1">
+          <mxGeometry height="60" width="180" x="720" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_suggested" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontSize=13;fontStyle=1;" value="View Suggested Recipes" vertex="1">
+          <mxGeometry height="60" width="180" x="720" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_preferences" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontSize=13;fontStyle=1;" value="Set Food Preferences" vertex="1">
+          <mxGeometry height="60" width="180" x="720" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_search" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontSize=13;fontStyle=1;" value="Search Recipes" vertex="1">
+          <mxGeometry height="60" width="180" x="720" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_favorite" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontSize=12;" value="Save Favourite Recipe" vertex="1">
+          <mxGeometry height="60" width="170" x="430" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_catalog" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontSize=13;fontStyle=1;" value="View Product Catalog" vertex="1">
+          <mxGeometry height="60" width="180" x="720" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_purchase" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontSize=13;fontStyle=1;" value="Purchase Ingredients" vertex="1">
+          <mxGeometry height="60" width="180" x="720" y="790" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_subscribe" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontSize=12;strokeWidth=2;" value="&lt;b&gt;Upgrade Premium Subscription&lt;/b&gt;" vertex="1">
+          <mxGeometry height="65" width="200" x="710" y="880" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_manage_user" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#dc2626;fontSize=13;fontStyle=1;" value="Manage Users" vertex="1">
+          <mxGeometry height="60" width="160" x="60" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_ban" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff1f2;strokeColor=#e11d48;fontSize=12;" value="Ban User" vertex="1">
+          <mxGeometry height="55" width="150" x="290" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_moderate" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff1f2;strokeColor=#e11d48;fontSize=12;" value="Moderate Account" vertex="1">
+          <mxGeometry height="55" width="160" x="290" y="760" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_reward" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#dc2626;fontSize=13;fontStyle=1;" value="Manage Reward System" vertex="1">
+          <mxGeometry height="60" width="170" x="60" y="840" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_monitor" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#dc2626;fontSize=13;fontStyle=1;" value="Monitor System Activity" vertex="1">
+          <mxGeometry height="60" width="170" x="60" y="940" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_revenue" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#dc2626;fontSize=13;fontStyle=1;" value="View Revenue Report" vertex="1">
+          <mxGeometry height="60" width="170" x="60" y="1040" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_analytics" parent="sys_boundary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff1f2;strokeColor=#e11d48;fontSize=12;" value="View Engagement Analytics" vertex="1">
+          <mxGeometry height="60" width="180" x="310" y="1040" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_fav" edge="1" parent="sys_boundary" source="uc_favorite" style="dashed=1;html=1;rounded=0;endArrow=open;endSize=10;strokeWidth=1.5;strokeColor=#d97706;fontColor=#b45309;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;verticalAlign=bottom;labelPlacement=auto;" target="uc_search" value="&amp;laquo;extend&amp;raquo;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_fridge" edge="1" parent="sys_boundary" source="uc_fridge_scan" style="dashed=1;html=1;rounded=0;endArrow=open;endSize=10;strokeWidth=1.5;strokeColor=#d97706;fontColor=#b45309;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;verticalAlign=bottom;labelPlacement=auto;" target="uc_ai_snap" value="&amp;laquo;extend&amp;raquo;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_ban" edge="1" parent="sys_boundary" source="uc_manage_user" style="dashed=1;html=1;rounded=0;endArrow=open;endSize=10;strokeWidth=1.5;strokeColor=#dc2626;fontColor=#991b1b;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;labelPlacement=auto;" target="uc_ban" value="&amp;laquo;include&amp;raquo;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_mod" edge="1" parent="sys_boundary" source="uc_manage_user" style="dashed=1;html=1;rounded=0;endArrow=open;endSize=10;strokeWidth=1.5;strokeColor=#dc2626;fontColor=#991b1b;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;labelPlacement=auto;" target="uc_moderate" value="&amp;laquo;include&amp;raquo;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_rev" edge="1" parent="sys_boundary" source="uc_revenue" style="dashed=1;html=1;rounded=0;endArrow=open;endSize=10;strokeWidth=1.5;strokeColor=#dc2626;fontColor=#991b1b;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;verticalAlign=bottom;labelPlacement=auto;" target="uc_analytics" value="&amp;laquo;include&amp;raquo;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="actor_guest" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=14;strokeColor=#0284c7;fillColor=#e0f2fe;strokeWidth=2;labelPerimeter=1;" value="&lt;b&gt;Guest&lt;/b&gt;" vertex="1">
+          <mxGeometry height="90" width="50" x="60" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="actor_admin" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=14;strokeColor=#dc2626;fillColor=#fee2e2;strokeWidth=2;labelPerimeter=1;" value="&lt;b&gt;Admin&lt;/b&gt;" vertex="1">
+          <mxGeometry height="90" width="50" x="60" y="850" as="geometry" />
+        </mxCell>
+        <mxCell id="actor_customer" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=14;strokeColor=#16a34a;fillColor=#dcfce7;strokeWidth=2;labelPerimeter=1;" value="&lt;b&gt;Customer&lt;/b&gt;" vertex="1">
+          <mxGeometry height="90" width="50" x="1240" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="e_g_login" edge="1" parent="1" source="actor_guest" style="rounded=0;html=1;endArrow=none;strokeWidth=2;strokeColor=#0284c7;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;" target="uc_login">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_g_home" edge="1" parent="1" source="actor_guest" style="rounded=0;html=1;endArrow=none;strokeWidth=2;strokeColor=#0284c7;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;" target="uc_homepage">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_g_reg" edge="1" parent="1" source="actor_guest" style="rounded=0;html=1;endArrow=none;strokeWidth=2;strokeColor=#0284c7;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;" target="uc_register">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c_prof" edge="1" parent="1" source="actor_customer" style="rounded=0;html=1;endArrow=none;strokeWidth=2;strokeColor=#16a34a;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;" target="uc_profile">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c_snap" edge="1" parent="1" source="actor_customer" style="rounded=0;html=1;endArrow=none;strokeWidth=2.5;strokeColor=#d97706;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;" target="uc_ai_snap">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c_diary" edge="1" parent="1" source="actor_customer" style="rounded=0;html=1;endArrow=none;strokeWidth=2.5;strokeColor=#16a34a;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;" target="uc_diary">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c_plan" edge="1" parent="1" source="actor_customer" style="rounded=0;html=1;endArrow=none;strokeWidth=2.5;strokeColor=#16a34a;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;" target="uc_meal_plan">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c_sugg" edge="1" parent="1" source="actor_customer" style="rounded=0;html=1;endArrow=none;strokeWidth=2;strokeColor=#16a34a;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;" target="uc_suggested">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c_pref" edge="1" parent="1" source="actor_customer" style="rounded=0;html=1;endArrow=none;strokeWidth=2;strokeColor=#16a34a;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;" target="uc_preferences">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c_src" edge="1" parent="1" source="actor_customer" style="rounded=0;html=1;endArrow=none;strokeWidth=2;strokeColor=#16a34a;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;" target="uc_search">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c_cat" edge="1" parent="1" source="actor_customer" style="rounded=0;html=1;endArrow=none;strokeWidth=2;strokeColor=#16a34a;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;" target="uc_catalog">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c_pur" edge="1" parent="1" source="actor_customer" style="rounded=0;html=1;endArrow=none;strokeWidth=2;strokeColor=#16a34a;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;" target="uc_purchase">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c_sub" edge="1" parent="1" source="actor_customer" style="rounded=0;html=1;endArrow=none;strokeWidth=2.5;strokeColor=#d97706;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;" target="uc_subscribe">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_user" edge="1" parent="1" source="actor_admin" style="rounded=0;html=1;endArrow=none;strokeWidth=2;strokeColor=#dc2626;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;" target="uc_manage_user">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_rew" edge="1" parent="1" source="actor_admin" style="rounded=0;html=1;endArrow=none;strokeWidth=2;strokeColor=#dc2626;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;" target="uc_reward">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_mon" edge="1" parent="1" source="actor_admin" style="rounded=0;html=1;endArrow=none;strokeWidth=2;strokeColor=#dc2626;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;" target="uc_monitor">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a_rev" edge="1" parent="1" source="actor_admin" style="rounded=0;html=1;endArrow=none;strokeWidth=2;strokeColor=#dc2626;labelBackgroundColor=default;defaultLabelBackgroundColor=gap;" target="uc_revenue">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
