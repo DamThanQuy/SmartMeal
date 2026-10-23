@@ -82,20 +82,22 @@ public class RecipeSeedQualityTests : IClassFixture<ApiFactory>
     }
 
     [DbFact]
-    public async Task Seeding_again_repairs_recipes_seeded_by_an_older_version()
+    public async Task The_data_fix_migration_repairs_recipes_seeded_by_the_first_expanded_list()
     {
         const string peanutDish = "Bún bò xào Nam Bộ rau sống đậu phộng";
+        const string peanut = "Đậu phộng rang";
         const string slowDish = "Canh chua cá lóc rau muống bắp chuối";
+        const string quickDish = "Salad cá ngừ áp chảo sốt mù tạt mật ong"; // 13 phút, nhãn "quick" đúng
 
-        // Factory riêng vì test sửa dữ liệu: dựng lại DB đã seed bằng bản cũ — món "... đậu phộng" thiếu đậu phộng và
-        // món nấu 30 phút vẫn mang nhãn "quick". Seed lại phải tự sửa vì seed không tạo lại món đã có.
+        // Factory riêng vì test sửa dữ liệu: dựng lại DB đã seed bằng bản đầu của danh sách món mở rộng — chưa có nguyên
+        // liệu đậu phộng nên món "... đậu phộng" không báo dị ứng, và món nấu 30 phút vẫn mang nhãn "quick".
         await using var factory = new ApiFactory();
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            await db.RecipeIngredients
-                .Where(ri => ri.Recipe.Title == peanutDish && ri.Ingredient.Name == "Đậu phộng rang")
-                .ExecuteDeleteAsync();
+            await db.RecipeIngredients.Where(ri => ri.Ingredient.Name == peanut).ExecuteDeleteAsync();
+            await db.IngredientAllergies.Where(ia => ia.Ingredient.Name == peanut).ExecuteDeleteAsync();
+            await db.Ingredients.Where(i => i.Name == peanut).ExecuteDeleteAsync();
             var slowId = await db.Recipes.Where(r => r.Title == slowDish).Select(r => r.Id).SingleAsync();
             var quickId = await db.Tags.Where(t => t.Code == "quick").Select(t => t.Id).SingleAsync();
             db.RecipeTags.Add(new SmartMeal.Domain.Entities.RecipeTag { RecipeId = slowId, TagId = quickId });
@@ -107,14 +109,22 @@ public class RecipeSeedQualityTests : IClassFixture<ApiFactory>
         Assert.DoesNotContain(peanutId, before.Single(r => r.Title == peanutDish).AllergyIds);
         Assert.Contains("quick", before.Single(r => r.Title == slowDish).TagCodes);
 
+        // Chạy bản sửa hai lần (chạy lại không thêm gì), rồi khởi động lại như máy chủ: seed gắn dị ứng cho nguyên liệu mới.
         await using (var scope = factory.Services.CreateAsyncScope())
         {
-            await DbInitializer.SeedAsync(scope.ServiceProvider.GetRequiredService<ApplicationDbContext>());
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            await db.Database.ExecuteSqlRawAsync(ExpandedRecipeDataFix.Sql);
+            await db.Database.ExecuteSqlRawAsync(ExpandedRecipeDataFix.Sql);
+            await DbInitializer.SeedAsync(db);
+
+            Assert.Equal(1, await db.Ingredients.CountAsync(i => i.Name == peanut));
+            Assert.Equal(1, await db.RecipeIngredients.CountAsync(ri => ri.Recipe.Title == peanutDish && ri.Ingredient.Name == peanut));
         }
 
         var after = await ListAsync(factory.CreateClient());
         Assert.Contains(peanutId, after.Single(r => r.Title == peanutDish).AllergyIds);
         Assert.DoesNotContain("quick", after.Single(r => r.Title == slowDish).TagCodes);
+        Assert.Contains("quick", after.Single(r => r.Title == quickDish).TagCodes);
     }
 
     [DbFact]
