@@ -27,4 +27,8 @@
     <ProjectReference Include="..\SmartMeal.Application\SmartMeal.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Data\recipes_seed.json" />
+  </ItemGroup>
+
 </Project>

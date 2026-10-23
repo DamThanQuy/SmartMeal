@@ -155,6 +155,14 @@ export const api = {
     return res;
   },
 
+  bulkImportRecipes: async (recipes, overwriteExisting = false) => {
+    const res = await request('/admin/recipes/bulk-import', {
+      method: 'POST',
+      body: JSON.stringify({ recipes, overwriteExisting }),
+    });
+    return res;
+  },
+
   // Plans & Transactions
   getPlans: async () => {
     const res = await request('/admin/plans');

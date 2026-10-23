@@ -12,10 +12,11 @@ import {
   X,
   ExternalLink,
   Plus,
-  Minus
+  Minus,
+  FileSpreadsheet
 } from 'lucide-react';
 import { api } from '../services/api';
-import Pagination from './Pagination';
+import RecipeExcelImportModal from './RecipeExcelImportModal';
 
 const PAGE_SIZE = 16;
 
@@ -42,6 +43,7 @@ export default function RecipesView({ onNotify, initialOpenAdd = false, onResetA
 
   // Modal State
   const [showModal, setShowModal] = useState(false);
+  const [showExcelModal, setShowExcelModal] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -275,6 +277,23 @@ export default function RecipesView({ onNotify, initialOpenAdd = false, onResetA
             <option value="Medium">Trung bình</option>
             <option value="Hard">Cầu kỳ / Khó</option>
           </select>
+
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowExcelModal(true)}
+            style={{
+              color: '#10b981',
+              borderColor: 'rgba(16, 185, 129, 0.4)',
+              background: 'rgba(16, 185, 129, 0.08)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+            title="Thêm hàng loạt món ăn bằng file Excel (.xlsx, .xls, .csv)"
+          >
+            <FileSpreadsheet size={17} />
+            <span>Nhập File Excel</span>
+          </button>
 
           <button className="btn btn-primary" onClick={handleOpenCreate}>
             <PlusCircle size={17} />
@@ -720,6 +739,16 @@ export default function RecipesView({ onNotify, initialOpenAdd = false, onResetA
           </div>
         </div>
       )}
+      {/* Modal: Nhập Món Ăn Bằng File Excel */}
+      <RecipeExcelImportModal
+        isOpen={showExcelModal}
+        onClose={() => setShowExcelModal(false)}
+        onSuccess={() => {
+          loadRecipes();
+        }}
+        onNotify={onNotify}
+      />
     </div>
   );
 }
+
