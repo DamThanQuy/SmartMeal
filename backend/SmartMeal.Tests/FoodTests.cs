@@ -1,4 +1,7 @@
 using System.Net;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using SmartMeal.Infrastructure.Data;
 using SmartMeal.Tests.Infrastructure;
 using Xunit;
 
@@ -7,12 +10,21 @@ namespace SmartMeal.Tests;
 /// <summary>P1-BE-08: danh mục thực phẩm — món ăn mẫu + khẩu phần, tự nhập món, mã vạch, gần đây, yêu thích.</summary>
 public class FoodTests : IClassFixture<ApiFactory>
 {
-    private const int SeededIngredients = 12;
     private const int SeededDishes = 15;
 
     private readonly ApiFactory _factory;
 
     public FoodTests(ApiFactory factory) => _factory = factory;
+
+    /// <summary>
+    /// Số thực phẩm trong danh mục chung (nguyên liệu + món mẫu, không tính món người dùng tự nhập). Đếm từ DB vì danh
+    /// sách món mở rộng (DbInitializer.Recipes.cs) cũng thêm nguyên liệu vào danh mục.
+    /// </summary>
+    private async Task<int> SharedFoodCountAsync()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Ingredients.CountAsync(i => i.OwnerUserId == null);
+    }
 
     private sealed record FoodPage(List<FoodPayload> Items, int Page, int PageSize, int TotalCount, int TotalPages);
 
@@ -66,7 +78,7 @@ public class FoodTests : IClassFixture<ApiFactory>
     {
         var anonymous = _factory.CreateClient();
 
-        var accented = await ListAsync(anonymous, "?search=" + Uri.EscapeDataString("phở"));
+        var accented = await ListAsync(anonymous, "?search=" + Uri.EscapeDataString("phở bò"));
         var plain = await ListAsync(anonymous, "?search=PHO%20BO");
 
         var pho = Assert.Single(accented.Items, f => f.Name == "Phở bò");
@@ -85,7 +97,8 @@ public class FoodTests : IClassFixture<ApiFactory>
     {
         var all = await ListAsync(_factory.CreateClient(), "?pageSize=100");
 
-        Assert.Equal(SeededIngredients + SeededDishes, all.TotalCount);
+        Assert.Equal(await SharedFoodCountAsync(), all.TotalCount);
+        Assert.Equal(all.TotalCount, all.Items.Count);
         var egg = all.Items.Single(f => f.Name == "Trứng gà");
         Assert.True(egg.IsVerified);
         Assert.Equal(new[] { 4 }, egg.AllergyIds);
@@ -116,7 +129,7 @@ public class FoodTests : IClassFixture<ApiFactory>
 
         Assert.Equal(10, page.Items.Count);
         Assert.Equal(2, page.Page);
-        Assert.Equal(SeededIngredients + SeededDishes, page.TotalCount);
+        Assert.Equal(await SharedFoodCountAsync(), page.TotalCount);
         Assert.Equal(SeededDishes, dishes.TotalCount);
         Assert.All(dishes.Items, f => Assert.Equal("Dish", f.Category));
     }
@@ -159,8 +172,9 @@ public class FoodTests : IClassFixture<ApiFactory>
 
         Assert.Equal(created.Id, Assert.Single((await ListAsync(owner.Client, "?scope=mine")).Items).Id);
         Assert.Empty((await ListAsync(other.Client, "?scope=mine")).Items);
-        Assert.Equal(SeededIngredients + SeededDishes + 1, (await ListAsync(owner.Client)).TotalCount);
-        Assert.Equal(SeededIngredients + SeededDishes, (await ListAsync(other.Client)).TotalCount);
+        var shared = await SharedFoodCountAsync();
+        Assert.Equal(shared + 1, (await ListAsync(owner.Client)).TotalCount);
+        Assert.Equal(shared, (await ListAsync(other.Client)).TotalCount);
     }
 
     [DbFact]
@@ -312,6 +326,6 @@ public class FoodTests : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Empty((await ListAsync(user.Client, "?scope=mine")).Items);
         Assert.Empty((await ListAsync(user.Client, "?scope=favorite")).Items);
-        Assert.Equal(SeededIngredients + SeededDishes, (await ListAsync(user.Client)).TotalCount); // danh mục chung còn nguyên
+        Assert.Equal(await SharedFoodCountAsync(), (await ListAsync(user.Client)).TotalCount); // danh mục chung còn nguyên
     }
 }

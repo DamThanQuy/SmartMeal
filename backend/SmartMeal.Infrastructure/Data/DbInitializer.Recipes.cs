@@ -100,7 +100,7 @@ public static partial class DbInitializer
             "1. Xào sơ thịt bò bằm và cà rốt cắt hạt lựu với chút dầu ô liu.\n2. Cho nước dùng vào đun sôi rồi thả yến mạch vào khuấy đều trong 5 phút.\n3. Nêm xíu hạt nêm tiêu, rắc hành ngò thơm lừng.",
             10, 10, 1, "Easy", false, "Breakfast,Dinner",
             340, 26, 42, 7,
-            ["quick", "eatClean", "highProtein"],
+            ["eatClean", "highProtein"],
             [
                 ("Yến mạch cán dẹt", "Grain", "g", 389, 16.9, 66, 6.9, 60),
                 ("Thịt bò thăn", "Meat", "g", 250, 26, 0, 15, 90),
@@ -186,7 +186,8 @@ public static partial class DbInitializer
                 ("Bún gạo lứt", "Grain", "g", 125, 2.5, 27, 0.5, 150),
                 ("Thịt bò thăn", "Meat", "g", 250, 26, 0, 15, 100),
                 ("Đậu hũ non", "Vegetable", "g", 76, 8, 1.9, 4.8, 80),
-                ("Cà chua bi", "Vegetable", "g", 18, 0.9, 3.9, 0.2, 60)
+                ("Cà chua bi", "Vegetable", "g", 18, 0.9, 3.9, 0.2, 60),
+                ("Cua đồng", "Seafood", "g", 87, 12.3, 2, 3.3, 100)
             ]
         ),
 
@@ -230,7 +231,7 @@ public static partial class DbInitializer
             "1. Ngâm mềm miến dong rồi trần sơ qua nước sôi.\n2. Xào săn tôm nõn với tỏi băm, sau đó cho cà rốt, nấm mèo vào xào chung.\n3. Cho miến vào đảo đều tay trên lửa lớn, nêm dầu hào vừa vị rồi rắc hành ngò.",
             15, 8, 1, "Medium", false, "Lunch,Dinner",
             370, 26, 52, 5,
-            ["eatClean", "quick"],
+            ["eatClean"],
             [
                 ("Miến dong", "Grain", "g", 332, 0.5, 82, 0.2, 70),
                 ("Tôm tươi", "Seafood", "g", 99, 24, 0.2, 0.3, 100),
@@ -250,7 +251,8 @@ public static partial class DbInitializer
             [
                 ("Thịt bò thăn", "Meat", "g", 250, 26, 0, 15, 120),
                 ("Bún gạo lứt", "Grain", "g", 125, 2.5, 27, 0.5, 150),
-                ("Xà lách Romaine", "Vegetable", "g", 17, 1.2, 3.3, 0.3, 80)
+                ("Xà lách Romaine", "Vegetable", "g", 17, 1.2, 3.3, 0.3, 80),
+                ("Đậu phộng rang", "Grain", "g", 585, 24, 21, 50, 15)
             ]
         ),
 
@@ -357,7 +359,7 @@ public static partial class DbInitializer
             "1. Nấu nước sôi, dầm me lấy nước chua rồi thả cá lóc cắt khúc vào đun chín.\n2. Thêm cà chua, đậu bắp, rau muống và hoa chuối thái sợi.\n3. Nêm nước mắm vừa ăn, rắc rau ngổ ngò gai dậy mùi.",
             15, 15, 1, "Easy", false, "Lunch,Dinner",
             240, 28, 16, 5,
-            ["eatClean", "quick", "budget"],
+            ["eatClean", "budget"],
             [
                 ("Cá lóc", "Seafood", "g", 97, 18.2, 0, 2.7, 150),
                 ("Cà chua bi", "Vegetable", "g", 18, 0.9, 3.9, 0.2, 60)
@@ -372,7 +374,7 @@ public static partial class DbInitializer
             "1. Ngâm nở rong biển khô rồi rửa sạch vắt ráo.\n2. Xào săn thịt nạc bằm với chút hành khô và dầu mè.\n3. Thêm nước sôi, thả đậu hũ cắt vuông và rong biển, đun sôi 3 phút rồi nêm gia vị.",
             10, 8, 1, "Easy", false, "Lunch,Dinner",
             210, 20, 8, 10,
-            ["quick", "lowCarb", "eatClean"],
+            ["lowCarb", "eatClean"],
             [
                 ("Đậu hũ non", "Vegetable", "g", 76, 8, 1.9, 4.8, 120),
                 ("Thịt nạc thăn", "Meat", "g", 143, 21, 0, 6, 60)
@@ -402,7 +404,7 @@ public static partial class DbInitializer
             "1. Làm sạch mực nang, khứa vảy rồng trên thân.\n2. Lót gừng sả thái lát dưới đáy xửng hấp, đặt mực lên trên.\n3. Hấp cách thủy trên lửa lớn 7-8 phút tới khi mực chín giòn.",
             10, 8, 1, "Easy", false, "Lunch,Dinner",
             220, 34, 4, 6,
-            ["quick", "keto", "lowCarb", "highProtein"],
+            ["keto", "lowCarb", "highProtein"],
             [
                 ("Mực tươi", "Seafood", "g", 92, 15.6, 3, 1.4, 200)
             ]
@@ -461,7 +463,7 @@ public static partial class DbInitializer
             "1. Trải lát thịt bò dài, cho nấm kim châm vào giữa rồi cuộn tròn chặt tay.\n2. Pha sốt tương tỏi gồm xì dầu, dầu hào và chút đường ăn kiêng.\n3. Nướng cuộn bò trong nồi chiên không dầu 8 phút, phết sốt tương trong 2 phút cuối.",
             12, 8, 1, "Easy", false, "Lunch,Dinner",
             340, 30, 8, 20,
-            ["quick", "keto", "lowCarb", "highProtein"],
+            ["keto", "lowCarb", "highProtein"],
             [
                 ("Thịt bò thăn", "Meat", "g", 250, 26, 0, 15, 130),
                 ("Nấm kim châm", "Vegetable", "g", 37, 2.7, 7.8, 0.3, 100)
@@ -510,7 +512,8 @@ public static partial class DbInitializer
             [
                 ("Quả bơ sáp", "Fruit", "g", 160, 2, 8.5, 14.7, 80),
                 ("Cà rốt", "Vegetable", "g", 41, 0.9, 10, 0.2, 50),
-                ("Xà lách Romaine", "Vegetable", "g", 17, 1.2, 3.3, 0.3, 60)
+                ("Xà lách Romaine", "Vegetable", "g", 17, 1.2, 3.3, 0.3, 60),
+                ("Hạt dẻ cười", "Grain", "g", 560, 20, 28, 45, 15)
             ]
         ),
 
@@ -584,7 +587,7 @@ public static partial class DbInitializer
             "1. Luộc chín tôm lột vỏ, trứng gà luộc 6 phút lòng đào bổ đôi.\n2. Cắt lát bơ chín và cà chua bi, xà lách rửa sạch để ráo.\n3. Xếp các nguyên liệu ra đĩa lớn và rưới sốt mè rang thơm phức.",
             10, 6, 1, "Easy", false, "Lunch,Dinner",
             370, 28, 12, 24,
-            ["keto", "lowCarb", "highProtein", "quick"],
+            ["keto", "lowCarb", "highProtein"],
             [
                 ("Tôm tươi", "Seafood", "g", 99, 24, 0.2, 0.3, 100),
                 ("Quả bơ sáp", "Fruit", "g", 160, 2, 8.5, 14.7, 80),
@@ -666,7 +669,8 @@ public static partial class DbInitializer
             ["quick", "eatClean", "vegetarian", "highProtein"],
             [
                 ("Sữa chua Hy Lạp", "Dairy", "g", 97, 9, 3.6, 5, 150),
-                ("Yến mạch cán dẹt", "Grain", "g", 389, 16.9, 66, 6.9, 30)
+                ("Yến mạch cán dẹt", "Grain", "g", 389, 16.9, 66, 6.9, 30),
+                ("Hạt óc chó", "Grain", "g", 654, 15, 14, 65, 15)
             ]
         ),
 
@@ -725,7 +729,9 @@ public static partial class DbInitializer
             180, 6, 24, 8,
             ["vegan", "vegetarian", "quick", "eatClean"],
             [
-                ("Hạt chia", "Grain", "g", 486, 17, 42, 31, 25)
+                ("Hạt chia", "Grain", "g", 486, 17, 42, 31, 25),
+                // Không đặt tên "sữa hạnh nhân": từ khóa "sữa" sẽ gắn nhầm dị ứng sữa bò cho món thuần chay.
+                ("Nước hạnh nhân không đường", "Grain", "ml", 15, 0.6, 0.3, 1.2, 150)
             ]
         ),
 
@@ -739,7 +745,8 @@ public static partial class DbInitializer
             210, 7, 26, 10,
             ["eatClean", "vegetarian", "budget"],
             [
-                ("Yến mạch cán dẹt", "Grain", "g", 389, 16.9, 66, 6.9, 80)
+                ("Yến mạch cán dẹt", "Grain", "g", 389, 16.9, 66, 6.9, 80),
+                ("Hạt điều", "Grain", "g", 553, 18, 30, 44, 40)
             ]
         ),
 
@@ -769,7 +776,8 @@ public static partial class DbInitializer
             310, 16, 32, 13,
             ["quick", "vegetarian"],
             [
-                ("Bánh mì nguyên cám", "Grain", "g", 250, 9, 48, 3.5, 70)
+                ("Bánh mì nguyên cám", "Grain", "g", 250, 9, 48, 3.5, 70),
+                ("Phô mai mozzarella ít béo", "Dairy", "g", 254, 24, 3, 16, 30)
             ]
         ),
 
@@ -892,5 +900,64 @@ public static partial class DbInitializer
             await db.RecipeIngredients.AddRangeAsync(newRecipeIngredients);
             await db.SaveChangesAsync();
         }
+
+        // DB đã seed ở bản trước không tạo lại món đã có, nên sửa tại chỗ các món đó theo danh sách seed hiện tại:
+        // - bù nguyên liệu còn thiếu (vd. món "... đậu phộng" thiếu đậu phộng thì không được gắn dị ứng — BR-102);
+        // - gỡ nhãn "quick" mà seed đã bỏ khi món thực tế nấu quá 15 phút.
+        // Chỉ bù/gỡ đúng hai điểm này (không xóa nguyên liệu nào) nên chạy lại an toàn.
+        var seededBefore = ExpandedRecipes.Where(s => existingTitles.Contains(s.Title)).ToList();
+        if (seededBefore.Count == 0) return;
+
+        var seededTitles = seededBefore.Select(s => s.Title).ToList();
+        var recipeIdByTitle = (await db.Recipes.AsNoTracking()
+                .Where(r => seededTitles.Contains(r.Title))
+                .Select(r => new { r.Id, r.Title })
+                .ToListAsync())
+            .GroupBy(r => r.Title, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
+        var recipeIds = recipeIdByTitle.Values.ToList();
+        var linkedIngredients = (await db.RecipeIngredients.AsNoTracking()
+                .Where(ri => recipeIds.Contains(ri.RecipeId))
+                .Select(ri => new { ri.RecipeId, ri.Ingredient.Name })
+                .ToListAsync())
+            .Select(x => (x.RecipeId, Name: x.Name.ToLowerInvariant()))
+            .ToHashSet();
+
+        var missingLinks = new List<RecipeIngredient>();
+        var staleQuickRecipeIds = new List<Guid>();
+        foreach (var seed in seededBefore)
+        {
+            if (!recipeIdByTitle.TryGetValue(seed.Title, out var recipeId)) continue;
+
+            foreach (var ingDef in seed.Ingredients.Where(i => !linkedIngredients.Contains((recipeId, i.Name.ToLowerInvariant()))))
+            {
+                var ing = GetOrCreateIngredient(ingDef.Name, ingDef.Category, ingDef.Unit, ingDef.Cal100, ingDef.Pro100, ingDef.Carbs100, ingDef.Fat100);
+                missingLinks.Add(new RecipeIngredient { RecipeId = recipeId, IngredientId = ing.Id, Amount = ingDef.Amount, Unit = ingDef.Unit });
+            }
+
+            if (!seed.TagCodes.Contains(QuickTagCode, StringComparer.OrdinalIgnoreCase))
+            {
+                staleQuickRecipeIds.Add(recipeId);
+            }
+        }
+
+        if (missingLinks.Count > 0)
+        {
+            await db.RecipeIngredients.AddRangeAsync(missingLinks);
+            await db.SaveChangesAsync();
+        }
+
+        if (staleQuickRecipeIds.Count > 0 && tagsByCode.TryGetValue(QuickTagCode, out var quickTagId))
+        {
+            await db.RecipeTags
+                .Where(rt => rt.TagId == quickTagId
+                             && staleQuickRecipeIds.Contains(rt.RecipeId)
+                             && rt.Recipe.PrepTimeMinutes + rt.Recipe.CookTimeMinutes > QuickTagMaxMinutes)
+                .ExecuteDeleteAsync();
+        }
     }
+
+    /// <summary>Nhãn "Nhanh Gọn (&lt; 15 phút)": chỉ hợp với món có tổng thời gian sơ chế + nấu tối đa 15 phút.</summary>
+    private const string QuickTagCode = "quick";
+    private const int QuickTagMaxMinutes = 15;
 }
