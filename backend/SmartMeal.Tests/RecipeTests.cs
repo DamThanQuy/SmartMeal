@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using SmartMeal.Application.Common;
 using SmartMeal.Domain.Entities;
 using SmartMeal.Infrastructure.Data;
 using SmartMeal.Tests.Infrastructure;
@@ -12,9 +13,19 @@ namespace SmartMeal.Tests;
 /// <summary>P2-BE-01/02/03: công thức kèm chất gây dị ứng, lọc, phân trang, yêu thích và bộ sưu tập của chủ sở hữu.</summary>
 public class RecipeTests : IClassFixture<ApiFactory>
 {
-    // Id danh mục dị ứng (migration seed): 1 hải sản, 4 trứng, 5 gluten, 6 đậu nành, 8 mè.
+    // Id danh mục dị ứng (migration seed): 1 hải sản, 3 sữa, 4 trứng, 5 gluten, 6 đậu nành, 8 mè.
     private const int Seafood = 1;
+    private const int Dairy = 3;
     private const int Sesame = 8;
+
+    // Tên đầy đủ của 6 món gốc (DbInitializer). Ngoài chúng còn danh sách món mở rộng (DbInitializer.Recipes.cs) nên
+    // không giả định tổng số món, và tìm món theo tên đầy đủ vì món mở rộng có thể trùng một phần tên.
+    private const string ChickenSalad = "Salad ức gà sốt mè rang";
+    private const string BeefRice = "Cơm gạo lứt bò xào ớt chuông";
+    private const string OatPorridge = "Cháo yến mạch ức gà rau củ";
+    private const string Salmon = "Cá hồi áp chảo măng tây và cà chua bi";
+    private const string EggRoll = "Trứng cuộn rau củ thanh đạm";
+    private const string TofuSoup = "Canh đậu hũ non nấu cà chua thịt bằm";
 
     private readonly ApiFactory _factory;
 
@@ -45,8 +56,14 @@ public class RecipeTests : IClassFixture<ApiFactory>
         response.EnsureSuccessStatusCode();
     }
 
-    private static RecipePayload ByTitle(IEnumerable<RecipePayload> recipes, string titlePart) =>
-        recipes.Single(r => r.Title.Contains(titlePart));
+    private static RecipePayload ByTitle(IEnumerable<RecipePayload> recipes, string title) =>
+        recipes.Single(r => r.Title == title);
+
+    private async Task<int> RecipeCountAsync()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Recipes.CountAsync();
+    }
 
     // ───────────────────────────── Danh sách + dị ứng ─────────────────────────────
 
@@ -57,17 +74,17 @@ public class RecipeTests : IClassFixture<ApiFactory>
 
         var recipes = await ListAsync(anonymous);
 
-        Assert.Equal(6, recipes.Count);
+        Assert.Equal(await RecipeCountAsync(), recipes.Count);
         Assert.All(recipes, r => Assert.False(r.IsFavorite));
 
-        var salad = ByTitle(recipes, "Salad ức gà");
+        var salad = ByTitle(recipes, ChickenSalad);
         Assert.Equal(new[] { Sesame }, salad.AllergyIds);
         Assert.Equal(new[] { Sesame }, salad.Ingredients.Single(i => i.Name.Contains("Sốt mè")).AllergyIds);
-        Assert.Equal(new[] { Seafood }, ByTitle(recipes, "Cá hồi").AllergyIds);
-        Assert.Empty(ByTitle(recipes, "Cơm gạo lứt").AllergyIds);
-        Assert.Equal(new[] { 5 }, ByTitle(recipes, "Cháo yến mạch").AllergyIds);
-        Assert.Equal(new[] { 4 }, ByTitle(recipes, "Trứng cuộn").AllergyIds);
-        Assert.Equal(new[] { 6 }, ByTitle(recipes, "Canh đậu hũ").AllergyIds);
+        Assert.Equal(new[] { Seafood }, ByTitle(recipes, Salmon).AllergyIds);
+        Assert.Empty(ByTitle(recipes, BeefRice).AllergyIds);
+        Assert.Equal(new[] { 5 }, ByTitle(recipes, OatPorridge).AllergyIds);
+        Assert.Equal(new[] { 4 }, ByTitle(recipes, EggRoll).AllergyIds);
+        Assert.Equal(new[] { 6 }, ByTitle(recipes, TofuSoup).AllergyIds);
     }
 
     [DbFact]
@@ -79,10 +96,13 @@ public class RecipeTests : IClassFixture<ApiFactory>
         var all = await ListAsync(user.Client);
         var safe = await ListAsync(user.Client, "?excludeMyAllergens=true");
 
-        Assert.Equal(6, all.Count);
-        Assert.Equal(4, safe.Count);
-        Assert.All(safe, r => Assert.DoesNotContain(r.AllergyIds, id => id == Seafood || id == Sesame));
-        Assert.DoesNotContain(safe, r => r.Title.Contains("Cá hồi") || r.Title.Contains("Salad"));
+        // Đúng những món không chứa hải sản/mè — không thiếu món an toàn, không lọt món có dị ứng.
+        var expected = all.Where(r => !r.AllergyIds.Any(id => id == Seafood || id == Sesame)).Select(r => r.Id).Order();
+        Assert.Equal(await RecipeCountAsync(), all.Count);
+        Assert.NotEmpty(safe);
+        Assert.True(safe.Count < all.Count);
+        Assert.Equal(expected, safe.Select(r => r.Id).Order());
+        Assert.DoesNotContain(safe, r => r.Title == Salmon || r.Title == ChickenSalad);
     }
 
     [DbFact]
@@ -99,7 +119,7 @@ public class RecipeTests : IClassFixture<ApiFactory>
     {
         var user = await _factory.RegisterUserAsync();
 
-        Assert.Equal(6, (await ListAsync(user.Client, "?excludeMyAllergens=true")).Count);
+        Assert.Equal(await RecipeCountAsync(), (await ListAsync(user.Client, "?excludeMyAllergens=true")).Count);
     }
 
     // ───────────────────────────── Phân trang + bộ lọc ─────────────────────────────
@@ -108,16 +128,18 @@ public class RecipeTests : IClassFixture<ApiFactory>
     public async Task Paging_returns_the_page_and_reports_totals_in_headers_while_data_stays_an_array()
     {
         var client = _factory.CreateClient();
+        var total = await RecipeCountAsync();
+        Assert.True(total > 8, "Cần hơn 2 trang 4 món để kiểm tra trang 2 đầy đủ");
 
         var first = await client.GetAsync("/api/recipes");
-        Assert.Equal("6", first.Headers.GetValues("X-Total-Count").Single());
+        Assert.Equal(total.ToString(), first.Headers.GetValues("X-Total-Count").Single());
         Assert.Equal("1", first.Headers.GetValues("X-Page").Single());
 
         var page = await client.GetAsync("/api/recipes?page=2&pageSize=4");
         var items = (await page.ReadEnvelopeAsync<List<RecipePayload>>()).Data!;
-        Assert.Equal(2, items.Count);
-        Assert.Equal("6", page.Headers.GetValues("X-Total-Count").Single());
-        Assert.Equal("2", page.Headers.GetValues("X-Total-Pages").Single());
+        Assert.Equal(4, items.Count);
+        Assert.Equal(total.ToString(), page.Headers.GetValues("X-Total-Count").Single());
+        Assert.Equal(((total + 3) / 4).ToString(), page.Headers.GetValues("X-Total-Pages").Single());
         Assert.Equal("2", page.Headers.GetValues("X-Page").Single());
         Assert.Equal("4", page.Headers.GetValues("X-Page-Size").Single());
 
@@ -132,9 +154,11 @@ public class RecipeTests : IClassFixture<ApiFactory>
     public async Task Meal_type_filter_keeps_only_matching_recipes_and_rejects_unknown_values()
     {
         var client = _factory.CreateClient();
+        var all = await ListAsync(client);
 
         var breakfast = await ListAsync(client, "?mealType=breakfast");
-        Assert.Equal(2, breakfast.Count);
+        Assert.NotEmpty(breakfast);
+        Assert.Equal(all.Count(r => r.MealTypes.Contains("Breakfast")), breakfast.Count);
         Assert.All(breakfast, r => Assert.Contains("Breakfast", r.MealTypes));
 
         var bad = await client.GetAsync("/api/recipes?mealType=Brunch");
@@ -144,9 +168,13 @@ public class RecipeTests : IClassFixture<ApiFactory>
     [DbFact]
     public async Task Max_cook_time_filter_uses_prep_plus_cook_minutes()
     {
-        var recipes = await ListAsync(_factory.CreateClient(), "?maxCookTimeMinutes=13");
+        var client = _factory.CreateClient();
+        var all = await ListAsync(client);
 
-        Assert.Equal(2, recipes.Count);
+        var recipes = await ListAsync(client, "?maxCookTimeMinutes=13");
+
+        Assert.NotEmpty(recipes);
+        Assert.Equal(all.Count(r => r.PrepTimeMinutes + r.CookTimeMinutes <= 13), recipes.Count);
         Assert.All(recipes, r => Assert.True(r.TotalTimeMinutes <= 13));
     }
 
@@ -155,10 +183,19 @@ public class RecipeTests : IClassFixture<ApiFactory>
     {
         var client = _factory.CreateClient();
 
+        var all = await ListAsync(client);
+
         var plain = await ListAsync(client, "?search=UC%20GA");
         var accented = await ListAsync(client, "?search=" + Uri.EscapeDataString("ức gà"));
 
-        Assert.Equal(2, plain.Count);
+        // Tìm theo tên và mô tả món.
+        var expected = all
+            .Where(r => TextNormalizer.Fold(r.Title).Contains("uc ga") || TextNormalizer.Fold(r.Description ?? "").Contains("uc ga"))
+            .Select(r => r.Id)
+            .Order();
+        Assert.Contains(plain, r => r.Title == ChickenSalad);
+        Assert.Contains(plain, r => r.Title == OatPorridge);
+        Assert.Equal(expected, plain.Select(r => r.Id).Order());
         Assert.Equal(plain.Select(r => r.Id).Order(), accented.Select(r => r.Id).Order());
     }
 
@@ -282,7 +319,7 @@ public class RecipeTests : IClassFixture<ApiFactory>
 
         Assert.Equal(HttpStatusCode.OK, (await user.Client.DeleteAsync($"/api/recipes/collections/{created.Id}")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await user.Client.GetAsync($"/api/recipes/collections/{created.Id}")).StatusCode);
-        Assert.Equal(6, (await ListAsync(user.Client)).Count);
+        Assert.Equal(recipes.Count, (await ListAsync(user.Client)).Count);   // xóa bộ sưu tập không xóa món
     }
 
     [DbFact]
@@ -336,33 +373,38 @@ public class RecipeTests : IClassFixture<ApiFactory>
         var user = await _factory.RegisterUserAsync();
         await _factory.GrantProAsync(user);
         var recipes = await ListAsync(user.Client);
-        await SetAllergiesAsync(user.Client, Seafood, Sesame, 4, 5, 6); // chỉ còn "Cơm gạo lứt bò xào ớt chuông" an toàn
-        var safeId = ByTitle(recipes, "Cơm gạo lứt").Id;
+        int[] mine = { Seafood, Sesame, 4, 5, 6 };
+        await SetAllergiesAsync(user.Client, mine);
+        var safeIds = recipes.Where(r => !r.AllergyIds.Intersect(mine).Any()).Select(r => r.Id).ToHashSet();
+        Assert.Contains(ByTitle(recipes, BeefRice).Id, safeIds);
+        Assert.True(safeIds.Count < recipes.Count);
 
         var response = await user.Client.PostJsonAsync("/api/mealplanner/auto-generate", new { startDate = "2026-07-01" });
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var plan = (await response.ReadEnvelopeAsync<WeeklyPlanPayload>()).Data!;
         Assert.NotEmpty(plan.Days.SelectMany(d => d.Meals));
-        Assert.All(plan.Days.SelectMany(d => d.Meals), m => Assert.Equal(safeId, m.RecipeId));
+        Assert.All(plan.Days.SelectMany(d => d.Meals), m => Assert.Contains(m.RecipeId, safeIds));
     }
 
     [DbFact]
     public async Task Auto_generate_creates_nothing_and_says_why_when_no_recipe_is_safe()
     {
-        // Factory riêng vì test sửa dữ liệu nguyên liệu: cho "Thịt bò thăn" chứa sữa (3) để món cuối cùng cũng không an toàn.
+        // Factory riêng vì test sửa dữ liệu nguyên liệu: cho mọi nguyên liệu chứa sữa để không còn món nào an toàn với
+        // người dị ứng sữa.
         await using var factory = new ApiFactory();
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var beef = await db.Ingredients.SingleAsync(i => i.Name.Contains("Thịt bò"));
-            db.IngredientAllergies.Add(new IngredientAllergy { IngredientId = beef.Id, AllergyId = 3 });
+            var withDairy = await db.IngredientAllergies.Where(a => a.AllergyId == Dairy).Select(a => a.IngredientId).ToListAsync();
+            var others = await db.Ingredients.Where(i => !withDairy.Contains(i.Id)).Select(i => i.Id).ToListAsync();
+            db.IngredientAllergies.AddRange(others.Select(id => new IngredientAllergy { IngredientId = id, AllergyId = Dairy }));
             await db.SaveChangesAsync();
         }
 
         var user = await factory.RegisterUserAsync();
 
         await factory.GrantProAsync(user);
-        await SetAllergiesAsync(user.Client, Seafood, 3, 4, 5, 6, Sesame);
+        await SetAllergiesAsync(user.Client, Dairy);
 
         var response = await user.Client.PostJsonAsync("/api/mealplanner/auto-generate", new { startDate = "2026-07-01" });
 
@@ -388,10 +430,10 @@ public class RecipeTests : IClassFixture<ApiFactory>
         })).EnsureSuccessStatusCode();
 
         var mine = await ListAsync(user.Client);
-        var salmon = ByTitle(mine, "Cá hồi");
+        var salmon = ByTitle(mine, Salmon);
         Assert.Contains(salmon.HealthWarnings, w => w.Contains("mỡ máu cao"));
         Assert.Contains(salmon.HealthWarnings, w => w.Contains("gout"));
-        Assert.Empty(ByTitle(mine, "Cháo yến mạch").HealthWarnings);
+        Assert.Empty(ByTitle(mine, OatPorridge).HealthWarnings);
 
         var anonymous = await ListAsync(_factory.CreateClient());
         Assert.All(anonymous, r => Assert.Empty(r.HealthWarnings));

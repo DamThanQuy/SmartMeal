@@ -13,7 +13,12 @@ import {
 } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { ErrorState, LoadingState, ScreenContainer } from '@/components/common';
+import {
+  ErrorState,
+  LoadingState,
+  ScreenContainer,
+  UserAvatar,
+} from '@/components/common';
 import { AppButton, AppCard, AppIconButton, AppText } from '@/components/ui';
 import { useAiQuotaStore } from '@/features/ai';
 import { MacroStatGrid } from '@/features/nutrition';
@@ -58,11 +63,6 @@ export function DashboardScreen(_props: Props) {
   const nameParts = fullName.split(/\s+/);
   const givenName = nameParts[nameParts.length - 1];
   const firstName = givenName.charAt(0).toUpperCase() + givenName.slice(1);
-  const initials = (
-    nameParts.length > 1
-      ? nameParts[0].charAt(0) + givenName.charAt(0)
-      : givenName.slice(0, 2)
-  ).toUpperCase();
   const openDiary = () =>
     navigation.navigate(MAIN_STACK_ROUTES.MAIN_TABS, {
       screen: MAIN_TAB_ROUTES.DIARY,
@@ -165,11 +165,14 @@ export function DashboardScreen(_props: Props) {
         </View>
         <AppIconButton
           accessibilityLabel="Hồ sơ"
-          variant="soft"
+          // Cùng UserAvatar với Cá nhân: đổi ảnh ở đó (authStore.avatarUrl) thì trang chủ đổi theo.
           icon={
-            <AppText variant="bodyMedium" color="onPrimarySoft">
-              {initials}
-            </AppText>
+            <UserAvatar
+              name={user?.fullName}
+              uri={user?.avatarUrl}
+              size={44}
+              textVariant="bodyMedium"
+            />
           }
           onPress={() =>
             navigation.navigate(MAIN_STACK_ROUTES.MAIN_TABS, {
