@@ -623,6 +623,31 @@ body::after {
   flex-wrap: wrap;
 }
 
+/* Phân trang dưới các bảng danh sách */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 4px 0;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pagination-page {
+  min-width: 96px;
+  text-align: center;
+  color: var(--text-main);
+  font-weight: 600;
+}
+
 .search-box {
   position: relative;
   min-width: 280px;

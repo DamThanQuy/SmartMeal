@@ -28,4 +28,7 @@ public interface ISubscriptionService
 
     /// <summary>Webhook của SePay (tiền vào tài khoản); xác thực bằng header <c>Authorization: Apikey ...</c>.</summary>
     Task<ApiResponse<bool>> HandleSePayWebhookAsync(string? authorizationHeader, string rawBody);
+
+    /// <summary>Admin xác nhận tay giao dịch chưa thanh toán; giao dịch đã Paid trả 409 (không cộng thêm ngày Pro).</summary>
+    Task<ApiResponse<bool>> ApproveTransactionAsync(Guid transactionId);
 }

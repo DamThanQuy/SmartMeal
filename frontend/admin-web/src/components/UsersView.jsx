@@ -20,6 +20,9 @@ import {
   Sparkles
 } from 'lucide-react';
 import { api } from '../services/api';
+import Pagination from './Pagination';
+
+const PAGE_SIZE = 15;
 
 export default function UsersView({ onNotify }) {
   const [users, setUsers] = useState([]);
@@ -29,11 +32,11 @@ export default function UsersView({ onNotify }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [subFilter, setSubFilter] = useState('all');
   const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
   // Modal States
   const [detailUser, setDetailUser] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [lockTarget, setLockTarget] = useState(null);
   const [proTarget, setProTarget] = useState(null);
   const [proDays, setProDays] = useState(30);
   const [proPlan, setProPlan] = useState('PRO_MONTHLY');
@@ -56,14 +59,15 @@ export default function UsersView({ onNotify }) {
       setLoading(true);
       const params = {
         page,
-        pageSize: 15,
+        pageSize: PAGE_SIZE,
         search,
         role: roleFilter !== 'all' ? roleFilter : '',
         status: statusFilter !== 'all' ? statusFilter : '',
         subscription: subFilter !== 'all' ? subFilter : ''
       };
-      const data = await api.getUsers(params);
-      setUsers(data);
+      const { items, total: count } = await api.getUsers(params);
+      setUsers(items);
+      setTotal(count);
     } catch (err) {
       onNotify('Lỗi tải danh sách người dùng: ' + err.message, 'error');
     } finally {
@@ -85,19 +89,6 @@ export default function UsersView({ onNotify }) {
       onNotify('Không thể tải chi tiết người dùng: ' + err.message, 'error');
     } finally {
       setLoadingDetail(false);
-    }
-  };
-
-  const handleToggleLock = async () => {
-    if (!lockTarget) return;
-    try {
-      const willLock = !lockTarget.isLocked;
-      await api.updateUserStatus(lockTarget.id, willLock, willLock ? 'Khóa bởi quản trị viên' : '');
-      onNotify(willLock ? 'Đã khóa tài khoản thành công.' : 'Đã mở khóa tài khoản thành công.', 'success');
-      setLockTarget(null);
-      loadUsers();
-    } catch (err) {
-      onNotify('Thao tác khóa thất bại: ' + err.message, 'error');
     }
   };
 
@@ -163,7 +154,8 @@ export default function UsersView({ onNotify }) {
     setModTarget(user);
     setModFullName(user.fullName || '');
     setModEmailConfirmed(true);
-    setModClearLockout(true);
+    // Tài khoản đang bị cấm: không mặc định gỡ khóa — chỉ sửa tên/email mà vô tình bỏ lệnh cấm.
+    setModClearLockout(!user.isLocked);
     setModPassword('');
     setModRole(user.role || 'User');
   };
@@ -217,7 +209,7 @@ export default function UsersView({ onNotify }) {
             className="form-input"
             placeholder="Tìm theo email, họ tên..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
         </div>
 
@@ -225,7 +217,7 @@ export default function UsersView({ onNotify }) {
           <select
             className="form-select"
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
+            onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
             style={{ width: '130px' }}
           >
             <option value="all">Mọi vai trò</option>
@@ -236,7 +228,7 @@ export default function UsersView({ onNotify }) {
           <select
             className="form-select"
             value={subFilter}
-            onChange={(e) => setSubFilter(e.target.value)}
+            onChange={(e) => { setSubFilter(e.target.value); setPage(1); }}
             style={{ width: '140px' }}
           >
             <option value="all">Mọi gói cước</option>
@@ -248,7 +240,7 @@ export default function UsersView({ onNotify }) {
           <select
             className="form-select"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
             style={{ width: '140px' }}
           >
             <option value="all">Mọi trạng thái</option>
@@ -407,6 +399,8 @@ export default function UsersView({ onNotify }) {
             </tbody>
           </table>
         </div>
+
+        <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} itemLabel="người dùng" />
       </div>
 
       {/* Modal: Chi tiết người dùng */}
@@ -510,42 +504,6 @@ export default function UsersView({ onNotify }) {
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setDetailUser(null)}>
                 Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Khóa / Mở Khóa */}
-      {lockTarget && (
-        <div className="modal-overlay" onClick={() => setLockTarget(null)}>
-          <div className="modal-content" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 className="modal-title">
-                {lockTarget.isLocked ? 'Mở Khóa Tài Khoản' : 'Khóa Tài Khoản'}
-              </h3>
-              <button className="btn-close" onClick={() => setLockTarget(null)}>
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="modal-body">
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem' }}>
-                {lockTarget.isLocked
-                  ? `Bạn có chắc muốn mở khóa cho tài khoản "${lockTarget.fullName}" (${lockTarget.email})? Người dùng này sẽ có thể đăng nhập lại bình thường.`
-                  : `Bạn có chắc muốn KHÓA tài khoản "${lockTarget.fullName}" (${lockTarget.email})? Sau khi khóa, người dùng sẽ không thể đăng nhập vào ứng dụng.`}
-              </p>
-            </div>
-
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setLockTarget(null)}>
-                Hủy
-              </button>
-              <button
-                className={`btn ${lockTarget.isLocked ? 'btn-primary' : 'btn-danger'}`}
-                onClick={handleToggleLock}
-              >
-                {lockTarget.isLocked ? 'Xác nhận Mở Khóa' : 'Xác nhận Khóa Tài Khoản'}
               </button>
             </div>
           </div>

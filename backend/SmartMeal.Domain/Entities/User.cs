@@ -31,6 +31,12 @@ public class User
     /// <summary>Tài khoản bị khóa tạm thời tới thời điểm này (UTC) sau khi đăng nhập sai quá nhiều lần.</summary>
     public DateTime? LockoutEnd { get; set; }
 
+    /// <summary>
+    /// Phiên bản phiên đăng nhập: access token mang giá trị này và bị từ chối khi nó lệch với DB. Tăng lên khi cần
+    /// đăng xuất mọi thiết bị ngay lập tức (admin cấm / khóa tài khoản, admin đặt lại mật khẩu).
+    /// </summary>
+    public int TokenVersion { get; set; }
+
     // Navigation Properties
     public HealthProfile? HealthProfile { get; set; }
     public ICollection<NutritionDiary> NutritionDiaries { get; set; } = new List<NutritionDiary>();

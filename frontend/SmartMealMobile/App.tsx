@@ -35,9 +35,17 @@ function AppContent() {
   // GET /auth/me — sessionService.bootstrapSession) xong rồi mới ẩn splash.
   useEffect(() => {
     if (bootstrapStatus !== 'loading') {
-      void SplashScreen.hideAsync();
+      void SplashScreen.hideAsync().catch(e => console.warn('hideAsync err:', e));
     }
   }, [bootstrapStatus]);
+
+  // Fallback an toàn: nếu sau 3s vẫn bị treo splash vì lý do gì, tự động ép ẩn splash để vào app
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void SplashScreen.hideAsync().catch(() => {});
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <NavigationContainer

@@ -19,6 +19,7 @@ export default function SystemActivityView({ onNotify }) {
   const [activity, setActivity] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const dbHealthy = activity?.databaseStatus === 'Healthy';
 
   const loadActivity = async () => {
     try {
@@ -79,12 +80,14 @@ export default function SystemActivityView({ onNotify }) {
           </div>
           <div className="stat-info">
             <span className="stat-label">Cơ Sở Dữ Liệu PostgreSQL</span>
-            <div className="stat-value" style={{ fontSize: '1.25rem', color: '#34d399', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <CheckCircle size={18} />
-              <span>{activity?.databaseStatus || 'Hoạt động tốt'}</span>
+            <div className="stat-value" style={{ fontSize: '1.25rem', color: dbHealthy ? '#34d399' : '#f87171', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {dbHealthy ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
+              <span>{activity?.databaseStatus ?? '—'}</span>
             </div>
             <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-              Kết nối ổn định, tốc độ phản hồi &lt; 5ms
+              {activity?.databaseLatencyMs != null
+                ? `Kiểm tra kết nối: ${activity.databaseLatencyMs} ms`
+                : 'Chưa đo được kết nối'}
             </span>
           </div>
         </div>
@@ -96,10 +99,10 @@ export default function SystemActivityView({ onNotify }) {
           <div className="stat-info">
             <span className="stat-label">Thời Gian Uptime Máy Chủ</span>
             <div className="stat-value" style={{ fontSize: '1.35rem' }}>
-              {activity?.serverUptimeHours || 24} giờ
+              {activity?.serverUptimeHours != null ? `${activity.serverUptimeHours} giờ` : '—'}
             </div>
             <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-              Giờ hệ thống: {activity?.serverTimeUtc ? new Date(activity.serverTimeUtc).toLocaleTimeString('vi-VN') : '—'} UTC
+              Giờ hệ thống: {activity?.serverTimeUtc ? new Date(activity.serverTimeUtc).toLocaleTimeString('vi-VN', { timeZone: 'UTC' }) : '—'} UTC
             </span>
           </div>
         </div>

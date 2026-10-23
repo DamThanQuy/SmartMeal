@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using SmartMeal.API.Infrastructure;
 using SmartMeal.Application.Common;
@@ -25,68 +27,50 @@ namespace SmartMeal.API.Controllers;
 [Route("api/[controller]")]
 public class AdminController : ControllerBase
 {
-    private readonly ApplicationDbContext _db;
-    private readonly IJwtTokenService _jwtTokenService;
+    /// <summary>Tag "Nhanh Gọn (&lt; 15 phút)": chỉ gắn cho món có tổng thời gian chuẩn bị + nấu ≤ 15 phút.</summary>
+    private const string QuickTagCode = "quick";
+    private const int QuickMaxMinutes = 15;
 
-    public AdminController(ApplicationDbContext db, IJwtTokenService jwtTokenService)
+    private readonly ApplicationDbContext _db;
+    private readonly IAuthService _authService;
+    private readonly ISubscriptionService _subscriptionService;
+
+    public AdminController(ApplicationDbContext db, IAuthService authService, ISubscriptionService subscriptionService)
     {
         _db = db;
-        _jwtTokenService = jwtTokenService;
+        _authService = authService;
+        _subscriptionService = subscriptionService;
     }
 
     /// <summary>
-    /// Đăng nhập dành riêng cho Quản trị viên (Admin).
+    /// Đăng nhập dành riêng cho Quản trị viên (Admin): cùng cơ chế chống dò mật khẩu (khóa 423 sau nhiều lần sai),
+    /// cùng giới hạn tần suất và cùng loại phiên (refresh token lưu DB) như đăng nhập app.
     /// </summary>
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
     [HttpPost("auth/login")]
-    public async Task<ActionResult<ApiResponse<AuthResponseDto>>> AdminLogin([FromBody] AdminLoginRequestDto dto)
+    public async Task<ActionResult<ApiResponse<AuthResponseDto>>> AdminLogin([FromBody] AdminLoginRequestDto dto) =>
+        this.ToActionResult(await _authService.AdminLoginAsync(new LoginRequestDto { Email = dto.Email, Password = dto.Password }));
+
+    /// <summary>
+    /// Đăng xuất người dùng khỏi mọi thiết bị ngay lập tức: tăng <see cref="User.TokenVersion"/> (access token đang dùng
+    /// bị từ chối ở request kế tiếp) và thu hồi mọi refresh token. Phần thay đổi trên <paramref name="user"/> được lưu ở
+    /// lần <c>SaveChangesAsync</c> của nơi gọi.
+    /// </summary>
+    private Task RevokeSessionsAsync(User user, DateTime now)
     {
-        var normalizedEmail = dto.Email.Trim().ToLowerInvariant();
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
-
-        if (user is null || string.IsNullOrEmpty(user.PasswordHash) || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-        {
-            return Unauthorized(ApiResponse<AuthResponseDto>.Fail("Email hoặc mật khẩu không chính xác.", null, ApiErrorKind.Unauthorized));
-        }
-
-        if (!string.Equals(user.Role, "Admin", StringComparison.OrdinalIgnoreCase))
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<AuthResponseDto>.Fail("Tài khoản của bạn không có quyền Quản trị viên (Admin).", null, ApiErrorKind.Forbidden));
-        }
-
-        if (user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTime.UtcNow)
-        {
-            return StatusCode(StatusCodes.Status423Locked, ApiResponse<AuthResponseDto>.Fail("Tài khoản quản trị đang bị khóa.", null, ApiErrorKind.Locked));
-        }
-
-        user.FailedLoginCount = 0;
-        user.LockoutEnd = null;
-        await _db.SaveChangesAsync();
-
-        var token = _jwtTokenService.CreateAccessToken(user);
-        var response = new AuthResponseDto
-        {
-            Token = token.Value,
-            ExpiresAt = token.ExpiresAtUtc,
-            RefreshToken = Guid.NewGuid().ToString("N"),
-            RefreshTokenExpiresAt = DateTime.UtcNow.AddDays(7),
-            User = new UserDto
-            {
-                Id = user.Id,
-                Email = user.Email,
-                FullName = user.FullName,
-                AvatarUrl = user.AvatarUrl,
-                Role = user.Role,
-                IsPro = user.IsProActive(DateTime.UtcNow),
-                SubscriptionStatus = user.EffectiveSubscriptionStatus(DateTime.UtcNow),
-                ProExpiresAt = user.ProExpiresAt,
-                HasCompletedSurvey = true,
-                HasPassword = true
-            }
-        };
-
-        return Ok(ApiResponse<AuthResponseDto>.Ok(response, "Đăng nhập quản trị viên thành công."));
+        user.TokenVersion++;
+        return _db.RefreshTokens
+            .Where(t => t.UserId == user.Id && t.RevokedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now));
     }
+
+    /// <summary>Admin không được tự khóa / tự cấm / tự xóa / tự hạ quyền: hệ thống có thể không còn ai quản trị.</summary>
+    private bool IsCurrentAdmin(Guid userId) => this.TryGetUserId(out var currentAdminId) && currentAdminId == userId;
+
+    /// <summary>"admin" → "Admin", "user" → "User"; giá trị khác → null (không âm thầm hạ quyền vì gõ sai).</summary>
+    private static string? NormalizeRole(string? role) =>
+        new[] { "Admin", "User" }.FirstOrDefault(r => string.Equals(r, role?.Trim(), StringComparison.OrdinalIgnoreCase));
 
     // ==========================================
     // 1. THỐNG KÊ TỔNG QUAN (DASHBOARD STATS)
@@ -390,15 +374,22 @@ public class AdminController : ControllerBase
     [HttpPut("users/{id:guid}/status")]
     public async Task<ActionResult<ApiResponse<bool>>> UpdateUserStatus(Guid id, [FromBody] AdminUpdateUserStatusDto dto)
     {
+        if (dto.IsLocked && IsCurrentAdmin(id))
+        {
+            return BadRequest(ApiResponse<bool>.Fail("Bạn không thể tự khóa tài khoản của chính mình.", null, ApiErrorKind.Conflict));
+        }
+
         var user = await _db.Users.FindAsync(id);
         if (user is null)
         {
             return NotFound(ApiResponse<bool>.Fail("Không tìm thấy người dùng.", null, ApiErrorKind.NotFound));
         }
 
+        var now = DateTime.UtcNow;
         if (dto.IsLocked)
         {
-            user.LockoutEnd = DateTime.UtcNow.AddYears(100); // Khóa tài khoản
+            user.LockoutEnd = now.AddYears(100); // Khóa tài khoản
+            await RevokeSessionsAsync(user, now);
         }
         else
         {
@@ -406,7 +397,7 @@ public class AdminController : ControllerBase
             user.FailedLoginCount = 0;
         }
 
-        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedAt = now;
         await _db.SaveChangesAsync();
 
         var message = dto.IsLocked ? "Đã khóa tài khoản người dùng thành công." : "Đã mở khóa tài khoản thành công.";
@@ -417,13 +408,24 @@ public class AdminController : ControllerBase
     [HttpPut("users/{id:guid}/role")]
     public async Task<ActionResult<ApiResponse<bool>>> UpdateUserRole(Guid id, [FromBody] AdminUpdateUserRoleDto dto)
     {
+        var normalizedRole = NormalizeRole(dto.Role);
+        if (normalizedRole is null)
+        {
+            return BadRequest(ApiResponse<bool>.Fail("Vai trò chỉ được là Admin hoặc User.", null, ApiErrorKind.BadRequest));
+        }
+
+        if (normalizedRole != "Admin" && IsCurrentAdmin(id))
+        {
+            return BadRequest(ApiResponse<bool>.Fail("Bạn không thể tự hạ quyền Quản trị viên của chính mình.", null, ApiErrorKind.Conflict));
+        }
+
         var user = await _db.Users.FindAsync(id);
         if (user is null)
         {
             return NotFound(ApiResponse<bool>.Fail("Không tìm thấy người dùng.", null, ApiErrorKind.NotFound));
         }
 
-        var normalizedRole = string.Equals(dto.Role, "Admin", StringComparison.OrdinalIgnoreCase) ? "Admin" : "User";
+        // Không cần thu hồi token: vai trò được đọc lại từ DB ở mỗi request (OnTokenValidated) nên có hiệu lực ngay.
         user.Role = normalizedRole;
         user.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
@@ -443,11 +445,16 @@ public class AdminController : ControllerBase
 
         if (dto.IsPro)
         {
+            var plan = SubscriptionCatalog.Find(dto.PlanId ?? SubscriptionCatalog.ProMonthly);
+            if (plan is null)
+            {
+                return BadRequest(ApiResponse<bool>.Fail("Gói Pro không tồn tại.", null, ApiErrorKind.BadRequest));
+            }
+
             user.IsPro = true;
-            user.SubscriptionStatus = dto.Status ?? SubscriptionStatuses.Premium;
-            user.ProPlanId = dto.PlanId ?? SubscriptionCatalog.ProMonthly;
-            var duration = dto.DurationDays ?? 30;
-            user.ProExpiresAt = DateTime.UtcNow.AddDays(duration);
+            user.SubscriptionStatus = SubscriptionStatuses.Premium;
+            user.ProPlanId = plan.Id;
+            user.ProExpiresAt = DateTime.UtcNow.AddDays(dto.DurationDays ?? plan.DurationDays);
         }
         else
         {
@@ -470,7 +477,7 @@ public class AdminController : ControllerBase
     [HttpDelete("users/{id:guid}")]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteUser(Guid id)
     {
-        if (this.TryGetUserId(out var currentAdminId) && currentAdminId == id)
+        if (IsCurrentAdmin(id))
         {
             return BadRequest(ApiResponse<bool>.Fail("Bạn không thể tự xóa tài khoản của chính mình.", null, ApiErrorKind.Conflict));
         }
@@ -636,6 +643,11 @@ public class AdminController : ControllerBase
     [HttpPost("recipes")]
     public async Task<ActionResult<ApiResponse<AdminRecipeDetailDto>>> CreateRecipe([FromBody] AdminCreateRecipeDto dto)
     {
+        if (ValidateRecipe(dto, out var mealTypes) is { } invalid)
+        {
+            return BadRequest(ApiResponse<AdminRecipeDetailDto>.Fail(invalid, null, ApiErrorKind.BadRequest));
+        }
+
         if (await _db.Recipes.AnyAsync(r => r.Title.ToLower() == dto.Title.Trim().ToLower()))
         {
             return BadRequest(ApiResponse<AdminRecipeDetailDto>.Fail("Tên món ăn này đã tồn tại trong hệ thống.", null, ApiErrorKind.Conflict));
@@ -652,9 +664,9 @@ public class AdminController : ControllerBase
             PrepTimeMinutes = Math.Max(1, dto.PrepTimeMinutes),
             CookTimeMinutes = Math.Max(0, dto.CookTimeMinutes),
             Servings = Math.Max(1, dto.Servings),
-            Difficulty = dto.Difficulty ?? "Easy",
+            Difficulty = dto.Difficulty,
             IsPremium = dto.IsPremium,
-            MealTypes = string.IsNullOrWhiteSpace(dto.MealTypes) ? "Lunch" : dto.MealTypes.Trim(),
+            MealTypes = mealTypes,
             CaloriesPerServing = dto.CaloriesPerServing,
             ProteinPerServing = dto.ProteinPerServing,
             CarbsPerServing = dto.CarbsPerServing,
@@ -912,6 +924,11 @@ public class AdminController : ControllerBase
     [HttpPut("recipes/{id:guid}")]
     public async Task<ActionResult<ApiResponse<AdminRecipeDetailDto>>> UpdateRecipe(Guid id, [FromBody] AdminUpdateRecipeDto dto)
     {
+        if (ValidateRecipe(dto, out var mealTypes) is { } invalid)
+        {
+            return BadRequest(ApiResponse<AdminRecipeDetailDto>.Fail(invalid, null, ApiErrorKind.BadRequest));
+        }
+
         var recipe = await _db.Recipes
             .Include(r => r.RecipeTags)
             .Include(r => r.RecipeIngredients)
@@ -922,16 +939,22 @@ public class AdminController : ControllerBase
             return NotFound(ApiResponse<AdminRecipeDetailDto>.Fail("Không tìm thấy món ăn.", null, ApiErrorKind.NotFound));
         }
 
-        recipe.Title = dto.Title.Trim();
+        var title = dto.Title.Trim();
+        if (await _db.Recipes.AnyAsync(r => r.Id != id && r.Title.ToLower() == title.ToLower()))
+        {
+            return BadRequest(ApiResponse<AdminRecipeDetailDto>.Fail("Tên món ăn này đã tồn tại trong hệ thống.", null, ApiErrorKind.Conflict));
+        }
+
+        recipe.Title = title;
         recipe.Description = dto.Description.Trim();
         if (!string.IsNullOrWhiteSpace(dto.ImageUrl)) recipe.ImageUrl = dto.ImageUrl.Trim();
         recipe.Instructions = dto.Instructions.Trim();
         recipe.PrepTimeMinutes = Math.Max(1, dto.PrepTimeMinutes);
         recipe.CookTimeMinutes = Math.Max(0, dto.CookTimeMinutes);
         recipe.Servings = Math.Max(1, dto.Servings);
-        recipe.Difficulty = dto.Difficulty ?? "Easy";
+        recipe.Difficulty = dto.Difficulty;
         recipe.IsPremium = dto.IsPremium;
-        recipe.MealTypes = string.IsNullOrWhiteSpace(dto.MealTypes) ? "Lunch" : dto.MealTypes.Trim();
+        recipe.MealTypes = mealTypes;
         recipe.CaloriesPerServing = dto.CaloriesPerServing;
         recipe.ProteinPerServing = dto.ProteinPerServing;
         recipe.CarbsPerServing = dto.CarbsPerServing;
@@ -1010,10 +1033,47 @@ public class AdminController : ControllerBase
         var collRecipes = _db.CollectionRecipes.Where(cr => cr.RecipeId == id);
         _db.CollectionRecipes.RemoveRange(collRecipes);
 
+        // Nhật ký ăn uống và danh sách đi chợ chỉ tham chiếu món (khóa ngoại NO ACTION): giữ dòng của người dùng
+        // (tên món, calo, số lượng đã lưu sẵn), bỏ liên kết tới món bị xóa. Cùng một SaveChanges nên vẫn nguyên tử.
+        await foreach (var item in _db.DiaryItems.Where(d => d.RecipeId == id).AsAsyncEnumerable())
+        {
+            item.RecipeId = null;
+        }
+        await foreach (var item in _db.GroceryItems.Where(g => g.RecipeId == id).AsAsyncEnumerable())
+        {
+            item.RecipeId = null;
+        }
+
         _db.Recipes.Remove(recipe);
         await _db.SaveChangesAsync();
 
         return Ok(ApiResponse<bool>.Ok(true, "Đã xóa món ăn thành công."));
+    }
+
+    /// <summary>
+    /// Kiểm tra dữ liệu món ăn ngoài DataAnnotations: mọi bữa ăn thuộc Breakfast / Lunch / Dinner / Snack (trả về chuỗi
+    /// đã chuẩn hóa trong <paramref name="mealTypes"/>), và tag "Nhanh Gọn" chỉ cho món ≤ 15 phút.
+    /// </summary>
+    /// <returns>Thông báo lỗi, hoặc null khi hợp lệ.</returns>
+    private static string? ValidateRecipe(AdminCreateRecipeDto dto, out string mealTypes)
+    {
+        var parts = (dto.MealTypes ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var normalized = parts.Select(MealTypes.Normalize).ToList();
+        if (normalized.Any(m => m is null))
+        {
+            mealTypes = string.Empty;
+            return "Bữa ăn chỉ được là Breakfast, Lunch, Dinner hoặc Snack.";
+        }
+
+        mealTypes = normalized.Count == 0 ? MealTypes.Lunch : string.Join(",", normalized.Distinct());
+
+        var totalMinutes = Math.Max(1, dto.PrepTimeMinutes) + Math.Max(0, dto.CookTimeMinutes);
+        if (dto.TagCodes?.Contains(QuickTagCode) == true && totalMinutes > QuickMaxMinutes)
+        {
+            return $"Tag \"Nhanh Gọn (< 15 phút)\" chỉ dành cho món có tổng thời gian chuẩn bị + nấu ≤ {QuickMaxMinutes} phút (món này {totalMinutes} phút).";
+        }
+
+        return null;
     }
 
     // ==========================================
@@ -1136,35 +1196,10 @@ public class AdminController : ControllerBase
 
     [Authorize(Roles = "Admin")]
     [HttpPut("transactions/{id:guid}/approve")]
-    public async Task<ActionResult<ApiResponse<bool>>> ApproveTransaction(Guid id)
-    {
-        var tx = await _db.PaymentTransactions
-            .Include(t => t.User)
-            .FirstOrDefaultAsync(t => t.Id == id);
-
-        if (tx is null)
-        {
-            return NotFound(ApiResponse<bool>.Fail("Không tìm thấy giao dịch thanh toán.", null, ApiErrorKind.NotFound));
-        }
-
-        tx.Status = PaymentStatuses.Paid;
-        tx.PaidAt = DateTime.UtcNow;
-
-        if (tx.User != null)
-        {
-            tx.User.IsPro = true;
-            tx.User.SubscriptionStatus = SubscriptionStatuses.Premium;
-            tx.User.ProPlanId = tx.PlanId;
-            var days = tx.PlanId == SubscriptionCatalog.ProYearly ? 365 : 30;
-            var currentExpiry = tx.User.ProExpiresAt.HasValue && tx.User.ProExpiresAt.Value > DateTime.UtcNow
-                ? tx.User.ProExpiresAt.Value
-                : DateTime.UtcNow;
-            tx.User.ProExpiresAt = currentExpiry.AddDays(days);
-        }
-
-        await _db.SaveChangesAsync();
-        return Ok(ApiResponse<bool>.Ok(true, "Đã duyệt giao dịch thành công và kích hoạt gói Pro cho người dùng."));
-    }
+    // Đi qua đúng luồng xác nhận thanh toán của cổng (SePay/PayOS): idempotent, không cộng ngày Pro hai lần, có gửi
+    // thông báo kích hoạt; giao dịch đã Paid → 409.
+    public async Task<ActionResult<ApiResponse<bool>>> ApproveTransaction(Guid id) =>
+        this.ToActionResult(await _subscriptionService.ApproveTransactionAsync(id));
 
     // ==========================================
     // USE CASE 1 & 2: BAN USER & MODERATE ACCOUNT
@@ -1173,7 +1208,7 @@ public class AdminController : ControllerBase
     [HttpPut("users/{id:guid}/ban")]
     public async Task<ActionResult<ApiResponse<bool>>> BanUser(Guid id, [FromBody] AdminBanUserRequestDto dto)
     {
-        if (this.TryGetUserId(out var currentAdminId) && currentAdminId == id)
+        if (IsCurrentAdmin(id))
         {
             return BadRequest(ApiResponse<bool>.Fail("Bạn không thể tự cấm tài khoản của chính mình.", null, ApiErrorKind.Conflict));
         }
@@ -1184,10 +1219,13 @@ public class AdminController : ControllerBase
             return NotFound(ApiResponse<bool>.Fail("Không tìm thấy người dùng.", null, ApiErrorKind.NotFound));
         }
 
+        var now = DateTime.UtcNow;
         if (dto.IsBanned)
         {
             var days = dto.DurationDays.HasValue && dto.DurationDays.Value > 0 ? dto.DurationDays.Value : 365 * 50;
-            user.LockoutEnd = DateTime.UtcNow.AddDays(days);
+            user.LockoutEnd = now.AddDays(days);
+            // Đăng xuất ngay trên mọi thiết bị: đăng nhập lại bị chặn bởi LockoutEnd (423).
+            await RevokeSessionsAsync(user, now);
         }
         else
         {
@@ -1195,7 +1233,7 @@ public class AdminController : ControllerBase
             user.FailedLoginCount = 0;
         }
 
-        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedAt = now;
         await _db.SaveChangesAsync();
 
         var message = dto.IsBanned
@@ -1209,12 +1247,35 @@ public class AdminController : ControllerBase
     [HttpPut("users/{id:guid}/moderate")]
     public async Task<ActionResult<ApiResponse<bool>>> ModerateAccount(Guid id, [FromBody] AdminModerateAccountRequestDto dto)
     {
+        string? role = null;
+        if (!string.IsNullOrWhiteSpace(dto.Role))
+        {
+            role = NormalizeRole(dto.Role);
+            if (role is null)
+            {
+                return BadRequest(ApiResponse<bool>.Fail("Vai trò chỉ được là Admin hoặc User.", null, ApiErrorKind.BadRequest));
+            }
+
+            if (role != "Admin" && IsCurrentAdmin(id))
+            {
+                return BadRequest(ApiResponse<bool>.Fail("Bạn không thể tự hạ quyền Quản trị viên của chính mình.", null, ApiErrorKind.Conflict));
+            }
+        }
+
+        var newPassword = string.IsNullOrWhiteSpace(dto.ResetPassword) ? null : dto.ResetPassword.Trim();
+        if (newPassword is { Length: < 8 or > 128 })
+        {
+            // Cùng chính sách với đăng ký / đổi mật khẩu.
+            return BadRequest(ApiResponse<bool>.Fail("Mật khẩu phải từ 8 đến 128 ký tự.", null, ApiErrorKind.BadRequest));
+        }
+
         var user = await _db.Users.FindAsync(id);
         if (user is null)
         {
             return NotFound(ApiResponse<bool>.Fail("Không tìm thấy người dùng.", null, ApiErrorKind.NotFound));
         }
 
+        var now = DateTime.UtcNow;
         if (!string.IsNullOrWhiteSpace(dto.FullName))
         {
             user.FullName = dto.FullName.Trim();
@@ -1225,11 +1286,14 @@ public class AdminController : ControllerBase
             user.IsEmailVerified = dto.IsEmailVerified.Value;
         }
 
-        if (!string.IsNullOrWhiteSpace(dto.ResetPassword))
+        if (newPassword is not null)
         {
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.ResetPassword.Trim());
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
             user.FailedLoginCount = 0;
             user.LockoutEnd = null;
+            // Đặt lại mật khẩu thường vì tài khoản bị xâm phạm: kẻ đang giữ phiên cũng phải bị đăng xuất
+            // (giống người dùng tự đổi mật khẩu).
+            await RevokeSessionsAsync(user, now);
         }
 
         if (dto.ClearLockout)
@@ -1238,12 +1302,12 @@ public class AdminController : ControllerBase
             user.FailedLoginCount = 0;
         }
 
-        if (!string.IsNullOrWhiteSpace(dto.Role))
+        if (role is not null)
         {
-            user.Role = string.Equals(dto.Role, "Admin", StringComparison.OrdinalIgnoreCase) ? "Admin" : "User";
+            user.Role = role;
         }
 
-        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedAt = now;
         await _db.SaveChangesAsync();
 
         return Ok(ApiResponse<bool>.Ok(true, $"Đã kiểm duyệt và cập nhật tài khoản {user.Email} thành công."));
@@ -1284,6 +1348,12 @@ public class AdminController : ControllerBase
     [HttpPost("rewards/challenges")]
     public async Task<ActionResult<ApiResponse<AdminChallengeItemDto>>> CreateChallenge([FromBody] AdminCreateChallengeDto dto)
     {
+        var category = string.IsNullOrWhiteSpace(dto.Category) ? ChallengeCategories.EatClean : ChallengeCategories.Normalize(dto.Category);
+        if (category is null)
+        {
+            return BadRequest(ApiResponse<AdminChallengeItemDto>.Fail(UnsupportedCategoryMessage, null, ApiErrorKind.BadRequest));
+        }
+
         var challenge = new Challenge
         {
             Title = dto.Title.Trim(),
@@ -1292,7 +1362,7 @@ public class AdminController : ControllerBase
                 ? "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=600&q=80"
                 : dto.ImageUrl.Trim(),
             DurationDays = Math.Max(1, dto.DurationDays),
-            Category = string.IsNullOrWhiteSpace(dto.Category) ? "EatClean" : dto.Category.Trim(),
+            Category = category,
             TargetValuePerDay = Math.Max(1, dto.TargetValuePerDay),
             RewardExp = Math.Max(10, dto.RewardExp),
             RewardBadge = string.IsNullOrWhiteSpace(dto.RewardBadge) ? "Thử Thách Gia" : dto.RewardBadge.Trim(),
@@ -1325,6 +1395,12 @@ public class AdminController : ControllerBase
     [HttpPut("rewards/challenges/{id:guid}")]
     public async Task<ActionResult<ApiResponse<bool>>> UpdateChallenge(Guid id, [FromBody] AdminCreateChallengeDto dto)
     {
+        var category = string.IsNullOrWhiteSpace(dto.Category) ? null : ChallengeCategories.Normalize(dto.Category);
+        if (!string.IsNullOrWhiteSpace(dto.Category) && category is null)
+        {
+            return BadRequest(ApiResponse<bool>.Fail(UnsupportedCategoryMessage, null, ApiErrorKind.BadRequest));
+        }
+
         var challenge = await _db.Challenges.FindAsync(id);
         if (challenge is null)
         {
@@ -1335,7 +1411,7 @@ public class AdminController : ControllerBase
         challenge.Description = dto.Description.Trim();
         if (!string.IsNullOrWhiteSpace(dto.ImageUrl)) challenge.ImageUrl = dto.ImageUrl.Trim();
         challenge.DurationDays = Math.Max(1, dto.DurationDays);
-        challenge.Category = string.IsNullOrWhiteSpace(dto.Category) ? challenge.Category : dto.Category.Trim();
+        challenge.Category = category ?? challenge.Category;
         challenge.TargetValuePerDay = Math.Max(1, dto.TargetValuePerDay);
         challenge.RewardExp = Math.Max(10, dto.RewardExp);
         challenge.RewardBadge = string.IsNullOrWhiteSpace(dto.RewardBadge) ? challenge.RewardBadge : dto.RewardBadge.Trim();
@@ -1374,17 +1450,37 @@ public class AdminController : ControllerBase
             .Select(g => new { BadgeId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.BadgeId, x => x.Count);
 
-        var systemBadges = new List<AdminBadgeItemDto>
-        {
-            new() { BadgeId = "clean_eater_7", Name = "Người Ăn Sạch 7 Ngày", Description = "Hoàn thành 7 ngày ghi nhận bữa ăn Eat Clean", Category = "Nutrition", UnlockedCount = unlockedCounts.GetValueOrDefault("clean_eater_7", 0) },
-            new() { BadgeId = "water_master_2l", Name = "Bậc Thầy Nước Uống", Description = "Uống đủ 2L nước mỗi ngày liên tục trong 1 tuần", Category = "Water", UnlockedCount = unlockedCounts.GetValueOrDefault("water_master_2l", 0) },
-            new() { BadgeId = "ai_chef_explorer", Name = "Đầu Bếp AI Thông Thái", Description = "Quét tủ lạnh bằng AI và nấu thành công 5 món ăn gợi ý", Category = "AI", UnlockedCount = unlockedCounts.GetValueOrDefault("ai_chef_explorer", 0) },
-            new() { BadgeId = "walker_10k_steps", Name = "Chiến Binh 10.000 Bước", Description = "Đi bộ trên 10.000 bước mỗi ngày liên tục", Category = "Exercise", UnlockedCount = unlockedCounts.GetValueOrDefault("walker_10k_steps", 0) },
-            new() { BadgeId = "pet_lover_level5", Name = "Bạn Thân Bé Mầm", Description = "Nuôi thú cưng dinh dưỡng đạt cấp độ 5", Category = "Pet", UnlockedCount = unlockedCounts.GetValueOrDefault("pet_lover_level5", 0) }
-        };
+        // Đúng danh mục huy hiệu app đang trao (GamificationCatalog) — id khớp bảng UserBadges.
+        var systemBadges = GamificationCatalog.Badges
+            .Select(b => new AdminBadgeItemDto
+            {
+                BadgeId = b.Id,
+                Name = b.Title,
+                Description = b.Description,
+                Category = BadgeCategories.GetValueOrDefault(b.Id, "Thành Tích"),
+                UnlockedCount = unlockedCounts.GetValueOrDefault(b.Id, 0)
+            })
+            .ToList();
 
         return Ok(ApiResponse<List<AdminBadgeItemDto>>.Ok(systemBadges));
     }
+
+    private const string UnsupportedCategoryMessage =
+        "Loại thử thách chỉ được là DrinkWater (uống nước), EatClean (ghi đủ bữa) hoặc Exercise (bước chân) — loại khác chưa có dữ liệu để chấm.";
+
+    /// <summary>Nhóm hiển thị trên Admin Web cho từng huy hiệu của <see cref="GamificationCatalog"/>.</summary>
+    private static readonly Dictionary<string, string> BadgeCategories = new()
+    {
+        [GamificationCatalog.FirstLog] = "Chuỗi ngày",
+        [GamificationCatalog.Streak3] = "Chuỗi ngày",
+        [GamificationCatalog.Streak7] = "Chuỗi ngày",
+        [GamificationCatalog.Resilient30] = "Chuỗi ngày",
+        [GamificationCatalog.Hydrated] = "Nước uống",
+        [GamificationCatalog.EatClean7] = "Thử thách",
+        [GamificationCatalog.GroceryShopper] = "Đi chợ",
+        [GamificationCatalog.AiSnap10] = "AI",
+        [GamificationCatalog.ProteinGoal] = "Dinh dưỡng"
+    };
 
     [Authorize(Roles = "Admin")]
     [HttpGet("rewards/xp-events")]
@@ -1508,11 +1604,18 @@ public class AdminController : ControllerBase
             })
             .ToListAsync();
 
+        // Số đo thật: thời gian tiến trình API đã chạy và một lần kiểm tra kết nối PostgreSQL.
+        var dbWatch = Stopwatch.StartNew();
+        var dbOk = await _db.Database.CanConnectAsync();
+        dbWatch.Stop();
+        using var process = Process.GetCurrentProcess();
+
         var activity = new AdminSystemActivityDto
         {
-            ServerUptimeHours = Math.Round((DateTime.UtcNow - DateTime.UtcNow.Date).TotalHours + 24, 1),
+            ServerUptimeHours = Math.Round((DateTime.Now - process.StartTime).TotalHours, 2),
             ServerTimeUtc = DateTime.UtcNow,
-            DatabaseStatus = "Healthy",
+            DatabaseStatus = dbOk ? "Healthy" : "Unavailable",
+            DatabaseLatencyMs = dbOk ? Math.Round(dbWatch.Elapsed.TotalMilliseconds, 1) : null,
             TotalAiRequestsToday = totalAiToday,
             AiRequestsByKind = aiKinds,
             RecentAiLogs = recentAi,
@@ -1528,40 +1631,83 @@ public class AdminController : ControllerBase
     // ==========================================
     [Authorize(Roles = "Admin")]
     [HttpGet("reports/revenue")]
-    public async Task<ActionResult<ApiResponse<AdminRevenueReportDto>>> GetRevenueReport()
+    public async Task<ActionResult<ApiResponse<AdminRevenueReportDto>>> GetRevenueReport(
+        [FromQuery] DateOnly? startDate = null,
+        [FromQuery] DateOnly? endDate = null)
     {
+        if (startDate is { } s && endDate is { } e && s > e)
+        {
+            return BadRequest(ApiResponse<AdminRevenueReportDto>.Fail("Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.", null, ApiErrorKind.BadRequest));
+        }
+
         var now = DateTime.UtcNow;
+        var today = DateOnly.FromDateTime(now);
         var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var startOfYear = new DateTime(now.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        var totalPaidTx = await _db.PaymentTransactions
+        // Khoảng ngày chọn trên web (UTC, tính trọn ngày kết thúc); bỏ trống = toàn bộ thời gian.
+        var inRange = _db.PaymentTransactions.AsNoTracking();
+        if (startDate is { } from)
+        {
+            var fromUtc = from.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            inRange = inRange.Where(t => t.CreatedAt >= fromUtc);
+        }
+        if (endDate is { } to)
+        {
+            var toUtcExclusive = to.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            inRange = inRange.Where(t => t.CreatedAt < toUtcExclusive);
+        }
+
+        var totalPaidTx = await inRange
             .Where(t => t.Status == PaymentStatuses.Paid)
             .ToListAsync();
 
         var totalRevenue = totalPaidTx.Sum(t => t.AmountVnd);
-        var monthlyRevenue = totalPaidTx.Where(t => t.CreatedAt >= startOfMonth).Sum(t => t.AmountVnd);
-        var yearlyRevenue = totalPaidTx.Where(t => t.CreatedAt >= startOfYear).Sum(t => t.AmountVnd);
+        // "Tháng này" / "Năm nay" luôn theo lịch hiện tại (đúng nhãn trên web), không phụ thuộc bộ lọc.
+        var monthlyRevenue = await _db.PaymentTransactions
+            .Where(t => t.Status == PaymentStatuses.Paid && t.CreatedAt >= startOfMonth)
+            .SumAsync(t => (decimal?)t.AmountVnd) ?? 0m;
+        var yearlyRevenue = await _db.PaymentTransactions
+            .Where(t => t.Status == PaymentStatuses.Paid && t.CreatedAt >= startOfYear)
+            .SumAsync(t => (decimal?)t.AmountVnd) ?? 0m;
 
-        var totalTx = await _db.PaymentTransactions.CountAsync();
+        var totalTx = await inRange.CountAsync();
         var successTx = totalPaidTx.Count;
-        var pendingTx = await _db.PaymentTransactions.CountAsync(t => t.Status == PaymentStatuses.Pending);
-        var failedTx = await _db.PaymentTransactions.CountAsync(t => t.Status == PaymentStatuses.Failed);
+        var pendingTx = await inRange.CountAsync(t => t.Status == PaymentStatuses.Pending);
+        var failedTx = await inRange.CountAsync(t => t.Status == PaymentStatuses.Failed);
 
         var payingUsersCount = totalPaidTx.Select(t => t.UserId).Distinct().Count();
         var arppu = payingUsersCount > 0 ? Math.Round(totalRevenue / payingUsersCount) : 0m;
 
-        // Doanh thu theo 7 ngày qua
+        // Biểu đồ: không lọc → 7 ngày gần nhất; có lọc → từng ngày trong khoảng (≤ 62 ngày) hoặc từng tháng.
+        var periodEnd = endDate ?? today;
+        var periodStart = startDate ?? periodEnd.AddDays(-6);
         var periodList = new List<AdminRevenuePeriodDto>();
-        for (int i = 6; i >= 0; i--)
+        if (periodEnd.DayNumber - periodStart.DayNumber < 62)
         {
-            var date = DateOnly.FromDateTime(now.AddDays(-i));
-            var dayTx = totalPaidTx.Where(t => DateOnly.FromDateTime(t.CreatedAt) == date).ToList();
-            periodList.Add(new AdminRevenuePeriodDto
+            for (var date = periodStart; date <= periodEnd; date = date.AddDays(1))
             {
-                PeriodLabel = date.ToString("dd/MM"),
-                AmountVnd = dayTx.Sum(t => t.AmountVnd),
-                TransactionCount = dayTx.Count
-            });
+                var dayTx = totalPaidTx.Where(t => DateOnly.FromDateTime(t.CreatedAt) == date).ToList();
+                periodList.Add(new AdminRevenuePeriodDto
+                {
+                    PeriodLabel = date.ToString("dd/MM"),
+                    AmountVnd = dayTx.Sum(t => t.AmountVnd),
+                    TransactionCount = dayTx.Count
+                });
+            }
+        }
+        else
+        {
+            for (var month = new DateOnly(periodStart.Year, periodStart.Month, 1); month <= periodEnd; month = month.AddMonths(1))
+            {
+                var monthTx = totalPaidTx.Where(t => t.CreatedAt.Year == month.Year && t.CreatedAt.Month == month.Month).ToList();
+                periodList.Add(new AdminRevenuePeriodDto
+                {
+                    PeriodLabel = month.ToString("MM/yyyy"),
+                    AmountVnd = monthTx.Sum(t => t.AmountVnd),
+                    TransactionCount = monthTx.Count
+                });
+            }
         }
 
         // Doanh thu theo cổng
@@ -1640,10 +1786,8 @@ public class AdminController : ControllerBase
             ? Math.Round(await _db.HealthPets.AverageAsync(p => p.Level), 1)
             : 1.0;
 
-        // Top Engaged Users
+        // Top Engaged Users: xếp hạng trên toàn bộ người dùng theo XP rồi mới lấy 8 người đầu.
         var topUsers = await _db.Users
-            .Include(u => u.NutritionDiaries)
-            .Take(8)
             .Select(u => new AdminEngagedUserDto
             {
                 UserId = u.Id,
@@ -1655,13 +1799,15 @@ public class AdminController : ControllerBase
                 LastActiveAt = u.UpdatedAt ?? u.CreatedAt
             })
             .OrderByDescending(u => u.TotalXp)
+            .ThenByDescending(u => u.DiariesCount)
+            .Take(8)
             .ToListAsync();
 
         var analytics = new AdminEngagementAnalyticsDto
         {
-            EstimatedDau = Math.Max(1, activeUserIdsToday),
-            EstimatedWau = Math.Max(1, activeUserIdsWeek),
-            EstimatedMau = Math.Max(1, activeUserIdsMonth),
+            EstimatedDau = activeUserIdsToday,
+            EstimatedWau = activeUserIdsWeek,
+            EstimatedMau = activeUserIdsMonth,
             TotalDiariesLogged = totalDiaries,
             TotalWaterLogs = totalWater,
             TotalStepsSynced = totalSteps,
