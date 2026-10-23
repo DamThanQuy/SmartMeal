@@ -143,6 +143,42 @@ public class AdminUpdateRecipeDto : AdminCreateRecipeDto
 {
 }
 
+public class AdminBulkImportRecipeItemDto
+{
+    [Required(ErrorMessage = "Tiêu đề món ăn là bắt buộc.")]
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string ImageUrl { get; set; } = string.Empty;
+    public string Instructions { get; set; } = string.Empty;
+    public int PrepTimeMinutes { get; set; } = 10;
+    public int CookTimeMinutes { get; set; } = 15;
+    public int Servings { get; set; } = 1;
+    public string Difficulty { get; set; } = "Easy";
+    public bool IsPremium { get; set; }
+    public string MealTypes { get; set; } = "Lunch";
+    public double CaloriesPerServing { get; set; }
+    public double ProteinPerServing { get; set; }
+    public double CarbsPerServing { get; set; }
+    public double FatPerServing { get; set; }
+    public List<string> TagCodes { get; set; } = new();
+    public List<AdminRecipeIngredientInputDto> Ingredients { get; set; } = new();
+}
+
+public class AdminBulkImportRequestDto
+{
+    public List<AdminBulkImportRecipeItemDto> Recipes { get; set; } = new();
+    public bool OverwriteExisting { get; set; } = false;
+}
+
+public class AdminBulkImportResultDto
+{
+    public int TotalSubmitted { get; set; }
+    public int TotalImported { get; set; }
+    public int TotalUpdated { get; set; }
+    public int TotalSkipped { get; set; }
+    public List<string> Messages { get; set; } = new();
+}
+
 public class AdminRecipeDetailDto
 {
     public Guid Id { get; set; }

@@ -1,0 +1,2704 @@
+[
+  {
+    "title": "Bánh chuối yến mạch nướng quế không đường",
+    "description": "Món bánh ăn vặt lành mạnh ngọt tự nhiên từ chuối sứ chín muồi, giàu chất xơ từ yến mạch và thơm ấm nồng vị bột quế.",
+    "imageUrl": "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Dầm nát 2 quả chuối chín, trộn đều với 1 quả trứng, 100g yến mạch cán và thìa bột quế.\n2. Đổ bột vào khuôn có lót giấy nến nướng bánh.\n3. Nướng ở 175 độ C trong 20 phút đến khi bánh chín vàng thơm nức.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 20,
+    "servings": 4,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Snack,Breakfast",
+    "caloriesPerServing": 190,
+    "proteinPerServing": 6,
+    "carbsPerServing": 34,
+    "fatPerServing": 3,
+    "tagCodes": [
+      "eatClean",
+      "budget",
+      "vegetarian"
+    ],
+    "ingredients": [
+      {
+        "name": "Chuối tiêu",
+        "category": "Fruit",
+        "unit": "g",
+        "amount": 120,
+        "caloriesPer100g": 89,
+        "proteinPer100g": 1.1,
+        "carbsPer100g": 23,
+        "fatPer100g": 0.3
+      },
+      {
+        "name": "Trứng gà",
+        "category": "Dairy",
+        "unit": "quả",
+        "amount": 1,
+        "caloriesPer100g": 155,
+        "proteinPer100g": 13,
+        "carbsPer100g": 1.1,
+        "fatPer100g": 11
+      },
+      {
+        "name": "Yến mạch cán dẹt",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 60,
+        "caloriesPer100g": 389,
+        "proteinPer100g": 16.9,
+        "carbsPer100g": 66,
+        "fatPer100g": 6.9
+      }
+    ]
+  },
+  {
+    "title": "Bánh cuốn gạo lứt nhân thịt nấm mèo",
+    "description": "Món bánh cuốn hấp dẫn từ bột gạo lứt mềm mượt, nhân thịt nạc băm xào nấm mèo giòn sần sật ít dầu mỡ.",
+    "imageUrl": "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Tráng bánh cuốn từ hỗn hợp bột gạo lứt pha loãng.\n2. Cho nhân thịt bằm xào nấm mèo và hành tây vào giữa rồi cuộn lại.\n3. Thưởng thức cùng giá đỗ chần, rau thơm và nước mắm tỏi ớt nhẹ vị.",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 15,
+    "servings": 1,
+    "difficulty": "Medium",
+    "isPremium": false,
+    "mealTypes": "Breakfast,Lunch",
+    "caloriesPerServing": 350,
+    "proteinPerServing": 22,
+    "carbsPerServing": 48,
+    "fatPerServing": 8,
+    "tagCodes": [
+      "eatClean",
+      "highProtein"
+    ],
+    "ingredients": [
+      {
+        "name": "Nấm mèo",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 20,
+        "caloriesPer100g": 25,
+        "proteinPer100g": 2,
+        "carbsPer100g": 7,
+        "fatPer100g": 0.2
+      },
+      {
+        "name": "Thịt nạc thăn",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 80,
+        "caloriesPer100g": 143,
+        "proteinPer100g": 21,
+        "carbsPer100g": 0,
+        "fatPer100g": 6
+      },
+      {
+        "name": "Bột gạo lứt",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 80,
+        "caloriesPer100g": 360,
+        "proteinPer100g": 7.5,
+        "carbsPer100g": 76,
+        "fatPer100g": 2.5
+      }
+    ]
+  },
+  {
+    "title": "Bánh mì nguyên cám ức gà sốt bơ đậu phộng",
+    "description": "Bữa sáng tiện lợi giàu năng lượng với bánh mì nguyên cám giòn rụm, ức gà xé ngọt mềm và sốt bơ đậu phộng béo bùi.",
+    "imageUrl": "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Nướng giòn 2 lát bánh mì đen nguyên cám.\n2. Phết bơ đậu phộng nguyên chất lên lát bánh.\n3. Kẹp ức gà xé sợi, dưa chuột thái lát và rau mùi rồi thưởng thức.",
+    "prepTimeMinutes": 5,
+    "cookTimeMinutes": 5,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Breakfast,Snack",
+    "caloriesPerServing": 360,
+    "proteinPerServing": 28,
+    "carbsPerServing": 38,
+    "fatPerServing": 10,
+    "tagCodes": [
+      "eatClean",
+      "highProtein",
+      "quick"
+    ],
+    "ingredients": [
+      {
+        "name": "Bơ đậu phộng nguyên chất",
+        "category": "Spice",
+        "unit": "g",
+        "amount": 20,
+        "caloriesPer100g": 588,
+        "proteinPer100g": 25,
+        "carbsPer100g": 20,
+        "fatPer100g": 50
+      },
+      {
+        "name": "Bánh mì nguyên cám",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 70,
+        "caloriesPer100g": 250,
+        "proteinPer100g": 9,
+        "carbsPer100g": 48,
+        "fatPer100g": 3.5
+      },
+      {
+        "name": "Ức gà phi lê",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 100,
+        "caloriesPer100g": 165,
+        "proteinPer100g": 31,
+        "carbsPer100g": 0,
+        "fatPer100g": 3.6
+      },
+      {
+        "name": "Dưa leo",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 40,
+        "caloriesPer100g": 15,
+        "proteinPer100g": 0.7,
+        "carbsPer100g": 3.6,
+        "fatPer100g": 0.1
+      }
+    ]
+  },
+  {
+    "title": "Bánh mì nướng bơ tỏi kẹp phô mai ít béo",
+    "description": "Bánh mì nướng giòn rụm thơm nức mũi bơ tỏi quyện phô mai mozzarella chảy sợi dẻo dai hấp dẫn khó chối từ.",
+    "imageUrl": "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Trộn bơ lạt với tỏi băm và lá mùi tây thái nhỏ.\n2. Phết bơ tỏi lên 2 mặt bánh mì nguyên cám, rắc phô mai ít béo vào giữa.\n3. Nướng trong nồi chiên không dầu 5 phút ở 180 độ C cho phô mai tan chảy.",
+    "prepTimeMinutes": 5,
+    "cookTimeMinutes": 5,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Breakfast,Snack",
+    "caloriesPerServing": 310,
+    "proteinPerServing": 16,
+    "carbsPerServing": 32,
+    "fatPerServing": 13,
+    "tagCodes": [
+      "quick",
+      "vegetarian"
+    ],
+    "ingredients": [
+      {
+        "name": "Bánh mì nguyên cám",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 70,
+        "caloriesPer100g": 250,
+        "proteinPer100g": 9,
+        "carbsPer100g": 48,
+        "fatPer100g": 3.5
+      }
+    ]
+  },
+  {
+    "title": "Bò bít tết bơ tỏi măng tây (Keto)",
+    "description": "Thịt thăn bò hảo hạng áp chảo bơ tỏi thơm ngào ngạt, giữ nguyên độ mềm mọng tự nhiên của thớ thịt.",
+    "imageUrl": "https://images.unsplash.com/photo-1558030006-450675393462?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Thấm khô miếng bò, xoa đều muối biển và tiêu hạt giã dập.\n2. Đun nóng chảo gang, áp chảo mỗi mặt 2 phút cùng tỏi tép đập dập và cành hương thảo.\n3. Cho bơ lạt vào chảo rưới liên tục lên mặt thịt rồi để thịt nghỉ 5 phút trước khi cắt.",
+    "prepTimeMinutes": 5,
+    "cookTimeMinutes": 6,
+    "servings": 1,
+    "difficulty": "Medium",
+    "isPremium": true,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 480,
+    "proteinPerServing": 44,
+    "carbsPerServing": 4,
+    "fatPerServing": 31,
+    "tagCodes": [
+      "keto",
+      "highProtein",
+      "quick",
+      "lowCarb"
+    ],
+    "ingredients": [
+      {
+        "name": "Thịt bò thăn",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 200,
+        "caloriesPer100g": 250,
+        "proteinPer100g": 26,
+        "carbsPer100g": 0,
+        "fatPer100g": 15
+      },
+      {
+        "name": "Măng tây",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 80,
+        "caloriesPer100g": 20,
+        "proteinPer100g": 2.2,
+        "carbsPer100g": 3.9,
+        "fatPer100g": 0.1
+      }
+    ]
+  },
+  {
+    "title": "Bò cuộn nấm kim châm nướng sốt tương",
+    "description": "Từng cuộn thịt bò ba chỉ bò nạc cuộn chặt nấm kim châm giòn sần sật, nướng xèo xèo thơm ngất ngây.",
+    "imageUrl": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Trải lát thịt bò dài, cho nấm kim châm vào giữa rồi cuộn tròn chặt tay.\n2. Pha sốt tương tỏi gồm xì dầu, dầu hào và chút đường ăn kiêng.\n3. Nướng cuộn bò trong nồi chiên không dầu 8 phút, phết sốt tương trong 2 phút cuối.",
+    "prepTimeMinutes": 12,
+    "cookTimeMinutes": 8,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 340,
+    "proteinPerServing": 30,
+    "carbsPerServing": 8,
+    "fatPerServing": 20,
+    "tagCodes": [
+      "keto",
+      "highProtein",
+      "quick",
+      "lowCarb"
+    ],
+    "ingredients": [
+      {
+        "name": "Thịt bò thăn",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 130,
+        "caloriesPer100g": 250,
+        "proteinPer100g": 26,
+        "carbsPer100g": 0,
+        "fatPer100g": 15
+      },
+      {
+        "name": "Nấm kim châm",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 100,
+        "caloriesPer100g": 37,
+        "proteinPer100g": 2.7,
+        "carbsPer100g": 7.8,
+        "fatPer100g": 0.3
+      }
+    ]
+  },
+  {
+    "title": "Bò lúc lắc khoai lang mật nướng",
+    "description": "Thịt bò thăn cắt vuông xào lửa lớn giữ trọn vị ngọt tự nhiên, ăn cùng khoai lang mật nướng bùi thơm.",
+    "imageUrl": "https://images.unsplash.com/photo-1558030006-450675393462?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Cắt thịt bò hạt lựu to, ướp tỏi, dầu hào và tiêu đen.\n2. Khoai lang cắt khúc nướng chín vàng trong nồi chiên không dầu.\n3. Xào bò lúc lắc cùng ớt chuông và hành tây trên lửa to trong 3 phút rồi bày ra đĩa.",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 15,
+    "servings": 1,
+    "difficulty": "Medium",
+    "isPremium": true,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 480,
+    "proteinPerServing": 39,
+    "carbsPerServing": 42,
+    "fatPerServing": 16,
+    "tagCodes": [
+      "eatClean",
+      "highProtein"
+    ],
+    "ingredients": [
+      {
+        "name": "Thịt bò thăn",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 250,
+        "proteinPer100g": 26,
+        "carbsPer100g": 0,
+        "fatPer100g": 15
+      },
+      {
+        "name": "Ớt chuông đỏ",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 60,
+        "caloriesPer100g": 31,
+        "proteinPer100g": 1,
+        "carbsPer100g": 6,
+        "fatPer100g": 0.3
+      },
+      {
+        "name": "Khoai lang",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 130,
+        "caloriesPer100g": 86,
+        "proteinPer100g": 1.6,
+        "carbsPer100g": 20,
+        "fatPer100g": 0.1
+      }
+    ]
+  },
+  {
+    "title": "Bò áp chảo sốt tiêu đen măng tây baby",
+    "description": "Thịt thăn bò mềm mọng nước áp chảo sốt tiêu đen đậm đà, dùng kèm măng tây baby giòn ngọt chuẩn vị nhà hàng.",
+    "imageUrl": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Áp chảo thịt bò thăn mỗi mặt 2-3 phút tùy độ chín mong muốn.\n2. Làm nóng chảo với sốt tiêu đen nấu cùng chút bơ lạt.\n3. Xào sơ măng tây baby rồi rưới sốt tiêu đen lên đĩa thịt bò.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 8,
+    "servings": 1,
+    "difficulty": "Medium",
+    "isPremium": true,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 460,
+    "proteinPerServing": 42,
+    "carbsPerServing": 12,
+    "fatPerServing": 26,
+    "tagCodes": [
+      "keto",
+      "highProtein",
+      "lowCarb"
+    ],
+    "ingredients": [
+      {
+        "name": "Thịt bò thăn",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 180,
+        "caloriesPer100g": 250,
+        "proteinPer100g": 26,
+        "carbsPer100g": 0,
+        "fatPer100g": 15
+      },
+      {
+        "name": "Măng tây",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 80,
+        "caloriesPer100g": 20,
+        "proteinPer100g": 2.2,
+        "carbsPer100g": 3.9,
+        "fatPer100g": 0.1
+      }
+    ]
+  },
+  {
+    "title": "Bún Chả Eat Clean Nồi Chiên Không Dầu",
+    "description": "Công thức đã cập nhật thêm gia vị thảo mộc",
+    "imageUrl": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80",
+    "instructions": "",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 15,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch",
+    "caloriesPerServing": 430,
+    "proteinPerServing": 0,
+    "carbsPerServing": 0,
+    "fatPerServing": 0,
+    "tagCodes": [],
+    "ingredients": []
+  },
+  {
+    "title": "Bún bò xào Nam Bộ rau sống đậu phộng",
+    "description": "Món bún trộn thanh đạm đặc trưng miền Nam với thịt bò xào thơm nức, rau thơm tươi giòn và đậu phộng rang.",
+    "imageUrl": "https://images.unsplash.com/photo-1503764654157-72d979d9af2f?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Ướp thịt bò thái mỏng với tỏi, sả và dầu hào ít muối.\n2. Xào nhanh thịt bò trên lửa to trong 2 phút.\n3. Xếp bún gạo lứt, rau xà lách, giá đỗ, thịt bò lên tô và rắc đậu phộng rang giã nhỏ.",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 8,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 450,
+    "proteinPerServing": 34,
+    "carbsPerServing": 54,
+    "fatPerServing": 11,
+    "tagCodes": [
+      "eatClean",
+      "highProtein"
+    ],
+    "ingredients": [
+      {
+        "name": "Bún gạo lứt",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 125,
+        "proteinPer100g": 2.5,
+        "carbsPer100g": 27,
+        "fatPer100g": 0.5
+      },
+      {
+        "name": "Xà lách Romaine",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 80,
+        "caloriesPer100g": 17,
+        "proteinPer100g": 1.2,
+        "carbsPer100g": 3.3,
+        "fatPer100g": 0.3
+      },
+      {
+        "name": "Thịt bò thăn",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 120,
+        "caloriesPer100g": 250,
+        "proteinPer100g": 26,
+        "carbsPer100g": 0,
+        "fatPer100g": 15
+      }
+    ]
+  },
+  {
+    "title": "Bún chả ức gà nướng áp chảo",
+    "description": "Phiên bản thanh nhẹ của bún chả Hà Nội với chả viên từ ức gà nạc ướp hành tiêu, ăn kèm bún gạo lứt và nước mắm chua ngọt.",
+    "imageUrl": "https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Băm nhỏ ức gà, trộn hành khô, tiêu và nước mắm, nặn viên dẹt.\n2. Áp chảo viên chả gà vàng thơm hai mặt.\n3. Pha nước mắm tỏi ớt chua ngọt loãng, ăn kèm bún gạo lứt và xà lách tươi.",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 10,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 390,
+    "proteinPerServing": 36,
+    "carbsPerServing": 45,
+    "fatPerServing": 7,
+    "tagCodes": [
+      "eatClean",
+      "highProtein",
+      "budget"
+    ],
+    "ingredients": [
+      {
+        "name": "Bún gạo lứt",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 125,
+        "proteinPer100g": 2.5,
+        "carbsPer100g": 27,
+        "fatPer100g": 0.5
+      },
+      {
+        "name": "Xà lách Romaine",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 80,
+        "caloriesPer100g": 17,
+        "proteinPer100g": 1.2,
+        "carbsPer100g": 3.3,
+        "fatPer100g": 0.3
+      },
+      {
+        "name": "Ức gà phi lê",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 165,
+        "proteinPer100g": 31,
+        "carbsPer100g": 0,
+        "fatPer100g": 3.6
+      }
+    ]
+  },
+  {
+    "title": "Bún gạo lứt trộn tôm thịt sốt chua ngọt",
+    "description": "Món bún trộn mùa hè thanh mát với tôm luộc nõn, thịt nạc luộc xắt sợi, rau sống và nước sốt chua cay kích thích vị giác.",
+    "imageUrl": "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Luộc chín tôm và thịt nạc thăn, thái sợi vừa ăn.\n2. Trụng bún gạo lứt để ráo nước.\n3. Trộn đều bún với tôm thịt, xà lách, rau thơm và nước sốt giấm táo chua ngọt.",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 10,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 390,
+    "proteinPerServing": 34,
+    "carbsPerServing": 48,
+    "fatPerServing": 6,
+    "tagCodes": [
+      "eatClean",
+      "highProtein"
+    ],
+    "ingredients": [
+      {
+        "name": "Bún gạo lứt",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 140,
+        "caloriesPer100g": 125,
+        "proteinPer100g": 2.5,
+        "carbsPer100g": 27,
+        "fatPer100g": 0.5
+      },
+      {
+        "name": "Xà lách Romaine",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 80,
+        "caloriesPer100g": 17,
+        "proteinPer100g": 1.2,
+        "carbsPer100g": 3.3,
+        "fatPer100g": 0.3
+      },
+      {
+        "name": "Thịt nạc thăn",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 60,
+        "caloriesPer100g": 143,
+        "proteinPer100g": 21,
+        "carbsPer100g": 0,
+        "fatPer100g": 6
+      },
+      {
+        "name": "Tôm tươi",
+        "category": "Seafood",
+        "unit": "g",
+        "amount": 100,
+        "caloriesPer100g": 99,
+        "proteinPer100g": 24,
+        "carbsPer100g": 0.2,
+        "fatPer100g": 0.3
+      }
+    ]
+  },
+  {
+    "title": "Bún riêu cua bắp bò đậu hũ Eat Clean",
+    "description": "Tô bún riêu thơm nức mùi gạch cua đồng tự nhiên, ăn kèm thịt bắp bò mềm ngọt và đậu hũ non nướng nồi chiên không dầu.",
+    "imageUrl": "https://images.unsplash.com/photo-1617093727343-374698b1b08d?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Nấu nước dùng cua đồng tươi với cà chua và dấm bỗng chua dịu.\n2. Đậu hũ cắt miếng nướng giòn trong nồi chiên không dầu.\n3. Trụng bún gạo lứt, xếp bắp bò chần chín tới, đậu hũ và chan nước riêu cua.",
+    "prepTimeMinutes": 20,
+    "cookTimeMinutes": 15,
+    "servings": 1,
+    "difficulty": "Medium",
+    "isPremium": true,
+    "mealTypes": "Breakfast,Lunch",
+    "caloriesPerServing": 460,
+    "proteinPerServing": 38,
+    "carbsPerServing": 46,
+    "fatPerServing": 14,
+    "tagCodes": [
+      "eatClean",
+      "highProtein"
+    ],
+    "ingredients": [
+      {
+        "name": "Bún gạo lứt",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 125,
+        "proteinPer100g": 2.5,
+        "carbsPer100g": 27,
+        "fatPer100g": 0.5
+      },
+      {
+        "name": "Cà chua bi",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 60,
+        "caloriesPer100g": 18,
+        "proteinPer100g": 0.9,
+        "carbsPer100g": 3.9,
+        "fatPer100g": 0.2
+      },
+      {
+        "name": "Thịt bò thăn",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 100,
+        "caloriesPer100g": 250,
+        "proteinPer100g": 26,
+        "carbsPer100g": 0,
+        "fatPer100g": 15
+      },
+      {
+        "name": "Đậu hũ non",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 80,
+        "caloriesPer100g": 76,
+        "proteinPer100g": 8,
+        "carbsPer100g": 1.9,
+        "fatPer100g": 4.8
+      }
+    ]
+  },
+  {
+    "title": "Canh bí đỏ hầm sườn non ít béo",
+    "description": "Vị ngọt bùi tan trong miệng của bí đỏ hồ lô hòa quyện cùng nước hầm sườn non trong vắt bổ dưỡng.",
+    "imageUrl": "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Chần sườn non qua nước sôi rồi ninh với 800ml nước trong 20 phút.\n2. Cắt bí đỏ thành miếng vuông vừa ăn, cho vào ninh cùng sườn 10 phút.\n3. Nêm gia vị vừa miệng, rắc hành ngò thơm lừng.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 25,
+    "servings": 2,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 260,
+    "proteinPerServing": 22,
+    "carbsPerServing": 22,
+    "fatPerServing": 9,
+    "tagCodes": [
+      "eatClean",
+      "budget"
+    ],
+    "ingredients": [
+      {
+        "name": "Bí đỏ",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 26,
+        "proteinPer100g": 1,
+        "carbsPer100g": 6.5,
+        "fatPer100g": 0.1
+      },
+      {
+        "name": "Sườn heo nạc",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 120,
+        "caloriesPer100g": 230,
+        "proteinPer100g": 20,
+        "carbsPer100g": 0,
+        "fatPer100g": 16
+      }
+    ]
+  },
+  {
+    "title": "Canh bóng mộc thập cẩm hoa súp lơ",
+    "description": "Bát canh ngũ sắc truyền thống thanh tao với giò sống nạc viên tròn, bóng bì giòn mềm, súp lơ và cà rốt tỉa hoa.",
+    "imageUrl": "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Đun sôi nước dùng xương gà lọc trong vắt.\n2. Viên từng viên mọc thịt nạc thả vào nồi cùng bóng bì đã ngâm mềm thái xéo.\n3. Thêm súp lơ xanh, súp lơ trắng và cà rốt vào đun chín tới, rắc ngò thơm.",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 12,
+    "servings": 2,
+    "difficulty": "Medium",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 280,
+    "proteinPerServing": 26,
+    "carbsPerServing": 18,
+    "fatPerServing": 9,
+    "tagCodes": [
+      "eatClean",
+      "highProtein"
+    ],
+    "ingredients": [
+      {
+        "name": "Súp lơ xanh",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 60,
+        "caloriesPer100g": 34,
+        "proteinPer100g": 2.8,
+        "carbsPer100g": 7,
+        "fatPer100g": 0.4
+      },
+      {
+        "name": "Cà rốt",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 40,
+        "caloriesPer100g": 41,
+        "proteinPer100g": 0.9,
+        "carbsPer100g": 10,
+        "fatPer100g": 0.2
+      },
+      {
+        "name": "Thịt nạc thăn",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 90,
+        "caloriesPer100g": 143,
+        "proteinPer100g": 21,
+        "carbsPer100g": 0,
+        "fatPer100g": 6
+      }
+    ]
+  },
+  {
+    "title": "Canh chua cá lóc rau muống bắp chuối",
+    "description": "Hương vị đồng quê miền Tây ngọt lịm từ cá lóc đồng, chua thanh từ me tươi và giòn mát từ rau muống, hoa chuối.",
+    "imageUrl": "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Nấu nước sôi, dầm me lấy nước chua rồi thả cá lóc cắt khúc vào đun chín.\n2. Thêm cà chua, đậu bắp, rau muống và hoa chuối thái sợi.\n3. Nêm nước mắm vừa ăn, rắc rau ngổ ngò gai dậy mùi.",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 15,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 240,
+    "proteinPerServing": 28,
+    "carbsPerServing": 16,
+    "fatPerServing": 5,
+    "tagCodes": [
+      "eatClean",
+      "quick",
+      "budget"
+    ],
+    "ingredients": [
+      {
+        "name": "Cà chua bi",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 60,
+        "caloriesPer100g": 18,
+        "proteinPer100g": 0.9,
+        "carbsPer100g": 3.9,
+        "fatPer100g": 0.2
+      },
+      {
+        "name": "Cá lóc",
+        "category": "Seafood",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 97,
+        "proteinPer100g": 18.2,
+        "carbsPer100g": 0,
+        "fatPer100g": 2.7
+      }
+    ]
+  },
+  {
+    "title": "Canh gà hầm củ sen táo đỏ hạt sen",
+    "description": "Món canh hầm dưỡng sinh bồi bổ cơ thể, giúp an thần ngủ ngon với thịt gà nạc, củ sen bùi và táo đỏ ngọt lành.",
+    "imageUrl": "https://images.unsplash.com/photo-1574484284002-952d92456975?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Chặt gà thành miếng vừa ăn, chần qua nước sôi khử mùi.\n2. Cho gà, củ sen thái lát, hạt sen và táo đỏ vào nồi hầm với 1 lít nước.\n3. Hầm nhỏ lửa trong 30 phút, nêm chút muối hột thanh vị.",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 30,
+    "servings": 2,
+    "difficulty": "Medium",
+    "isPremium": false,
+    "mealTypes": "Dinner",
+    "caloriesPerServing": 350,
+    "proteinPerServing": 32,
+    "carbsPerServing": 30,
+    "fatPerServing": 9,
+    "tagCodes": [
+      "eatClean",
+      "highProtein"
+    ],
+    "ingredients": [
+      {
+        "name": "Ức gà phi lê",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 160,
+        "caloriesPer100g": 165,
+        "proteinPer100g": 31,
+        "carbsPer100g": 0,
+        "fatPer100g": 3.6
+      },
+      {
+        "name": "Hạt sen tươi",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 40,
+        "caloriesPer100g": 89,
+        "proteinPer100g": 4.1,
+        "carbsPer100g": 17,
+        "fatPer100g": 0.5
+      }
+    ]
+  },
+  {
+    "title": "Canh nấm ngũ sắc hạt sen thuần chay",
+    "description": "Bát canh dưỡng tâm an thần với nấm hương, nấm đùi gà, nấm rơm, cà rốt và hạt sen ninh nhừ ngọt mát.",
+    "imageUrl": "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Ninh hạt sen tươi với nước trong 15 phút cho mềm bùi.\n2. Thêm cà rốt tỉa hoa và các loại nấm tươi cắt khúc vừa ăn.\n3. Đun sôi thêm 5 phút, nêm hạt nêm chay nấm hương và rắc ngò gai.",
+    "prepTimeMinutes": 12,
+    "cookTimeMinutes": 20,
+    "servings": 2,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 180,
+    "proteinPerServing": 9,
+    "carbsPerServing": 32,
+    "fatPerServing": 2,
+    "tagCodes": [
+      "eatClean",
+      "vegan",
+      "vegetarian"
+    ],
+    "ingredients": [
+      {
+        "name": "Cà rốt",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 40,
+        "caloriesPer100g": 41,
+        "proteinPer100g": 0.9,
+        "carbsPer100g": 10,
+        "fatPer100g": 0.2
+      },
+      {
+        "name": "Hạt sen tươi",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 50,
+        "caloriesPer100g": 89,
+        "proteinPer100g": 4.1,
+        "carbsPer100g": 17,
+        "fatPer100g": 0.5
+      },
+      {
+        "name": "Nấm đông cô",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 60,
+        "caloriesPer100g": 34,
+        "proteinPer100g": 2.2,
+        "carbsPer100g": 7,
+        "fatPer100g": 0.5
+      }
+    ]
+  },
+  {
+    "title": "Canh rong biển đậu hũ non thịt bằm",
+    "description": "Bát canh thanh mát giải độc cơ thể, giàu i-ốt và canxi từ rong biển khô kết hợp đậu hũ non mềm mịn.",
+    "imageUrl": "https://images.unsplash.com/photo-1607528971899-2e89e6c0ec69?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Ngâm nở rong biển khô rồi rửa sạch vắt ráo.\n2. Xào săn thịt nạc bằm với chút hành khô và dầu mè.\n3. Thêm nước sôi, thả đậu hũ cắt vuông và rong biển, đun sôi 3 phút rồi nêm gia vị.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 8,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 210,
+    "proteinPerServing": 20,
+    "carbsPerServing": 8,
+    "fatPerServing": 10,
+    "tagCodes": [
+      "eatClean",
+      "quick",
+      "lowCarb"
+    ],
+    "ingredients": [
+      {
+        "name": "Đậu hũ non",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 120,
+        "caloriesPer100g": 76,
+        "proteinPer100g": 8,
+        "carbsPer100g": 1.9,
+        "fatPer100g": 4.8
+      },
+      {
+        "name": "Thịt nạc thăn",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 60,
+        "caloriesPer100g": 143,
+        "proteinPer100g": 21,
+        "carbsPer100g": 0,
+        "fatPer100g": 6
+      }
+    ]
+  },
+  {
+    "title": "Canh đậu hũ non nấu cà chua thịt bằm",
+    "description": "Bát canh thanh mát giải nhiệt, dễ nấu, ít calo và phù hợp cho cả gia đình.",
+    "imageUrl": "https://images.unsplash.com/photo-1547592166-23ac45744acd",
+    "instructions": "1. Phi thơm hành tím, xào cà chua cho nhuyễn.\n2. Thêm nước đun sôi rồi thả đậu hũ cắt miếng vuông.\n3. Nêm nếm vừa ăn, rắc hành hoa rồi tắt bếp.",
+    "prepTimeMinutes": 5,
+    "cookTimeMinutes": 8,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 180,
+    "proteinPerServing": 14,
+    "carbsPerServing": 10,
+    "fatPerServing": 7,
+    "tagCodes": [
+      "quick"
+    ],
+    "ingredients": [
+      {
+        "name": "Cà chua bi",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 80,
+        "caloriesPer100g": 18,
+        "proteinPer100g": 0.9,
+        "carbsPer100g": 3.9,
+        "fatPer100g": 0.2
+      },
+      {
+        "name": "Đậu hũ non",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 76,
+        "proteinPer100g": 8,
+        "carbsPer100g": 1.9,
+        "fatPer100g": 4.8
+      }
+    ]
+  },
+  {
+    "title": "Cháo yến mạch thịt bò bằm cà rốt",
+    "description": "Cháo dinh dưỡng thơm ngọt tự nhiên, dễ tiêu hóa, cung cấp sắt và chất xơ tuyệt vời cho khởi đầu ngày mới.",
+    "imageUrl": "https://images.unsplash.com/photo-1541832676-9b763b0239ab?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Xào sơ thịt bò bằm và cà rốt cắt hạt lựu với chút dầu ô liu.\n2. Cho nước dùng vào đun sôi rồi thả yến mạch vào khuấy đều trong 5 phút.\n3. Nêm xíu hạt nêm tiêu, rắc hành ngò thơm lừng.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 10,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Breakfast,Dinner",
+    "caloriesPerServing": 340,
+    "proteinPerServing": 26,
+    "carbsPerServing": 42,
+    "fatPerServing": 7,
+    "tagCodes": [
+      "eatClean",
+      "highProtein",
+      "quick"
+    ],
+    "ingredients": [
+      {
+        "name": "Cà rốt",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 50,
+        "caloriesPer100g": 41,
+        "proteinPer100g": 0.9,
+        "carbsPer100g": 10,
+        "fatPer100g": 0.2
+      },
+      {
+        "name": "Thịt bò thăn",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 90,
+        "caloriesPer100g": 250,
+        "proteinPer100g": 26,
+        "carbsPer100g": 0,
+        "fatPer100g": 15
+      },
+      {
+        "name": "Yến mạch cán dẹt",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 60,
+        "caloriesPer100g": 389,
+        "proteinPer100g": 16.9,
+        "carbsPer100g": 66,
+        "fatPer100g": 6.9
+      }
+    ]
+  },
+  {
+    "title": "Cháo yến mạch ức gà rau củ",
+    "description": "Món ăn sáng nhẹ bụng, hỗ trợ giảm cân và cung cấp năng lượng bền bỉ cho cả buổi sáng.",
+    "imageUrl": "https://images.unsplash.com/photo-1517673400267-0251440c45dc",
+    "instructions": "1. Luộc chín ức gà và xé nhỏ.\n2. Nấu yến mạch với nước dùng gà trong 5-7 phút.\n3. Thêm ức gà, nêm gia vị vừa ăn và rắc hành ngò.",
+    "prepTimeMinutes": 5,
+    "cookTimeMinutes": 10,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Breakfast",
+    "caloriesPerServing": 320,
+    "proteinPerServing": 28,
+    "carbsPerServing": 36,
+    "fatPerServing": 5,
+    "tagCodes": [
+      "eatClean",
+      "quick"
+    ],
+    "ingredients": [
+      {
+        "name": "Yến mạch cán dẹt",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 60,
+        "caloriesPer100g": 389,
+        "proteinPer100g": 16.9,
+        "carbsPer100g": 66,
+        "fatPer100g": 6.9
+      },
+      {
+        "name": "Ức gà phi lê",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 100,
+        "caloriesPer100g": 165,
+        "proteinPer100g": 31,
+        "carbsPer100g": 0,
+        "fatPer100g": 3.6
+      }
+    ]
+  },
+  {
+    "title": "Chè hạt sen long nhãn táo đỏ đường ăn kiêng",
+    "description": "Chè thanh nhiệt giải khát bổ dưỡng với hạt sen bùi ngậy lồng bên trong cùi nhãn giòn ngọt nước.",
+    "imageUrl": "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Hấp chín hạt sen tươi, bóc vỏ nhãn tươi và lồng hạt sen vào trong cùi nhãn.\n2. Đun sôi nước cùng lá dứa và táo đỏ thái lát.\n3. Thả long nhãn hạt sen vào đun thêm 3 phút, nêm đường ăn kiêng cỏ ngọt rồi tắt bếp.",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 15,
+    "servings": 2,
+    "difficulty": "Medium",
+    "isPremium": false,
+    "mealTypes": "Snack",
+    "caloriesPerServing": 160,
+    "proteinPerServing": 4,
+    "carbsPerServing": 36,
+    "fatPerServing": 1,
+    "tagCodes": [
+      "eatClean",
+      "vegan",
+      "vegetarian"
+    ],
+    "ingredients": [
+      {
+        "name": "Hạt sen tươi",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 60,
+        "caloriesPer100g": 89,
+        "proteinPer100g": 4.1,
+        "carbsPer100g": 17,
+        "fatPer100g": 0.5
+      }
+    ]
+  },
+  {
+    "title": "Cá chẽm nướng giấy bạc thảo mộc chanh vàng",
+    "description": "Phi lê cá chẽm tươi trắng muốt được bọc giấy bạc nướng cùng dầu ô liu, lát chanh vàng và lá hương thảo thơm dịu.",
+    "imageUrl": "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Đặt phi lê cá chẽm lên tấm giấy bạc lớn.\n2. Rắc muối tiêu, xếp lát chanh vàng và ngọn hương thảo lên trên cá.\n3. Gói kín giấy bạc, nướng ở 200 độ C trong 15 phút.",
+    "prepTimeMinutes": 8,
+    "cookTimeMinutes": 15,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": true,
+    "mealTypes": "Dinner",
+    "caloriesPerServing": 310,
+    "proteinPerServing": 35,
+    "carbsPerServing": 3,
+    "fatPerServing": 16,
+    "tagCodes": [
+      "eatClean",
+      "keto",
+      "highProtein",
+      "lowCarb"
+    ],
+    "ingredients": [
+      {
+        "name": "Cá chẽm",
+        "category": "Seafood",
+        "unit": "g",
+        "amount": 170,
+        "caloriesPer100g": 125,
+        "proteinPer100g": 20,
+        "carbsPer100g": 0,
+        "fatPer100g": 4.5
+      }
+    ]
+  },
+  {
+    "title": "Cá hồi áp chảo măng tây và cà chua bi",
+    "description": "Cá hồi béo ngậy giàu Omega-3 ăn kèm rau củ áp chảo thơm lừng bơ tỏi.",
+    "imageUrl": "https://images.unsplash.com/photo-1467003909585-2f8a72700288",
+    "instructions": "1. Rắc muối tiêu lên 2 mặt cá hồi.\n2. Áp chảo cá hồi mỗi mặt 3-4 phút đến khi vàng giòn da.\n3. Cho cà chua bi vào đảo nhanh và thưởng thức.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 8,
+    "servings": 1,
+    "difficulty": "Medium",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 450,
+    "proteinPerServing": 34,
+    "carbsPerServing": 8,
+    "fatPerServing": 28,
+    "tagCodes": [
+      "highProtein"
+    ],
+    "ingredients": [
+      {
+        "name": "Cà chua bi",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 60,
+        "caloriesPer100g": 18,
+        "proteinPer100g": 0.9,
+        "carbsPer100g": 3.9,
+        "fatPer100g": 0.2
+      },
+      {
+        "name": "Cá hồi phi lê",
+        "category": "Seafood",
+        "unit": "g",
+        "amount": 180,
+        "caloriesPer100g": 208,
+        "proteinPer100g": 20,
+        "carbsPer100g": 0,
+        "fatPer100g": 13
+      }
+    ]
+  },
+  {
+    "title": "Cá thu sốt cà chua ít béo thì là",
+    "description": "Khúc cá thu chắc nạc giàu Omega-3 sốt đẫm cà chua đỏ mọng và thì là dậy mùi thơm ngào ngạt.",
+    "imageUrl": "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Áp chảo cá thu vàng sơ hai mặt.\n2. Xào nhuyễn cà chua với chút dầu ô liu và nước mắm truyền thống.\n3. Cho cá vào đun liu riu 10 phút ngấm vị, thả thì là hành lá rồi tắt bếp.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 15,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 380,
+    "proteinPerServing": 33,
+    "carbsPerServing": 12,
+    "fatPerServing": 22,
+    "tagCodes": [
+      "keto",
+      "highProtein",
+      "lowCarb"
+    ],
+    "ingredients": [
+      {
+        "name": "Cà chua bi",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 100,
+        "caloriesPer100g": 18,
+        "proteinPer100g": 0.9,
+        "carbsPer100g": 3.9,
+        "fatPer100g": 0.2
+      },
+      {
+        "name": "Cá thu",
+        "category": "Seafood",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 205,
+        "proteinPer100g": 19,
+        "carbsPer100g": 0,
+        "fatPer100g": 14
+      },
+      {
+        "name": "Thì là",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 20,
+        "caloriesPer100g": 43,
+        "proteinPer100g": 3.5,
+        "carbsPer100g": 7,
+        "fatPer100g": 1.1
+      }
+    ]
+  },
+  {
+    "title": "Cá điêu hồng hấp xì dầu gừng thì là",
+    "description": "Thịt cá điêu hồng ngọt thơm hấp cùng gừng tươi thái chỉ và thì là, rưới xì dầu nóng hổi đậm đà khó cưỡng.",
+    "imageUrl": "https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Làm sạch cá, khứa chéo thân cá và xoa chút muối tiêu gừng.\n2. Hấp cá cách thủy 12 phút tới khi cá chín tới.\n3. Phi thơm gừng ớt thì là với dầu ăn, thêm xì dầu đun sôi rồi rưới lên mình cá.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 15,
+    "servings": 2,
+    "difficulty": "Medium",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 290,
+    "proteinPerServing": 34,
+    "carbsPerServing": 6,
+    "fatPerServing": 14,
+    "tagCodes": [
+      "eatClean",
+      "highProtein",
+      "lowCarb"
+    ],
+    "ingredients": [
+      {
+        "name": "Cá điêu hồng",
+        "category": "Seafood",
+        "unit": "g",
+        "amount": 180,
+        "caloriesPer100g": 128,
+        "proteinPer100g": 20.1,
+        "carbsPer100g": 0,
+        "fatPer100g": 5.2
+      },
+      {
+        "name": "Thì là",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 30,
+        "caloriesPer100g": 43,
+        "proteinPer100g": 3.5,
+        "carbsPer100g": 7,
+        "fatPer100g": 1.1
+      }
+    ]
+  },
+  {
+    "title": "Cơm gạo lứt bò xào ớt chuông",
+    "description": "Bữa trưa đầy đủ dinh dưỡng với thịt bò mềm ngọt và ớt chuông giòn ngọt giàu vitamin C.",
+    "imageUrl": "https://images.unsplash.com/photo-1512058564366-18510be2db19",
+    "instructions": "1. Nấu chín cơm gạo lứt.\n2. Thái mỏng thịt bò, ướp tỏi và gia vị.\n3. Xào nhanh thịt bò và ớt chuông trên lửa lớn.\n4. Bày ra đĩa ăn kèm cơm gạo lứt.",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 10,
+    "servings": 1,
+    "difficulty": "Medium",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 520,
+    "proteinPerServing": 42,
+    "carbsPerServing": 58,
+    "fatPerServing": 14,
+    "tagCodes": [
+      "eatClean",
+      "highProtein"
+    ],
+    "ingredients": [
+      {
+        "name": "Gạo lứt đỏ",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 111,
+        "proteinPer100g": 2.6,
+        "carbsPer100g": 23,
+        "fatPer100g": 0.9
+      },
+      {
+        "name": "Thịt bò thăn",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 250,
+        "proteinPer100g": 26,
+        "carbsPer100g": 0,
+        "fatPer100g": 15
+      },
+      {
+        "name": "Ớt chuông đỏ",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 80,
+        "caloriesPer100g": 31,
+        "proteinPer100g": 1,
+        "carbsPer100g": 6,
+        "fatPer100g": 0.3
+      }
+    ]
+  },
+  {
+    "title": "Cơm gạo lứt cá hồi sốt Teriyaki",
+    "description": "Cá hồi phi lê áp chảo sốt teriyaki mặn ngọt nhẹ ăn cùng cơm gạo lứt dẻo thơm và súp lơ xanh hấp.",
+    "imageUrl": "https://images.unsplash.com/photo-1546069901-d8a436578051?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Áp chảo cá hồi với chút dầu olive đến khi xém cạnh.\n2. Rưới sốt teriyaki ít đường đun sệt lại phủ đều miếng cá.\n3. Xếp ra đĩa cùng cơm gạo lứt nóng và súp lơ xanh luộc giòn ngọt.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 12,
+    "servings": 1,
+    "difficulty": "Medium",
+    "isPremium": true,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 510,
+    "proteinPerServing": 36,
+    "carbsPerServing": 48,
+    "fatPerServing": 18,
+    "tagCodes": [
+      "eatClean",
+      "highProtein"
+    ],
+    "ingredients": [
+      {
+        "name": "Súp lơ xanh",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 80,
+        "caloriesPer100g": 34,
+        "proteinPer100g": 2.8,
+        "carbsPer100g": 7,
+        "fatPer100g": 0.4
+      },
+      {
+        "name": "Cá hồi phi lê",
+        "category": "Seafood",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 208,
+        "proteinPer100g": 20,
+        "carbsPer100g": 0,
+        "fatPer100g": 13
+      },
+      {
+        "name": "Gạo lứt đỏ",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 130,
+        "caloriesPer100g": 111,
+        "proteinPer100g": 2.6,
+        "carbsPer100g": 23,
+        "fatPer100g": 0.9
+      }
+    ]
+  },
+  {
+    "title": "Cơm gạo lứt sườn nướng mật ong thảo mộc",
+    "description": "Sườn heo nạc ướp mật ong và hương thảo nướng giòn bằng nồi chiên không dầu, ăn kèm dưa muối xổi ít đường.",
+    "imageUrl": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Ướp sườn với tỏi, tiêu, chút mật ong và thảo mộc trong 20 phút.\n2. Nướng sườn ở 180 độ C trong 15 phút, lật mặt nướng thêm 5 phút.\n3. Bày ra đĩa ăn cùng cơm gạo lứt và salad dưa chuột cà chua.",
+    "prepTimeMinutes": 20,
+    "cookTimeMinutes": 20,
+    "servings": 1,
+    "difficulty": "Medium",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 490,
+    "proteinPerServing": 32,
+    "carbsPerServing": 47,
+    "fatPerServing": 18,
+    "tagCodes": [
+      "eatClean",
+      "highProtein"
+    ],
+    "ingredients": [
+      {
+        "name": "Gạo lứt đỏ",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 130,
+        "caloriesPer100g": 111,
+        "proteinPer100g": 2.6,
+        "carbsPer100g": 23,
+        "fatPer100g": 0.9
+      },
+      {
+        "name": "Dưa leo",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 50,
+        "caloriesPer100g": 15,
+        "proteinPer100g": 0.7,
+        "carbsPer100g": 3.6,
+        "fatPer100g": 0.1
+      },
+      {
+        "name": "Sườn heo nạc",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 230,
+        "proteinPer100g": 20,
+        "carbsPer100g": 0,
+        "fatPer100g": 16
+      }
+    ]
+  },
+  {
+    "title": "Cơm gạo lứt ức gà xào nấm đông cô",
+    "description": "Thịt ức gà thái mỏng xào cùng nấm đông cô và hành tây đậm đà, bổ sung protein tinh khiết cho gymer.",
+    "imageUrl": "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Ướp ức gà với xì dầu, tiêu và gừng băm.\n2. Phi thơm tỏi, cho ức gà và nấm đông cô vào xào chín tới.\n3. Dùng kèm cơm gạo lứt dẻo thơm và dưa chuột thái lát.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 10,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 430,
+    "proteinPerServing": 40,
+    "carbsPerServing": 46,
+    "fatPerServing": 8,
+    "tagCodes": [
+      "eatClean",
+      "highProtein",
+      "budget"
+    ],
+    "ingredients": [
+      {
+        "name": "Gạo lứt đỏ",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 120,
+        "caloriesPer100g": 111,
+        "proteinPer100g": 2.6,
+        "carbsPer100g": 23,
+        "fatPer100g": 0.9
+      },
+      {
+        "name": "Ức gà phi lê",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 165,
+        "proteinPer100g": 31,
+        "carbsPer100g": 0,
+        "fatPer100g": 3.6
+      },
+      {
+        "name": "Nấm đông cô",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 60,
+        "caloriesPer100g": 34,
+        "proteinPer100g": 2.2,
+        "carbsPer100g": 7,
+        "fatPer100g": 0.5
+      }
+    ]
+  },
+  {
+    "title": "Cơm súp lơ trắng gà áp chảo sốt mè (Keto)",
+    "description": "Giải pháp thay thế cơm hoàn hảo cho người ăn kiêng Keto: súp lơ trắng xay nhuyễn xào thơm ăn cùng ức gà mềm ngọt.",
+    "imageUrl": "https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Xay nhỏ súp lơ trắng như hạt cơm rồi đảo nhanh trên chảo nóng với chút bơ lạt.\n2. Áp chảo ức gà vàng giòn hai mặt rồi cắt lát xéo.\n3. Xếp gà lên đĩa cơm súp lơ và rưới sốt mè rang béo ngậy.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 10,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 340,
+    "proteinPerServing": 38,
+    "carbsPerServing": 8,
+    "fatPerServing": 16,
+    "tagCodes": [
+      "eatClean",
+      "keto",
+      "highProtein",
+      "lowCarb"
+    ],
+    "ingredients": [
+      {
+        "name": "Súp lơ trắng",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 160,
+        "caloriesPer100g": 25,
+        "proteinPer100g": 1.9,
+        "carbsPer100g": 5,
+        "fatPer100g": 0.3
+      },
+      {
+        "name": "Ức gà phi lê",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 140,
+        "caloriesPer100g": 165,
+        "proteinPer100g": 31,
+        "carbsPer100g": 0,
+        "fatPer100g": 3.6
+      },
+      {
+        "name": "Sốt mè rang",
+        "category": "Spice",
+        "unit": "ml",
+        "amount": 20,
+        "caloriesPer100g": 387,
+        "proteinPer100g": 2.5,
+        "carbsPer100g": 18,
+        "fatPer100g": 34
+      }
+    ]
+  },
+  {
+    "title": "Gỏi cuốn tôm thịt bánh tráng gạo lứt",
+    "description": "Những cuốn gỏi tròn trịa mát lành từ tôm sú, thịt nạc luộc và đủ loại rau thơm ghém trong bánh tráng gạo lứt dẻo dai.",
+    "imageUrl": "https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Luộc chín tôm và thịt nạc, thịt thái mỏng, tôm xẻ đôi theo chiều dọc.\n2. Nhúng ướt bánh tráng gạo lứt, xếp rau sống, bún gạo lứt, tôm thịt vào giữa.\n3. Cuộn chặt tay và chấm cùng sốt tương bơ đậu phộng đậm đà.",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 10,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner,Snack",
+    "caloriesPerServing": 320,
+    "proteinPerServing": 25,
+    "carbsPerServing": 40,
+    "fatPerServing": 6,
+    "tagCodes": [
+      "eatClean",
+      "highProtein"
+    ],
+    "ingredients": [
+      {
+        "name": "Xà lách Romaine",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 60,
+        "caloriesPer100g": 17,
+        "proteinPer100g": 1.2,
+        "carbsPer100g": 3.3,
+        "fatPer100g": 0.3
+      },
+      {
+        "name": "Thịt nạc thăn",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 60,
+        "caloriesPer100g": 143,
+        "proteinPer100g": 21,
+        "carbsPer100g": 0,
+        "fatPer100g": 6
+      },
+      {
+        "name": "Tôm tươi",
+        "category": "Seafood",
+        "unit": "g",
+        "amount": 100,
+        "caloriesPer100g": 99,
+        "proteinPer100g": 24,
+        "carbsPer100g": 0.2,
+        "fatPer100g": 0.3
+      }
+    ]
+  },
+  {
+    "title": "Miến dong xào tôm nõn rau củ thập cẩm",
+    "description": "Sợi miến dong dai giòn không bị nát, xào cùng tôm nõn tươi giòn ngọt, cà rốt và mộc nhĩ thanh mát.",
+    "imageUrl": "https://images.unsplash.com/photo-1552611052-33e04de081de?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Ngâm mềm miến dong rồi trần sơ qua nước sôi.\n2. Xào săn tôm nõn với tỏi băm, sau đó cho cà rốt, nấm mèo vào xào chung.\n3. Cho miến vào đảo đều tay trên lửa lớn, nêm dầu hào vừa vị rồi rắc hành ngò.",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 8,
+    "servings": 1,
+    "difficulty": "Medium",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 370,
+    "proteinPerServing": 26,
+    "carbsPerServing": 52,
+    "fatPerServing": 5,
+    "tagCodes": [
+      "eatClean",
+      "quick"
+    ],
+    "ingredients": [
+      {
+        "name": "Cà rốt",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 50,
+        "caloriesPer100g": 41,
+        "proteinPer100g": 0.9,
+        "carbsPer100g": 10,
+        "fatPer100g": 0.2
+      },
+      {
+        "name": "Tôm tươi",
+        "category": "Seafood",
+        "unit": "g",
+        "amount": 100,
+        "caloriesPer100g": 99,
+        "proteinPer100g": 24,
+        "carbsPer100g": 0.2,
+        "fatPer100g": 0.3
+      },
+      {
+        "name": "Miến dong",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 70,
+        "caloriesPer100g": 332,
+        "proteinPer100g": 0.5,
+        "carbsPer100g": 82,
+        "fatPer100g": 0.2
+      }
+    ]
+  },
+  {
+    "title": "Miến xào nấm đùi gà cà rốt chay",
+    "description": "Miến dong xào tơi mềm cùng nấm đùi gà thái sợi giòn ngọt, cà rốt và mộc nhĩ thanh nhẹ dễ ăn.",
+    "imageUrl": "https://images.unsplash.com/photo-1552611052-33e04de081de?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Ngâm miến dong nở mềm cắt đoạn ngắn.\n2. Xào nấm đùi gà thái sợi, cà rốt và nấm mèo với dầu mè trên chảo nóng.\n3. Trút miến vào đảo đều tay cùng dầu hào chay, rắc tiêu và hành hoa.",
+    "prepTimeMinutes": 12,
+    "cookTimeMinutes": 8,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 310,
+    "proteinPerServing": 10,
+    "carbsPerServing": 58,
+    "fatPerServing": 4,
+    "tagCodes": [
+      "vegan",
+      "budget",
+      "vegetarian"
+    ],
+    "ingredients": [
+      {
+        "name": "Cà rốt",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 40,
+        "caloriesPer100g": 41,
+        "proteinPer100g": 0.9,
+        "carbsPer100g": 10,
+        "fatPer100g": 0.2
+      },
+      {
+        "name": "Miến dong",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 70,
+        "caloriesPer100g": 332,
+        "proteinPer100g": 0.5,
+        "carbsPer100g": 82,
+        "fatPer100g": 0.2
+      }
+    ]
+  },
+  {
+    "title": "Mực nang hấp gừng sả chấm mắm ớt",
+    "description": "Mực nang tươi giòn ngọt tự nhiên hấp cùng gừng tươi và sả đập dập thơm lừng, món ăn giàu đạm ít calo.",
+    "imageUrl": "https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Làm sạch mực nang, khứa vảy rồng trên thân.\n2. Lót gừng sả thái lát dưới đáy xửng hấp, đặt mực lên trên.\n3. Hấp cách thủy trên lửa lớn 7-8 phút tới khi mực chín giòn.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 8,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 220,
+    "proteinPerServing": 34,
+    "carbsPerServing": 4,
+    "fatPerServing": 6,
+    "tagCodes": [
+      "keto",
+      "highProtein",
+      "quick",
+      "lowCarb"
+    ],
+    "ingredients": [
+      {
+        "name": "Mực tươi",
+        "category": "Seafood",
+        "unit": "g",
+        "amount": 200,
+        "caloriesPer100g": 92,
+        "proteinPer100g": 15.6,
+        "carbsPer100g": 3,
+        "fatPer100g": 1.4
+      }
+    ]
+  },
+  {
+    "title": "Nước ép cần tây táo xanh dưa leo giải độc",
+    "description": "Ly nước ép xanh mướt mát lạnh giàu khoáng chất và chất chống oxy hóa, hỗ trợ đốt mỡ và thanh lọc đường ruột.",
+    "imageUrl": "https://images.unsplash.com/photo-1613478223719-2ab802602423?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Rửa sạch cần tây, táo xanh và dưa leo, ngâm nước muối loãng.\n2. Cắt khúc vừa họng máy ép chậm.\n3. Ép kiệt bã, thêm vài giọt nước cốt chanh tươi và uống liền cùng đá viên.",
+    "prepTimeMinutes": 8,
+    "cookTimeMinutes": 0,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Breakfast,Snack",
+    "caloriesPerServing": 95,
+    "proteinPerServing": 2,
+    "carbsPerServing": 22,
+    "fatPerServing": 0.5,
+    "tagCodes": [
+      "eatClean",
+      "vegan",
+      "quick",
+      "vegetarian"
+    ],
+    "ingredients": [
+      {
+        "name": "Dưa leo",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 100,
+        "caloriesPer100g": 15,
+        "proteinPer100g": 0.7,
+        "carbsPer100g": 3.6,
+        "fatPer100g": 0.1
+      }
+    ]
+  },
+  {
+    "title": "Pancake yến mạch chuối mật ong",
+    "description": "Bánh kếp mềm xốp hoàn toàn không dùng bột mì hay đường tinh luyện, thơm nức mùi quế và chuối chín.",
+    "imageUrl": "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Xay nhuyễn yến mạch, 1 quả chuối tiêu, 1 quả trứng gà và xíu bột quế.\n2. Rán bánh trên chảo chống dính với lửa nhỏ đến khi hai mặt vàng ruộm.\n3. Rưới 1 thìa nhỏ mật ong nguyên chất và hoa quả tươi.",
+    "prepTimeMinutes": 5,
+    "cookTimeMinutes": 8,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Breakfast,Snack",
+    "caloriesPerServing": 280,
+    "proteinPerServing": 11,
+    "carbsPerServing": 46,
+    "fatPerServing": 5,
+    "tagCodes": [
+      "eatClean",
+      "quick",
+      "budget",
+      "vegetarian"
+    ],
+    "ingredients": [
+      {
+        "name": "Chuối tiêu",
+        "category": "Fruit",
+        "unit": "g",
+        "amount": 100,
+        "caloriesPer100g": 89,
+        "proteinPer100g": 1.1,
+        "carbsPer100g": 23,
+        "fatPer100g": 0.3
+      },
+      {
+        "name": "Trứng gà",
+        "category": "Dairy",
+        "unit": "quả",
+        "amount": 1,
+        "caloriesPer100g": 155,
+        "proteinPer100g": 13,
+        "carbsPer100g": 1.1,
+        "fatPer100g": 11
+      },
+      {
+        "name": "Yến mạch cán dẹt",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 50,
+        "caloriesPer100g": 389,
+        "proteinPer100g": 16.9,
+        "carbsPer100g": 66,
+        "fatPer100g": 6.9
+      }
+    ]
+  },
+  {
+    "title": "Phở bò tái lăn Eat Clean",
+    "description": "Phở bò nước dùng ngọt thanh từ xương hầm và củ quả, dùng bánh phở gạo lứt và bò tái lăn thơm lừng.",
+    "imageUrl": "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Trụng bánh phở gạo lứt qua nước sôi.\n2. Xào nhanh thịt bò thăn với tỏi và gừng đập dập.\n3. Xếp bánh phở, thịt bò, hành hoa vào tô và chan nước dùng nóng hổi.",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 15,
+    "servings": 1,
+    "difficulty": "Medium",
+    "isPremium": false,
+    "mealTypes": "Breakfast,Lunch",
+    "caloriesPerServing": 420,
+    "proteinPerServing": 35,
+    "carbsPerServing": 48,
+    "fatPerServing": 9,
+    "tagCodes": [
+      "eatClean",
+      "highProtein"
+    ],
+    "ingredients": [
+      {
+        "name": "Thịt bò thăn",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 120,
+        "caloriesPer100g": 250,
+        "proteinPer100g": 26,
+        "carbsPer100g": 0,
+        "fatPer100g": 15
+      },
+      {
+        "name": "Hành tây và hành hoa",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 40,
+        "caloriesPer100g": 30,
+        "proteinPer100g": 1,
+        "carbsPer100g": 7,
+        "fatPer100g": 0.1
+      },
+      {
+        "name": "Bánh phở gạo lứt",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 130,
+        "proteinPer100g": 3,
+        "carbsPer100g": 28,
+        "fatPer100g": 0.5
+      }
+    ]
+  },
+  {
+    "title": "Pudding hạt chia sữa hạnh nhân xoài cát",
+    "description": "Bữa phụ thơm ngậy mát lịm với hạt chia nở xốp trong sữa hạnh nhân béo nhẹ, ăn kèm từng viên xoài cát ngọt lịm.",
+    "imageUrl": "https://images.unsplash.com/photo-1511690656952-34342bb7c2f2?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Trộn đều 3 thìa hạt chia vào 150ml sữa hạnh nhân không đường, để ngăn mát tủ lạnh 2 tiếng.\n2. Cắt xoài cát chín thành từng hạt lựu nhỏ.\n3. Cho xoài lên trên cốc pudding hạt chia và thưởng thức mát lạnh.",
+    "prepTimeMinutes": 5,
+    "cookTimeMinutes": 0,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Snack,Breakfast",
+    "caloriesPerServing": 180,
+    "proteinPerServing": 6,
+    "carbsPerServing": 24,
+    "fatPerServing": 8,
+    "tagCodes": [
+      "eatClean",
+      "vegan",
+      "quick",
+      "vegetarian"
+    ],
+    "ingredients": [
+      {
+        "name": "Hạt chia",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 25,
+        "caloriesPer100g": 486,
+        "proteinPer100g": 17,
+        "carbsPer100g": 42,
+        "fatPer100g": 31
+      }
+    ]
+  },
+  {
+    "title": "Salad cá ngừ áp chảo sốt mù tạt mật ong",
+    "description": "Cá ngừ đại dương tươi áp chảo xém viền ngoài, thịt trong đỏ hồng mềm ngọt kết hợp xà lách giòn mát và sốt Dijon honey.",
+    "imageUrl": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Lăn phi lê cá ngừ qua mè đen mè trắng và muối tiêu.\n2. Áp chảo cá ngừ mỗi mặt 1 phút trên lửa to để lòng cá còn hồng mọng.\n3. Thái lát cá ngừ, xếp lên đĩa rau xà lách xoong và rưới sốt mù tạt mật ong.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 3,
+    "servings": 1,
+    "difficulty": "Medium",
+    "isPremium": true,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 360,
+    "proteinPerServing": 42,
+    "carbsPerServing": 8,
+    "fatPerServing": 16,
+    "tagCodes": [
+      "keto",
+      "highProtein",
+      "quick",
+      "lowCarb"
+    ],
+    "ingredients": [
+      {
+        "name": "Cá ngừ",
+        "category": "Seafood",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 130,
+        "proteinPer100g": 29,
+        "carbsPer100g": 0,
+        "fatPer100g": 0.6
+      },
+      {
+        "name": "Cà chua bi",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 50,
+        "caloriesPer100g": 18,
+        "proteinPer100g": 0.9,
+        "carbsPer100g": 3.9,
+        "fatPer100g": 0.2
+      },
+      {
+        "name": "Xà lách Romaine",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 80,
+        "caloriesPer100g": 17,
+        "proteinPer100g": 1.2,
+        "carbsPer100g": 3.3,
+        "fatPer100g": 0.3
+      }
+    ]
+  },
+  {
+    "title": "Salad cầu vồng bơ hạt dẻ sốt chanh leo",
+    "description": "Bản giao hưởng màu sắc từ bắp cải tím, cà rốt, bơ sáp, ngô ngọt và hạt dẻ cười với sốt chanh leo thanh mát.",
+    "imageUrl": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Bào sợi bắp cải tím và cà rốt, bơ cắt hạt lựu.\n2. Pha nước cốt chanh leo với dầu olive và thìa nhỏ mật ong làm sốt.\n3. Trộn đều các nguyên liệu rau củ, rưới sốt chanh leo và rắc hạt dẻ cười đập giập.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 0,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner,Snack",
+    "caloriesPerServing": 240,
+    "proteinPerServing": 6,
+    "carbsPerServing": 28,
+    "fatPerServing": 14,
+    "tagCodes": [
+      "eatClean",
+      "vegan",
+      "quick",
+      "vegetarian"
+    ],
+    "ingredients": [
+      {
+        "name": "Quả bơ sáp",
+        "category": "Fruit",
+        "unit": "g",
+        "amount": 80,
+        "caloriesPer100g": 160,
+        "proteinPer100g": 2,
+        "carbsPer100g": 8.5,
+        "fatPer100g": 14.7
+      },
+      {
+        "name": "Cà rốt",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 50,
+        "caloriesPer100g": 41,
+        "proteinPer100g": 0.9,
+        "carbsPer100g": 10,
+        "fatPer100g": 0.2
+      },
+      {
+        "name": "Xà lách Romaine",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 60,
+        "caloriesPer100g": 17,
+        "proteinPer100g": 1.2,
+        "carbsPer100g": 3.3,
+        "fatPer100g": 0.3
+      }
+    ]
+  },
+  {
+    "title": "Salad tôm bơ trứng luộc sốt mè rang",
+    "description": "Món salad tràn ngập năng lượng tốt từ tôm hấp giòn, bơ chín béo ngậy, trứng luộc lòng đào và xà lách sạch.",
+    "imageUrl": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Luộc chín tôm lột vỏ, trứng gà luộc 6 phút lòng đào bổ đôi.\n2. Cắt lát bơ chín và cà chua bi, xà lách rửa sạch để ráo.\n3. Xếp các nguyên liệu ra đĩa lớn và rưới sốt mè rang thơm phức.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 6,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 370,
+    "proteinPerServing": 28,
+    "carbsPerServing": 12,
+    "fatPerServing": 24,
+    "tagCodes": [
+      "keto",
+      "highProtein",
+      "quick",
+      "lowCarb"
+    ],
+    "ingredients": [
+      {
+        "name": "Quả bơ sáp",
+        "category": "Fruit",
+        "unit": "g",
+        "amount": 80,
+        "caloriesPer100g": 160,
+        "proteinPer100g": 2,
+        "carbsPer100g": 8.5,
+        "fatPer100g": 14.7
+      },
+      {
+        "name": "Trứng gà",
+        "category": "Dairy",
+        "unit": "quả",
+        "amount": 1,
+        "caloriesPer100g": 155,
+        "proteinPer100g": 13,
+        "carbsPer100g": 1.1,
+        "fatPer100g": 11
+      },
+      {
+        "name": "Xà lách Romaine",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 70,
+        "caloriesPer100g": 17,
+        "proteinPer100g": 1.2,
+        "carbsPer100g": 3.3,
+        "fatPer100g": 0.3
+      },
+      {
+        "name": "Sốt mè rang",
+        "category": "Spice",
+        "unit": "ml",
+        "amount": 25,
+        "caloriesPer100g": 387,
+        "proteinPer100g": 2.5,
+        "carbsPer100g": 18,
+        "fatPer100g": 34
+      },
+      {
+        "name": "Tôm tươi",
+        "category": "Seafood",
+        "unit": "g",
+        "amount": 100,
+        "caloriesPer100g": 99,
+        "proteinPer100g": 24,
+        "carbsPer100g": 0.2,
+        "fatPer100g": 0.3
+      }
+    ]
+  },
+  {
+    "title": "Salad ức gà sốt mè rang",
+    "description": "Món salad tươi mát giàu đạm từ ức gà áp chảo và các loại rau giòn ngọt.",
+    "imageUrl": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c",
+    "instructions": "1. Áp chảo ức gà vàng 2 mặt rồi xé sợi.\n2. Rửa sạch xà lách, cà chua bi, dưa leo.\n3. Trộn đều rau với ức gà và rưới sốt mè rang.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 10,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 380,
+    "proteinPerServing": 38,
+    "carbsPerServing": 15,
+    "fatPerServing": 12,
+    "tagCodes": [
+      "eatClean",
+      "highProtein"
+    ],
+    "ingredients": [
+      {
+        "name": "Cà chua bi",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 50,
+        "caloriesPer100g": 18,
+        "proteinPer100g": 0.9,
+        "carbsPer100g": 3.9,
+        "fatPer100g": 0.2
+      },
+      {
+        "name": "Xà lách Romaine",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 100,
+        "caloriesPer100g": 17,
+        "proteinPer100g": 1.2,
+        "carbsPer100g": 3.3,
+        "fatPer100g": 0.3
+      },
+      {
+        "name": "Ức gà phi lê",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 165,
+        "proteinPer100g": 31,
+        "carbsPer100g": 0,
+        "fatPer100g": 3.6
+      },
+      {
+        "name": "Sốt mè rang",
+        "category": "Spice",
+        "unit": "ml",
+        "amount": 20,
+        "caloriesPer100g": 387,
+        "proteinPer100g": 2.5,
+        "carbsPer100g": 18,
+        "fatPer100g": 34
+      }
+    ]
+  },
+  {
+    "title": "Sinh tố bơ sữa dừa hạt chia Keto",
+    "description": "Ly sinh tố ngậy béo giàu chất béo tốt không bão hòa từ bơ sáp và sữa dừa, hoàn hảo cho chế độ ăn Low-Carb / Keto.",
+    "imageUrl": "https://images.unsplash.com/photo-1553530666-ba11a7da3888?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Nạo lấy phần thịt nửa quả bơ sáp chín dẻo.\n2. Cho bơ, 100ml sữa cốt dừa không đường, đá viên và chút đường ăn kiêng vào cối xay mịn.\n3. Rót ra ly và rắc hạt chia ngâm nở lên bề mặt.",
+    "prepTimeMinutes": 5,
+    "cookTimeMinutes": 0,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Breakfast,Snack",
+    "caloriesPerServing": 260,
+    "proteinPerServing": 4,
+    "carbsPerServing": 6,
+    "fatPerServing": 26,
+    "tagCodes": [
+      "keto",
+      "quick",
+      "lowCarb",
+      "vegetarian"
+    ],
+    "ingredients": [
+      {
+        "name": "Quả bơ sáp",
+        "category": "Fruit",
+        "unit": "g",
+        "amount": 100,
+        "caloriesPer100g": 160,
+        "proteinPer100g": 2,
+        "carbsPer100g": 8.5,
+        "fatPer100g": 14.7
+      },
+      {
+        "name": "Hạt chia",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 10,
+        "caloriesPer100g": 486,
+        "proteinPer100g": 17,
+        "carbsPer100g": 42,
+        "fatPer100g": 31
+      }
+    ]
+  },
+  {
+    "title": "Smoothie bowl chuối việt quất hạt chia",
+    "description": "Bát sinh tố sánh mịn mát lạnh từ chuối đông lạnh, việt quất và sữa chua Hy Lạp, phủ hạt chia và granola giòn tan.",
+    "imageUrl": "https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Xay nhuyễn chuối đông lạnh, việt quất và sữa chua Hy Lạp không đường.\n2. Đổ hỗn hợp ra tô sứ.\n3. Xếp dâu tây, hạt chia, hạnh nhân lát và granola lên bề mặt.",
+    "prepTimeMinutes": 8,
+    "cookTimeMinutes": 0,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Breakfast,Snack",
+    "caloriesPerServing": 290,
+    "proteinPerServing": 14,
+    "carbsPerServing": 46,
+    "fatPerServing": 6,
+    "tagCodes": [
+      "eatClean",
+      "quick",
+      "vegetarian"
+    ],
+    "ingredients": [
+      {
+        "name": "Sữa chua Hy Lạp",
+        "category": "Dairy",
+        "unit": "g",
+        "amount": 100,
+        "caloriesPer100g": 97,
+        "proteinPer100g": 9,
+        "carbsPer100g": 3.6,
+        "fatPer100g": 5
+      },
+      {
+        "name": "Chuối tiêu",
+        "category": "Fruit",
+        "unit": "g",
+        "amount": 100,
+        "caloriesPer100g": 89,
+        "proteinPer100g": 1.1,
+        "carbsPer100g": 23,
+        "fatPer100g": 0.3
+      },
+      {
+        "name": "Quả việt quất",
+        "category": "Fruit",
+        "unit": "g",
+        "amount": 50,
+        "caloriesPer100g": 57,
+        "proteinPer100g": 0.7,
+        "carbsPer100g": 14,
+        "fatPer100g": 0.3
+      },
+      {
+        "name": "Hạt chia",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 10,
+        "caloriesPer100g": 486,
+        "proteinPer100g": 17,
+        "carbsPer100g": 42,
+        "fatPer100g": 31
+      }
+    ]
+  },
+  {
+    "title": "Sữa chua Hy Lạp mix dâu tây granola hạt óc chó",
+    "description": "Món ăn nhẹ chuẩn xu hướng healthy với sữa chua Hy Lạp sánh đặc giàu probiotic, dâu tây mọng đỏ và hạt óc chó giòn bùi.",
+    "imageUrl": "https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Múc 150g sữa chua Hy Lạp không đường ra ly thủy tinh.\n2. Xếp dâu tây tươi cắt lát xung quanh.\n3. Rắc granola yến mạch và hạt óc chó bẻ nhỏ lên trên, thưởng thức ngay.",
+    "prepTimeMinutes": 5,
+    "cookTimeMinutes": 0,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Breakfast,Snack",
+    "caloriesPerServing": 270,
+    "proteinPerServing": 18,
+    "carbsPerServing": 25,
+    "fatPerServing": 11,
+    "tagCodes": [
+      "eatClean",
+      "highProtein",
+      "quick",
+      "vegetarian"
+    ],
+    "ingredients": [
+      {
+        "name": "Sữa chua Hy Lạp",
+        "category": "Dairy",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 97,
+        "proteinPer100g": 9,
+        "carbsPer100g": 3.6,
+        "fatPer100g": 5
+      },
+      {
+        "name": "Yến mạch cán dẹt",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 30,
+        "caloriesPer100g": 389,
+        "proteinPer100g": 16.9,
+        "carbsPer100g": 66,
+        "fatPer100g": 6.9
+      }
+    ]
+  },
+  {
+    "title": "Thanh ngũ cốc Granola mật ong hạt điều",
+    "description": "Thanh năng lượng tiện lợi bỏ túi làm từ yến mạch nướng giòn quyện mật ong hoa rừng và hạt điều thơm bùi.",
+    "imageUrl": "https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Trộn đều yến mạch cán dẹt, hạt điều giã dập, hạt bí xanh và mật ong nguyên chất.\n2. Ép chặt hỗn hợp vào khay nướng lót giấy nến.\n3. Nướng 160 độ C trong 15 phút, để nguội hoàn toàn rồi cắt thành từng thanh chữ nhật.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 15,
+    "servings": 5,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Snack",
+    "caloriesPerServing": 210,
+    "proteinPerServing": 7,
+    "carbsPerServing": 26,
+    "fatPerServing": 10,
+    "tagCodes": [
+      "eatClean",
+      "budget",
+      "vegetarian"
+    ],
+    "ingredients": [
+      {
+        "name": "Yến mạch cán dẹt",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 80,
+        "caloriesPer100g": 389,
+        "proteinPer100g": 16.9,
+        "carbsPer100g": 66,
+        "fatPer100g": 6.9
+      }
+    ]
+  },
+  {
+    "title": "Trứng chần quả bơ bánh mì đen nướng",
+    "description": "Bữa sáng chuẩn phong cách châu Âu với bánh mì lúa mạch đen nướng giòn, bơ dầm sánh béo và trứng lòng đào béo ngậy.",
+    "imageUrl": "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Nướng giòn lát bánh mì đen.\n2. Dầm nhuyễn nửa quả bơ chín cùng chút nước cốt chanh và muối tiêu.\n3. Chần trứng lòng đào trong nước sôi có giấm, đặt lên lớp bơ trên bánh mì.",
+    "prepTimeMinutes": 5,
+    "cookTimeMinutes": 5,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Breakfast",
+    "caloriesPerServing": 330,
+    "proteinPerServing": 15,
+    "carbsPerServing": 26,
+    "fatPerServing": 18,
+    "tagCodes": [
+      "eatClean",
+      "quick",
+      "lowCarb",
+      "vegetarian"
+    ],
+    "ingredients": [
+      {
+        "name": "Quả bơ sáp",
+        "category": "Fruit",
+        "unit": "g",
+        "amount": 80,
+        "caloriesPer100g": 160,
+        "proteinPer100g": 2,
+        "carbsPer100g": 8.5,
+        "fatPer100g": 14.7
+      },
+      {
+        "name": "Bánh mì nguyên cám",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 60,
+        "caloriesPer100g": 250,
+        "proteinPer100g": 9,
+        "carbsPer100g": 48,
+        "fatPer100g": 3.5
+      },
+      {
+        "name": "Trứng gà",
+        "category": "Dairy",
+        "unit": "quả",
+        "amount": 2,
+        "caloriesPer100g": 155,
+        "proteinPer100g": 13,
+        "carbsPer100g": 1.1,
+        "fatPer100g": 11
+      }
+    ]
+  },
+  {
+    "title": "Trứng cuộn rau củ thanh đạm",
+    "description": "Món ăn nhanh gọn, bổ sung protein và chất xơ tuyệt vời cho bữa sáng hoặc bữa phụ.",
+    "imageUrl": "https://images.unsplash.com/photo-1525351484163-7529414344d8",
+    "instructions": "1. Đánh tan 2 quả trứng gà.\n2. Băm nhỏ ớt chuông, dưa leo.\n3. Trộn rau vào trứng và tráng mỏng trên chảo chống dính, cuộn tròn.",
+    "prepTimeMinutes": 5,
+    "cookTimeMinutes": 5,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Breakfast,Snack",
+    "caloriesPerServing": 210,
+    "proteinPerServing": 16,
+    "carbsPerServing": 4,
+    "fatPerServing": 14,
+    "tagCodes": [
+      "quick"
+    ],
+    "ingredients": [
+      {
+        "name": "Trứng gà",
+        "category": "Dairy",
+        "unit": "quả",
+        "amount": 2,
+        "caloriesPer100g": 155,
+        "proteinPer100g": 13,
+        "carbsPer100g": 1.1,
+        "fatPer100g": 11
+      },
+      {
+        "name": "Ớt chuông đỏ",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 30,
+        "caloriesPer100g": 31,
+        "proteinPer100g": 1,
+        "carbsPer100g": 6,
+        "fatPer100g": 0.3
+      }
+    ]
+  },
+  {
+    "title": "Trứng tráng ngải cứu thịt bằm bồi bổ",
+    "description": "Món ăn dân dã bồi bổ khí huyết với trứng gà đánh tan cùng lá ngải cứu tươi non và thịt nạc băm đậm đà.",
+    "imageUrl": "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Lá ngải cứu rửa sạch thái nhỏ, băm nhỏ thịt nạc heo.\n2. Đánh tan 2 quả trứng gà cùng ngải cứu, thịt bằm, chút nước mắm và tiêu.\n3. Rán trên chảo chống dính với lửa vừa đến khi hai mặt vàng ươm.",
+    "prepTimeMinutes": 8,
+    "cookTimeMinutes": 6,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Breakfast,Dinner",
+    "caloriesPerServing": 260,
+    "proteinPerServing": 22,
+    "carbsPerServing": 4,
+    "fatPerServing": 17,
+    "tagCodes": [
+      "keto",
+      "quick",
+      "budget",
+      "lowCarb"
+    ],
+    "ingredients": [
+      {
+        "name": "Trứng gà",
+        "category": "Dairy",
+        "unit": "quả",
+        "amount": 2,
+        "caloriesPer100g": 155,
+        "proteinPer100g": 13,
+        "carbsPer100g": 1.1,
+        "fatPer100g": 11
+      },
+      {
+        "name": "Thịt nạc thăn",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 50,
+        "caloriesPer100g": 143,
+        "proteinPer100g": 21,
+        "carbsPer100g": 0,
+        "fatPer100g": 6
+      }
+    ]
+  },
+  {
+    "title": "Tôm sú rim dừa non thịt nạc thăn",
+    "description": "Món mặn truyền thống với tôm tươi ngọt kết hợp thịt nạc thăn mềm ngấm vị nước dừa tươi thanh nhẹ.",
+    "imageUrl": "https://images.unsplash.com/photo-1559742811-822873691df8?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Thịt nạc thăn thái mỏng xào sơ cùng tỏi băm.\n2. Cho tôm sú đã lột vỏ vào đảo đều đến khi tôm chuyển đỏ.\n3. Thêm nước dừa tươi đun cạn nhẹ, nêm tiêu và hành lá.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 12,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 360,
+    "proteinPerServing": 38,
+    "carbsPerServing": 14,
+    "fatPerServing": 16,
+    "tagCodes": [
+      "eatClean",
+      "highProtein",
+      "lowCarb"
+    ],
+    "ingredients": [
+      {
+        "name": "Thịt nạc thăn",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 90,
+        "caloriesPer100g": 143,
+        "proteinPer100g": 21,
+        "carbsPer100g": 0,
+        "fatPer100g": 6
+      },
+      {
+        "name": "Tôm tươi",
+        "category": "Seafood",
+        "unit": "g",
+        "amount": 120,
+        "caloriesPer100g": 99,
+        "proteinPer100g": 24,
+        "carbsPer100g": 0.2,
+        "fatPer100g": 0.3
+      }
+    ]
+  },
+  {
+    "title": "Xôi yến mạch hạt sen đậu xanh",
+    "description": "Món xôi dinh dưỡng dẻo thơm từ yến mạch nguyên hạt kết hợp hạt sen bùi ngậy và đậu xanh thanh mát.",
+    "imageUrl": "https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Hấp chín hạt sen tươi và đậu xanh cà vỏ.\n2. Nấu yến mạch cán dẹt với nước cốt dừa loãng và xíu muối.\n3. Trộn đều yến mạch với hạt sen, đậu xanh và rắc chút vừng rang.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 15,
+    "servings": 1,
+    "difficulty": "Medium",
+    "isPremium": false,
+    "mealTypes": "Breakfast",
+    "caloriesPerServing": 310,
+    "proteinPerServing": 12,
+    "carbsPerServing": 52,
+    "fatPerServing": 6,
+    "tagCodes": [
+      "eatClean",
+      "vegan",
+      "budget",
+      "vegetarian"
+    ],
+    "ingredients": [
+      {
+        "name": "Yến mạch cán dẹt",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 70,
+        "caloriesPer100g": 389,
+        "proteinPer100g": 16.9,
+        "carbsPer100g": 66,
+        "fatPer100g": 6.9
+      },
+      {
+        "name": "Hạt sen tươi",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 40,
+        "caloriesPer100g": 89,
+        "proteinPer100g": 4.1,
+        "carbsPer100g": 17,
+        "fatPer100g": 0.5
+      },
+      {
+        "name": "Đậu xanh cà vỏ",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 30,
+        "caloriesPer100g": 105,
+        "proteinPer100g": 7,
+        "carbsPer100g": 19,
+        "fatPer100g": 0.4
+      }
+    ]
+  },
+  {
+    "title": "Đậu hũ kho nấm bào ngư tiêu xanh",
+    "description": "Món chay thanh tao đậm vị với đậu hũ chiên mềm thấm đẫm nước sốt tương thơm lừng nấm bào ngư và tiêu sọ tươi.",
+    "imageUrl": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Cắt đậu hũ miếng vuông, áp chảo vàng nhẹ các mặt.\n2. Xào thơm nấm bào ngư với hành baro và tiêu xanh đập dập.\n3. Cho đậu hũ vào kho cùng nước tương và chút nước dừa trong 10 phút đến khi sánh sệt.",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 12,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 230,
+    "proteinPerServing": 16,
+    "carbsPerServing": 15,
+    "fatPerServing": 11,
+    "tagCodes": [
+      "eatClean",
+      "vegan",
+      "budget",
+      "vegetarian"
+    ],
+    "ingredients": [
+      {
+        "name": "Đậu hũ non",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 76,
+        "proteinPer100g": 8,
+        "carbsPer100g": 1.9,
+        "fatPer100g": 4.8
+      },
+      {
+        "name": "Nấm bào ngư",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 100,
+        "caloriesPer100g": 33,
+        "proteinPer100g": 3.3,
+        "carbsPer100g": 6.4,
+        "fatPer100g": 0.4
+      }
+    ]
+  },
+  {
+    "title": "Đậu hũ nhồi thịt hấp sốt cà chua hành hoa",
+    "description": "Đậu hũ trắng nhồi thịt nạc băm nấm hương, hấp chín rồi sốt đẫm cà chua thanh dịu, dễ ăn và giàu dinh dưỡng.",
+    "imageUrl": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Rạch giữa bìa đậu hũ, nhồi hỗn hợp thịt bằm trộn mộc nhĩ nấm hương.\n2. Hấp đậu hũ trong 12 phút cho chín phần nhân thịt.\n3. Làm sốt cà chua sệt, cho đậu hũ vào rim 3 phút rồi rắc hành ngò.",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 15,
+    "servings": 1,
+    "difficulty": "Medium",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 310,
+    "proteinPerServing": 26,
+    "carbsPerServing": 14,
+    "fatPerServing": 15,
+    "tagCodes": [
+      "eatClean",
+      "highProtein",
+      "budget"
+    ],
+    "ingredients": [
+      {
+        "name": "Cà chua bi",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 80,
+        "caloriesPer100g": 18,
+        "proteinPer100g": 0.9,
+        "carbsPer100g": 3.9,
+        "fatPer100g": 0.2
+      },
+      {
+        "name": "Đậu hũ non",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 150,
+        "caloriesPer100g": 76,
+        "proteinPer100g": 8,
+        "carbsPer100g": 1.9,
+        "fatPer100g": 4.8
+      },
+      {
+        "name": "Thịt nạc thăn",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 80,
+        "caloriesPer100g": 143,
+        "proteinPer100g": 21,
+        "carbsPer100g": 0,
+        "fatPer100g": 6
+      }
+    ]
+  },
+  {
+    "title": "Đậu phụ chiên nồi chiên không dầu sốt sả ớt",
+    "description": "Bìa đậu giòn rụm bên ngoài mọng nước bên trong hoàn toàn không ngấy dầu, quyện sốt sả ớt cay nồng bắt cơm.",
+    "imageUrl": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Đậu phụ thấm ráo nước, cắt miếng vuông vừa ăn.\n2. Xếp vào nồi chiên không dầu nướng 190 độ C trong 15 phút đến khi vàng giòn.\n3. Phi thơm sả ớt băm, thêm xíu xì dầu rồi đảo nhanh đậu phụ vào cho ngấm.",
+    "prepTimeMinutes": 8,
+    "cookTimeMinutes": 15,
+    "servings": 1,
+    "difficulty": "Easy",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 220,
+    "proteinPerServing": 18,
+    "carbsPerServing": 9,
+    "fatPerServing": 12,
+    "tagCodes": [
+      "eatClean",
+      "vegan",
+      "budget",
+      "vegetarian"
+    ],
+    "ingredients": [
+      {
+        "name": "Đậu hũ non",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 160,
+        "caloriesPer100g": 76,
+        "proteinPer100g": 8,
+        "carbsPer100g": 1.9,
+        "fatPer100g": 4.8
+      }
+    ]
+  },
+  {
+    "title": "Ức gà cuộn măng tây nướng mật ong",
+    "description": "Ức gà đập mỏng cuộn lấy cọng măng tây giòn ngọt, nướng xém cạnh vàng thơm hấp dẫn.",
+    "imageUrl": "https://images.unsplash.com/photo-1606728035253-49e8a23146de?auto=format&fit=crop&w=600&q=80",
+    "instructions": "1. Lọc mỏng ức gà, dần nhẹ rồi ướp chút muối tiêu.\n2. Đặt măng tây vào giữa, cuộn tròn và cố định bằng tăm.\n3. Nướng nồi chiên không dầu ở 180 độ C trong 12 phút, phết xíu mật ong phút cuối.",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 12,
+    "servings": 1,
+    "difficulty": "Medium",
+    "isPremium": false,
+    "mealTypes": "Lunch,Dinner",
+    "caloriesPerServing": 320,
+    "proteinPerServing": 38,
+    "carbsPerServing": 12,
+    "fatPerServing": 12,
+    "tagCodes": [
+      "eatClean",
+      "keto",
+      "highProtein",
+      "lowCarb"
+    ],
+    "ingredients": [
+      {
+        "name": "Ức gà phi lê",
+        "category": "Meat",
+        "unit": "g",
+        "amount": 160,
+        "caloriesPer100g": 165,
+        "proteinPer100g": 31,
+        "carbsPer100g": 0,
+        "fatPer100g": 3.6
+      },
+      {
+        "name": "Măng tây",
+        "category": "Vegetable",
+        "unit": "g",
+        "amount": 80,
+        "caloriesPer100g": 20,
+        "proteinPer100g": 2.2,
+        "carbsPer100g": 3.9,
+        "fatPer100g": 0.1
+      }
+    ]
+  }
+]

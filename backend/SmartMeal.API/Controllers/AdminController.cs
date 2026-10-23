@@ -715,6 +715,200 @@ public class AdminController : ControllerBase
     }
 
     [Authorize(Roles = "Admin")]
+    [HttpPost("recipes/bulk-import")]
+    public async Task<ActionResult<ApiResponse<AdminBulkImportResultDto>>> BulkImportRecipes([FromBody] AdminBulkImportRequestDto dto)
+    {
+        if (dto.Recipes == null || dto.Recipes.Count == 0)
+        {
+            return BadRequest(ApiResponse<AdminBulkImportResultDto>.Fail("Danh sách món ăn cần nhập không được để trống.", null, ApiErrorKind.BadRequest));
+        }
+
+        var result = new AdminBulkImportResultDto
+        {
+            TotalSubmitted = dto.Recipes.Count
+        };
+
+        var allTags = await _db.Tags.ToListAsync();
+
+        foreach (var item in dto.Recipes)
+        {
+            var titleTrimmed = item.Title.Trim();
+            if (string.IsNullOrWhiteSpace(titleTrimmed))
+            {
+                result.TotalSkipped++;
+                result.Messages.Add("Bỏ qua 1 dòng do tiêu đề trống.");
+                continue;
+            }
+
+            var existing = await _db.Recipes
+                .Include(r => r.RecipeTags)
+                .Include(r => r.RecipeIngredients)
+                .FirstOrDefaultAsync(r => r.Title.ToLower() == titleTrimmed.ToLower());
+
+            if (existing != null)
+            {
+                if (!dto.OverwriteExisting)
+                {
+                    result.TotalSkipped++;
+                    result.Messages.Add($"Bỏ qua món '{titleTrimmed}' (đã tồn tại trong hệ thống).");
+                    continue;
+                }
+
+                // Cập nhật món ăn đã có
+                existing.Description = item.Description?.Trim() ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+                {
+                    existing.ImageUrl = item.ImageUrl.Trim();
+                }
+                existing.Instructions = item.Instructions?.Trim() ?? string.Empty;
+                existing.PrepTimeMinutes = Math.Max(1, item.PrepTimeMinutes);
+                existing.CookTimeMinutes = Math.Max(0, item.CookTimeMinutes);
+                existing.Servings = Math.Max(1, item.Servings);
+                existing.Difficulty = string.IsNullOrWhiteSpace(item.Difficulty) ? "Easy" : item.Difficulty;
+                existing.IsPremium = item.IsPremium;
+                existing.MealTypes = string.IsNullOrWhiteSpace(item.MealTypes) ? "Lunch" : item.MealTypes.Trim();
+                existing.CaloriesPerServing = item.CaloriesPerServing;
+                existing.ProteinPerServing = item.ProteinPerServing;
+                existing.CarbsPerServing = item.CarbsPerServing;
+                existing.FatPerServing = item.FatPerServing;
+
+                // Cập nhật tags
+                _db.RecipeTags.RemoveRange(existing.RecipeTags);
+                if (item.TagCodes != null && item.TagCodes.Count > 0)
+                {
+                    var matchedTags = allTags.Where(t => item.TagCodes.Any(tc => string.Equals(tc, t.Code, StringComparison.OrdinalIgnoreCase))).ToList();
+                    foreach (var t in matchedTags)
+                    {
+                        _db.RecipeTags.Add(new RecipeTag { RecipeId = existing.Id, TagId = t.Id });
+                    }
+                }
+
+                // Cập nhật ingredients
+                _db.RecipeIngredients.RemoveRange(existing.RecipeIngredients);
+                if (item.Ingredients != null && item.Ingredients.Count > 0)
+                {
+                    foreach (var ing in item.Ingredients)
+                    {
+                        var ingName = ing.Name?.Trim();
+                        if (string.IsNullOrWhiteSpace(ingName)) continue;
+
+                        var dbIng = await _db.Ingredients.FirstOrDefaultAsync(i => i.Name.ToLower() == ingName.ToLower());
+                        if (dbIng is null)
+                        {
+                            dbIng = new Ingredient
+                            {
+                                Name = ingName,
+                                Category = string.IsNullOrWhiteSpace(ing.Category) ? "Other" : ing.Category,
+                                DefaultUnit = string.IsNullOrWhiteSpace(ing.Unit) ? "g" : ing.Unit,
+                                CaloriesPer100g = ing.CaloriesPer100g,
+                                ProteinPer100g = ing.ProteinPer100g,
+                                CarbsPer100g = ing.CarbsPer100g,
+                                FatPer100g = ing.FatPer100g,
+                                EstimatedPriceVnd = ing.EstimatedPriceVnd
+                            };
+                            _db.Ingredients.Add(dbIng);
+                            await _db.SaveChangesAsync();
+                        }
+
+                        _db.RecipeIngredients.Add(new RecipeIngredient
+                        {
+                            RecipeId = existing.Id,
+                            IngredientId = dbIng.Id,
+                            Amount = ing.Amount > 0 ? ing.Amount : 100,
+                            Unit = string.IsNullOrWhiteSpace(ing.Unit) ? dbIng.DefaultUnit : ing.Unit
+                        });
+                    }
+                }
+
+                result.TotalUpdated++;
+                result.Messages.Add($"Đã cập nhật món '{titleTrimmed}'.");
+            }
+            else
+            {
+                // Thêm mới món ăn
+                var newRecipe = new Recipe
+                {
+                    Title = titleTrimmed,
+                    Description = item.Description?.Trim() ?? string.Empty,
+                    ImageUrl = string.IsNullOrWhiteSpace(item.ImageUrl)
+                        ? "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80"
+                        : item.ImageUrl.Trim(),
+                    Instructions = item.Instructions?.Trim() ?? string.Empty,
+                    PrepTimeMinutes = Math.Max(1, item.PrepTimeMinutes),
+                    CookTimeMinutes = Math.Max(0, item.CookTimeMinutes),
+                    Servings = Math.Max(1, item.Servings),
+                    Difficulty = string.IsNullOrWhiteSpace(item.Difficulty) ? "Easy" : item.Difficulty,
+                    IsPremium = item.IsPremium,
+                    MealTypes = string.IsNullOrWhiteSpace(item.MealTypes) ? "Lunch" : item.MealTypes.Trim(),
+                    CaloriesPerServing = item.CaloriesPerServing,
+                    ProteinPerServing = item.ProteinPerServing,
+                    CarbsPerServing = item.CarbsPerServing,
+                    FatPerServing = item.FatPerServing,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _db.Recipes.Add(newRecipe);
+                await _db.SaveChangesAsync();
+
+                // Tags
+                if (item.TagCodes != null && item.TagCodes.Count > 0)
+                {
+                    var matchedTags = allTags.Where(t => item.TagCodes.Any(tc => string.Equals(tc, t.Code, StringComparison.OrdinalIgnoreCase))).ToList();
+                    foreach (var t in matchedTags)
+                    {
+                        _db.RecipeTags.Add(new RecipeTag { RecipeId = newRecipe.Id, TagId = t.Id });
+                    }
+                }
+
+                // Ingredients
+                if (item.Ingredients != null && item.Ingredients.Count > 0)
+                {
+                    foreach (var ing in item.Ingredients)
+                    {
+                        var ingName = ing.Name?.Trim();
+                        if (string.IsNullOrWhiteSpace(ingName)) continue;
+
+                        var dbIng = await _db.Ingredients.FirstOrDefaultAsync(i => i.Name.ToLower() == ingName.ToLower());
+                        if (dbIng is null)
+                        {
+                            dbIng = new Ingredient
+                            {
+                                Name = ingName,
+                                Category = string.IsNullOrWhiteSpace(ing.Category) ? "Other" : ing.Category,
+                                DefaultUnit = string.IsNullOrWhiteSpace(ing.Unit) ? "g" : ing.Unit,
+                                CaloriesPer100g = ing.CaloriesPer100g,
+                                ProteinPer100g = ing.ProteinPer100g,
+                                CarbsPer100g = ing.CarbsPer100g,
+                                FatPer100g = ing.FatPer100g,
+                                EstimatedPriceVnd = ing.EstimatedPriceVnd
+                            };
+                            _db.Ingredients.Add(dbIng);
+                            await _db.SaveChangesAsync();
+                        }
+
+                        _db.RecipeIngredients.Add(new RecipeIngredient
+                        {
+                            RecipeId = newRecipe.Id,
+                            IngredientId = dbIng.Id,
+                            Amount = ing.Amount > 0 ? ing.Amount : 100,
+                            Unit = string.IsNullOrWhiteSpace(ing.Unit) ? dbIng.DefaultUnit : ing.Unit
+                        });
+                    }
+                }
+
+                result.TotalImported++;
+                result.Messages.Add($"Đã thêm mới món '{titleTrimmed}'.");
+            }
+        }
+
+        await _db.SaveChangesAsync();
+
+        return Ok(ApiResponse<AdminBulkImportResultDto>.Ok(
+            result,
+            $"Đã xử lý xong: Thêm mới {result.TotalImported}, Cập nhật {result.TotalUpdated}, Bỏ qua {result.TotalSkipped}."));
+    }
+
+    [Authorize(Roles = "Admin")]
     [HttpPut("recipes/{id:guid}")]
     public async Task<ActionResult<ApiResponse<AdminRecipeDetailDto>>> UpdateRecipe(Guid id, [FromBody] AdminUpdateRecipeDto dto)
     {
