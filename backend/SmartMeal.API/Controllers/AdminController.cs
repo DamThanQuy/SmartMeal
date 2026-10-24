@@ -735,6 +735,22 @@ public class AdminController : ControllerBase
             return BadRequest(ApiResponse<AdminBulkImportResultDto>.Fail("Danh sách món ăn cần nhập không được để trống.", null, ApiErrorKind.BadRequest));
         }
 
+        // Kiểm tra cả batch trước khi lưu món đầu tiên để dữ liệu sai không gây ghi dở dang.
+        foreach (var item in dto.Recipes)
+        {
+            if (item is null)
+            {
+                return BadRequest(ApiResponse<AdminBulkImportResultDto>.Fail("Dòng món ăn không được là null.", null, ApiErrorKind.BadRequest));
+            }
+
+            if (ValidateRecipe(item, out var mealTypes) is { } invalid)
+            {
+                return BadRequest(ApiResponse<AdminBulkImportResultDto>.Fail(invalid, null, ApiErrorKind.BadRequest));
+            }
+
+            item.MealTypes = mealTypes;
+        }
+
         var result = new AdminBulkImportResultDto
         {
             TotalSubmitted = dto.Recipes.Count
@@ -1068,7 +1084,7 @@ public class AdminController : ControllerBase
         mealTypes = normalized.Count == 0 ? MealTypes.Lunch : string.Join(",", normalized.Distinct());
 
         var totalMinutes = Math.Max(1, dto.PrepTimeMinutes) + Math.Max(0, dto.CookTimeMinutes);
-        if (dto.TagCodes?.Contains(QuickTagCode) == true && totalMinutes > QuickMaxMinutes)
+        if (dto.TagCodes?.Any(code => string.Equals(code, QuickTagCode, StringComparison.OrdinalIgnoreCase)) == true && totalMinutes > QuickMaxMinutes)
         {
             return $"Tag \"Nhanh Gọn (< 15 phút)\" chỉ dành cho món có tổng thời gian chuẩn bị + nấu ≤ {QuickMaxMinutes} phút (món này {totalMinutes} phút).";
         }

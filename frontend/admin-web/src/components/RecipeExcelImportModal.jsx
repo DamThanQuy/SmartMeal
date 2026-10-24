@@ -185,6 +185,7 @@ export default function RecipeExcelImportModal({ isOpen, onClose, onSuccess, onN
     if (!selectedFile) return;
 
     setFile(selectedFile);
+    setParsedRecipes([]);
     setImportResult(null);
 
     const reader = new FileReader();
@@ -217,8 +218,12 @@ export default function RecipeExcelImportModal({ isOpen, onClose, onSuccess, onN
           const imageUrl = String(getVal(['LinkAnh', 'Hình ảnh', 'ImageUrl', 'Image', 'Anh'], '')).trim();
           const mealTypes = String(getVal(['BuaAn', 'Bữa ăn', 'MealType', 'MealTypes'], 'Lunch')).trim();
           const difficulty = String(getVal(['DoKho', 'Độ khó', 'Difficulty'], 'Easy')).trim();
-          const prepTime = parseInt(getVal(['ThoiGianChuanBiPhut', 'Chuẩn bị', 'PrepTime', 'PrepTimeMinutes'], 10)) || 10;
-          const cookTime = parseInt(getVal(['ThoiGianNauPhut', 'Nấu', 'CookTime', 'CookTimeMinutes'], 15)) || 15;
+          const parseMinutes = (keys, fallback) => {
+            const value = parseInt(getVal(keys, fallback), 10);
+            return Number.isNaN(value) ? fallback : value;
+          };
+          const prepTime = parseMinutes(['ThoiGianChuanBiPhut', 'Chuẩn bị', 'PrepTime', 'PrepTimeMinutes'], 10);
+          const cookTime = parseMinutes(['ThoiGianNauPhut', 'Nấu', 'CookTime', 'CookTimeMinutes'], 15);
           const servings = parseInt(getVal(['KhauPhan', 'Khẩu phần', 'Servings'], 1)) || 1;
           
           const rawPro = String(getVal(['GoiProVip', 'Pro', 'VIP', 'IsPremium', 'Premium'], 'FALSE')).toUpperCase();

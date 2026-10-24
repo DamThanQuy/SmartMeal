@@ -16,6 +16,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { api } from '../services/api';
+import Pagination from './Pagination';
 import RecipeExcelImportModal from './RecipeExcelImportModal';
 
 const PAGE_SIZE = 16;
