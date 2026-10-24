@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import RecipeExcelImportModal from './RecipeExcelImportModal';
+import Pagination from './Pagination';
 
 const PAGE_SIZE = 16;
 
