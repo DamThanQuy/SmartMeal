@@ -15,6 +15,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  type ScrollViewInstance,
   View,
 } from 'react-native';
 import {
@@ -53,7 +54,7 @@ export function FridgeScreen({ route, navigation }: Props) {
   const [hasConfirmedForRecipes, setHasConfirmedForRecipes] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const manualIngredientSequence = useRef(0);
-  const scrollView = useRef<ScrollView>(null);
+  const scrollView = useRef<ScrollViewInstance>(null);
   const recipeSectionOffset = useRef(0);
   const shouldRevealRecipes = useRef(false);
 

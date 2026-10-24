@@ -3,6 +3,7 @@
  * XÁC NHẬN qua check-status (server tự hỏi cổng thanh toán) trước khi coi là Pro (BR-241/242). Không còn đường tắt
  * kích hoạt thử. `api`, `Linking` và env được mock; thời gian chờ dùng fake timers.
  */
+import { Linking } from 'react-native';
 import type { MembershipSnapshot } from '@/state/premium/premiumStore';
 
 // Mỗi test nạp lại module (jest.resetModules) — lần chạy đầu chưa có cache biên dịch, chạy song song với suite khác thì
@@ -40,11 +41,10 @@ const SEPAY_SESSION = {
 
 function loadService(appEnv: 'development' | 'production' = 'development') {
   const apiMock = { get: jest.fn(), post: jest.fn() };
-  const linking = { openURL: jest.fn().mockResolvedValue(undefined) };
-
   jest.resetModules();
   jest.doMock('@/config/env', () => ({ ENV: { appEnv } }));
-  jest.doMock('react-native', () => ({ Linking: linking }));
+  const openURLSpy = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined as any);
+  const linking = { openURL: openURLSpy };
   jest.doMock('@/services/api', () => ({
     api: apiMock,
     ENDPOINTS: jest.requireActual('@/services/api/endpoints').ENDPOINTS,

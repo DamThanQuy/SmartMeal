@@ -9,6 +9,7 @@ obj/
 .vscode/
 appsettings.Development.json
 secrets.json
+publish_output/
 
 # Flutter & Dart
 .dart_tool/
