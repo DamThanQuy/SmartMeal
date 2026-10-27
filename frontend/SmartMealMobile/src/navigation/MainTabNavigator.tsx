@@ -116,7 +116,7 @@ export function MainTabNavigator() {
         name={MAIN_TAB_ROUTES.PLANNER}
         component={PlannerStackNavigator}
         options={{
-          title: 'Bữa ăn',
+          title: 'Thực đơn',
           tabBarIcon: PlannerTabIcon,
         }}
         listeners={guestGuardListeners}

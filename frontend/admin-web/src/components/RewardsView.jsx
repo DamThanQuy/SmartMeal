@@ -16,8 +16,10 @@ import {
   Target
 } from 'lucide-react';
 import { api } from '../services/api';
+import { useConfirm } from './useConfirm';
 
 export default function RewardsView({ onNotify }) {
+  const { confirm, dialog } = useConfirm();
   const [activeTab, setActiveTab] = useState('challenges'); // 'challenges' | 'badges' | 'xp'
   const [challenges, setChallenges] = useState([]);
   const [badges, setBadges] = useState([]);
@@ -126,7 +128,7 @@ export default function RewardsView({ onNotify }) {
   };
 
   const handleDeleteChallenge = async (id, title) => {
-    if (!window.confirm(`Bạn có chắc muốn xóa thử thách "${title}"?`)) return;
+    if (!(await confirm(`Xóa thử thách "${title}"? Tiến độ của người đang tham gia cũng bị xóa.`, { title: 'Xóa thử thách', confirmLabel: 'Xóa thử thách', danger: true }))) return;
     try {
       await api.deleteChallenge(id);
       onNotify('Đã xóa thử thách.', 'success');
@@ -169,6 +171,7 @@ export default function RewardsView({ onNotify }) {
 
   return (
     <div className="view-container">
+      {dialog}
       {/* Top Banner / Actions */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
@@ -329,6 +332,7 @@ export default function RewardsView({ onNotify }) {
                             className="btn btn-secondary btn-sm"
                             onClick={() => handleOpenEditChallenge(ch)}
                             title="Chỉnh sửa thử thách"
+                            aria-label="Chỉnh sửa thử thách"
                           >
                             <Edit2 size={14} />
                           </button>
@@ -336,6 +340,7 @@ export default function RewardsView({ onNotify }) {
                             className="btn btn-danger btn-sm"
                             onClick={() => handleDeleteChallenge(ch.id, ch.title)}
                             title="Xóa thử thách"
+                            aria-label="Xóa thử thách"
                           >
                             <Trash2 size={14} />
                           </button>

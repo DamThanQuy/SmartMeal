@@ -23,7 +23,8 @@ function loginAsStoredAdmin() {
 
 beforeEach(() => {
   setupApi(api)
-  vi.spyOn(window, 'confirm').mockReturnValue(true)
+  // Tab đang mở nằm trên hash của URL: mỗi test bắt đầu từ Bảng điều khiển.
+  window.history.replaceState(null, '', '/')
 })
 
 describe('App — đăng nhập / đăng xuất', () => {
@@ -115,6 +116,30 @@ describe('App — điều hướng & thông báo', () => {
 
     expect(pageTitle()).toHaveTextContent(title)
     await waitFor(() => expect(api[apiFn]).toHaveBeenCalled())
+  })
+
+  it('tab đang mở nằm trên URL: chọn menu đổi hash, mở thẳng #/users vào đúng trang', async () => {
+    loginAsStoredAdmin()
+    const user = userEvent.setup()
+    const { unmount } = render(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Báo Cáo Doanh Thu' }))
+    expect(window.location.hash).toBe('#/revenue')
+    expect(screen.getByRole('button', { name: 'Báo Cáo Doanh Thu' })).toHaveAttribute('aria-current', 'page')
+    unmount()
+
+    window.history.replaceState(null, '', '/#/users')
+    render(<App />)
+    expect(pageTitle()).toHaveTextContent('Quản Lý Người Dùng & Kiểm Duyệt Tài Khoản')
+    await waitFor(() => expect(api.getUsers).toHaveBeenCalled())
+  })
+
+  it('hash lạ hoặc trống thì mở Bảng điều khiển', () => {
+    loginAsStoredAdmin()
+    window.history.replaceState(null, '', '/#/khong-co')
+    render(<App />)
+
+    expect(pageTitle()).toHaveTextContent('Bảng Điều Khiển Tổng Quan')
   })
 
   it('nút "Thêm Món Ăn" trên thanh trên mở tab Món ăn với form thêm món', async () => {

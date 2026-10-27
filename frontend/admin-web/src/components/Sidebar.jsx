@@ -36,7 +36,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
         </div>
       </div>
 
-      <nav className="sidebar-nav">
+      <nav className="sidebar-nav" aria-label="Điều hướng quản trị">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -44,9 +44,10 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
             <button
               key={item.id}
               className={`nav-item ${isActive ? 'active' : ''}`}
+              aria-current={isActive ? 'page' : undefined}
               onClick={() => setActiveTab(item.id)}
             >
-              <Icon size={18} />
+              <Icon size={18} aria-hidden="true" />
               <span>{item.label}</span>
             </button>
           );
@@ -71,6 +72,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
           className="btn-logout"
           onClick={onLogout}
           title="Đăng xuất"
+          aria-label="Đăng xuất"
         >
           <LogOut size={16} />
         </button>

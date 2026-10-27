@@ -4,11 +4,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RecipesView from '../../components/RecipesView'
 import { api } from '../../services/api'
 import { listPage, recipeDetail, recipes, setupApi } from '../../test/fixtures'
+import { answerConfirm } from '../../test/confirm'
 
 vi.mock('../../services/api', async (importOriginal) => (await import('../../test/mockApi.js')).mockApiModule(importOriginal))
 
 let onNotify
-let confirmSpy
 
 const cardOf = async (title) => (await screen.findByRole('heading', { level: 4, name: title })).closest('.card')
 const modal = () => document.querySelector('.modal-content')
@@ -31,7 +31,6 @@ async function openCreate(user) {
 beforeEach(() => {
   setupApi(api)
   onNotify = vi.fn()
-  confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
 })
 
 describe('RecipesView — lưới món ăn & bộ lọc', () => {
@@ -255,11 +254,13 @@ describe('RecipesView — sửa & xóa món', () => {
   it('xóa sau khi xác nhận thì gọi deleteRecipe và nạp lại; hủy thì không xóa', async () => {
     const user = await renderLoaded()
 
-    confirmSpy.mockReturnValueOnce(false)
     await user.click(within(await cardOf('Bò kho')).getByTitle('Xóa món ăn'))
+    expect(await answerConfirm(user, false)).toContain('Bò kho')
     expect(api.deleteRecipe).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
 
     await user.click(within(await cardOf('Bò kho')).getByTitle('Xóa món ăn'))
+    await answerConfirm(user)
     expect(api.deleteRecipe).toHaveBeenCalledWith('r2')
     await waitFor(() => expect(onNotify).toHaveBeenCalledWith('Đã xóa món ăn thành công!', 'success'))
   })
@@ -269,6 +270,7 @@ describe('RecipesView — sửa & xóa món', () => {
     const user = await renderLoaded()
 
     await user.click(within(await cardOf('Bò kho')).getByTitle('Xóa món ăn'))
+    await answerConfirm(user)
 
     await waitFor(() => expect(onNotify).toHaveBeenCalledWith('Xóa món ăn thất bại: Đã xảy ra lỗi hệ thống.', 'error'))
   })

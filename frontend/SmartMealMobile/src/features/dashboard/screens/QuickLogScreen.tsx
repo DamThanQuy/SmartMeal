@@ -6,8 +6,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAiQuota, useAiQuotaStore } from '@/features/ai';
 import { MAIN_STACK_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
-import { MEAL_TYPE_OPTIONS, getMealTypeForHour, type MealType } from '@/types/meal.types';
-import { AppChip, AppIconButton, AppText } from '@/components/ui';
+import { getMealTypeForHour, type MealType } from '@/types/meal.types';
+import { MealTypeChips } from '@/components/common';
+import { AppIconButton, AppText } from '@/components/ui';
 import { shadows } from '@/theme/shadows';
 import { spacing } from '@/theme/spacing';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -104,16 +105,7 @@ export function QuickLogScreen({ navigation, route }: Props) {
           />
         </View>
 
-        <View className="flex-row gap-xs">
-          {MEAL_TYPE_OPTIONS.map(option => (
-            <AppChip
-              key={option.id}
-              label={option.label}
-              selected={mealType === option.id}
-              onPress={() => setMealType(option.id)}
-            />
-          ))}
-        </View>
+        <MealTypeChips value={mealType} onChange={setMealType} />
 
         <View className="gap-sm">
           <QuickLogActionRow

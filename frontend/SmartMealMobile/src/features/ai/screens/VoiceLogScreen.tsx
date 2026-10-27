@@ -3,7 +3,7 @@ import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { HelpCircle, Mic, Pause, Play } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
-import { ScreenContainer, ScreenHeader } from '@/components/common';
+import { MealTypeChips, ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppBadge, AppButton, AppCard, AppChip, AppIconButton, AppText } from '@/components/ui';
 import { MAIN_STACK_ROUTES, MAIN_TAB_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
@@ -51,7 +51,9 @@ function formatDuration(durationMillis: number): string {
 // expo-audio); trong lúc nói, phụ đề tạm hiện ngay dưới micro. Chạm micro để dừng → gửi file WAV lên
 // /ai/voice-log/audio → duyệt món → xác nhận mới ghi nhật ký. Micro lỗi thì báo ngay tại chỗ và chạm để thử lại.
 export function VoiceLogScreen({ navigation, route }: Props) {
-  const { mealType, initialResult } = route.params;
+  const { mealType: initialMealType, initialResult } = route.params;
+  // Bữa mặc định theo nơi mở màn; người dùng đổi được trước khi lưu (BR-051, BR-054).
+  const [mealType, setMealType] = useState(initialMealType);
   const { colors } = useTheme();
   const { consumeQuota } = useAiQuota();
   const refreshQuota = useRefreshAiQuota();
@@ -314,6 +316,11 @@ export function VoiceLogScreen({ navigation, route }: Props) {
                 ) : null}
               </View>
               <AppText variant="bodyLg">{`“${voiceResult.transcript}”`}</AppText>
+            </View>
+
+            <View className="gap-xs">
+              <AppText variant="bodyMedium">Ghi vào bữa</AppText>
+              <MealTypeChips value={mealType} onChange={setMealType} />
             </View>
 
             <AppCard className="gap-0">

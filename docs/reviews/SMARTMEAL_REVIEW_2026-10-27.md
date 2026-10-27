@@ -209,3 +209,14 @@ Dự án đã ở mức hoàn thiện cao: kiến trúc phân lớp rõ ràng, c
 | Q3 | *Đã đồng ý, chưa làm:* Free xem được **tổng quan** công thức Pro (ảnh, calo, nguyên liệu) nhưng **khóa các bước nấu và nút "Thêm vào thực đơn"**. Backend trả 403 `pro_required` | Vẫn cho người dùng khám phá món, lại tạo lý do nâng cấp. Khớp BR-231 |
 | Q4 | *Đã đồng ý, chưa làm:* Thực đơn và danh sách đi chợ tính **cho 1 người** (chia lượng nguyên liệu theo `Recipe.Servings`). Ô "Số người ăn" để giai đoạn sau | Sửa L4 với ít thay đổi nhất, không cần migration |
 | Q5 | *Đã đồng ý, chưa làm:* **Chụp nhãn bằng AI** (`scan-label`, `check-safety` dạng văn bản) **tính 1 lượt AI**. **Quét mã vạch** (tra CSDL/Open Food Facts) **miễn phí**, cảnh báo dị ứng của sản phẩm mã vạch luôn hiện | Gemini chỉ dùng trong hạn mức (BR-233); tính năng an toàn không phụ thuộc AI vẫn dùng được |
+
+## 10. UI/UX đã cải thiện (27/10/2026)
+
+| Mục | Đã làm | Còn lại |
+|---|---|---|
+| L3 + U3 | Lối tắt Trang chủ (chụp AI, giọng nói, tìm món, mã vạch) lấy bữa theo giờ hiện tại. Màn xác nhận kết quả AI (ảnh và giọng nói) có hàng chip "Ghi vào bữa" để đổi bữa trước khi lưu. Component dùng chung `MealTypeChips` (cũng dùng ở Ghi bữa ăn và chi tiết món) | Chưa dùng bữa AI đoán từ câu nói (backend mặc định `Breakfast` khi AI không trả, dễ sai) |
+| U1 | Trang chủ: vòng calo → Ghi bữa ăn + 4 lối tắt → Tổng quan dinh dưỡng → Bữa ăn hôm nay → Gợi ý → Bé Mầm. Bỏ thẻ "Mẹo nhỏ hôm nay" (nội dung cố định) | — |
+| U2 | Tab "Bữa ăn" đổi thành "Thực đơn" (khớp `design.md`) | — |
+| U5 | `AppChip` thêm `hitSlop` để vùng chạm đủ 44pt; link "Xem nhật ký" có `min-h-[44px]` | Chưa kiểm tra chữ phóng to (U6) |
+| U7 (một phần) | Admin Web: hộp xác nhận dùng chung `ConfirmDialog`/`useConfirm` thay 7 chỗ `window.confirm`; bỏ chữ gradient, kính mờ và gradient trang trí (màu phẳng theo biến sẵn có); thêm `:focus-visible`, `::selection`, `aria-label` cho nút chỉ có icon, `aria-current` cho menu, `role=alert/status` cho toast | Màu viết thẳng trong `style={{…}}` của các màn (khoảng 460 chỗ), font chưa thống nhất với mobile, chưa có giao diện sáng |
+| U8 | Admin Web: tab đang mở nằm trên URL (`#/users`…), F5 và Back/Forward giữ đúng trang, `document.title` theo trang | — |

@@ -16,6 +16,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { api } from '../services/api';
+import { useConfirm } from './useConfirm';
 import Pagination from './Pagination';
 import RecipeExcelImportModal from './RecipeExcelImportModal';
 
@@ -34,6 +35,7 @@ const AVAILABLE_TAGS = [
 ];
 
 export default function RecipesView({ onNotify, initialOpenAdd = false, onResetAddTrigger }) {
+  const { confirm, dialog } = useConfirm();
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -149,7 +151,7 @@ export default function RecipesView({ onNotify, initialOpenAdd = false, onResetA
   };
 
   const handleDelete = async (recipe) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa món ăn "${recipe.title}"?`)) {
+    if (!(await confirm(`Xóa món ăn "${recipe.title}"? Món sẽ biến mất khỏi danh sách yêu thích và bộ sưu tập của người dùng.`, { title: 'Xóa món ăn', confirmLabel: 'Xóa món', danger: true }))) {
       return;
     }
     try {
@@ -240,6 +242,7 @@ export default function RecipesView({ onNotify, initialOpenAdd = false, onResetA
 
   return (
     <div>
+      {dialog}
       {/* Action and Filter Bar */}
       <div className="filter-bar">
         <div className="search-box">
@@ -429,6 +432,7 @@ export default function RecipesView({ onNotify, initialOpenAdd = false, onResetA
                     className="btn btn-danger btn-sm"
                     onClick={() => handleDelete(r)}
                     title="Xóa món ăn"
+                    aria-label="Xóa món ăn"
                   >
                     <Trash2 size={14} />
                   </button>

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RewardsView from '../../components/RewardsView'
 import { api } from '../../services/api'
 import { challenges, listPage, setupApi, users, xpEvents } from '../../test/fixtures'
+import { answerConfirm } from '../../test/confirm'
 
 vi.mock('../../services/api', async (importOriginal) => (await import('../../test/mockApi.js')).mockApiModule(importOriginal))
 
@@ -23,7 +24,6 @@ async function renderLoaded() {
 beforeEach(() => {
   setupApi(api)
   onNotify = vi.fn()
-  vi.spyOn(window, 'confirm').mockReturnValue(true)
 })
 
 describe('RewardsView — thử thách', () => {
@@ -123,6 +123,7 @@ describe('RewardsView — thử thách', () => {
     const user = await renderLoaded()
 
     await user.click(within(await rowOf('Eat Clean 14 Ngày')).getByTitle('Xóa thử thách'))
+    expect(await answerConfirm(user)).toContain('Eat Clean 14 Ngày')
 
     expect(api.deleteChallenge).toHaveBeenCalledWith('c2')
     await waitFor(() => expect(screen.queryByText('Eat Clean 14 Ngày')).not.toBeInTheDocument())

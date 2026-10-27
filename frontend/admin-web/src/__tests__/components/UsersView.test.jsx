@@ -4,11 +4,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import UsersView from '../../components/UsersView'
 import { api } from '../../services/api'
 import { listPage, manyUsers, setupApi, userDetail, users } from '../../test/fixtures'
+import { answerConfirm } from '../../test/confirm'
 
 vi.mock('../../services/api', async (importOriginal) => (await import('../../test/mockApi.js')).mockApiModule(importOriginal))
 
 let onNotify
-let confirmSpy
 
 const rowOf = async (name) => (await screen.findByText(name)).closest('tr')
 const modal = () => document.querySelector('.modal-content')
@@ -23,7 +23,6 @@ async function renderLoaded() {
 beforeEach(() => {
   setupApi(api)
   onNotify = vi.fn()
-  confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
 })
 
 describe('UsersView — danh sách & bộ lọc', () => {
@@ -123,7 +122,9 @@ describe('UsersView — xem chi tiết & phân quyền', () => {
     const user = await renderLoaded()
 
     await user.click(within(await rowOf('Lan Anh')).getByTitle('Bấm để đổi quyền'))
+    await answerConfirm(user)
     await user.click(within(await rowOf('Minh Trần')).getByTitle('Bấm để đổi quyền'))
+    await answerConfirm(user)
 
     expect(api.updateUserRole.mock.calls).toEqual([['u1', 'Admin'], ['u2', 'User']])
     await waitFor(() => expect(onNotify).toHaveBeenCalledWith('Đã đổi vai trò thành User thành công!', 'success'))
@@ -131,10 +132,10 @@ describe('UsersView — xem chi tiết & phân quyền', () => {
   })
 
   it('hủy hộp thoại xác nhận thì không đổi vai trò', async () => {
-    confirmSpy.mockReturnValue(false)
     const user = await renderLoaded()
 
     await user.click(within(await rowOf('Lan Anh')).getByTitle('Bấm để đổi quyền'))
+    await answerConfirm(user, false)
 
     expect(api.updateUserRole).not.toHaveBeenCalled()
   })
@@ -142,11 +143,13 @@ describe('UsersView — xem chi tiết & phân quyền', () => {
   it('xóa người dùng sau khi xác nhận; lỗi thì báo thất bại', async () => {
     const user = await renderLoaded()
     await user.click(within(await rowOf('Spam Bot')).getByTitle('Xóa người dùng'))
+    await answerConfirm(user)
     expect(api.deleteUser).toHaveBeenCalledWith('u3')
     await waitFor(() => expect(onNotify).toHaveBeenCalledWith('Đã xóa người dùng thành công.', 'success'))
 
     api.deleteUser.mockRejectedValue(new Error('Bạn không thể tự xóa tài khoản của chính mình.'))
     await user.click(within(await rowOf('Minh Trần')).getByTitle('Xóa người dùng'))
+    await answerConfirm(user)
     await waitFor(() => expect(onNotify).toHaveBeenCalledWith('Xóa người dùng thất bại: Bạn không thể tự xóa tài khoản của chính mình.', 'error'))
   })
 })
@@ -182,6 +185,7 @@ describe('UsersView — cấp / hủy gói Pro', () => {
 
     await user.click(within(await rowOf('Lan Anh')).getByTitle('Cấp / Gia hạn gói Pro'))
     await user.click(within(modal()).getByRole('button', { name: 'Hủy Gói Pro Ngay Lập Tức' }))
+    await answerConfirm(user)
 
     expect(api.updateUserSubscription).toHaveBeenCalledWith('u1', false)
     await waitFor(() => expect(onNotify).toHaveBeenCalledWith('Đã hủy gói Pro thành công!', 'success'))

@@ -13,13 +13,46 @@ import LoginView from './components/LoginView';
 import { authStorage, api } from './services/api';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
 
+// Tiêu đề từng trang quản trị. Tab đang mở nằm trên URL (#/users…) để F5 không mất trang và gửi được liên kết.
+const TAB_TITLES = {
+  dashboard: 'Bảng Điều Khiển Tổng Quan',
+  users: 'Quản Lý Người Dùng & Kiểm Duyệt Tài Khoản',
+  recipes: 'Quản Lý Thực Đơn & Món Ăn',
+  rewards: 'Quản Lý Hệ Thống Phần Thưởng (Rewards)',
+  system: 'Giám Sát Hoạt Động Hệ Thống (System Activity)',
+  revenue: 'Báo Cáo Doanh Thu Tài Chính (Revenue Report)',
+  engagement: 'Phân Tích Mức Độ Tương Tác (Engagement Analytics)',
+  subscriptions: 'Quản Lý Gói Hội Viên & Giao Dịch',
+};
+
+function tabFromHash() {
+  const id = window.location.hash.replace(/^#\/?/, '');
+  return Object.prototype.hasOwnProperty.call(TAB_TITLES, id) ? id : 'dashboard';
+}
+
 export default function App() {
   const [user, setUser] = useState(authStorage.getUser());
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTabState] = useState(tabFromHash);
   const [stats, setStats] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [triggerAddRecipe, setTriggerAddRecipe] = useState(false);
   const [toast, setToast] = useState(null);
+
+  const setActiveTab = (tab) => {
+    setActiveTabState(tab);
+    if (tabFromHash() !== tab) window.location.hash = `/${tab}`;
+  };
+
+  // Nút Back/Forward của trình duyệt đổi hash → mở đúng trang.
+  useEffect(() => {
+    const handleHashChange = () => setActiveTabState(tabFromHash());
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  useEffect(() => {
+    document.title = user ? `${TAB_TITLES[activeTab]} · SmartMeal Admin` : 'Đăng nhập · SmartMeal Admin';
+  }, [activeTab, user]);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -79,7 +112,7 @@ export default function App() {
         <LoginView onLoginSuccess={handleLoginSuccess} />
         {toast && (
           <div className="toast-container">
-            <div className={`toast toast-${toast.type}`}>
+            <div className={`toast toast-${toast.type}`} role={toast.type === 'error' ? 'alert' : 'status'}>
               {toast.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
               <span>{toast.message}</span>
             </div>
@@ -88,20 +121,6 @@ export default function App() {
       </>
     );
   }
-
-  const getTabTitle = () => {
-    switch (activeTab) {
-      case 'dashboard': return 'Bảng Điều Khiển Tổng Quan';
-      case 'users': return 'Quản Lý Người Dùng & Kiểm Duyệt Tài Khoản';
-      case 'recipes': return 'Quản Lý Thực Đơn & Món Ăn';
-      case 'rewards': return 'Quản Lý Hệ Thống Phần Thưởng (Rewards)';
-      case 'system': return 'Giám Sát Hoạt Động Hệ Thống (System Activity)';
-      case 'revenue': return 'Báo Cáo Doanh Thu Tài Chính (Revenue Report)';
-      case 'engagement': return 'Phân Tích Mức Độ Tương Tác (Engagement Analytics)';
-      case 'subscriptions': return 'Quản Lý Gói Hội Viên & Giao Dịch';
-      default: return 'SmartMeal Admin';
-    }
-  };
 
   return (
     <div className="app-shell">
@@ -114,7 +133,7 @@ export default function App() {
 
       <div className="main-content">
         <Topbar
-          title={getTabTitle()}
+          title={TAB_TITLES[activeTab]}
           onRefresh={loadStats}
           isRefreshing={isRefreshing}
           onOpenAddRecipe={handleOpenAddRecipeFromTopbar}
@@ -167,7 +186,7 @@ export default function App() {
       {/* Global Toast */}
       {toast && (
         <div className="toast-container">
-          <div className={`toast toast-${toast.type}`}>
+          <div className={`toast toast-${toast.type}`} role={toast.type === 'error' ? 'alert' : 'status'}>
             {toast.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
             <span>{toast.message}</span>
           </div>
