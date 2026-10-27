@@ -7,7 +7,6 @@ import type {
   DeleteAccountRequestDto,
   ForgotPasswordRequestDto,
   LoginRequestDto,
-  GoogleAuthRequestDto,
   OtpPurposeDto,
   RegisterRequestDto,
   ResendOtpRequestDto,
@@ -55,11 +54,6 @@ export const authApiService = {
     return { user: fromUserDto(dto.user) };
   },
 
-  async loginWithGoogle(payload: GoogleAuthRequestDto): Promise<LoginResult> {
-    const dto = await api.post<AuthResponseDto, GoogleAuthRequestDto>(ENDPOINTS.auth.google, payload);
-    await saveSessionTokens(dto);
-    return { user: fromUserDto(dto.user) };
-  },
 
   // POST /auth/register — BE trả token ngay. Khi server gửi được email (đã cấu hình SMTP) thì kèm
   // requiresEmailVerification: màn Register chuyển sang nhập mã OTP rồi mới tới Health Profile.

@@ -28,7 +28,6 @@ import type { MainStackParamList, MainTabParamList } from '@/navigation/types';
 import { getMealTypeForHour, MEAL_TYPE_TITLES } from '@/types/meal.types';
 import { useAuthStore } from '@/state/auth/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
-import { ActivityCard } from '../components/ActivityCard';
 import { CalorieRingCard } from '../components/CalorieRingCard';
 import { EmptyMealDashedCard } from '../components/EmptyMealDashedCard';
 import { PetSnippetCard } from '../components/PetSnippetCard';
@@ -130,7 +129,7 @@ export function DashboardScreen(_props: Props) {
     );
   }
 
-  const { diary, activity, pet, recommendedMeals } = data;
+  const { diary, pet, recommendedMeals } = data;
   const mealsWithEntries = (['breakfast', 'lunch', 'dinner', 'snack'] as const)
     .map(mealType => ({ mealType, entries: diary.entriesByMeal[mealType] }))
     .filter(section => section.entries.length > 0);
@@ -186,8 +185,7 @@ export function DashboardScreen(_props: Props) {
         <CalorieRingCard
           consumedCalories={totalConsumed}
           calorieTarget={diary.calorieTarget}
-          activityCalories={diary.activityCalories}
-          onPress={() => navigation.navigate(MAIN_STACK_ROUTES.CALORIE_BUDGET)}
+          onPress={openDiary}
         />
 
         <View className="gap-xs">
@@ -369,8 +367,6 @@ export function DashboardScreen(_props: Props) {
             />
           ) : null}
         </View>
-
-        {activity ? <ActivityCard activity={activity} /> : null}
 
         {pet ? (
           <PetSnippetCard

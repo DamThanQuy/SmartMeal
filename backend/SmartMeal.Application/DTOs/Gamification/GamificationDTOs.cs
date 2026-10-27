@@ -76,10 +76,10 @@ public class ChallengeDto
     public bool IsJoined { get; set; }
     public bool IsCompleted { get; set; }
 
-    /// <summary>DrinkWater | EatClean | Exercise | NoSugar.</summary>
+    /// <summary>DrinkWater | EatClean.</summary>
     public string Category { get; set; } = string.Empty;
 
-    /// <summary>Mục tiêu mỗi ngày: ml nước (DrinkWater), số nhóm bữa đã ghi (EatClean), số bước (Exercise).</summary>
+    /// <summary>Mục tiêu mỗi ngày: ml nước (DrinkWater), số nhóm bữa đã ghi (EatClean).</summary>
     public int TargetValuePerDay { get; set; }
 
     /// <summary>Ngày bắt đầu/kết thúc khung của người dùng (null khi chưa tham gia). Kết thúc = bắt đầu + durationDays − 1.</summary>

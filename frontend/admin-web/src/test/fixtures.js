@@ -127,7 +127,6 @@ export const engagement = {
   challengeCompletionRate: 33.3,
   totalDiariesLogged: 1520,
   totalWaterLogs: 830,
-  totalStepsSynced: 125000,
   averagePetLevel: 3.4,
   topEngagedUsers: [
     { userId: 'u1', fullName: 'Lan Anh', email: 'lan@example.com', diariesCount: 80, petLevel: 6, totalXp: 2600, lastActiveAt: '2026-10-21T00:00:00Z' },

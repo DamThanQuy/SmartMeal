@@ -2,7 +2,6 @@ export const ENDPOINTS = {
   auth: {
     register: '/auth/register',
     login: '/auth/login',
-    google: '/auth/google',
     refresh: '/auth/refresh',
     logout: '/auth/logout',
     forgotPassword: '/auth/forgot-password',
@@ -47,10 +46,6 @@ export const ENDPOINTS = {
     byId: (id: string) => `/foods/${id}`,
     barcode: (code: string) => `/foods/barcode/${code}`,
     favorite: (id: string) => `/foods/${id}/favorite`,
-  },
-  healthSync: {
-    stepsAndCalories: '/health-sync/steps-and-calories',
-    dailySummary: '/health-sync/daily-summary',
   },
   recipes: {
     list: '/recipes',

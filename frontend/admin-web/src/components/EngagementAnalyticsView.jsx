@@ -5,7 +5,6 @@ import {
   Activity,
   Flame,
   Droplets,
-  Footprints,
   Sparkles,
   Trophy,
   Award,
@@ -52,7 +51,7 @@ export default function EngagementAnalyticsView({ onNotify }) {
             <span>Phân Tích Mức Độ Tương Tác (View Engagement Analytics)</span>
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '4px' }}>
-            Đo lường mức độ tương tác thực tế của người dùng: DAU/WAU/MAU, tần suất ghi nhận dinh dưỡng, bước chân và thú cưng ảo.
+            Đo lường mức độ tương tác thực tế của người dùng: DAU/WAU/MAU, tần suất ghi nhận dinh dưỡng, uống nước và thú cưng ảo.
           </p>
         </div>
       </div>
@@ -142,18 +141,6 @@ export default function EngagementAnalyticsView({ onNotify }) {
             <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Lượt Ghi Nhận Uống Nước</div>
             <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#38bdf8' }}>
               {data?.totalWaterLogs?.toLocaleString() || 0}
-            </div>
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
-            <Footprints size={24} />
-          </div>
-          <div>
-            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Tổng Bước Chân Đồng Bộ</div>
-            <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#fbbf24' }}>
-              {data?.totalStepsSynced?.toLocaleString() || 0}
             </div>
           </div>
         </div>

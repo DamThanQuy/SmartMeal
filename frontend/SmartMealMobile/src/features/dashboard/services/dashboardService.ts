@@ -1,16 +1,8 @@
-import { format } from 'date-fns';
 import { gamificationService } from '@/features/gamification';
-import {
-  healthSyncService,
-  nutritionService,
-  todayIso,
-  type DailyActivity,
-} from '@/features/nutrition';
+import { nutritionService, todayIso } from '@/features/nutrition';
 import { RECIPE_TAG_OPTIONS, recipeService, type Recipe } from '@/features/recipes';
 import { getMealTypeForHour, MEAL_TYPES } from '@/types/meal.types';
-import { parseApiDateTime } from '@/utils/date';
 import type {
-  ActivitySummary,
   DashboardSummary,
   PetSnippet,
   RecommendedMeal,
@@ -54,25 +46,13 @@ function toPetSnippet(
   };
 }
 
-function toActivitySummary(activity: DailyActivity): ActivitySummary {
-  return {
-    steps: activity.steps,
-    caloriesBurned: activity.caloriesBurned,
-    syncedAtLabel: activity.lastSyncedAt
-      ? format(parseApiDateTime(activity.lastSyncedAt), 'HH:mm')
-      : null,
-    sourceLabel: activity.sources.join(', '),
-  };
-}
-
 export const dashboardService = {
   // Backend không có endpoint tổng hợp nên Dashboard gom từ nhiều nguồn song song. allSettled: một
-  // nguồn phụ lỗi (vận động, Bé Mầm) chỉ làm khối đó biến mất; nhật ký lỗi mới đáng báo lỗi cả màn.
+  // nguồn phụ lỗi (Bé Mầm, gợi ý món) chỉ làm khối đó biến mất; nhật ký lỗi mới đáng báo lỗi cả màn.
   async getDashboardSummary(): Promise<DashboardSummary> {
     const dateIso = todayIso();
-    const [diaryResult, activityResult, petResult, recipesResult] = await Promise.allSettled([
+    const [diaryResult, petResult, recipesResult] = await Promise.allSettled([
       nutritionService.getDiaryDay(dateIso),
-      healthSyncService.getDailySummary(dateIso),
       gamificationService.getPetState(),
       recipeService.getRecommended({ mealType: getMealTypeForHour(new Date().getHours()) }),
     ]);
@@ -84,14 +64,10 @@ export const dashboardService = {
       (sum, mealType) => sum + diary.entriesByMeal[mealType].reduce((mealSum, entry) => mealSum + entry.nutrition.calories, 0),
       0,
     );
-    const remaining = diary.calorieTarget + diary.activityCalories - consumed;
+    const remaining = diary.calorieTarget - consumed;
 
     return {
       diary,
-      activity:
-        activityResult.status === 'fulfilled'
-          ? toActivitySummary(activityResult.value)
-          : null,
       pet:
         petResult.status === 'fulfilled' ? toPetSnippet(petResult.value) : null,
       recommendedMeals:

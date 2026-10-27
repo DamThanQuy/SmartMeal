@@ -278,10 +278,7 @@ describe('fromDiaryItemDto', () => {
 
 describe('fromDailyDiaryDto', () => {
   test('luôn đủ 4 bữa, gom món đúng bữa, mục tiêu làm tròn', () => {
-    const diary = fromDailyDiaryDto(DAILY_DTO, {
-      activityCaloriesBurned: 0,
-      includeActivityCalories: true,
-    });
+    const diary = fromDailyDiaryDto(DAILY_DTO);
 
     expect(diary.date).toBe('2026-10-02');
     expect(diary.calorieTarget).toBe(1776);
@@ -301,29 +298,14 @@ describe('fromDailyDiaryDto', () => {
           { mealType: 'Brunch', subtotalCalories: 100, items: [item({ foodName: 'B' })] },
         ],
       },
-      { activityCaloriesBurned: 0, includeActivityCalories: true },
     );
 
     expect(diary.entriesByMeal.lunch.map(entry => entry.foodName)).toEqual(['A']);
     expect(diary.entriesByMeal.snack.map(entry => entry.foodName)).toEqual(['B']);
   });
 
-  test('calo vận động chỉ được cộng khi bật công tắc (BR-040→042)', () => {
-    const base = { activityCaloriesBurned: 180 };
-
-    expect(
-      fromDailyDiaryDto(DAILY_DTO, { ...base, includeActivityCalories: true }).activityCalories,
-    ).toBe(180);
-    expect(
-      fromDailyDiaryDto(DAILY_DTO, { ...base, includeActivityCalories: false }).activityCalories,
-    ).toBe(0);
-  });
-
   test('findEntryById tìm đúng bản ghi ở mọi bữa', () => {
-    const diary = fromDailyDiaryDto(DAILY_DTO, {
-      activityCaloriesBurned: 0,
-      includeActivityCalories: true,
-    });
+    const diary = fromDailyDiaryDto(DAILY_DTO);
 
     expect(findEntryById(diary, '22222222-2222-2222-2222-222222222222')?.foodName).toBe('Cơm tấm');
     expect(findEntryById(diary, 'khong-co')).toBeUndefined();

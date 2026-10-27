@@ -40,10 +40,7 @@ public static class ChallengeCategories
     /// <summary>Mục tiêu = số nhóm bữa (sáng/trưa/tối/phụ) đã ghi mỗi ngày.</summary>
     public const string EatClean = "EatClean";
 
-    /// <summary>Mục tiêu = số bước chân mỗi ngày.</summary>
-    public const string Exercise = "Exercise";
-
-    public static readonly IReadOnlyList<string> All = new[] { DrinkWater, EatClean, Exercise };
+    public static readonly IReadOnlyList<string> All = new[] { DrinkWater, EatClean };
 
     /// <summary>Trả dạng chuẩn ("drinkwater" → "DrinkWater") hoặc null nếu không phải loại được hỗ trợ.</summary>
     public static string? Normalize(string? value)

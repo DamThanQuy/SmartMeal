@@ -24,7 +24,7 @@ import type {
   NutritionInfo,
   WeeklyProgressSummary,
 } from '../types/nutrition.types';
-import { calculateCalorieBudget, nutritionPerGram } from '../utils/nutritionMath';
+import { nutritionPerGram } from '../utils/nutritionMath';
 
 // Hàm thuần quy đổi DTO backend ↔ type FE cho nhật ký dinh dưỡng và thực phẩm (docs/fetch-api/
 // part1 §7). Không gọi API, không đọc store — để test bằng fixture JSON.
@@ -174,17 +174,7 @@ export function fromDiaryItemDto(
   };
 }
 
-export interface DiaryDayOptions {
-  /** Calo vận động hôm đó từ health-sync (0 khi chưa đồng bộ hoặc lỗi). */
-  activityCaloriesBurned: number;
-  /** Công tắc "Cộng calo vận động vào ngân sách" (BR-040→042). */
-  includeActivityCalories: boolean;
-}
-
-export function fromDailyDiaryDto(
-  dto: DailyDiarySummaryDto,
-  options: DiaryDayOptions,
-): DiaryDaySummary {
+export function fromDailyDiaryDto(dto: DailyDiarySummaryDto): DiaryDaySummary {
   const entriesByMeal: Record<MealType, MealLogEntry[]> = {
     breakfast: [],
     lunch: [],
@@ -196,18 +186,9 @@ export function fromDailyDiaryDto(
     entriesByMeal[mealType].push(...group.items.map(item => fromDiaryItemDto(item, mealType)));
   });
 
-  const calorieTarget = Math.round(dto.targetCalories);
-  // Đúng 1 hàm cộng calo vận động vào ngân sách (dùng chung với CalorieBudgetScreen).
-  const { activityCalories } = calculateCalorieBudget({
-    calorieTarget,
-    activityCaloriesBurned: options.activityCaloriesBurned,
-    includeActivityCalories: options.includeActivityCalories,
-  });
-
   return {
     date: dto.date,
-    calorieTarget,
-    activityCalories: Math.round(activityCalories),
+    calorieTarget: Math.round(dto.targetCalories),
     entriesByMeal,
     macroTargets: {
       proteinG: Math.round(dto.targetProtein),

@@ -63,19 +63,11 @@ function input(foodName: string, grams = 100, extra: Partial<NewMealLogInput> = 
 
 function loadService() {
   const apiMock = { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() };
-  const healthSyncMock = { getDailySummary: jest.fn() };
-  const includeActivity = { value: true };
 
   jest.resetModules();
   jest.doMock('@/services/api', () => ({
     api: apiMock,
     ENDPOINTS: jest.requireActual('@/services/api/endpoints').ENDPOINTS,
-  }));
-  jest.doMock('@/features/nutrition/services/healthSyncService', () => ({
-    healthSyncService: healthSyncMock,
-  }));
-  jest.doMock('@/state/user/userProfileStore', () => ({
-    getIncludeActivityCalories: () => includeActivity.value,
   }));
   // Danh mục dị ứng theo code như dữ liệu seed của BE.
   const allergyCodes: Record<number, string> = {
@@ -100,58 +92,33 @@ function loadService() {
   const { ApiError } =
     jest.requireActual('@/services/api/errors') as typeof import('@/services/api/errors');
 
-  return { service: nutritionApiService, apiMock, healthSyncMock, includeActivity, ApiError };
+  return { service: nutritionApiService, apiMock, ApiError };
 }
 
 describe('getDiaryDay', () => {
-  test('GET /nutritiondiary/daily?date= và GET /health-sync/daily-summary cùng ngày, cộng calo vận động', async () => {
-    const { service, apiMock, healthSyncMock } = loadService();
+  test('GET /nutritiondiary/daily?date= của đúng ngày', async () => {
+    const { service, apiMock } = loadService();
     apiMock.get.mockResolvedValue(DAILY_DTO);
-    healthSyncMock.getDailySummary.mockResolvedValue({ caloriesBurned: 180 });
 
     const diary = await service.getDiaryDay?.('2026-10-02');
 
     expect(apiMock.get).toHaveBeenCalledWith('/nutritiondiary/daily', {
       params: { date: '2026-10-02' },
     });
-    expect(healthSyncMock.getDailySummary).toHaveBeenCalledWith('2026-10-02');
+    expect(apiMock.get).toHaveBeenCalledTimes(1);
     expect(diary).toMatchObject({
       date: '2026-10-02',
       calorieTarget: 1776,
-      activityCalories: 180,
     });
     expect(diary?.entriesByMeal.lunch).toHaveLength(1);
     // Giờ ghi lấy từ createdAt do BE lưu (không còn để trống).
     expect(diary?.entriesByMeal.lunch[0].loggedAt).toBe('2026-10-02T05:30:00.000Z');
   });
 
-  test('tắt công tắc "Cộng calo vận động" → activityCalories = 0', async () => {
-    const { service, apiMock, healthSyncMock, includeActivity } = loadService();
-    includeActivity.value = false;
-    apiMock.get.mockResolvedValue(DAILY_DTO);
-    healthSyncMock.getDailySummary.mockResolvedValue({ caloriesBurned: 180 });
-
-    const diary = await service.getDiaryDay?.('2026-10-02');
-
-    expect(diary?.activityCalories).toBe(0);
-  });
-
-  test('lấy calo vận động lỗi → coi là 0, nhật ký vẫn hiện', async () => {
-    const { service, apiMock, healthSyncMock } = loadService();
-    apiMock.get.mockResolvedValue(DAILY_DTO);
-    healthSyncMock.getDailySummary.mockRejectedValue(new Error('mất mạng'));
-
-    const diary = await service.getDiaryDay?.('2026-10-02');
-
-    expect(diary?.activityCalories).toBe(0);
-    expect(diary?.calorieTarget).toBe(1776);
-  });
-
   test('nhật ký lỗi → ném lỗi (màn hình hiện ErrorState)', async () => {
-    const { service, apiMock, healthSyncMock, ApiError } = loadService();
+    const { service, apiMock, ApiError } = loadService();
     const error = new ApiError('Máy chủ gặp sự cố.', 'SERVER', 500);
     apiMock.get.mockRejectedValue(error);
-    healthSyncMock.getDailySummary.mockResolvedValue({ caloriesBurned: 0 });
 
     await expect(service.getDiaryDay?.('2026-10-02')).rejects.toBe(error);
   });
@@ -228,7 +195,7 @@ describe('addLogEntries', () => {
 
 describe('updateLogEntry', () => {
   test('đổi khối lượng: đọc bản ghi, tính lại dinh dưỡng rồi PUT /nutritiondiary/items/{id} (không tạo bản mới)', async () => {
-    const { service, apiMock, healthSyncMock } = loadService();
+    const { service, apiMock } = loadService();
     apiMock.get.mockResolvedValue(DAILY_DTO);
     apiMock.put.mockResolvedValue(item({ servingSize: 250, calories: 225 }));
 
@@ -247,8 +214,6 @@ describe('updateLogEntry', () => {
     });
     expect(apiMock.post).not.toHaveBeenCalled();
     expect(apiMock.delete).not.toHaveBeenCalled();
-    // Calo vận động không liên quan đến việc sửa món.
-    expect(healthSyncMock.getDailySummary).not.toHaveBeenCalled();
     expect(updated).toMatchObject({ id: 'item-1', grams: 250, nutrition: { calories: 225 } });
   });
 

@@ -2,8 +2,6 @@ export const STORAGE_KEYS = {
   THEME_MODE: 'app.themeMode',
   /** + userId — phần hồ sơ sức khỏe backend không lưu (chế độ ăn, dị ứng/bệnh lý không có id…). */
   PROFILE_EXTRAS_PREFIX: 'user.profileExtras.',
-  /** + userId — tùy chọn Health Connect cục bộ (đã kết nối, nguồn nào bật). */
-  HEALTH_CONNECT_PREFIX: 'user.healthConnect.',
   /** + userId — bật/tắt nhắc nhở cục bộ (bữa ăn, nước, chuỗi ngày). */
   REMINDERS_PREFIX: 'user.reminders.',
   /** + userId — các lần ghi món chưa gửi được (hàng đợi offline, kèm Idempotency-Key). */

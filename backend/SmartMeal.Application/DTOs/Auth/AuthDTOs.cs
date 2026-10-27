@@ -29,13 +29,6 @@ public class LoginRequestDto
     public string Password { get; set; } = string.Empty;
 }
 
-public class GoogleAuthRequestDto
-{
-    [Required(ErrorMessage = "Google ID token là bắt buộc.")]
-    [StringLength(8192, MinimumLength = 20, ErrorMessage = "Google ID token không hợp lệ.")]
-    public string IdToken { get; set; } = string.Empty;
-}
-
 public class RefreshTokenRequestDto
 {
     [Required(ErrorMessage = "refreshToken là bắt buộc.")]

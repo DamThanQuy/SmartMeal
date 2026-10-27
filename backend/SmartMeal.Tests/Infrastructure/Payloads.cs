@@ -42,11 +42,6 @@ public sealed record WeightHistoryPayload(
 
 public sealed record MetaItemPayload(int Id, string Code, string Name, string? Description);
 
-public sealed record HealthSyncSummaryPayload(
-    DateOnly Date, int Steps, int StepGoal, double BurnedCalories, double ConsumedCalories, double NetCalories,
-    double TargetCalories, double RemainingCalories, double DistanceMeters, List<string> Sources, string? ActiveSource,
-    DateTime? LastSyncedAt);
-
 public sealed record AiQuotaPayload(bool IsUnlimited, int? Limit, int Used, int? Remaining, DateTime ResetsAt);
 
 public sealed record SnapPayload(string DishName, double EstimatedGrams, double Calories, List<string> DetectedIngredients, List<string> AllergyWarnings, bool IsDemo, string? ImageUrl = null);
@@ -70,8 +65,6 @@ public sealed record NutritionFactsPayload(
 public sealed record LabelSafetyPayload(
     bool IsSafe, List<SafetyAlertPayload> Alerts, List<string> DetectedIngredients, NutritionFactsPayload? ExtractedNutrition, bool IsDemo,
     string Source, ScannedProductPayload? Product, string? ProductName, string? OcrText);
-
-public sealed record SyncResultPayload(DateOnly Date, int Steps, double BurnedCalories, double DistanceMeters, string Source, DateTime SyncedAt);
 
 public sealed record RecipeIngredientPayload(
     Guid IngredientId, string Name, double Amount, string Unit, decimal EstimatedPriceVnd, List<int> AllergyIds);

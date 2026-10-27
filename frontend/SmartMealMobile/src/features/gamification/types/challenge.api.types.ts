@@ -12,7 +12,7 @@ export interface ChallengeApiDto {
   rewardBadge: string | null;
   isJoined: boolean;
   isCompleted: boolean;
-  /** DrinkWater | EatClean | Exercise | NoSugar. */
+  /** DrinkWater | EatClean. */
   category: string | null;
   targetValuePerDay: number;
   /** Khung ngày của người dùng (null khi chưa tham gia). Kết thúc = bắt đầu + durationDays − 1. */

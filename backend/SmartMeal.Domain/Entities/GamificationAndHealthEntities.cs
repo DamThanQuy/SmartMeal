@@ -10,6 +10,7 @@ public class WaterLog
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
+/// <summary>Dữ liệu cũ của tính năng đồng bộ bước chân (Health Connect) đã bỏ ngày 27/10/2026. Giữ bảng để không mất dữ liệu; không còn được ghi.</summary>
 public class HealthSyncLog
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -78,7 +79,7 @@ public class Challenge
     public string Description { get; set; } = string.Empty;
     public string ImageUrl { get; set; } = string.Empty;
     public int DurationDays { get; set; } = 7;
-    public string Category { get; set; } = "EatClean"; // EatClean, DrinkWater, Exercise (ChallengeCategories)
+    public string Category { get; set; } = "EatClean"; // EatClean, DrinkWater (ChallengeCategories); "Exercise" là dữ liệu cũ, đã tắt
     public int TargetValuePerDay { get; set; }
     public int RewardExp { get; set; } = 150;
     public string RewardBadge { get; set; } = "Clean Eater";

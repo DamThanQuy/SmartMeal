@@ -102,7 +102,7 @@ Không có `android/`, `ios/` khi còn ở chế độ Expo Go — Expo tự qu�
   `xService.api.ts` (gọi API) + `x.mapper.ts` (DTO → type FE); `xService.ts` chỉ export lại bản API để hook/screen
   import cố định một chỗ.
 - **Không bịa số liệu**: tài khoản mới phải thấy trạng thái rỗng (Empty state), không seed dữ liệu mẫu của
-  design vào store/service. Chức năng chưa có API hoặc chưa đọc được native (Health Connect cần Dev Client…) thì
+  design vào store/service. Chức năng chưa có API hoặc chưa đọc được native thì
   báo rõ "chưa hỗ trợ", không trả kết quả giả.
 - Hằng số tĩnh của UI (gói Pro, danh sách huy hiệu…) đặt trong `types/*.types.ts` của feature, không đặt tên `*_MOCK`.
 - Test dùng `jest.doMock`/fixture riêng trong `__tests__` hoặc `test-utils/` — không thêm dữ liệu giả vào `src/`.
@@ -122,7 +122,6 @@ Chỉ dùng module nằm trong Expo SDK, cô lập qua service (`services/permis
 | Chọn ảnh từ thư viện | `expo-image-picker` | Đủ dùng trên Expo Go |
 | Barcode | `expo-camera` (barcode scanning) hoặc `expo-barcode-scanner` | Đủ dùng trên Expo Go |
 | OCR nhãn dinh dưỡng | — (ML Kit không chạy trên Expo Go) | Gửi ảnh lên Backend (AI) đọc nhãn |
-| Health Connect / HealthKit | — (cần Dev Client) | Chưa đọc được trên Expo Go — báo rõ "cần Dev Client", số liệu hôm nay lấy từ Backend |
 | Notifications | `expo-notifications` | Push token thật cần Dev Client/EAS |
 | Ghi âm (Voice Logging) | `expo-audio` | Gửi audio lên Backend xử lý |
 | Secure storage | `expo-secure-store` | Access/refresh token |

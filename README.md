@@ -8,7 +8,7 @@
 
 ## 📖 Giới thiệu tổng quan (Overview)
 
-**SmartMeal** là ứng dụng di động toàn diện kết hợp trí tuệ nhân tạo (AI) giúp người dùng quản lý dinh dưỡng, theo dõi sức khỏe, tối ưu chi phí sinh hoạt và tìm kiếm công thức nấu ăn thông minh. Ứng dụng giải quyết triệt để sự nhàm chán và rườm rà của việc nhập liệu thủ công bằng cách ứng dụng công nghệ **AI Vision (Snap & Track đĩa ăn, Quét tủ lạnh)**, **Nhận diện giọng nói (Voice Logging)**, **OCR Quét nhãn dinh dưỡng (Google ML Kit)** và **Đồng bộ thiết bị đeo (Health Connect / Apple Health)**.
+**SmartMeal** là ứng dụng di động toàn diện kết hợp trí tuệ nhân tạo (AI) giúp người dùng quản lý dinh dưỡng, theo dõi sức khỏe, tối ưu chi phí sinh hoạt và tìm kiếm công thức nấu ăn thông minh. Ứng dụng giải quyết triệt để sự nhàm chán và rườm rà của việc nhập liệu thủ công bằng cách ứng dụng công nghệ **AI Vision (Snap & Track đĩa ăn, Quét tủ lạnh)**, **Nhận diện giọng nói (Voice Logging)** và **Quét nhãn dinh dưỡng bằng AI (Gemini qua backend)**.
 
 ---
 
@@ -22,7 +22,6 @@
 
 ### 2. 📊 Theo dõi dinh dưỡng & Sức khỏe
 - **Smart Dashboard**: Tổng quan Calo và Macros nạp trong ngày.
-- **Dynamic Calorie Budget**: Tự động tính toán ngân sách calo động (Calo mục tiêu + Calo tiêu hao từ vận động).
 - **Hồ sơ sức khỏe & Bệnh lý**: Tự động tính chỉ số BMI, BMR, TDEE, quản lý danh sách dị ứng thực phẩm và tình trạng bệnh lý (tiểu đường, gout, cao huyết áp).
 - **Biểu đồ tiến độ trực quan**: Theo dõi lịch sử cân nặng và tiến độ dinh dưỡng theo tuần/tháng.
 
@@ -47,7 +46,6 @@
 | **Database** | PostgreSQL 16 |
 | **Authentication** | JWT + refresh token, đăng nhập email + mật khẩu, OTP qua email (quên mật khẩu) |
 | **AI & Machine Learning** | Google Gemini (ảnh món ăn, nhãn dinh dưỡng, tủ lạnh, giọng nói) qua backend; quét mã vạch bằng `expo-camera` và tra database |
-| **Health Integration** | Google Health Connect / Apple HealthKit |
 | **DevOps / Containers** | Docker & Docker Compose |
 
 ---

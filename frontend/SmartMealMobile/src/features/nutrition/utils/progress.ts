@@ -4,7 +4,7 @@ import { sumNutrition } from './nutritionMath';
 
 /**
  * Tab "Ngày" của ProgressChart: calo từng bữa + macro so với mục tiêu, tính từ đúng nhật ký của
- * ngày đó (không cần API riêng). Ngân sách calo = mục tiêu + calo vận động như Dashboard/Diary.
+ * ngày đó (không cần API riêng). Ngân sách calo = mục tiêu calo của ngày, như Dashboard/Diary.
  */
 export function buildDayProgress(diary: DiaryDaySummary): DayProgressSummary {
   const meals = MEAL_TYPES.map(mealType => ({
@@ -17,7 +17,7 @@ export function buildDayProgress(diary: DiaryDaySummary): DayProgressSummary {
   const total = sumNutrition(MEAL_TYPES.flatMap(mealType => diary.entriesByMeal[mealType].map(entry => entry.nutrition)));
 
   return {
-    calorieBudget: Math.round(diary.calorieTarget + diary.activityCalories),
+    calorieBudget: Math.round(diary.calorieTarget),
     totalCalories: meals.reduce((sum, meal) => sum + meal.calories, 0),
     meals,
     macros: [

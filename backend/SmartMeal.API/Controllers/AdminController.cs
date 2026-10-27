@@ -1482,7 +1482,7 @@ public class AdminController : ControllerBase
     }
 
     private const string UnsupportedCategoryMessage =
-        "Loại thử thách chỉ được là DrinkWater (uống nước), EatClean (ghi đủ bữa) hoặc Exercise (bước chân) — loại khác chưa có dữ liệu để chấm.";
+        "Loại thử thách chỉ được là DrinkWater (uống nước) hoặc EatClean (ghi đủ bữa) — loại khác chưa có dữ liệu để chấm.";
 
     /// <summary>Nhóm hiển thị trên Admin Web cho từng huy hiệu của <see cref="GamificationCatalog"/>.</summary>
     private static readonly Dictionary<string, string> BadgeCategories = new()
@@ -1791,7 +1791,6 @@ public class AdminController : ControllerBase
 
         var totalDiaries = await _db.NutritionDiaries.CountAsync();
         var totalWater = await _db.WaterLogs.CountAsync();
-        var totalSteps = await _db.HealthSyncLogs.SumAsync(s => (long?)s.StepCount) ?? 0L;
         var totalAi = await _db.AiUsageLogs.CountAsync();
 
         var totalUserChallenges = await _db.UserChallenges.CountAsync();
@@ -1826,7 +1825,6 @@ public class AdminController : ControllerBase
             EstimatedMau = activeUserIdsMonth,
             TotalDiariesLogged = totalDiaries,
             TotalWaterLogs = totalWater,
-            TotalStepsSynced = totalSteps,
             TotalAiScans = totalAi,
             ChallengeCompletionRate = challengeRate,
             AveragePetLevel = avgPetLevel,

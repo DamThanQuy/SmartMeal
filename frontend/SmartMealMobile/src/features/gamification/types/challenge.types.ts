@@ -26,7 +26,7 @@ export interface ChallengeWithWindow extends Challenge {
   /** Hôm nay là ngày thứ mấy của khung (1…dayTotal). */
   dayCurrent: number;
   dayTotal: number;
-  /** Số ngày trong khung đã đạt mục tiêu của thử thách (server tính từ nhật ký/nước/vận động). */
+  /** Số ngày trong khung đã đạt mục tiêu của thử thách (server tính từ nhật ký/nước). */
   completedDays: number;
   /** Tên phần thưởng do server đặt (vd. "Hydration Master") khi không khớp huy hiệu nào của app. */
   rewardLabel?: string;

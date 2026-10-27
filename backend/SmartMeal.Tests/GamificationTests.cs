@@ -230,13 +230,13 @@ public class GamificationTests : IClassFixture<ApiFactory>
     {
         var user = await _factory.RegisterUserAsync();
         var list = await ChallengesAsync(user.Client);
-        Assert.Equal(3, list.Count);
+        Assert.Equal(2, list.Count); // thử thách bước chân đã tắt cùng Health Connect
+        Assert.DoesNotContain(list, c => c.Category == "Exercise");
         Assert.DoesNotContain(list, c => c.IsJoined);
         var water = list.Single(c => c.Category == "DrinkWater");
         Assert.Equal(2000, water.TargetValuePerDay);
         Assert.Equal(7, water.DurationDays);
         Assert.Equal("EatClean", list.Single(c => c.Title.Contains("Eat Clean")).Category);
-        Assert.Equal(10000, list.Single(c => c.Category == "Exercise").TargetValuePerDay);
         Assert.Null(water.StartDate);
 
         var joined = await JoinAsync(user.Client, water.Id);
@@ -259,10 +259,10 @@ public class GamificationTests : IClassFixture<ApiFactory>
     public async Task Parallel_joins_create_a_single_record()
     {
         var user = await _factory.RegisterUserAsync();
-        var steps = (await ChallengesAsync(user.Client)).Single(c => c.Category == "Exercise");
+        var water = (await ChallengesAsync(user.Client)).Single(c => c.Category == "DrinkWater");
 
         var responses = await Task.WhenAll(Enumerable.Range(0, 6)
-            .Select(_ => user.Client.PostAsync($"/api/gamification/challenges/{steps.Id}/join" + Q(), null)));
+            .Select(_ => user.Client.PostAsync($"/api/gamification/challenges/{water.Id}/join" + Q(), null)));
 
         Assert.All(responses, r => Assert.Equal(HttpStatusCode.OK, r.StatusCode));
         await using var scope = _factory.Services.CreateAsyncScope();
@@ -271,14 +271,13 @@ public class GamificationTests : IClassFixture<ApiFactory>
     }
 
     [DbFact]
-    public async Task Water_eat_clean_and_step_challenges_count_the_days_that_meet_their_goal()
+    public async Task Water_and_eat_clean_challenges_count_the_days_that_meet_their_goal()
     {
         var user = await _factory.RegisterUserAsync();
         var list = await ChallengesAsync(user.Client);
         var water = list.Single(c => c.Category == "DrinkWater");
         var clean = list.Single(c => c.Category == "EatClean");
-        var steps = list.Single(c => c.Category == "Exercise");
-        foreach (var c in new[] { water, clean, steps }) await JoinAsync(user.Client, c.Id);
+        foreach (var c in new[] { water, clean }) await JoinAsync(user.Client, c.Id);
 
         await LogWaterAsync(user.Client, Today, 1500);
         await LogMealAsync(user.Client, Today, "Breakfast", "Sáng");
@@ -289,19 +288,11 @@ public class GamificationTests : IClassFixture<ApiFactory>
 
         await LogWaterAsync(user.Client, Today, 600);
         await LogMealAsync(user.Client, Today, "Dinner", "Tối");
-        var sync = await user.Client.PostJsonAsync("/api/health-sync/steps-and-calories",
-            new { date = Iso(Today), source = "GoogleFit", steps = 12000, burnedCalories = 300 });
-        Assert.Equal(HttpStatusCode.OK, sync.StatusCode);
 
         var done = (await ChallengesAsync(user.Client)).ToDictionary(c => c.Category);
         Assert.Equal(1, done["DrinkWater"].CompletedDays);
         Assert.Equal(1, done["EatClean"].CompletedDays);
-        Assert.Equal(1, done["Exercise"].CompletedDays);
         Assert.All(done.Values, c => Assert.False(c.IsCompleted));
-
-        // Đồng bộ lại số bước thấp hơn thì ngày đó không còn đạt.
-        await user.Client.PostJsonAsync("/api/health-sync/steps-and-calories", new { date = Iso(Today), source = "GoogleFit", steps = 9000, burnedCalories = 300 });
-        Assert.Equal(0, (await ChallengesAsync(user.Client)).Single(c => c.Category == "Exercise").CompletedDays);
     }
 
     [DbFact]

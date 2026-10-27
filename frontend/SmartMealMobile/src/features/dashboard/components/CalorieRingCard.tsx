@@ -8,7 +8,6 @@ import { useTheme } from '@/theme/ThemeProvider';
 export interface CalorieRingCardProps {
   consumedCalories: number;
   calorieTarget: number;
-  activityCalories: number;
   onPress?: () => void;
   className?: string;
 }
@@ -20,22 +19,20 @@ function formatNumber(value: number): string {
 export function CalorieRingCard({
   consumedCalories,
   calorieTarget,
-  activityCalories,
   onPress,
   className = '',
 }: CalorieRingCardProps) {
   const { colors } = useTheme();
-  const effectiveTarget = calorieTarget + activityCalories;
-  const remaining = effectiveTarget - consumedCalories;
+  const remaining = calorieTarget - consumedCalories;
   const percent =
-    effectiveTarget > 0
-      ? Math.max(0, Math.min(consumedCalories / effectiveTarget, 1))
+    calorieTarget > 0
+      ? Math.max(0, Math.min(consumedCalories / calorieTarget, 1))
       : 0;
 
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityLabel={`Năng lượng hôm nay: ${formatNumber(consumedCalories)} trên ${formatNumber(effectiveTarget)} kcal. Xem ngân sách calo`}
+      accessibilityLabel={`Năng lượng hôm nay: ${formatNumber(consumedCalories)} trên ${formatNumber(calorieTarget)} kcal. Xem nhật ký`}
       onPress={onPress}
       className={`overflow-hidden rounded-lg active:opacity-90 ${className}`}
     >
@@ -59,7 +56,7 @@ export function CalorieRingCard({
                   {formatNumber(consumedCalories)}
                 </AppText>
                 <AppText variant="body" color="onEnergy" className="opacity-80">
-                  {`/ ${formatNumber(effectiveTarget)} kcal`}
+                  {`/ ${formatNumber(calorieTarget)} kcal`}
                 </AppText>
               </View>
             </View>

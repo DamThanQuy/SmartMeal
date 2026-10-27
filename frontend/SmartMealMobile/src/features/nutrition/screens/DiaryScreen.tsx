@@ -169,7 +169,7 @@ export function DiaryScreen({ route }: Props) {
                       .reduce((sum, entry) => sum + entry.nutrition.calories, 0)
                       .toLocaleString('vi-VN')}
                   </AppText>
-                  {` / ${(diary.calorieTarget + diary.activityCalories).toLocaleString('vi-VN')} kcal`}
+                  {` / ${diary.calorieTarget.toLocaleString('vi-VN')} kcal`}
                 </AppText>
               </View>
               <DiaryOverviewBar diary={diary} />
@@ -351,7 +351,7 @@ function DiaryOverviewBar({ diary }: DiaryOverviewBarProps) {
     carbsG: allEntries.reduce((sum, entry) => sum + entry.nutrition.carbsG, 0),
     fatG: allEntries.reduce((sum, entry) => sum + entry.nutrition.fatG, 0),
   };
-  const target = diary.calorieTarget + diary.activityCalories;
+  const target = diary.calorieTarget;
   const percent = target > 0 ? Math.min(consumed.calories / target, 1) : 0;
 
   return (

@@ -12,7 +12,7 @@ namespace SmartMeal.API.Controllers;
 
 /// <summary>
 /// Controller xử lý toàn bộ các tác vụ xác thực, phân quyền và quản lý tài khoản người dùng:
-/// Đăng ký, đăng nhập email/mật khẩu, đăng nhập Google SSO, làm mới token, quên/đặt lại/đổi mật khẩu qua OTP,
+/// Đăng ký, đăng nhập email/mật khẩu, làm mới token, quên/đặt lại/đổi mật khẩu qua OTP,
 /// lấy và cập nhật hồ sơ cá nhân, tải ảnh đại diện đại diện và xóa tài khoản vĩnh viễn.
 /// </summary>
 [ApiController]
@@ -62,18 +62,6 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Login([FromBody] LoginRequestDto dto) =>
         this.ToActionResult(await _authService.LoginAsync(dto));
-
-    /// <summary>
-    /// Đăng nhập hoặc tự động tạo mới tài khoản thông qua Google SSO (Google ID Token).
-    /// Token ID của Google được xác thực trực tiếp với máy chủ Google Identity.
-    /// Nếu người dùng chưa từng đăng ký, tài khoản mới sẽ được tự động kích hoạt với thông tin từ Google.
-    /// </summary>
-    /// <param name="dto">Dữ liệu chứa ID Token nhận được từ Google Sign-In SDK phía client.</param>
-    /// <returns>Đối tượng <see cref="AuthResponseDto"/> chứa JWT tokens và thông tin tài khoản.</returns>
-    [EnableRateLimiting(RateLimitPolicies.Auth)]
-    [HttpPost("google")]
-    public async Task<ActionResult<ApiResponse<AuthResponseDto>>> GoogleLogin([FromBody] GoogleAuthRequestDto dto) =>
-        this.ToActionResult(await _authService.GoogleLoginAsync(dto));
 
     /// <summary>
     /// Cấp mới cặp Access Token và Refresh Token khi Access Token hiện tại đã hết hạn.
@@ -233,7 +221,7 @@ public class AuthController : ControllerBase
     /// Xóa vĩnh viễn tài khoản người dùng và toàn bộ dữ liệu liên quan (Tuân thủ BR-271).
     /// Quy tắc xác nhận bảo mật:
     /// - Tài khoản thông thường: Bắt buộc cung cấp trường 'password' để xác thực quyền chủ sở hữu.
-    /// - Tài khoản tạo qua Google SSO (chưa thiết lập mật khẩu): Bắt buộc cung cấp trường 'confirmEmail' khớp với email tài khoản.
+    /// - Tài khoản không có mật khẩu (tạo bằng đăng nhập Google trước đây): Bắt buộc cung cấp trường 'confirmEmail' khớp với email tài khoản.
     /// Sau khi xóa, toàn bộ dữ liệu nhật ký, thực đơn và phiên đăng nhập sẽ bị dọn dẹp triệt để.
     /// </summary>
     /// <param name="dto">Dữ liệu xác thực xóa tài khoản gồm mật khẩu hoặc email xác nhận.</param>

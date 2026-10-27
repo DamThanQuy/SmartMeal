@@ -34,8 +34,7 @@ function entry(mealType: MealType, value: NutritionInfo): MealLogEntry {
 describe('buildDayProgress', () => {
   const diary: DiaryDaySummary = {
     date: '2026-10-14',
-    calorieTarget: 1800,
-    activityCalories: 200,
+    calorieTarget: 2000,
     entriesByMeal: {
       breakfast: [entry('breakfast', nutrition(350.4, 20, 40, 10))],
       lunch: [entry('lunch', nutrition(500, 30, 60, 15)), entry('lunch', nutrition(120, 2, 25, 1))],

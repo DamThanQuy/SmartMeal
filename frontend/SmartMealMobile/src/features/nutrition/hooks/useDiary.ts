@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { isOnlineNow } from '@/services/network/connectivity';
-import { useUserProfileStore } from '@/state/user/userProfileStore';
 import type { MealType } from '@/types/meal.types';
 import { nutritionService } from '../services/nutritionService';
 import { buildPendingMealLog, isRetryableSyncError } from '../services/offlineQueue';
@@ -76,20 +75,6 @@ export function useDeleteMealLogEntry(dateIso: string) {
     mutationFn: (entryId: string) => nutritionService.deleteLogEntry(dateIso, entryId),
     onSuccess: invalidate,
   });
-}
-
-// BR-040→042 — đổi công tắc "Cộng calo vận động" (CalorieBudgetScreen) phải làm mới ngay số
-// hiển thị ở Dashboard/Diary/ProgressChart (cả 3 đều đọc activityCalories qua
-// nutritionService.buildSummary → calculateCalorieBudget).
-export function useSetIncludeActivityCalories() {
-  const queryClient = useQueryClient();
-  const setIncludeActivityCalories = useUserProfileStore(state => state.setIncludeActivityCalories);
-  return (value: boolean) => {
-    setIncludeActivityCalories(value);
-    void queryClient.invalidateQueries({ queryKey: ['diary'] });
-    void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-    void queryClient.invalidateQueries({ queryKey: ['progress'] });
-  };
 }
 
 // Backend không có endpoint lấy 1 bản ghi → dùng chung query của cả ngày rồi chọn đúng bản ghi.

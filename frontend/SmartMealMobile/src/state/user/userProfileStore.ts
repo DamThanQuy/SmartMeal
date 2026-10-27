@@ -39,9 +39,6 @@ interface UserProfileState {
   /** Dị ứng ngoài danh mục tự gõ ("dứa, kiwi") — BE lọc món/cảnh báo theo; '' = không có. */
   otherAllergies: string;
   result: HealthProfileResult;
-  /** CalorieBudgetScreen (Đợt 11, BR-040→042) — "Cộng calo vận động vào ngân sách", mặc định bật. */
-  includeActivityCalories: boolean;
-  setIncludeActivityCalories: (value: boolean) => void;
   /** WaterLogScreen (Đợt 12, BR-031 Daily Target) — mục tiêu nước/ngày, mặc định 2.000 ml. */
   waterGoalMl: number;
   initFromHealthProfile: (data: HealthProfileFormData, result: HealthProfileResult) => void;
@@ -71,7 +68,6 @@ type ProfileInitialState = Pick<
   | 'dietaryPreferenceIds'
   | 'otherAllergies'
   | 'result'
-  | 'includeActivityCalories'
   | 'waterGoalMl'
 >;
 
@@ -97,7 +93,6 @@ const INITIAL_PROFILE_STATE: ProfileInitialState = {
     macros: { proteinG: 0, carbsG: 0, fatG: 0 },
     goal: 'maintain',
   },
-  includeActivityCalories: true,
   waterGoalMl: 2000,
 };
 
@@ -144,7 +139,6 @@ export const useUserProfileStore = create<UserProfileState>()((set, get) => ({
     });
   },
 
-  setIncludeActivityCalories: value => set({ includeActivityCalories: value }),
 }));
 
 /** Đọc dị ứng hiện tại ngoài React tree (trong service, không dùng hook được) — dùng chung cho
@@ -155,12 +149,6 @@ export function getCurrentUserAllergyIds(): string[] {
 
 export function getCurrentUserDietaryPreferenceIds(): string[] {
   return useUserProfileStore.getState().dietaryPreferenceIds;
-}
-
-/** Đọc công tắc "Cộng calo vận động" ngoài React tree — nutritionService dùng để tính
- * DiaryDaySummary.activityCalories qua calculateCalorieBudget (BR-040→042). */
-export function getIncludeActivityCalories(): boolean {
-  return useUserProfileStore.getState().includeActivityCalories;
 }
 
 /** Đọc mục tiêu nước/ngày ngoài React tree — waterService dùng để tính WaterDaySummary.goalMl. */

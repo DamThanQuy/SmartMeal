@@ -68,7 +68,8 @@ public class GamificationMigrationTests
                 """));
             Assert.Equal(PostgresErrorCodes.UniqueViolation, duplicatePet.SqlState);
 
-            // Khởi động lại: luật chấm của ba thử thách mẫu được bù, chạy lần hai không đổi gì thêm.
+            // Khởi động lại: luật chấm của hai thử thách mẫu được bù, thử thách bước chân (đã bỏ cùng Health Connect) bị tắt;
+            // chạy lần hai không đổi gì thêm.
             for (var run = 0; run < 2; run++)
             {
                 await using var db = new ApplicationDbContext(options);
@@ -78,8 +79,7 @@ public class GamificationMigrationTests
             Assert.Equal("DrinkWater", await ScalarAsync<string>(connection, """SELECT "Category" FROM "Challenges" WHERE "Title" = '7 Ngày Uống Đủ 2L Nước' """));
             Assert.Equal(2000, await ScalarAsync<int>(connection, """SELECT "TargetValuePerDay" FROM "Challenges" WHERE "Title" = '7 Ngày Uống Đủ 2L Nước' """));
             Assert.Equal(3, await ScalarAsync<int>(connection, """SELECT "TargetValuePerDay" FROM "Challenges" WHERE "Title" = 'Eat Clean 14 Ngày' """));
-            Assert.Equal("Exercise", await ScalarAsync<string>(connection, """SELECT "Category" FROM "Challenges" WHERE "Title" = '10.000 Bước Chân Mỗi Ngày' """));
-            Assert.Equal(10000, await ScalarAsync<int>(connection, """SELECT "TargetValuePerDay" FROM "Challenges" WHERE "Title" = '10.000 Bước Chân Mỗi Ngày' """));
+            Assert.False(await ScalarAsync<bool>(connection, """SELECT "IsActive" FROM "Challenges" WHERE "Title" = '10.000 Bước Chân Mỗi Ngày' """));
         }
         finally
         {

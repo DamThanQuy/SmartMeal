@@ -541,7 +541,6 @@ export default function RewardsView({ onNotify }) {
                       {/* Chỉ các loại app chấm được tiến độ mỗi ngày (backend: ChallengeCategories). */}
                       <option value="EatClean">Ăn Sạch — số nhóm bữa ghi mỗi ngày</option>
                       <option value="DrinkWater">Uống Nước — ml mỗi ngày</option>
-                      <option value="Exercise">Vận Động — số bước mỗi ngày</option>
                     </select>
                   </div>
 

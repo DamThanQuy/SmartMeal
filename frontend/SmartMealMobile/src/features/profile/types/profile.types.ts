@@ -36,7 +36,6 @@ export type NotificationIcon =
   | 'quickLog'
   | 'pet'
   | 'water'
-  | 'healthConnect'
   | 'grocery'
   | 'challenge'
   | 'badge'
@@ -60,21 +59,6 @@ export interface NotificationsResult {
   /** Mới → cũ. */
   items: NotificationItem[];
   unreadCount: number;
-}
-
-export type HealthConnectSourceId = 'steps' | 'distance' | 'activeCalories';
-
-export interface HealthConnectSource {
-  id: HealthConnectSourceId;
-  label: string;
-  todayValueLabel: string;
-  enabled: boolean;
-}
-
-export interface HealthConnectState {
-  connected: boolean;
-  lastSyncedLabel: string;
-  sources: HealthConnectSource[];
 }
 
 /** Tài liệu pháp lý mở từ Settings → "Quyền riêng tư". */

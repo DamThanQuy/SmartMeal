@@ -1,7 +1,6 @@
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import {
-  Activity,
   Bell,
   LogOut,
   PawPrint,
@@ -27,7 +26,6 @@ import { AvatarActionSheet } from '../components/AvatarActionSheet';
 import { EditableAvatar } from '../components/EditableAvatar';
 import { ProfileMenuRow } from '../components/ProfileMenuRow';
 import { useChangeAvatar } from '../hooks/useChangeAvatar';
-import { useHealthConnectStatus } from '../hooks/useHealthConnect';
 import { summarizeReminders, useRemindersSettings } from '../hooks/useReminders';
 
 // design/Profile.dc.html (BR-001→BR-003). Là MAIN_TAB_ROUTES.PROFILE. Chạm ảnh đại diện để chụp/chọn ảnh
@@ -42,7 +40,6 @@ export function ProfileScreen() {
   const profile = useUserProfileStore();
   const membershipStatus = usePremiumStore(state => state.status);
   const isPremium = isProMembership(membershipStatus);
-  const { data: healthConnect } = useHealthConnectStatus();
   const { data: reminders } = useRemindersSettings();
   const changeAvatar = useChangeAvatar();
   const [avatarSheetVisible, setAvatarSheetVisible] = useState(false);
@@ -127,12 +124,6 @@ export function ProfileScreen() {
           label="Chế độ ăn"
           valueLabel={dietaryLabels.length > 0 ? dietaryLabels.join(', ') : 'Không có'}
           onPress={() => navigation.navigate(MAIN_STACK_ROUTES.HEALTH_SETTINGS)}
-        />
-        <ProfileMenuRow
-          icon={<Activity size={20} color={colors.primary} />}
-          label="Health Connect"
-          valueLabel={healthConnect ? (healthConnect.connected ? 'Đã kết nối' : 'Chưa kết nối') : undefined}
-          onPress={() => navigation.navigate(MAIN_STACK_ROUTES.HEALTH_CONNECT)}
         />
         <ProfileMenuRow
           icon={<Bell size={20} color={colors.primary} />}

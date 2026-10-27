@@ -65,17 +65,17 @@ describe('RewardsView — thử thách', () => {
     const user = await renderLoaded()
 
     await user.click(screen.getByRole('button', { name: /Thêm Thử Thách Mới/ }))
-    await user.type(within(modal()).getByPlaceholderText(/7 Ngày Ăn Sạch/), '10.000 bước')
-    await user.selectOptions(within(modal()).getByRole('combobox'), 'Exercise')
+    await user.type(within(modal()).getByPlaceholderText(/7 Ngày Ăn Sạch/), 'Uống đủ 2L')
+    await user.selectOptions(within(modal()).getByRole('combobox'), 'DrinkWater')
     const [days, target] = within(modal()).getAllByRole('spinbutton')
     await user.clear(days)
     await user.type(days, '14')
     await user.clear(target)
-    await user.type(target, '10000')
+    await user.type(target, '2000')
     await user.click(within(modal()).getByRole('button', { name: 'Tạo Thử Thách' }))
 
     await waitFor(() => expect(api.createChallenge).toHaveBeenCalledWith({
-      title: '10.000 bước', description: '', category: 'Exercise', durationDays: 14, targetValuePerDay: 10000,
+      title: 'Uống đủ 2L', description: '', category: 'DrinkWater', durationDays: 14, targetValuePerDay: 2000,
       rewardExp: 150, rewardBadge: 'Clean Eater', isActive: true,
     }))
     await waitFor(() => expect(onNotify).toHaveBeenCalledWith('Đã tạo thử thách mới thành công!', 'success'))

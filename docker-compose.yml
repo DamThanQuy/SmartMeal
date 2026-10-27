@@ -45,8 +45,7 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=SmartMealDb;Username=postgres;Password=${POSTGRES_PASSWORD:-postgrespassword}
       Storage__Root: /app/uploads
-      # Expo web (npx expo start --web) gọi API từ trình duyệt. 8082 là cổng Expo Web đang khai báo cho
-      # Google Sign-In (Authorized JavaScript origins) — đổi cổng thì sửa cả hai nơi.
+      # Expo web (npx expo start --web, cổng 8081/8082) và Admin Web (3000) gọi API từ trình duyệt.
       Cors__AllowedOrigins: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8081,http://localhost:8082,http://localhost:19006}
     ports:
       # Mở trên mọi địa chỉ để điện thoại cùng Wi-Fi gọi được http://<IP-máy>:5000/api

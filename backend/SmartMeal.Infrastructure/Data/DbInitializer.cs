@@ -229,18 +229,6 @@ public static partial class DbInitializer
                     RewardExp = 300,
                     RewardBadge = "Clean Eater Pro",
                     IsActive = true
-                },
-                new()
-                {
-                    Title = "10.000 Bước Chân Mỗi Ngày",
-                    Description = "Đạt mục tiêu 10.000 bước đi bộ/chạy bộ mỗi ngày cùng SmartMeal Health Sync.",
-                    ImageUrl = "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8",
-                    DurationDays = 5,
-                    Category = "Exercise",
-                    TargetValuePerDay = 10000,
-                    RewardExp = 200,
-                    RewardBadge = "Speed Runner",
-                    IsActive = true
                 }
             };
             await db.Challenges.AddRangeAsync(challenges);
@@ -259,6 +247,7 @@ public static partial class DbInitializer
         }
 
         await EnsureChallengeRulesAsync(db);
+        await DisableStepChallengesAsync(db);
         await EnsureRecipeMealTypesAsync(db);
         await EnsureRecipeImagesAsync(db);
         await EnsureSeedDishesAsync(db);
@@ -362,9 +351,19 @@ public static partial class DbInitializer
     private static readonly (string Title, string Category, int Target)[] ChallengeRules =
     {
         ("7 Ngày Uống Đủ 2L Nước", "DrinkWater", 2000), // ml nước mỗi ngày
-        ("Eat Clean 14 Ngày", "EatClean", 3),            // số nhóm bữa (sáng/trưa/tối...) đã ghi mỗi ngày
-        ("10.000 Bước Chân Mỗi Ngày", "Exercise", 10000) // số bước mỗi ngày
+        ("Eat Clean 14 Ngày", "EatClean", 3)             // số nhóm bữa (sáng/trưa/tối...) đã ghi mỗi ngày
     };
+
+    private const string LegacyStepChallengeTitle = "10.000 Bước Chân Mỗi Ngày";
+
+    // Thử thách bước chân cần dữ liệu Health Connect — tính năng đã bỏ ngày 27/10/2026. Chỉ tắt (IsActive = false) để giữ
+    // lịch sử tham gia của người dùng; app và Admin Web không còn chấm hay tạo loại này.
+    private static async Task DisableStepChallengesAsync(ApplicationDbContext db)
+    {
+        await db.Challenges
+            .Where(c => c.IsActive && (c.Category == "Exercise" || c.Title == LegacyStepChallengeTitle))
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.IsActive, false));
+    }
 
     private static async Task EnsureChallengeRulesAsync(ApplicationDbContext db)
     {

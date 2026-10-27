@@ -301,7 +301,7 @@ public class AdminCreateChallengeDto
     public string Description { get; set; } = string.Empty;
     public string ImageUrl { get; set; } = string.Empty;
     public int DurationDays { get; set; } = 7;
-    public string Category { get; set; } = "EatClean"; // một trong ChallengeCategories.All: EatClean, DrinkWater, Exercise
+    public string Category { get; set; } = "EatClean"; // một trong ChallengeCategories.All: EatClean, DrinkWater
     public int TargetValuePerDay { get; set; } = 3;
     public int RewardExp { get; set; } = 150;
     public string RewardBadge { get; set; } = "Clean Eater";
@@ -421,7 +421,6 @@ public class AdminEngagementAnalyticsDto
     public int EstimatedMau { get; set; }
     public int TotalDiariesLogged { get; set; }
     public int TotalWaterLogs { get; set; }
-    public long TotalStepsSynced { get; set; }
     public int TotalAiScans { get; set; }
     public double ChallengeCompletionRate { get; set; }
     public double AveragePetLevel { get; set; }
