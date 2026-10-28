@@ -54,7 +54,7 @@ export function ThemeProvider({ children, onReady }: ThemeProviderProps) {
   const { setColorScheme } = useNativeWindColorScheme();
 
   const [mode, setModeState] = useState<ThemeMode>('system');
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(true);
 
   // AsyncStorage là bất đồng bộ (khác MMKV) — phải đọc xong giá trị lưu trước khi render children,
   // nếu không màn hình sẽ chớp từ 'system' sang giá trị đã lưu (hoặc đọc undefined ngay lần đầu).

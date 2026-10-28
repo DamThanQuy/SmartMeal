@@ -1,5 +1,3 @@
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-
 /**
  * Tối ưu kích thước và dung lượng ảnh món ăn trước khi tải lên máy chủ / Gemini AI:
  * - Thu nhỏ chiều rộng tối đa về 1024px (giữ trọn độ nét để AI nhận diện nguyên liệu).
@@ -9,10 +7,13 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
  */
 export async function optimizeMealImage(uri: string): Promise<string> {
   try {
-    const manipResult = await manipulateAsync(
+    // Dynamic import để tránh crash khi chạy với prebuilt APK thiếu native module ExpoImageManipulator
+    const ImageManipulator = await import('expo-image-manipulator');
+    if (!ImageManipulator?.manipulateAsync) return uri;
+    const manipResult = await ImageManipulator.manipulateAsync(
       uri,
       [{ resize: { width: 1024 } }],
-      { compress: 0.75, format: SaveFormat.JPEG }
+      { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG }
     );
     return manipResult.uri;
   } catch {
