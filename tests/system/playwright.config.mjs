@@ -25,6 +25,8 @@ export default defineConfig({
     screenshot: 'on',
     trace: 'retain-on-failure',
     video: 'retain-on-failure',
+    // Optional delay per action so a --headed run can be watched.
+    launchOptions: { slowMo: Number(process.env.SMARTMEAL_E2E_SLOWMO) || 0 },
   },
   projects: [
     {

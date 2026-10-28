@@ -42,6 +42,12 @@ Hiện cửa sổ browser trong lúc chạy:
 npm run test:e2e -- --headed
 ```
 
+Làm chậm mỗi thao tác (mili giây) để dễ theo dõi khi bật `--headed`:
+
+```powershell
+$env:SMARTMEAL_E2E_SLOWMO=600; npm run test:e2e -- --headed
+```
+
 Cài lại toàn bộ dependencies từ lockfile:
 
 ```powershell

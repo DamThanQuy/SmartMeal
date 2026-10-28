@@ -71,6 +71,9 @@ services:
       <<: *qa-environment
       # ApiFactory runs in Testing; tests opt into explicit admin seeding with
       # WithSetting. Do not inherit the live QA API's sample admin credentials.
+      # The shared anchor's Development value would override UseEnvironment("Testing")
+      # and seed the default admin password the tests assert is absent.
+      ASPNETCORE_ENVIRONMENT: Testing
       Seed__AdminPassword: ""
       Seed__AdminEmail: ""
       SMARTMEAL_TEST_DB: Host=db;Database=postgres;Username=smartmeal_qa;Password=smartmeal_qa_disposable
