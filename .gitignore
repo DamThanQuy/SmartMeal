@@ -46,6 +46,10 @@ client_secret*.json
 token.json
 token.pickle
 
+# Generated full-system QA artifacts and isolated browser-test dependencies
+.e2e-results/
+tests/system/node_modules/
+
 # OS Files
 .DS_Store
 Thumbs.db

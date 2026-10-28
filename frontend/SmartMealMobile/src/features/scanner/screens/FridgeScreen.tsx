@@ -53,7 +53,7 @@ export function FridgeScreen({ route, navigation }: Props) {
   const [hasConfirmedForRecipes, setHasConfirmedForRecipes] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const manualIngredientSequence = useRef(0);
-  const scrollView = useRef<ScrollView>(null);
+  const scrollView = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const recipeSectionOffset = useRef(0);
   const shouldRevealRecipes = useRef(false);
 
