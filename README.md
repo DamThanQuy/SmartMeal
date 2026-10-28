@@ -241,5 +241,15 @@ Docker Compose không chạy app; app chạy riêng bằng Expo: `cd frontend/Sm
 
 ---
 
+## Kiểm thử tự động toàn hệ thống
+
+Tại thư mục gốc, dùng Node.js 24.3+ và Docker Desktop:
+
+```powershell
+npm run test:e2e
+```
+
+Lệnh tự dựng database/API QA riêng, chạy `SmartMeal.Tests`, test mobile/admin có gọi API thật, rồi chạy Playwright trên browser, chụp ảnh và ghi báo cáo vào `docs/test-reports`. Xem [hướng dẫn và phạm vi kiểm thử](tests/system/README.md).
+
 ## 📄 License
 Dự án được phát triển phục vụ mục đích học tập tại **Đại học FPT**.
