@@ -4,7 +4,6 @@ import {
   CreditCard,
   FileText,
   HeartPulse,
-  Link2,
   Lock,
   ShieldCheck,
   Trash2,
@@ -22,7 +21,6 @@ import { useAuthStore } from '@/state/auth/authStore';
 import { usePremiumStore } from '@/state/premium/premiumStore';
 import { useTheme, type ThemeMode } from '@/theme/ThemeProvider';
 import { ProfileMenuRow } from '../components/ProfileMenuRow';
-import { useHealthConnectStatus } from '../hooks/useHealthConnect';
 import { summarizeReminders, useRemindersSettings } from '../hooks/useReminders';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'Settings'>;
@@ -47,7 +45,6 @@ export function SettingsScreen({ navigation }: Props) {
   const hasPassword = user?.hasPassword !== false;
   const logout = useAuthStore(state => state.logout);
   const membershipStatus = usePremiumStore(state => state.status);
-  const { data: healthConnect } = useHealthConnectStatus();
   const { data: reminders } = useRemindersSettings();
 
   return (
@@ -102,18 +99,12 @@ export function SettingsScreen({ navigation }: Props) {
         </AppCard>
 
         <AppCard className="gap-xxs">
-          <AppText variant="h3">Kết nối và nhắc nhở</AppText>
+          <AppText variant="h3">Nhắc nhở</AppText>
           <ProfileMenuRow
             icon={<Bell size={20} color={colors.primary} />}
             label="Nhắc nhở"
             valueLabel={summarizeReminders(reminders)}
             onPress={() => navigation.navigate(MAIN_STACK_ROUTES.REMINDERS)}
-          />
-          <ProfileMenuRow
-            icon={<Link2 size={20} color={colors.primary} />}
-            label="Health Connect"
-            valueLabel={healthConnect?.connected ? 'Đã kết nối' : 'Chưa kết nối'}
-            onPress={() => navigation.navigate(MAIN_STACK_ROUTES.HEALTH_CONNECT)}
           />
         </AppCard>
 

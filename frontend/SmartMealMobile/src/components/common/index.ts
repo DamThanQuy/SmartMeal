@@ -7,3 +7,4 @@ export * from './ScreenHeader';
 export * from './InlineBanner';
 export * from './SuccessToast';
 export * from './UserAvatar';
+export * from './MealTypeChips';

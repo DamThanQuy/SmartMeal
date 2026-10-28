@@ -16,7 +16,6 @@ namespace SmartMeal.Infrastructure.Services;
 /// Dịch vụ xử lý toàn bộ nghiệp vụ xác thực danh tính và quản trị phiên làm việc của người dùng:
 /// - Đăng ký tài khoản mới bằng Email/Mật khẩu với mã hóa BCrypt an toàn.
 /// - Đăng nhập tài khoản với cơ chế bảo vệ chống tấn công Brute-force (khóa tài khoản tạm thời khi sai nhiều lần).
-/// - Đăng nhập hoặc tạo mới tài khoản qua Google Identity SSO (Google ID Token).
 /// - Quản lý chu kỳ sống JWT Token: Cấp phát Access Token và Refresh Token Rotation (sử dụng 1 lần, phát hiện tái sử dụng trái phép).
 /// - Đăng xuất và thu hồi phiên làm việc trên các thiết bị.
 /// - Cập nhật thông tin hồ sơ và đổi mật khẩu kèm cơ chế thu hồi phiên cũ an toàn.
@@ -37,7 +36,6 @@ public class AuthService : IAuthService
     private readonly ILoginAttemptTracker _attempts;
     private readonly JwtOptions _jwt;
     private readonly AuthOptions _auth;
-    private readonly IGoogleIdTokenValidator _googleTokenValidator;
     private readonly IPasswordService _passwords;
     private readonly SmtpOptions _smtp;
 
@@ -47,7 +45,6 @@ public class AuthService : IAuthService
     /// <param name="db">Database context của ứng dụng.</param>
     /// <param name="jwtService">Dịch vụ cấp phát và ký số JWT Access Token.</param>
     /// <param name="attempts">Dịch vụ theo dõi và khóa tạm thời tài khoản khi đăng nhập thất bại liên tiếp.</param>
-    /// <param name="googleTokenValidator">Dịch vụ xác thực tính hợp lệ của Google ID Token với máy chủ Google.</param>
     /// <param name="passwords">Dịch vụ quản lý mật khẩu và mã OTP qua email.</param>
     /// <param name="jwt">Cấu hình tham số JWT (thời hạn Access Token, Refresh Token).</param>
     /// <param name="auth">Cấu hình các quy tắc xác thực hệ thống.</param>
@@ -56,7 +53,6 @@ public class AuthService : IAuthService
         ApplicationDbContext db,
         IJwtTokenService jwtService,
         ILoginAttemptTracker attempts,
-        IGoogleIdTokenValidator googleTokenValidator,
         IPasswordService passwords,
         IOptions<JwtOptions> jwt,
         IOptions<AuthOptions> auth,
@@ -65,7 +61,6 @@ public class AuthService : IAuthService
         _db = db;
         _jwtService = jwtService;
         _attempts = attempts;
-        _googleTokenValidator = googleTokenValidator;
         _passwords = passwords;
         _jwt = jwt.Value;
         _auth = auth.Value;
@@ -106,8 +101,7 @@ public class AuthService : IAuthService
             FullName = dto.FullName.Trim(),
             Role = "User",
             // Chỉ đăng ký bằng mật khẩu chưa chứng minh được người đăng ký sở hữu email này. Cờ được bật khi xác minh OTP
-            // (verify-email/reset-password); đăng nhập Google chỉ liên kết vào tài khoản đã xác minh để không ai "đăng ký
-            // trước" bằng email của người khác rồi chiếm tài khoản khi chủ thật đăng nhập Google.
+            // (verify-email/reset-password).
             IsEmailVerified = false
         };
 
@@ -222,82 +216,6 @@ public class AuthService : IAuthService
 
         await _attempts.ResetAsync(user);
         return (user, null);
-    }
-
-    /// <summary>
-    /// Đăng nhập hoặc tự động tạo tài khoản thông qua Google SSO:
-    /// - Gọi dịch vụ Google Token Validator để kiểm tra chữ ký và tính hợp lệ của IdToken từ Google.
-    /// - Tự động liên kết tài khoản nếu email đã tồn tại và đã xác minh, hoặc tạo tài khoản mới nếu chưa có.
-    /// - Cấp phát bộ JWT tokens đăng nhập ngay lập tức.
-    /// </summary>
-    /// <param name="dto">Dữ liệu chứa chuỗi Google IdToken nhận từ client SDK.</param>
-    /// <returns>Đối tượng <see cref="AuthResponseDto"/> chứa Access Token và thông tin tài khoản.</returns>
-    public async Task<ApiResponse<AuthResponseDto>> GoogleLoginAsync(GoogleAuthRequestDto dto)
-    {
-        GoogleIdentity identity;
-        try
-        {
-            identity = await _googleTokenValidator.ValidateAsync(dto.IdToken);
-        }
-        catch (GoogleAuthException ex)
-        {
-            var kind = ex.StatusCode switch
-            {
-                401 => ApiErrorKind.Unauthorized,
-                503 => ApiErrorKind.Unavailable,
-                _ => ApiErrorKind.BadRequest
-            };
-            return ApiResponse<AuthResponseDto>.Fail(ex.Message, null, kind);
-        }
-
-        var email = NormalizeEmail(identity.Email);
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.GoogleId == identity.Subject);
-        if (user is null)
-        {
-            user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email);
-            if (user is not null && !user.IsEmailVerified)
-            {
-                return ApiResponse<AuthResponseDto>.Fail(
-                    "Email này đã được đăng ký bằng mật khẩu nhưng chưa được xác minh. Hãy đăng nhập bằng email và mật khẩu.",
-                    null,
-                    ApiErrorKind.Conflict);
-            }
-
-            if (user is null)
-            {
-                user = new User
-                {
-                    Email = email,
-                    FullName = identity.FullName.Trim(),
-                    AvatarUrl = identity.AvatarUrl,
-                    GoogleId = identity.Subject,
-                    IsEmailVerified = true,
-                    PasswordHash = null,
-                    Role = "User"
-                };
-                _db.Users.Add(user);
-            }
-            else
-            {
-                // Liên kết tài khoản theo email đã được Google xác minh.
-                user.GoogleId = identity.Subject;
-                if (string.IsNullOrWhiteSpace(user.AvatarUrl) && !string.IsNullOrWhiteSpace(identity.AvatarUrl))
-                    user.AvatarUrl = identity.AvatarUrl;
-                user.UpdatedAt = DateTime.UtcNow;
-            }
-
-            try
-            {
-                await _db.SaveChangesAsync();
-            }
-            catch (DbUpdateException ex) when (IsUniqueViolation(ex))
-            {
-                return ApiResponse<AuthResponseDto>.Fail("Tài khoản Google hoặc email đã được liên kết với tài khoản khác.", null, ApiErrorKind.Conflict);
-            }
-        }
-
-        var hasSurvey = await _db.HealthProfiles.AnyAsync(hp => hp.UserId == user.Id);
-        return ApiResponse<AuthResponseDto>.Ok(await IssueTokensAsync(user, hasSurvey), "Đăng nhập Google thành công.");
     }
 
     // ───────────────────────────── Phiên: refresh / đăng xuất ─────────────────────────────

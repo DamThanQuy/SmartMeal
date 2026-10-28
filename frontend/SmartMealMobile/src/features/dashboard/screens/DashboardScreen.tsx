@@ -8,13 +8,17 @@ import {
   ChevronRight,
   Leaf,
   Moon,
-  Sparkles,
   Sun,
 } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { ErrorState, LoadingState, ScreenContainer } from '@/components/common';
-import { AppButton, AppCard, AppIconButton, AppText } from '@/components/ui';
+import {
+  ErrorState,
+  LoadingState,
+  ScreenContainer,
+  UserAvatar,
+} from '@/components/common';
+import { AppButton, AppIconButton, AppText } from '@/components/ui';
 import { useAiQuotaStore } from '@/features/ai';
 import { MacroStatGrid } from '@/features/nutrition';
 import { useUnreadNotificationsCount } from '@/features/profile/hooks/useNotifications';
@@ -23,7 +27,6 @@ import type { MainStackParamList, MainTabParamList } from '@/navigation/types';
 import { getMealTypeForHour, MEAL_TYPE_TITLES } from '@/types/meal.types';
 import { useAuthStore } from '@/state/auth/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
-import { ActivityCard } from '../components/ActivityCard';
 import { CalorieRingCard } from '../components/CalorieRingCard';
 import { EmptyMealDashedCard } from '../components/EmptyMealDashedCard';
 import { PetSnippetCard } from '../components/PetSnippetCard';
@@ -40,7 +43,7 @@ function greetingForHour(hour: number): string {
   return 'Chào buổi tối';
 }
 
-// Trang chủ theo ảnh tham chiếu; các chức năng ghi bữa ăn và theo dõi vẫn nằm bên dưới.
+// Trang chủ: vòng calo → ghi bữa ăn (việc chính) → dinh dưỡng → bữa hôm nay → gợi ý món → Bé Mầm.
 export function DashboardScreen(_props: Props) {
   const navigation =
     useNavigation<NativeStackNavigationProp<MainStackParamList>>();
@@ -53,16 +56,12 @@ export function DashboardScreen(_props: Props) {
   const unreadNotifications = useUnreadNotificationsCount();
 
   const now = new Date();
+  const currentMealType = getMealTypeForHour(now.getHours());
   const dateLabel = format(now, "EEEE, dd 'tháng' MM", { locale: vi });
   const fullName = user?.fullName?.trim() || 'bạn';
   const nameParts = fullName.split(/\s+/);
   const givenName = nameParts[nameParts.length - 1];
   const firstName = givenName.charAt(0).toUpperCase() + givenName.slice(1);
-  const initials = (
-    nameParts.length > 1
-      ? nameParts[0].charAt(0) + givenName.charAt(0)
-      : givenName.slice(0, 2)
-  ).toUpperCase();
   const openDiary = () =>
     navigation.navigate(MAIN_STACK_ROUTES.MAIN_TABS, {
       screen: MAIN_TAB_ROUTES.DIARY,
@@ -130,7 +129,7 @@ export function DashboardScreen(_props: Props) {
     );
   }
 
-  const { diary, activity, pet, recommendedMeals } = data;
+  const { diary, pet, recommendedMeals } = data;
   const mealsWithEntries = (['breakfast', 'lunch', 'dinner', 'snack'] as const)
     .map(mealType => ({ mealType, entries: diary.entriesByMeal[mealType] }))
     .filter(section => section.entries.length > 0);
@@ -165,11 +164,14 @@ export function DashboardScreen(_props: Props) {
         </View>
         <AppIconButton
           accessibilityLabel="Hồ sơ"
-          variant="soft"
+          // Cùng UserAvatar với Cá nhân: đổi ảnh ở đó (authStore.avatarUrl) thì trang chủ đổi theo.
           icon={
-            <AppText variant="bodyMedium" color="onPrimarySoft">
-              {initials}
-            </AppText>
+            <UserAvatar
+              name={user?.fullName}
+              uri={user?.avatarUrl}
+              size={44}
+              textVariant="bodyMedium"
+            />
           }
           onPress={() =>
             navigation.navigate(MAIN_STACK_ROUTES.MAIN_TABS, {
@@ -183,9 +185,42 @@ export function DashboardScreen(_props: Props) {
         <CalorieRingCard
           consumedCalories={totalConsumed}
           calorieTarget={diary.calorieTarget}
-          activityCalories={diary.activityCalories}
-          onPress={() => navigation.navigate(MAIN_STACK_ROUTES.CALORIE_BUDGET)}
+          onPress={openDiary}
         />
+
+        {/* Ghi bữa là việc chính của Trang chủ: đặt ngay dưới vòng calo. Bữa mặc định theo giờ hiện tại (BR-051);
+            màn xác nhận vẫn cho đổi bữa trước khi lưu. */}
+        <View className="gap-md">
+          <AppButton
+            label="Ghi bữa ăn"
+            onPress={() => navigation.navigate(MAIN_STACK_ROUTES.QUICK_LOG, {})}
+          />
+          <QuickActionGrid
+            onSnap={() =>
+              navigation.navigate(MAIN_STACK_ROUTES.AI_CAMERA, {
+                mealType: currentMealType,
+              })
+            }
+            onVoice={() =>
+              navigation.navigate(
+                micPermissionGranted
+                  ? MAIN_STACK_ROUTES.VOICE_LOG
+                  : MAIN_STACK_ROUTES.VOICE_PERMISSION,
+                { mealType: currentMealType },
+              )
+            }
+            onSearch={() =>
+              navigation.navigate(MAIN_STACK_ROUTES.FOOD_SEARCH, {
+                mealType: currentMealType,
+              })
+            }
+            onScan={() =>
+              navigation.navigate(MAIN_STACK_ROUTES.BARCODE, {
+                mealType: currentMealType,
+              })
+            }
+          />
+        </View>
 
         <View className="gap-xs">
           <View className="flex-row items-center justify-between gap-xs">
@@ -212,24 +247,65 @@ export function DashboardScreen(_props: Props) {
           />
         </View>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Mẹo nhỏ hôm nay: khám phá món ăn"
-          onPress={openDiscovery}
-        >
-          <AppCard variant="outlined" className="flex-row items-center gap-sm">
-            <View className="h-[40px] w-[40px] items-center justify-center rounded-md bg-warning-soft">
-              <Sparkles size={22} color={colors.warningText} />
-            </View>
-            <View className="flex-1 gap-xxs">
-              <AppText variant="bodyMedium">Mẹo nhỏ hôm nay</AppText>
-              <AppText variant="caption" color="secondary">
-                Thêm rau xanh vào bữa trưa để đủ chất xơ.
+        <View className="gap-sm">
+          <View className="flex-row items-center justify-between">
+            <AppText variant="h2">Bữa ăn hôm nay</AppText>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Xem nhật ký"
+              onPress={openDiary}
+              className="min-h-[44px] justify-center"
+            >
+              <AppText variant="bodyMedium" color="onPrimarySoft">
+                Xem nhật ký
               </AppText>
-            </View>
-            <ChevronRight size={20} color={colors.textMuted} />
-          </AppCard>
-        </Pressable>
+            </Pressable>
+          </View>
+          {mealsWithEntries.map(section => {
+            const totalCalories = section.entries.reduce(
+              (sum, entry) => sum + entry.nutrition.calories,
+              0,
+            );
+            const totalProtein = section.entries.reduce(
+              (sum, entry) => sum + entry.nutrition.proteinG,
+              0,
+            );
+            const totalCarbs = section.entries.reduce(
+              (sum, entry) => sum + entry.nutrition.carbsG,
+              0,
+            );
+            const totalFat = section.entries.reduce(
+              (sum, entry) => sum + entry.nutrition.fatG,
+              0,
+            );
+            return (
+              <TodayMealPreviewCard
+                key={section.mealType}
+                mealTitle={MEAL_TYPE_TITLES[section.mealType]}
+                foodNames={section.entries
+                  .map(entry => entry.foodName)
+                  .join(', ')}
+                calories={totalCalories}
+                macroLine={`P ${totalProtein}g · C ${totalCarbs}g · F ${totalFat}g`}
+                // Món trong bữa xếp theo giờ ghi (cũ → mới): lấy ảnh chụp gần nhất.
+                imageUrl={section.entries.findLast(entry => entry.imageUrl)?.imageUrl}
+                onPress={openDiary}
+              />
+            );
+          })}
+          {emptyMealType ? (
+            <EmptyMealDashedCard
+              title={`Chưa có ${MEAL_TYPE_TITLES[emptyMealType].toLowerCase()}`}
+              description="Thêm món để theo dõi đủ ngày."
+              actionLabel="Ghi"
+              onAction={() =>
+                navigation.navigate(MAIN_STACK_ROUTES.QUICK_LOG, {
+                  mealType: emptyMealType,
+                })
+              }
+            />
+          ) : null}
+        </View>
 
         <View className="gap-xs">
           <View className="flex-row items-center justify-between">
@@ -267,107 +343,6 @@ export function DashboardScreen(_props: Props) {
             ))}
           </View>
         </View>
-
-        <View className="gap-md">
-          <AppButton
-            label="Ghi bữa ăn"
-            onPress={() => navigation.navigate(MAIN_STACK_ROUTES.QUICK_LOG, {})}
-          />
-          <QuickActionGrid
-            onSnap={() =>
-              navigation.navigate(MAIN_STACK_ROUTES.AI_CAMERA, {
-                mealType: 'dinner',
-              })
-            }
-            onVoice={() =>
-              navigation.navigate(
-                micPermissionGranted
-                  ? MAIN_STACK_ROUTES.VOICE_LOG
-                  : MAIN_STACK_ROUTES.VOICE_PERMISSION,
-                { mealType: 'breakfast' },
-              )
-            }
-            onSearch={() =>
-              navigation.navigate(MAIN_STACK_ROUTES.FOOD_SEARCH, {
-                mealType: 'dinner',
-              })
-            }
-            onScan={() =>
-              navigation.navigate(MAIN_STACK_ROUTES.BARCODE, {
-                mealType: getMealTypeForHour(now.getHours()),
-              })
-            }
-          />
-        </View>
-
-        <View className="gap-sm">
-          <View className="flex-row items-center justify-between">
-            <AppText variant="h2">Bữa ăn hôm nay</AppText>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Xem nhật ký"
-              onPress={() =>
-                navigation.navigate(MAIN_STACK_ROUTES.MAIN_TABS, {
-                  screen: MAIN_TAB_ROUTES.DIARY,
-                })
-              }
-            >
-              <AppText variant="bodyMedium" color="onPrimarySoft">
-                Xem nhật ký
-              </AppText>
-            </Pressable>
-          </View>
-          {mealsWithEntries.map(section => {
-            const totalCalories = section.entries.reduce(
-              (sum, entry) => sum + entry.nutrition.calories,
-              0,
-            );
-            const totalProtein = section.entries.reduce(
-              (sum, entry) => sum + entry.nutrition.proteinG,
-              0,
-            );
-            const totalCarbs = section.entries.reduce(
-              (sum, entry) => sum + entry.nutrition.carbsG,
-              0,
-            );
-            const totalFat = section.entries.reduce(
-              (sum, entry) => sum + entry.nutrition.fatG,
-              0,
-            );
-            return (
-              <TodayMealPreviewCard
-                key={section.mealType}
-                mealTitle={MEAL_TYPE_TITLES[section.mealType]}
-                foodNames={section.entries
-                  .map(entry => entry.foodName)
-                  .join(', ')}
-                calories={totalCalories}
-                macroLine={`P ${totalProtein}g · C ${totalCarbs}g · F ${totalFat}g`}
-                // Món trong bữa xếp theo giờ ghi (cũ → mới): lấy ảnh chụp gần nhất.
-                imageUrl={section.entries.findLast(entry => entry.imageUrl)?.imageUrl}
-                onPress={() =>
-                  navigation.navigate(MAIN_STACK_ROUTES.MAIN_TABS, {
-                    screen: MAIN_TAB_ROUTES.DIARY,
-                  })
-                }
-              />
-            );
-          })}
-          {emptyMealType ? (
-            <EmptyMealDashedCard
-              title={`Chưa có ${MEAL_TYPE_TITLES[emptyMealType].toLowerCase()}`}
-              description="Thêm món để theo dõi đủ ngày."
-              actionLabel="Ghi"
-              onAction={() =>
-                navigation.navigate(MAIN_STACK_ROUTES.QUICK_LOG, {
-                  mealType: emptyMealType,
-                })
-              }
-            />
-          ) : null}
-        </View>
-
-        {activity ? <ActivityCard activity={activity} /> : null}
 
         {pet ? (
           <PetSnippetCard

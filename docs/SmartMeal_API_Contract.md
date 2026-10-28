@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Cập nhật | 2026-10-14 (bổ sung thông báo, chia sẻ bộ sưu tập, `hasPassword`). Lần 2 cùng ngày: khôi phục `POST /auth/google` (xác minh ID token, chỉ liên kết vào tài khoản đã xác minh email); thêm `GET /nutritiondiary/progress`, `otherAllergies` trong hồ sơ sức khỏe, tra mã vạch qua Open Food Facts khi CSDL chưa có. 15/10: cổng thanh toán **PayOS** (`paymentMethod = PAYOS`, `GET /subscription/check-status/{orderCode}`, `POST /subscription/payos-webhook`) |
+| Cập nhật | 2026-10-14 (bổ sung thông báo, chia sẻ bộ sưu tập, `hasPassword`). Lần 2 cùng ngày: khôi phục `POST /auth/google` (xác minh ID token, chỉ liên kết vào tài khoản đã xác minh email); thêm `GET /nutritiondiary/progress`, `otherAllergies` trong hồ sơ sức khỏe, tra mã vạch qua Open Food Facts khi CSDL chưa có. 15/10: cổng thanh toán **PayOS** (`paymentMethod = PAYOS`, `GET /subscription/check-status/{orderCode}`, `POST /subscription/payos-webhook`). 27/10: bỏ lại `POST /auth/google`; bỏ `/health-sync/*` (đồng bộ bước chân/calo vận động) và loại thử thách `Exercise` |
 | Nguồn | Swagger của backend (`/swagger/v1/swagger.json`, bật ở môi trường Development) + chú thích XML và thuộc tính trong `SmartMeal.API/Controllers` và `SmartMeal.Application/DTOs` @ `cc98da0` (bổ sung: thông báo trong app, liên kết chia sẻ bộ sưu tập, `UserDto.hasPassword`; scan-label, voice-log/audio, grocery/complete, Idempotency-Key, tra mã vạch bằng CSDL, ngưỡng bệnh lý) |
 | Thay thế | Bản V2.0 (2026-09-26) đã cũ: nhiều endpoint ghi "chưa làm" nhưng đã có, đường dẫn và field khác |
 | Nguồn sự thật | **Code backend.** Tài liệu này được sinh lại từ code mỗi khi API đổi; nếu lệch thì code thắng |
@@ -18,7 +18,7 @@
 - **Phân trang**: `GET /foods` trả `data` là `PagedResult` (`items`, `page`, `pageSize`, `totalCount`, `totalPages`). `GET /recipes` trả `data` là **mảng**, thông tin phân trang nằm ở header `X-Total-Count`, `X-Page`, `X-Page-Size`, `X-Total-Pages` (không gửi `page`/`pageSize` = trả tất cả).
 - **Enum** là chuỗi, so khớp không phân biệt hoa/thường và lưu/trả dạng chuẩn: `mealType` `Breakfast|Lunch|Dinner|Snack`; `logMethod` `Manual|AiImage|Voice|Barcode|Ocr`; xem cột "Ghi chú" của từng DTO.
 - **Danh mục theo mã**: `/meta/allergies|medical-conditions|tags` trả `{ id, code, name, description }`. Client gửi/nhận **id** nhưng nên ánh xạ theo **`code`** ổn định (vd. `seafood`, `peanut`, `diabetes`, `keto`), không hard-code id.
-- **Idempotency**: mọi `POST/PUT/PATCH/DELETE` của người dùng đã đăng nhập nhận header tùy chọn `Idempotency-Key` (1–100 ký tự `A-Z a-z 0-9 . _ : -`). Lần đầu chạy bình thường và phản hồi được lưu 24 giờ; gửi lại **cùng khóa + cùng nội dung** nhận lại đúng phản hồi đó kèm header `Idempotency-Replayed: true`, không ghi thêm. Cùng khóa khác nội dung → `409` `idempotency_key_reused`; lần đầu chưa xong → `409` `idempotency_in_progress`; khóa sai định dạng → `400` `idempotency_key_invalid`. Lỗi 5xx và lỗi tạm thời (408/409/423/429) không được lưu. App dùng cho hàng đợi offline khi ghi nhật ký (BR-261). Không gửi header thì như cũ (health-sync theo `(ngày, nguồn)`, yêu thích thực phẩm và webhook vốn idempotent).
+- **Idempotency**: mọi `POST/PUT/PATCH/DELETE` của người dùng đã đăng nhập nhận header tùy chọn `Idempotency-Key` (1–100 ký tự `A-Z a-z 0-9 . _ : -`). Lần đầu chạy bình thường và phản hồi được lưu 24 giờ; gửi lại **cùng khóa + cùng nội dung** nhận lại đúng phản hồi đó kèm header `Idempotency-Replayed: true`, không ghi thêm. Cùng khóa khác nội dung → `409` `idempotency_key_reused`; lần đầu chưa xong → `409` `idempotency_in_progress`; khóa sai định dạng → `400` `idempotency_key_invalid`. Lỗi 5xx và lỗi tạm thời (408/409/423/429) không được lưu. App dùng cho hàng đợi offline khi ghi nhật ký (BR-261). Không gửi header thì như cũ (yêu thích thực phẩm và webhook vốn idempotent).
 - **Upload**: `POST /auth/avatar` (field `file`, jpg/png/webp ≤ `Storage:MaxAvatarBytes`, mặc định 2 MB), `POST /ai/snap-and-track`, `/ai/fridge-scanner` và `/ai/scan-label` (field `image`, ≤ `Ai:MaxImageBytes`, mặc định 5 MB), `POST /ai/voice-log/audio` và `POST /ai/voice-log/transcribe` (field `audio`, WAV/AAC/M4A/MP3/OGG/FLAC/WebM, ≤ `Ai:MaxAudioBytes`, mặc định 10 MB). Loại file được nhận bằng nội dung file, không tin `Content-Type`.
 
 ## 2. Danh sách endpoint
@@ -27,7 +27,6 @@
 |---|---|---|---|---|
 | Xác thực & tài khoản | POST | `/api/auth/register` | Công khai | Đăng ký bằng email + mật khẩu; trả cặp access/refresh token. |
 | Xác thực & tài khoản | POST | `/api/auth/login` | Công khai | Đăng nhập |
-| Xác thực & tài khoản | POST | `/api/auth/google` | Công khai | Đăng nhập/tạo tài khoản bằng Google ID token (máy chủ tự xác minh với Google). |
 | Xác thực & tài khoản | POST | `/api/auth/refresh` | Công khai | Đổi refresh token (dùng một lần) lấy cặp access + refresh token mới |
 | Xác thực & tài khoản | POST | `/api/auth/logout` | Công khai | Đăng xuất: thu hồi refresh token |
 | Xác thực & tài khoản | POST | `/api/auth/forgot-password` | Công khai | Gửi OTP đặt lại mật khẩu tới email |
@@ -68,8 +67,6 @@
 | Thực phẩm | GET | `/api/foods/barcode/{code}` | Công khai (token tùy chọn: cá nhân hóa `isFavorite`, `scope`…) | Tra mã vạch (8–14 chữ số) |
 | Thực phẩm | POST | `/api/foods/{id}/favorite` | Cần đăng nhập | Thêm vào yêu thích (idempotent). |
 | Thực phẩm | DELETE | `/api/foods/{id}/favorite` | Cần đăng nhập | Bỏ khỏi yêu thích (idempotent). |
-| Đồng bộ vận động | POST | `/api/health-sync/steps-and-calories` | Cần đăng nhập | Gửi tổng của một ngày từ một nguồn |
-| Đồng bộ vận động | GET | `/api/health-sync/daily-summary` | Cần đăng nhập | Tổng kết vận động của một ngày theo nguồn ưu tiên cao nhất (kèm calo đã ăn, còn lại so với mục tiêu). |
 | Công thức, yêu thích, bộ sưu tập | GET | `/api/recipes` | Công khai (token tùy chọn: cá nhân hóa `isFavorite`, `scope`…) | Danh sách công thức |
 | Công thức, yêu thích, bộ sưu tập | GET | `/api/recipes/{id}` | Công khai (token tùy chọn: cá nhân hóa `isFavorite`, `scope`…) | Chi tiết công thức kèm nguyên liệu (mỗi nguyên liệu có `allergyIds`), `allergyIds` của cả công thức và `isFavorite`. |
 | Công thức, yêu thích, bộ sưu tập | POST | `/api/recipes/suggest-by-pantry` | Công khai (có token thì loại món chứa dị ứng của người dùng) | Gợi ý theo tủ lạnh |
@@ -141,7 +138,7 @@
 
 > Chưa cấu hình SMTP (`Smtp:Host` và địa chỉ gửi `Smtp:From`/`Smtp:User`) thì không gửi email thật: backend chỉ ghi log, và ở Development ghi cả nội dung có mã OTP (`[DEV EMAIL …]`) để dev thử. Gmail: `Smtp:Host = smtp.gmail.com`, `Port = 587`, `User` = địa chỉ Gmail, `Password` = App Password.
 
-> Đăng nhập bằng **email + mật khẩu** hoặc **Google** (`POST /auth/google { idToken }`, khôi phục sau khi bỏ ngày 14/10/2026). Máy chủ xác minh ID token với Google (audience = `Google:ClientId`), không tin email client gửi. Lần đầu: tạo tài khoản không mật khẩu (`hasPassword = false`, đặt mật khẩu qua "Quên mật khẩu"). Email đã có tài khoản mật khẩu: chỉ liên kết khi email đó **đã được xác minh** — chưa xác minh trả `409` (chặn việc ai đó đăng ký trước bằng email của người khác rồi chiếm tài khoản khi chủ thật đăng nhập Google). Chưa cấu hình `Google:ClientId` → `503`; token sai/hết hạn → `401`.
+> Chỉ đăng nhập bằng **email + mật khẩu** (đã bỏ đăng nhập Google ngày 27/10/2026; `POST /auth/google` trả `404`). Tài khoản tạo bằng Google trước đây không có mật khẩu (`hasPassword = false`): đặt mật khẩu qua "Quên mật khẩu", xóa tài khoản bằng `confirmEmail`.
 
 > `DELETE /auth/account` cần `password` hiện tại; tài khoản không có mật khẩu (tạo bằng đăng nhập Google trước đây) phải gửi `confirmEmail` đúng bằng email của chính mình. Sai mật khẩu nhiều lần cũng bị khóa tạm thời (trả 400 chứ không phải 401, để app không hiểu nhầm là phiên hết hạn). Giao dịch thanh toán được giữ lại ở dạng ẩn danh (BR-271).
 
@@ -159,14 +156,6 @@
 
 - **Quyền**: Công khai · giới hạn tần suất (policy `auth`)
 - **Body (JSON)**: [LoginRequestDto](#schema-loginrequestdto)
-- **Response `data`**: [AuthResponseDto](#schema-authresponsedto)
-
-#### `POST /api/auth/google`
-
-Đăng nhập hoặc tạo tài khoản bằng Google ID token; máy chủ tự xác minh token với Google. `401` token sai/hết hạn, `409` email đã có tài khoản mật khẩu chưa xác minh email, `503` chưa cấu hình `Google:ClientId`.
-
-- **Quyền**: Công khai · giới hạn tần suất (policy `auth`)
-- **Body (JSON)**: [GoogleAuthRequestDto](#schema-googleauthrequestdto)
 - **Response `data`**: [AuthResponseDto](#schema-authresponsedto)
 
 #### `POST /api/auth/refresh`
@@ -566,31 +555,6 @@ Bỏ khỏi yêu thích (idempotent).
 | Tham số | Vị trí | Kiểu | Bắt buộc | Ràng buộc |
 |---|---|---|---|---|
 | `id` | đường dẫn | uuid | có |  |
-
-### Đồng bộ vận động
-
-> `POST` gửi **tổng của một ngày từ một nguồn**; gửi lại cùng `(ngày, nguồn)` **thay thế** giá trị cũ, không cộng dồn. Nguồn hợp lệ theo ưu tiên: `HealthConnect > AppleHealth > GoogleFit > Manual`.
-
-> `GET /daily-summary` lấy số liệu từ **một** nguồn ưu tiên cao nhất có dữ liệu trong ngày (`activeSource`), không cộng các nguồn (BR-042). Chưa đồng bộ gì: `sources: []`, `lastSyncedAt: null`.
-
-#### `POST /api/health-sync/steps-and-calories`
-
-Gửi tổng của một ngày từ một nguồn. Gửi lại cùng (ngày, nguồn) thay thế giá trị cũ, không cộng dồn.
-
-- **Quyền**: Cần đăng nhập
-- **Body (JSON)**: [SyncHealthMetricsRequestDto](#schema-synchealthmetricsrequestdto)
-- **Response `data`**: [SyncHealthMetricsResponseDto](#schema-synchealthmetricsresponsedto)
-
-#### `GET /api/health-sync/daily-summary`
-
-Tổng kết vận động của một ngày theo nguồn ưu tiên cao nhất (kèm calo đã ăn, còn lại so với mục tiêu).
-
-- **Quyền**: Cần đăng nhập
-- **Response `data`**: [DailyHealthSyncSummaryDto](#schema-dailyhealthsyncsummarydto)
-
-| Tham số | Vị trí | Kiểu | Bắt buộc | Ràng buộc |
-|---|---|---|---|---|
-| `date` | query | date (yyyy-MM-dd) |  |  |
 
 ### Công thức, yêu thích, bộ sưu tập
 
@@ -1069,7 +1033,7 @@ Cởi trang phục đang mặc.
 
 > `GET /notifications` đánh giá lại tiến trình Bé Mầm như các endpoint gamification (`date` = hôm nay theo máy, ±1 ngày quanh UTC) và dọn thông báo quá 90 ngày. "Xóa dữ liệu cá nhân" xóa cả thông báo.
 
-> Sự kiện được đánh giá **ngay lúc ghi dữ liệu**, không đợi app đọc lại: ghi/sửa món (`/nutritiondiary/log`, `/log/batch`, `PUT /items/{id}` — theo ngày của món), uống nước (`/nutritiondiary/water`), đồng bộ bước (`/health-sync/steps-and-calories`) và đi chợ đều chạy đánh giá gamification sau khi lưu (lỗi đánh giá không làm hỏng thao tác chính).
+> Sự kiện được đánh giá **ngay lúc ghi dữ liệu**, không đợi app đọc lại: ghi/sửa món (`/nutritiondiary/log`, `/log/batch`, `PUT /items/{id}` — theo ngày của món), uống nước (`/nutritiondiary/water`) và đi chợ đều chạy đánh giá gamification sau khi lưu (lỗi đánh giá không làm hỏng thao tác chính).
 
 #### Thông báo real-time — `WebSocket /api/hubs/notifications`
 
@@ -1346,8 +1310,8 @@ Hạn mức AI trong ngày (BR-233). Tài khoản Pro không giới hạn.
 | `rewardBadge` | string? |  |  |  |
 | `isJoined` | bool |  |  |  |
 | `isCompleted` | bool |  |  |  |
-| `category` | string? |  |  | DrinkWater \| EatClean \| Exercise \| NoSugar. |
-| `targetValuePerDay` | int |  |  | Mục tiêu mỗi ngày: ml nước (DrinkWater), số nhóm bữa đã ghi (EatClean), số bước (Exercise). |
+| `category` | string? |  |  | DrinkWater \| EatClean. Thử thách `Exercise` (bước chân) cũ đã bị tắt. |
+| `targetValuePerDay` | int |  |  | Mục tiêu mỗi ngày: ml nước (DrinkWater), số nhóm bữa đã ghi (EatClean). |
 | `startDate` | date (yyyy-MM-dd)? |  |  | Ngày bắt đầu/kết thúc khung của người dùng (null khi chưa tham gia). Kết thúc = bắt đầu + durationDays − 1. |
 | `endDate` | date (yyyy-MM-dd)? |  |  |  |
 | `currentDay` | int |  |  | Hôm nay là ngày thứ mấy của khung (1…durationDays); 0 khi chưa tham gia. |
@@ -1513,24 +1477,6 @@ Người dùng tự nhập một món khi không tìm thấy. Mọi số liệu 
 | `targetFat` | number |  |  |  |
 | `targetProtein` | number |  |  |  |
 | `meals` | [MealGroupDto](#schema-mealgroupdto)[]? |  |  |  |
-
-<a id="schema-dailyhealthsyncsummarydto"></a>
-#### DailyHealthSyncSummaryDto
-
-| Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
-|---|---|---|---|---|
-| `date` | date (yyyy-MM-dd) |  |  |  |
-| `steps` | int |  |  | Số bước/calo/quãng đường lấy từ nguồn ưu tiên cao nhất có dữ liệu trong ngày (`ActiveSource`). |
-| `stepGoal` | int |  |  |  |
-| `burnedCalories` | number |  |  |  |
-| `consumedCalories` | number |  |  |  |
-| `netCalories` | number |  |  |  |
-| `targetCalories` | number |  |  |  |
-| `remainingCalories` | number |  |  |  |
-| `distanceMeters` | number |  |  |  |
-| `sources` | string[]? |  |  | Các nguồn đã có dữ liệu trong ngày (ưu tiên giảm dần). Rỗng nếu chưa đồng bộ gì. |
-| `activeSource` | string? |  |  | Nguồn đang được dùng để tính số liệu; null nếu chưa có dữ liệu. |
-| `lastSyncedAt` | datetime (ISO 8601 UTC)? |  |  | Lần đồng bộ gần nhất trong ngày; null nếu chưa đồng bộ. |
 
 <a id="schema-dailyplandto"></a>
 #### DailyPlanDto
@@ -1749,13 +1695,6 @@ Một món ăn cần ghi vào nhật ký (dùng chung cho ghi đơn lẻ và ghi
 | `startDate` | date (yyyy-MM-dd) | có |  |  |
 | `endDate` | date (yyyy-MM-dd) | có |  |  |
 | `clearExisting` | bool |  |  | true (mặc định) = thay danh sách đã tạo từ thực đơn trước đó bằng danh sách mới; các món người dùng tự thêm được giữ. false = giữ mọi dòng hiện có và cộng dồn vào dòng chưa mua cùng tên/đơn vị (chuyển phần còn lại sang tuần mới) — chỉ nên dùng khi tạo cho một khoảng ngày khác, vì tạo lại cùng khoảng sẽ cộng đôi. |
-
-<a id="schema-googleauthrequestdto"></a>
-#### GoogleAuthRequestDto
-
-| Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
-|---|---|---|---|---|
-| `idToken` | string | có | 20–8192 ký tự | Google ID token (JWT) lấy từ Google Identity Services. |
 
 <a id="schema-grocerycategorydto"></a>
 #### GroceryCategoryDto
@@ -2215,33 +2154,6 @@ Một mục danh mục (dị ứng, bệnh lý, chế độ ăn). `Code` là mã
 | `isPro` | bool |  |  | Quyền Pro còn hiệu lực (Premium hoặc Cancelled-nhưng-chưa-hết-hạn). |
 | `planId` | string? |  |  |  |
 | `proExpiresAt` | datetime (ISO 8601 UTC)? |  |  |  |
-
-<a id="schema-synchealthmetricsrequestdto"></a>
-#### SyncHealthMetricsRequestDto
-
-Gửi TỔNG của một ngày từ một nguồn. Gửi lại cùng (ngày, nguồn) sẽ thay thế giá trị trước đó, không cộng dồn.
-
-| Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
-|---|---|---|---|---|
-| `date` | date (yyyy-MM-dd)? |  |  |  |
-| `steps` | int |  | 0–200000 |  |
-| `stepCount` | int |  |  |  |
-| `burnedCalories` | number |  | 0–20000 |  |
-| `activeCaloriesBurned` | number |  |  |  |
-| `distanceMeters` | number |  | 0–500000 |  |
-| `source` | string? |  |  | Chỉ nhận (không phân biệt hoa/thường): `HealthConnect`, `AppleHealth`, `GoogleFit`, `Manual` |
-
-<a id="schema-synchealthmetricsresponsedto"></a>
-#### SyncHealthMetricsResponseDto
-
-| Trường | Kiểu | Bắt buộc | Ràng buộc | Ghi chú |
-|---|---|---|---|---|
-| `date` | date (yyyy-MM-dd) |  |  |  |
-| `steps` | int |  |  |  |
-| `burnedCalories` | number |  |  |  |
-| `distanceMeters` | number |  |  |  |
-| `source` | string? |  |  |  |
-| `syncedAt` | datetime (ISO 8601 UTC) |  |  |  |
 
 <a id="schema-togglegroceryitemrequestdto"></a>
 #### ToggleGroceryItemRequestDto

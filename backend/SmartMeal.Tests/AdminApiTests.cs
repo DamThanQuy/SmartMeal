@@ -70,7 +70,7 @@ public sealed record AdminRevenueReport(
 public sealed record AdminEngagedUser(Guid UserId, string FullName, string Email, int DiariesCount, int TotalXp, int PetLevel, DateTime? LastActiveAt);
 
 public sealed record AdminEngagement(
-    int EstimatedDau, int EstimatedWau, int EstimatedMau, int TotalDiariesLogged, int TotalWaterLogs, long TotalStepsSynced,
+    int EstimatedDau, int EstimatedWau, int EstimatedMau, int TotalDiariesLogged, int TotalWaterLogs,
     int TotalAiScans, double ChallengeCompletionRate, double AveragePetLevel, List<AdminEngagedUser> TopEngagedUsers);
 
 /// <summary>
@@ -1092,12 +1092,13 @@ public class AdminApiTests : IClassFixture<ApiFactory>
 
     [DbTheory]
     [InlineData("NoSugar")]
+    [InlineData("Exercise")] // thử thách bước chân đã bỏ cùng Health Connect
     [InlineData("Sleep")]
     public async Task A_challenge_category_the_app_cannot_score_is_rejected(string category)
     {
         var admin = await CreateAdminAsync();
 
-        // GamificationService chỉ chấm DrinkWater / EatClean / Exercise; loại khác không bao giờ hoàn thành được.
+        // GamificationService chỉ chấm DrinkWater / EatClean; loại khác không bao giờ hoàn thành được.
         var response = await admin.Client.PostJsonAsync("/api/admin/rewards/challenges", new
         {
             title = "Thử thách " + category, description = "", category, durationDays = 7, targetValuePerDay = 1, rewardExp = 100,
@@ -1130,24 +1131,24 @@ public class AdminApiTests : IClassFixture<ApiFactory>
         var admin = await CreateAdminAsync();
         var created = await DataAsync<AdminChallenge>(await admin.Client.PostJsonAsync("/api/admin/rewards/challenges", new
         {
-            title = "Bước chân " + Guid.NewGuid().ToString("N")[..6], description = "", category = "exercise", durationDays = 7,
-            targetValuePerDay = 8000, rewardExp = 100, rewardBadge = "Walker", isActive = true
+            title = "Uống nước " + Guid.NewGuid().ToString("N")[..6], description = "", category = "drinkwater", durationDays = 7,
+            targetValuePerDay = 2000, rewardExp = 100, rewardBadge = "Walker", isActive = true
         }));
 
         var invalid = await admin.Client.PutJsonAsync($"/api/admin/rewards/challenges/{created.Id}", new
         {
-            title = created.Title, description = "", category = "NoSugar", durationDays = 7, targetValuePerDay = 8000, rewardExp = 100, isActive = true
+            title = created.Title, description = "", category = "NoSugar", durationDays = 7, targetValuePerDay = 2000, rewardExp = 100, isActive = true
         });
         await DataAsync<bool>(await admin.Client.PutJsonAsync($"/api/admin/rewards/challenges/{created.Id}", new
         {
             title = created.Title, description = "Mới", imageUrl = "https://img.example.com/walk.jpg", category = "", durationDays = 10,
-            targetValuePerDay = 9000, rewardExp = 120, rewardBadge = "", isActive = false
+            targetValuePerDay = 2500, rewardExp = 120, rewardBadge = "", isActive = false
         }));
         var updated = (await GetDataAsync<List<AdminChallenge>>(admin.Client, "/api/admin/rewards/challenges")).Single(c => c.Id == created.Id);
 
-        Assert.Equal("Exercise", created.Category); // chuẩn hóa hoa / thường
+        Assert.Equal("DrinkWater", created.Category); // chuẩn hóa hoa / thường
         Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
-        Assert.Equal("Exercise", updated.Category); // để trống thì giữ loại cũ
+        Assert.Equal("DrinkWater", updated.Category); // để trống thì giữ loại cũ
         Assert.Equal("https://img.example.com/walk.jpg", updated.ImageUrl);
         Assert.Equal("Walker", updated.RewardBadge);
         Assert.False(updated.IsActive);

@@ -53,7 +53,7 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentId, LegalDocument> = {
         paragraphs: [
           'Thông tin tài khoản: họ tên, email, ảnh đại diện, mật khẩu (chỉ lưu dạng đã băm).',
           'Hồ sơ sức khỏe: ngày sinh, giới tính, chiều cao, cân nặng, mức vận động, mục tiêu, dị ứng, bệnh lý, chế độ ăn và lịch sử cân nặng.',
-          'Dữ liệu sử dụng: nhật ký ăn uống, nước uống, thực đơn, danh sách đi chợ, công thức yêu thích, bộ sưu tập, thử thách và số bước/calo vận động đã đồng bộ.',
+          'Dữ liệu sử dụng: nhật ký ăn uống, nước uống, thực đơn, danh sách đi chợ, công thức yêu thích, bộ sưu tập và thử thách.',
         ],
       },
       {

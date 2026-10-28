@@ -14,7 +14,6 @@ const KNOWN_ICONS: Record<NotificationIcon, true> = {
   quickLog: true,
   pet: true,
   water: true,
-  healthConnect: true,
   grocery: true,
   challenge: true,
   badge: true,
@@ -37,8 +36,6 @@ export function notificationTarget(
   switch (icon) {
     case 'quickLog':
       return { screen: MAIN_STACK_ROUTES.QUICK_LOG, params: {} };
-    case 'healthConnect':
-      return { screen: MAIN_STACK_ROUTES.HEALTH_CONNECT };
     case 'pet':
       return { screen: MAIN_STACK_ROUTES.PET };
     case 'challenge':

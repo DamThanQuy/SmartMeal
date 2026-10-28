@@ -81,7 +81,6 @@ builder.Services.AddSingleton<IEmailSender>(sp =>
 });
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
 builder.Services.AddScoped<IHealthProfileService, HealthProfileService>();
 builder.Services.AddScoped<IRecipeService, RecipeService>();
 builder.Services.AddScoped<INutritionDiaryService, NutritionDiaryService>();
@@ -93,7 +92,6 @@ builder.Services
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services.AddScoped<IGroceryService, GroceryService>();
-builder.Services.AddScoped<IHealthSyncService, HealthSyncService>();
 builder.Services.AddScoped<IGamificationService, GamificationService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 // Thông báo trong app: ghi DB (NotificationWriter) rồi đẩy real-time qua SignalR tới thiết bị đang mở app (NotificationsHub).

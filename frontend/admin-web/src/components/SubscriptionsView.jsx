@@ -13,11 +13,13 @@ import {
   ArrowUpRight
 } from 'lucide-react';
 import { api } from '../services/api';
+import { useConfirm } from './useConfirm';
 import Pagination from './Pagination';
 
 const PAGE_SIZE = 20;
 
 export default function SubscriptionsView({ onNotify }) {
+  const { confirm, dialog } = useConfirm();
   const [plans, setPlans] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +51,7 @@ export default function SubscriptionsView({ onNotify }) {
   }, [statusFilter, search, page]);
 
   const handleApprove = async (tx) => {
-    if (!window.confirm(`Xác nhận duyệt thanh toán đơn hàng #${tx.orderCode || tx.sessionId} cho khách hàng ${tx.userFullName}? Hệ thống sẽ tự động kích hoạt gói Pro cho khách hàng ngay lập tức.`)) {
+    if (!(await confirm(`Duyệt thanh toán đơn hàng #${tx.orderCode || tx.sessionId} cho khách hàng ${tx.userFullName}? Gói Pro được kích hoạt ngay lập tức.`, { title: 'Duyệt thanh toán', confirmLabel: 'Duyệt và kích hoạt Pro' }))) {
       return;
     }
 
@@ -83,6 +85,7 @@ export default function SubscriptionsView({ onNotify }) {
 
   return (
     <div>
+      {dialog}
       {/* 1. Member Plans Grid */}
       <div style={{ marginBottom: '32px' }}>
         <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>

@@ -181,25 +181,10 @@ public class AdminUpdateRecipeDto : AdminCreateRecipeDto
 {
 }
 
-public class AdminBulkImportRecipeItemDto
+public class AdminBulkImportRecipeItemDto : AdminCreateRecipeDto
 {
-    [Required(ErrorMessage = "Tiêu đề món ăn là bắt buộc.")]
-    public string Title { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string ImageUrl { get; set; } = string.Empty;
-    public string Instructions { get; set; } = string.Empty;
-    public int PrepTimeMinutes { get; set; } = 10;
-    public int CookTimeMinutes { get; set; } = 15;
-    public int Servings { get; set; } = 1;
-    public string Difficulty { get; set; } = "Easy";
-    public bool IsPremium { get; set; }
-    public string MealTypes { get; set; } = "Lunch";
-    public double CaloriesPerServing { get; set; }
-    public double ProteinPerServing { get; set; }
-    public double CarbsPerServing { get; set; }
-    public double FatPerServing { get; set; }
-    public List<string> TagCodes { get; set; } = new();
-    public List<AdminRecipeIngredientInputDto> Ingredients { get; set; } = new();
+    // Nhập Excel phải tuân thủ cùng giới hạn dữ liệu với form thêm/sửa món đơn lẻ.
+    public AdminBulkImportRecipeItemDto() => MealTypes = "Lunch";
 }
 
 public class AdminBulkImportRequestDto
@@ -316,7 +301,7 @@ public class AdminCreateChallengeDto
     public string Description { get; set; } = string.Empty;
     public string ImageUrl { get; set; } = string.Empty;
     public int DurationDays { get; set; } = 7;
-    public string Category { get; set; } = "EatClean"; // một trong ChallengeCategories.All: EatClean, DrinkWater, Exercise
+    public string Category { get; set; } = "EatClean"; // một trong ChallengeCategories.All: EatClean, DrinkWater
     public int TargetValuePerDay { get; set; } = 3;
     public int RewardExp { get; set; } = 150;
     public string RewardBadge { get; set; } = "Clean Eater";
@@ -436,7 +421,6 @@ public class AdminEngagementAnalyticsDto
     public int EstimatedMau { get; set; }
     public int TotalDiariesLogged { get; set; }
     public int TotalWaterLogs { get; set; }
-    public long TotalStepsSynced { get; set; }
     public int TotalAiScans { get; set; }
     public double ChallengeCompletionRate { get; set; }
     public double AveragePetLevel { get; set; }

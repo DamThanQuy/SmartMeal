@@ -3,7 +3,6 @@ using Npgsql;
 using SmartMeal.Application.Common;
 using SmartMeal.Application.Common.Models;
 using SmartMeal.Application.DTOs.Gamification;
-using SmartMeal.Application.DTOs.HealthSync;
 using SmartMeal.Application.Services;
 using SmartMeal.Domain.Entities;
 using SmartMeal.Infrastructure.Data;
@@ -260,9 +259,9 @@ public class GamificationService : IGamificationService
         await EvaluateCoreAsync(userId, ResolveToday(date));
 
     /// <summary>Số liệu của một ngày dùng cho nhiệm vụ và thử thách.</summary>
-    private sealed record DayStats(int BreakfastItems, int MealGroups, double Calories, double ProteinGrams, int WaterMl, int Steps)
+    private sealed record DayStats(int BreakfastItems, int MealGroups, double Calories, double ProteinGrams, int WaterMl)
     {
-        public static readonly DayStats Empty = new(0, 0, 0, 0, 0, 0);
+        public static readonly DayStats Empty = new(0, 0, 0, 0, 0);
     }
 
     private sealed record EvaluationState(DayStats Today, int WaterGoalMl, double ProteinTargetGrams);
@@ -349,13 +348,12 @@ public class GamificationService : IGamificationService
         {
             ChallengeCategories.DrinkWater => day.WaterMl >= challenge.TargetValuePerDay,
             ChallengeCategories.EatClean => day.MealGroups >= challenge.TargetValuePerDay,
-            ChallengeCategories.Exercise => day.Steps >= challenge.TargetValuePerDay,
             _ => false // dữ liệu cũ thuộc loại không được hỗ trợ (Admin không còn tạo được loại này)
         };
     }
 
     /// <summary>
-    /// Tải tổng hợp số liệu thực tế theo từng ngày (bữa sáng, số nhóm bữa, calo, protein, nước, bước chân) trong một khoảng thời gian.
+    /// Tải tổng hợp số liệu thực tế theo từng ngày (bữa sáng, số nhóm bữa, calo, protein, nước) trong một khoảng thời gian.
     /// </summary>
     private async Task<Dictionary<DateOnly, DayStats>> LoadDayStatsAsync(Guid userId, DateOnly from, DateOnly to)
     {
@@ -370,24 +368,16 @@ public class GamificationService : IGamificationService
             .Select(g => new { Date = g.Key, Total = g.Sum(w => w.AmountMl) })
             .ToListAsync();
 
-        var syncs = await _db.HealthSyncLogs.AsNoTracking()
-            .Where(l => l.UserId == userId && l.SyncDate >= from && l.SyncDate <= to)
-            .Select(l => new { l.SyncDate, l.Source, l.StepCount })
-            .ToListAsync();
-
         var result = new Dictionary<DateOnly, DayStats>();
         for (var d = from; d <= to; d = d.AddDays(1))
         {
             var dayItems = items.Where(i => i.LogDate == d).ToList();
-            // Số bước lấy từ nguồn ưu tiên cao nhất của ngày, không cộng các nguồn lại (BR-042).
-            var steps = syncs.Where(s => s.SyncDate == d).OrderBy(s => HealthSyncSources.Rank(s.Source)).Select(s => s.StepCount).FirstOrDefault();
             result[d] = new DayStats(
                 BreakfastItems: dayItems.Count(i => i.MealType == MealTypes.Breakfast),
                 MealGroups: dayItems.Select(i => i.MealType).Distinct().Count(),
                 Calories: dayItems.Sum(i => i.Calories),
                 ProteinGrams: dayItems.Sum(i => i.ProteinGrams),
-                WaterMl: water.FirstOrDefault(w => w.Date == d)?.Total ?? 0,
-                Steps: steps);
+                WaterMl: water.FirstOrDefault(w => w.Date == d)?.Total ?? 0);
         }
 
         return result;

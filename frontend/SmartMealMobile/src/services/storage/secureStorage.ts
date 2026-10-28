@@ -64,7 +64,7 @@ export const tokenStorage = createSecureSlot(SECURE_KEYS.ACCESS_TOKEN);
 /** Refresh token dùng một lần để lấy cặp token mới khi access token hết hạn. */
 export const refreshTokenStorage = createSecureSlot(SECURE_KEYS.REFRESH_TOKEN);
 
-/** Lưu cặp token vừa nhận từ login/register/google/refresh/change-password. */
+/** Lưu cặp token vừa nhận từ login/register/refresh/change-password. */
 export async function saveSessionTokens(tokens: {
   token: string;
   refreshToken?: string | null;

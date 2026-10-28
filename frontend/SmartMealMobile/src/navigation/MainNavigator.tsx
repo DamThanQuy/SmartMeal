@@ -17,7 +17,7 @@ import {
   ResetPasswordScreen,
   StateSessionScreen,
 } from '@/features/auth';
-import { CalorieBudgetScreen, QuickLogScreen } from '@/features/dashboard';
+import { QuickLogScreen } from '@/features/dashboard';
 import { ThemePreviewScreen } from '@/features/dev';
 import {
   BadgesScreen,
@@ -44,7 +44,6 @@ import {
   DeleteAccountScreen,
   DeleteDataScreen,
   EditProfileScreen,
-  HealthConnectScreen,
   HealthSettingsScreen,
   LegalScreen,
   NotificationsScreen,
@@ -127,12 +126,10 @@ export function MainNavigator() {
 
       {/* Đợt 11 — planner/grocery (design v2). Grocery bản thân ở PlannerStackNavigator (giữ
           bottom tab) — các màn dưới đây là dialog sibling của MainTabs. */}
-      <Stack.Screen name={MAIN_STACK_ROUTES.CALORIE_BUDGET} component={CalorieBudgetScreen} />
 
       {/* Đợt 7 — profile. */}
       <Stack.Screen name={MAIN_STACK_ROUTES.HEALTH_SETTINGS} component={HealthSettingsScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.WEIGHT_HISTORY} component={WeightHistoryScreen} />
-      <Stack.Screen name={MAIN_STACK_ROUTES.HEALTH_CONNECT} component={HealthConnectScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.REMINDERS} component={RemindersScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.NOTIFICATIONS} component={NotificationsScreen} />
       <Stack.Screen name={MAIN_STACK_ROUTES.DEV} component={ThemePreviewScreen} />

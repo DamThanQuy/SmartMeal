@@ -21,8 +21,9 @@ public class GroceryTests : IClassFixture<ApiFactory>
     private static async Task<List<RecipePayload>> RecipesAsync(HttpClient client) =>
         (await (await client.GetAsync("/api/recipes")).ReadEnvelopeAsync<List<RecipePayload>>()).Data!;
 
-    private static RecipePayload Recipe(IEnumerable<RecipePayload> recipes, string titlePart) =>
-        recipes.Single(r => r.Title.Contains(titlePart));
+    // Tên đầy đủ của món gốc (DbInitializer): danh sách món mở rộng có món trùng một phần tên ("Cá hồi...", "Cháo yến mạch...").
+    private static RecipePayload Recipe(IEnumerable<RecipePayload> recipes, string title) =>
+        recipes.Single(r => r.Title == title);
 
     private static async Task PlanAsync(HttpClient client, string date, string mealType, Guid recipeId)
     {
@@ -58,8 +59,8 @@ public class GroceryTests : IClassFixture<ApiFactory>
     {
         var user = await _factory.RegisterUserAsync();
         var recipes = await RecipesAsync(user.Client);
-        await PlanAsync(user.Client, WeekA, "Lunch", Recipe(recipes, "Salad ức gà").Id); // ức gà 150 g
-        await PlanAsync(user.Client, WeekA, "Breakfast", Recipe(recipes, "Cháo yến mạch").Id); // ức gà 100 g
+        await PlanAsync(user.Client, WeekA, "Lunch", Recipe(recipes, "Salad ức gà sốt mè rang").Id); // ức gà 150 g
+        await PlanAsync(user.Client, WeekA, "Breakfast", Recipe(recipes, "Cháo yến mạch ức gà rau củ").Id); // ức gà 100 g
 
         var list = await GenerateAsync(user.Client, WeekA, WeekA);
 
@@ -80,7 +81,7 @@ public class GroceryTests : IClassFixture<ApiFactory>
     {
         var user = await _factory.RegisterUserAsync();
         var recipes = await RecipesAsync(user.Client);
-        await PlanAsync(user.Client, WeekA, "Breakfast", Recipe(recipes, "Trứng cuộn").Id); // 2 quả trứng
+        await PlanAsync(user.Client, WeekA, "Breakfast", Recipe(recipes, "Trứng cuộn rau củ thanh đạm").Id); // 2 quả trứng
 
         var egg = Item(await GenerateAsync(user.Client, WeekA, WeekA), "Trứng");
 
@@ -93,7 +94,7 @@ public class GroceryTests : IClassFixture<ApiFactory>
     public async Task The_same_dish_planned_on_two_days_doubles_the_amount_and_the_meal_count()
     {
         var user = await _factory.RegisterUserAsync();
-        var recipe = Recipe(await RecipesAsync(user.Client), "Cá hồi");
+        var recipe = Recipe(await RecipesAsync(user.Client), "Cá hồi áp chảo măng tây và cà chua bi");
         await PlanAsync(user.Client, WeekA, "Lunch", recipe.Id);
         await PlanAsync(user.Client, "2026-09-08", "Lunch", recipe.Id);
 
@@ -136,8 +137,8 @@ public class GroceryTests : IClassFixture<ApiFactory>
     {
         var user = await _factory.RegisterUserAsync();
         var recipes = await RecipesAsync(user.Client);
-        await PlanAsync(user.Client, WeekA, "Lunch", Recipe(recipes, "Cá hồi").Id);
-        await PlanAsync(user.Client, WeekB, "Lunch", Recipe(recipes, "Cơm gạo lứt").Id);
+        await PlanAsync(user.Client, WeekA, "Lunch", Recipe(recipes, "Cá hồi áp chảo măng tây và cà chua bi").Id);
+        await PlanAsync(user.Client, WeekB, "Lunch", Recipe(recipes, "Cơm gạo lứt bò xào ớt chuông").Id);
         var custom = await AddCustomAsync(user.Client, "Muối");
         Assert.Equal(0, custom.MergedFromRecipeCount);
 
@@ -155,8 +156,8 @@ public class GroceryTests : IClassFixture<ApiFactory>
     {
         var user = await _factory.RegisterUserAsync();
         var recipes = await RecipesAsync(user.Client);
-        await PlanAsync(user.Client, WeekA, "Breakfast", Recipe(recipes, "Cháo yến mạch").Id); // yến mạch 60 + ức gà 100
-        await PlanAsync(user.Client, WeekB, "Lunch", Recipe(recipes, "Salad ức gà").Id);        // ức gà 150 + ...
+        await PlanAsync(user.Client, WeekA, "Breakfast", Recipe(recipes, "Cháo yến mạch ức gà rau củ").Id); // yến mạch 60 + ức gà 100
+        await PlanAsync(user.Client, WeekB, "Lunch", Recipe(recipes, "Salad ức gà sốt mè rang").Id);        // ức gà 150 + ...
         var first = await GenerateAsync(user.Client, WeekA, WeekA);
         await user.Client.PatchAsJsonAsync($"/api/grocery/items/{Item(first, "Yến mạch").Id}/check", new { isChecked = true }, ApiTestHelpers.Json);
 
@@ -302,8 +303,8 @@ public class GroceryTests : IClassFixture<ApiFactory>
     {
         var user = await _factory.RegisterUserAsync();
         var recipes = await RecipesAsync(user.Client);
-        await PlanAsync(user.Client, WeekA, "Lunch", Recipe(recipes, "Salad ức gà").Id);
-        await PlanAsync(user.Client, WeekB, "Dinner", Recipe(recipes, "Cơm gạo lứt").Id);
+        await PlanAsync(user.Client, WeekA, "Lunch", Recipe(recipes, "Salad ức gà sốt mè rang").Id);
+        await PlanAsync(user.Client, WeekB, "Dinner", Recipe(recipes, "Cơm gạo lứt bò xào ớt chuông").Id);
         var generated = await GenerateAsync(user.Client, WeekA, "2026-09-13");
         var all = generated.Categories.SelectMany(c => c.Items).ToList();
         var bought = all.First();

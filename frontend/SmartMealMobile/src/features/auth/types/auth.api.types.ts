@@ -12,10 +12,6 @@ export interface LoginRequestDto {
   password: string;
 }
 
-export interface GoogleAuthRequestDto {
-  idToken: string;
-}
-
 export interface UpdateProfileRequestDto {
   /** Chuỗi rỗng/khoảng trắng bị BE bỏ qua. */
   fullName?: string;

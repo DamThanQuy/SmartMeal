@@ -16,7 +16,7 @@ type Props = NativeStackScreenProps<MainStackParamList, 'DeleteAccount'>;
 const ITEMS_TO_DELETE = [
   'Tài khoản và mọi phiên đăng nhập',
   'Hồ sơ sức khỏe, lịch sử cân nặng',
-  'Nhật ký ăn uống, nước uống, vận động',
+  'Nhật ký ăn uống, nước uống',
   'Thực đơn, danh sách đi chợ',
   'Yêu thích, bộ sưu tập và liên kết chia sẻ',
   'Bé Mầm, thử thách, huy hiệu, thông báo',

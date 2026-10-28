@@ -1,6 +1,5 @@
 import { getMetaCatalog } from '@/features/health';
 import { ENDPOINTS, api } from '@/services/api';
-import { getIncludeActivityCalories } from '@/state/user/userProfileStore';
 import type { PagedResult } from '@/types/api';
 import type { MealType } from '@/types/meal.types';
 import { addDaysIso } from '@/utils/date';
@@ -25,7 +24,6 @@ import type {
 } from '../types/nutrition.types';
 import { findEntryById } from '../utils/diary';
 import { scaleNutritionByGrams } from '../utils/nutritionMath';
-import { healthSyncService } from './healthSyncService';
 import {
   fromDailyDiaryDto,
   fromDiaryItemDto,
@@ -49,16 +47,7 @@ function getDailyDto(dateIso: string): Promise<DailyDiarySummaryDto> {
 }
 
 async function fetchDiaryDay(dateIso: string): Promise<DiaryDaySummary> {
-  const [daily, activity] = await Promise.all([
-    getDailyDto(dateIso),
-    // Calo vận động chỉ là phần cộng thêm: lỗi → coi là 0, không làm hỏng cả nhật ký.
-    healthSyncService.getDailySummary(dateIso).catch(() => null),
-  ]);
-
-  return fromDailyDiaryDto(daily, {
-    activityCaloriesBurned: activity?.caloriesBurned ?? 0,
-    includeActivityCalories: getIncludeActivityCalories(),
-  });
+  return fromDailyDiaryDto(await getDailyDto(dateIso));
 }
 
 async function toFoodItem(dto: FoodItemDto): Promise<FoodItem> {
@@ -68,7 +57,7 @@ async function toFoodItem(dto: FoodItemDto): Promise<FoodItem> {
 }
 
 export const nutritionApiService = {
-  // GET /nutritiondiary/daily + GET /health-sync/daily-summary (song song).
+  // GET /nutritiondiary/daily.
   getDiaryDay: fetchDiaryDay,
 
   // POST /nutritiondiary/log/batch — cả bữa trong MỘT request: BE lưu hết hoặc không lưu món nào
@@ -103,10 +92,7 @@ export const nutritionApiService = {
 
     if (patch.grams !== undefined) {
       const existing = findEntryById(
-        fromDailyDiaryDto(await getDailyDto(dateIso), {
-          activityCaloriesBurned: 0,
-          includeActivityCalories: false,
-        }),
+        fromDailyDiaryDto(await getDailyDto(dateIso)),
         entryId,
       );
       if (!existing) {

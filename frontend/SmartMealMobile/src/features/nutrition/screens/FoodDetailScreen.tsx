@@ -2,12 +2,12 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AlertTriangle, Heart, Minus, Plus, ShieldCheck } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
-import { ErrorState, LoadingState, ScreenContainer, ScreenHeader } from '@/components/common';
+import { ErrorState, LoadingState, MealTypeChips, ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppBadge, AppButton, AppCard, AppChip, AppIconButton, AppInput, AppText } from '@/components/ui';
 import { ALLERGY_OPTIONS } from '@/features/health';
 import { MAIN_STACK_ROUTES, MAIN_TAB_ROUTES } from '@/constants/routes';
 import type { MainStackParamList } from '@/navigation/types';
-import { MEAL_TYPE_OPTIONS, MEAL_TYPE_TITLES, type MealType } from '@/types/meal.types';
+import { MEAL_TYPE_TITLES, type MealType } from '@/types/meal.types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useUserProfileStore } from '@/state/user/userProfileStore';
 import { useAddMealLogEntries } from '../hooks/useDiary';
@@ -207,16 +207,7 @@ export function FoodDetailScreen({ navigation, route }: Props) {
           </View>
 
           <AppText variant="bodyMedium">Bữa</AppText>
-          <View className="flex-row flex-wrap gap-xs">
-            {MEAL_TYPE_OPTIONS.map(option => (
-              <AppChip
-                key={option.id}
-                label={option.label}
-                selected={mealType === option.id}
-                onPress={() => setMealType(option.id)}
-              />
-            ))}
-          </View>
+          <MealTypeChips value={mealType} onChange={setMealType} />
         </AppCard>
 
         <AppCard className="gap-sm">

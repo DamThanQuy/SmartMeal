@@ -2,7 +2,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Clock, Plus, Sparkles } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { EmptyState, ScreenContainer, ScreenHeader } from '@/components/common';
+import { EmptyState, MealTypeChips, ScreenContainer, ScreenHeader } from '@/components/common';
 import { AppBadge, AppButton, AppCard, AppText } from '@/components/ui';
 import {
   MacroStatGrid,
@@ -49,7 +49,9 @@ function isSelectionResolved(selection: UncertainSelection | undefined): boolean
 // độ tin cậy thấp (isUncertain + uncertainResolution): món đó "chưa được ghi" cho tới khi user
 // chọn đúng tên + khẩu phần, nút Confirm disable tới lúc đó (BR-072).
 export function AISnapResultScreen({ navigation, route }: Props) {
-  const { mealType, result, imageUri } = route.params;
+  const { mealType: initialMealType, result, imageUri } = route.params;
+  // Bữa mặc định theo nơi mở camera; người dùng đổi được trước khi lưu (BR-051, BR-054).
+  const [mealType, setMealType] = useState(initialMealType);
   // Ảnh trên máy hiện ngay; không có (mở lại từ nơi khác) thì dùng bản BE đã lưu.
   const photoUri = imageUri ?? result.imageUrl;
   const { colors } = useTheme();
@@ -220,6 +222,11 @@ export function AISnapResultScreen({ navigation, route }: Props) {
 
         {result.isDemo ? <AiDemoNotice /> : null}
         <AiAllergyWarnings warnings={result.allergyWarnings ?? []} />
+
+        <View className="gap-xs">
+          <AppText variant="bodyMedium">Ghi vào bữa</AppText>
+          <MealTypeChips value={mealType} onChange={setMealType} />
+        </View>
 
         {allUncertainResolved ? (
           <AppCard className="gap-sm">

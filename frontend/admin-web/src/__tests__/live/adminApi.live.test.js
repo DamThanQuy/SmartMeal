@@ -263,6 +263,58 @@ describeLive('Admin Web ↔ backend thật (services/api.js)', () => {
     })
   })
 
+  describe('Nhập Excel / API bulk import', () => {
+    it('thêm nhiều món, bỏ qua tên trùng và ghi đè khi bật tùy chọn', async () => {
+      await ensureSession()
+      const title = `Live Bulk ${Date.now()}`
+      const form = recipeForm(title)
+      const imported = await api.bulkImportRecipes([form, recipeForm(`${title} 2`)], false)
+      const list = await api.getRecipes({ search: title })
+      created.recipes.push(...list.items.map(r => r.id))
+      expect(imported.data).toMatchObject({ totalSubmitted: 2, totalImported: 2, totalSkipped: 0 })
+
+      const skipped = await api.bulkImportRecipes([{ ...form, description: 'Không được ghi đè' }], false)
+      expect(skipped.data).toMatchObject({ totalImported: 0, totalSkipped: 1 })
+      const original = list.items.find(r => r.title === title)
+      expect((await api.getRecipeDetail(original.id)).description).toBe(form.description)
+
+      const updated = await api.bulkImportRecipes([{ ...form, description: 'Đã cập nhật qua Excel', mealTypes: 'Dinner' }], true)
+      expect(updated.data).toMatchObject({ totalUpdated: 1, totalImported: 0 })
+      expect(await api.getRecipeDetail(original.id)).toMatchObject({ description: 'Đã cập nhật qua Excel', mealTypes: 'Dinner' })
+    })
+
+    it.each([
+      ['độ khó', { difficulty: 'Impossible' }],
+      ['bữa ăn', { mealTypes: 'Brunch' }],
+      ['calo âm', { caloriesPerServing: -10 }],
+      ['khẩu phần 0', { servings: 0 }],
+      ['tag quick trên 15 phút', { tagCodes: ['quick'] }],
+    ])('từ chối toàn bộ batch khi có dòng sai %s, không ghi dở dang', async (_label, invalid) => {
+      await ensureSession()
+      const prefix = `Live Invalid Bulk ${Date.now()}`
+      let failure
+      try {
+        await api.bulkImportRecipes([recipeForm(`${prefix} valid`), { ...recipeForm(`${prefix} invalid`), ...invalid }])
+      } catch (error) {
+        failure = error
+      }
+      const remaining = await api.getRecipes({ search: prefix })
+      created.recipes.push(...remaining.items.map(r => r.id))
+      expect(failure).toBeInstanceOf(Error)
+      expect(remaining.items).toEqual([])
+    })
+
+    it('không nhận danh sách trống và không làm crash khi dòng là null', async () => {
+      await ensureSession()
+      expect((await raw('/admin/recipes/bulk-import', {
+        method: 'POST', token: authStorage.getToken(), body: { recipes: [] },
+      })).status).toBe(400)
+      expect((await raw('/admin/recipes/bulk-import', {
+        method: 'POST', token: authStorage.getToken(), body: { recipes: [null] },
+      })).status).toBe(400)
+    })
+  })
+
   describe('Gói, giao dịch, phần thưởng, báo cáo', () => {
     it('gói hội viên trên web trùng giá với gói app bán', async () => {
       await ensureSession()

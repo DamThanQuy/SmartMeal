@@ -17,7 +17,7 @@ từ asset cục bộ qua `expo-font`.
 Trang chủ theo thứ tự: header SmartMeal và nút sáng/tối → ngày/lời chào/avatar → năng lượng
 hôm nay → ba ô Đạm/Tinh bột/Chất béo và phần trăm mục tiêu → mẹo nhỏ → gợi ý món ăn có ảnh.
 Các chức năng ghi bữa ăn, bữa ăn hôm nay, vận động và Bé Mầm nằm tiếp bên dưới. Thanh tab:
-Trang chủ · Bữa ăn (Meal Planner) · Khám phá · Nhật ký · Cá nhân. Các route và bảo vệ Guest
+Trang chủ · Thực đơn (Meal Planner) · Khám phá · Nhật ký · Cá nhân. Các route và bảo vệ Guest
 giữ theo chức năng hiện có. Nút sáng/tối lưu lựa chọn qua ThemeProvider; Cài đặt vẫn hỗ trợ
 chế độ theo hệ thống.
 

@@ -61,7 +61,6 @@ export const MAIN_STACK_ROUTES = {
   // Đợt 7 — profile.
   HEALTH_SETTINGS: 'HealthSettings',
   WEIGHT_HISTORY: 'WeightHistory',
-  HEALTH_CONNECT: 'HealthConnect',
   REMINDERS: 'Reminders',
   NOTIFICATIONS: 'Notifications',
   /** Màn Dev/ThemePreview (CLAUDE.md mục 11 Đợt 0) — vào từ mục Dev trong SettingsScreen (Đợt 9,
@@ -105,7 +104,6 @@ export const MAIN_STACK_ROUTES = {
   GROCERY_ADD: 'GroceryAdd',
   GROCERY_DONE: 'GroceryDone',
   PLANNER_REGENERATE: 'PlannerRegenerate',
-  CALORIE_BUDGET: 'CalorieBudget',
   // Đợt 12 — gamification (design v2, BR-031, BR-150→152, BR-200→212, BR-221).
   WATER_LOG: 'WaterLog',
   CHALLENGES: 'Challenges',

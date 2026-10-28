@@ -104,7 +104,6 @@ export type MainStackParamList = {
   // Đợt 7 — Profile (BR-001→BR-003). Không có bottom nav, sibling của MainTabs.
   HealthSettings: undefined;
   WeightHistory: undefined;
-  HealthConnect: undefined;
   Reminders: undefined;
   Notifications: undefined;
   Dev: undefined;
@@ -144,7 +143,6 @@ export type MainStackParamList = {
   GroceryAdd: { weekStartIso: string };
   GroceryDone: { weekStartIso: string };
   PlannerRegenerate: { weekStartIso: string };
-  CalorieBudget: undefined;
 
   // Đợt 12 — gamification (design v2, BR-031, BR-150→152, BR-200→212, BR-221).
   WaterLog: undefined;

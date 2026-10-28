@@ -20,11 +20,13 @@ import {
   Sparkles
 } from 'lucide-react';
 import { api } from '../services/api';
+import { useConfirm } from './useConfirm';
 import Pagination from './Pagination';
 
 const PAGE_SIZE = 15;
 
 export default function UsersView({ onNotify }) {
+  const { confirm, dialog } = useConfirm();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -94,7 +96,7 @@ export default function UsersView({ onNotify }) {
 
   const handleChangeRole = async (user) => {
     const nextRole = user.role === 'Admin' ? 'User' : 'Admin';
-    if (!window.confirm(`Bạn có chắc chắn muốn đổi quyền của "${user.fullName}" thành ${nextRole}?`)) {
+    if (!(await confirm(`Đổi quyền của "${user.fullName}" thành ${nextRole}?`, { title: 'Đổi quyền', confirmLabel: `Đổi thành ${nextRole}` }))) {
       return;
     }
     try {
@@ -119,7 +121,7 @@ export default function UsersView({ onNotify }) {
   };
 
   const handleRevokePro = async (user) => {
-    if (!window.confirm(`Hủy quyền Pro của người dùng "${user.fullName}" về tài khoản Miễn phí?`)) {
+    if (!(await confirm(`Hủy quyền Pro của người dùng "${user.fullName}" về tài khoản Miễn phí?`, { title: 'Hủy gói Pro', confirmLabel: 'Hủy gói Pro', danger: true }))) {
       return;
     }
     try {
@@ -180,7 +182,7 @@ export default function UsersView({ onNotify }) {
   };
 
   const handleDeleteUser = async (user) => {
-    if (!window.confirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản "${user.email}"? Thao tác này không thể hoàn tác!`)) {
+    if (!(await confirm(`Xóa vĩnh viễn tài khoản "${user.email}"? Thao tác này không thể hoàn tác.`, { title: 'Xóa người dùng', confirmLabel: 'Xóa vĩnh viễn', danger: true }))) {
       return;
     }
     try {
@@ -200,6 +202,7 @@ export default function UsersView({ onNotify }) {
 
   return (
     <div>
+      {dialog}
       {/* Filter & Search Bar */}
       <div className="filter-bar">
         <div className="search-box">
@@ -349,6 +352,7 @@ export default function UsersView({ onNotify }) {
                           className="btn btn-secondary btn-sm"
                           onClick={() => handleOpenDetail(u)}
                           title="Xem chi tiết & Hồ sơ sức khỏe"
+                          aria-label="Xem chi tiết & Hồ sơ sức khỏe"
                         >
                           <Eye size={14} />
                         </button>
@@ -359,6 +363,7 @@ export default function UsersView({ onNotify }) {
                           style={{ color: '#06b6d4', borderColor: 'rgba(6, 182, 212, 0.3)' }}
                           onClick={() => handleOpenModerateModal(u)}
                           title="Kiểm duyệt tài khoản (Moderate Account)"
+                          aria-label="Kiểm duyệt tài khoản (Moderate Account)"
                         >
                           <UserCheck size={14} />
                         </button>
@@ -369,6 +374,7 @@ export default function UsersView({ onNotify }) {
                           style={{ color: u.isLocked ? '#34d399' : '#f87171', borderColor: u.isLocked ? 'rgba(52, 211, 153, 0.3)' : 'rgba(248, 113, 113, 0.3)' }}
                           onClick={() => handleOpenBanModal(u)}
                           title={u.isLocked ? 'Quản lý cấm / Mở cấm (Unban)' : 'Cấm tài khoản (Ban User)'}
+                          aria-label={u.isLocked ? 'Quản lý cấm / Mở cấm (Unban)' : 'Cấm tài khoản (Ban User)'}
                         >
                           {u.isLocked ? <Unlock size={14} /> : <UserX size={14} />}
                         </button>
@@ -379,6 +385,7 @@ export default function UsersView({ onNotify }) {
                           style={{ color: '#fbbf24' }}
                           onClick={() => setProTarget(u)}
                           title="Cấp / Gia hạn gói Pro"
+                          aria-label="Cấp / Gia hạn gói Pro"
                         >
                           <Crown size={14} />
                         </button>
@@ -388,6 +395,7 @@ export default function UsersView({ onNotify }) {
                           className="btn btn-danger btn-sm"
                           onClick={() => handleDeleteUser(u)}
                           title="Xóa người dùng"
+                          aria-label="Xóa người dùng"
                         >
                           <Trash2 size={14} />
                         </button>

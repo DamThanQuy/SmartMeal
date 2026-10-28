@@ -196,6 +196,16 @@
         "proteinPer100g": 9,
         "carbsPer100g": 48,
         "fatPer100g": 3.5
+      },
+      {
+        "name": "Phô mai mozzarella ít béo",
+        "category": "Dairy",
+        "unit": "g",
+        "amount": 30,
+        "caloriesPer100g": 254,
+        "proteinPer100g": 24,
+        "carbsPer100g": 3,
+        "fatPer100g": 16
       }
     ]
   },
@@ -261,7 +271,6 @@
     "tagCodes": [
       "keto",
       "highProtein",
-      "quick",
       "lowCarb"
     ],
     "ingredients": [
@@ -383,24 +392,6 @@
     ]
   },
   {
-    "title": "Bún Chả Eat Clean Nồi Chiên Không Dầu",
-    "description": "Công thức đã cập nhật thêm gia vị thảo mộc",
-    "imageUrl": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80",
-    "instructions": "",
-    "prepTimeMinutes": 10,
-    "cookTimeMinutes": 15,
-    "servings": 1,
-    "difficulty": "Easy",
-    "isPremium": false,
-    "mealTypes": "Lunch",
-    "caloriesPerServing": 430,
-    "proteinPerServing": 0,
-    "carbsPerServing": 0,
-    "fatPerServing": 0,
-    "tagCodes": [],
-    "ingredients": []
-  },
-  {
     "title": "Bún bò xào Nam Bộ rau sống đậu phộng",
     "description": "Món bún trộn thanh đạm đặc trưng miền Nam với thịt bò xào thơm nức, rau thơm tươi giòn và đậu phộng rang.",
     "imageUrl": "https://images.unsplash.com/photo-1503764654157-72d979d9af2f?auto=format&fit=crop&w=600&q=80",
@@ -449,6 +440,16 @@
         "proteinPer100g": 26,
         "carbsPer100g": 0,
         "fatPer100g": 15
+      },
+      {
+        "name": "Đậu phộng rang",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 15,
+        "caloriesPer100g": 585,
+        "proteinPer100g": 24,
+        "carbsPer100g": 21,
+        "fatPer100g": 50
       }
     ]
   },
@@ -626,6 +627,16 @@
         "proteinPer100g": 8,
         "carbsPer100g": 1.9,
         "fatPer100g": 4.8
+      },
+      {
+        "name": "Cua đồng",
+        "category": "Seafood",
+        "unit": "g",
+        "amount": 100,
+        "caloriesPer100g": 87,
+        "proteinPer100g": 12.3,
+        "carbsPer100g": 2,
+        "fatPer100g": 3.3
       }
     ]
   },
@@ -740,7 +751,6 @@
     "fatPerServing": 5,
     "tagCodes": [
       "eatClean",
-      "quick",
       "budget"
     ],
     "ingredients": [
@@ -878,7 +888,6 @@
     "fatPerServing": 10,
     "tagCodes": [
       "eatClean",
-      "quick",
       "lowCarb"
     ],
     "ingredients": [
@@ -962,8 +971,7 @@
     "fatPerServing": 7,
     "tagCodes": [
       "eatClean",
-      "highProtein",
-      "quick"
+      "highProtein"
     ],
     "ingredients": [
       {
@@ -1575,8 +1583,7 @@
     "carbsPerServing": 52,
     "fatPerServing": 5,
     "tagCodes": [
-      "eatClean",
-      "quick"
+      "eatClean"
     ],
     "ingredients": [
       {
@@ -1672,7 +1679,6 @@
     "tagCodes": [
       "keto",
       "highProtein",
-      "quick",
       "lowCarb"
     ],
     "ingredients": [
@@ -1859,6 +1865,16 @@
         "proteinPer100g": 17,
         "carbsPer100g": 42,
         "fatPer100g": 31
+      },
+      {
+        "name": "Nước hạnh nhân không đường",
+        "category": "Grain",
+        "unit": "ml",
+        "amount": 150,
+        "caloriesPer100g": 15,
+        "proteinPer100g": 0.6,
+        "carbsPer100g": 0.3,
+        "fatPer100g": 1.2
       }
     ]
   },
@@ -1967,6 +1983,16 @@
         "proteinPer100g": 1.2,
         "carbsPer100g": 3.3,
         "fatPer100g": 0.3
+      },
+      {
+        "name": "Hạt dẻ cười",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 15,
+        "caloriesPer100g": 560,
+        "proteinPer100g": 20,
+        "carbsPer100g": 28,
+        "fatPer100g": 45
       }
     ]
   },
@@ -1988,7 +2014,6 @@
     "tagCodes": [
       "keto",
       "highProtein",
-      "quick",
       "lowCarb"
     ],
     "ingredients": [
@@ -2254,6 +2279,16 @@
         "proteinPer100g": 16.9,
         "carbsPer100g": 66,
         "fatPer100g": 6.9
+      },
+      {
+        "name": "Hạt óc chó",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 15,
+        "caloriesPer100g": 654,
+        "proteinPer100g": 15,
+        "carbsPer100g": 14,
+        "fatPer100g": 65
       }
     ]
   },
@@ -2287,6 +2322,16 @@
         "proteinPer100g": 16.9,
         "carbsPer100g": 66,
         "fatPer100g": 6.9
+      },
+      {
+        "name": "Hạt điều",
+        "category": "Grain",
+        "unit": "g",
+        "amount": 40,
+        "caloriesPer100g": 553,
+        "proteinPer100g": 18,
+        "carbsPer100g": 30,
+        "fatPer100g": 44
       }
     ]
   },

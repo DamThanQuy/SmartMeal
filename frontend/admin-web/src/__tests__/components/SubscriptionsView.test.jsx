@@ -4,11 +4,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SubscriptionsView from '../../components/SubscriptionsView'
 import { api } from '../../services/api'
 import { listPage, setupApi, transactions } from '../../test/fixtures'
+import { answerConfirm } from '../../test/confirm'
 
 vi.mock('../../services/api', async (importOriginal) => (await import('../../test/mockApi.js')).mockApiModule(importOriginal))
 
 let onNotify
-let confirmSpy
 
 const rowOf = async (text) => (await screen.findByText(text)).closest('tr')
 const planCard = (name) => screen.getByRole('heading', { level: 4, name }).closest('.card')
@@ -23,7 +23,6 @@ async function renderLoaded() {
 beforeEach(() => {
   setupApi(api)
   onNotify = vi.fn()
-  confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
 })
 
 describe('SubscriptionsView — gói hội viên', () => {
@@ -69,7 +68,7 @@ describe('SubscriptionsView — giao dịch', () => {
 
     await user.click(within(await rowOf('#sess-pending-abc')).getByRole('button', { name: /Duyệt Đơn/ }))
 
-    expect(confirmSpy.mock.calls[0][0]).toContain('#sess-pending-abcdefghijkl')
+    expect(await answerConfirm(user)).toContain('#sess-pending-abcdefghijkl')
     expect(api.approveTransaction).toHaveBeenCalledWith('t2')
     await waitFor(() => expect(onNotify).toHaveBeenCalledWith('Đã duyệt đơn và kích hoạt gói Pro thành công!', 'success'))
     expect(api.getTransactions).toHaveBeenCalledTimes(2)
@@ -81,6 +80,7 @@ describe('SubscriptionsView — giao dịch', () => {
     const user = await renderLoaded()
 
     await user.click(within(await rowOf('#777')).getByRole('button', { name: /Duyệt Đơn/ }))
+    await answerConfirm(user)
 
     const busy = within(await rowOf('#777')).getByRole('button', { name: /Đang duyệt/ })
     expect(busy).toBeDisabled()
@@ -90,12 +90,13 @@ describe('SubscriptionsView — giao dịch', () => {
 
   it('hủy xác nhận thì không duyệt; duyệt lỗi thì báo thất bại', async () => {
     const user = await renderLoaded()
-    confirmSpy.mockReturnValueOnce(false)
     await user.click(within(await rowOf('#777')).getByRole('button', { name: /Duyệt Đơn/ }))
+    await answerConfirm(user, false)
     expect(api.approveTransaction).not.toHaveBeenCalled()
 
     api.approveTransaction.mockRejectedValue(new Error('Không tìm thấy giao dịch thanh toán.'))
     await user.click(within(await rowOf('#777')).getByRole('button', { name: /Duyệt Đơn/ }))
+    await answerConfirm(user)
     await waitFor(() => expect(onNotify).toHaveBeenCalledWith('Duyệt giao dịch thất bại: Không tìm thấy giao dịch thanh toán.', 'error'))
   })
 

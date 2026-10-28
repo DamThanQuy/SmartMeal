@@ -210,7 +210,7 @@ describe('EngagementAnalyticsView', () => {
     expect(within(statCard('MAU (Hoạt Động Hằng Tháng)')).getByText('41')).toBeInTheDocument()
     expect(within(statCard('Tỷ Lệ Hoàn Thành Thử Thách')).getByText('33.3%')).toBeInTheDocument()
     expect(screen.getByText((1520).toLocaleString())).toBeInTheDocument()
-    expect(screen.getByText((125000).toLocaleString())).toBeInTheDocument()
+    expect(screen.queryByText('Tổng Bước Chân Đồng Bộ')).toBeNull() // bỏ cùng Health Connect
     expect(screen.getByText('Lv. 3.4')).toBeInTheDocument()
   })
 

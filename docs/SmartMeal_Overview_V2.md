@@ -13,7 +13,7 @@
 - **Tự động hóa ghi nhận dinh dưỡng**: Nhận diện món ăn qua hình ảnh và giọng nói bằng AI.
 - **Cá nhân hóa chuyên sâu**: Đề xuất thực đơn theo chỉ số sức khỏe, bệnh lý và dị ứng.
 - **Tiết kiệm & Chống lãng phí**: Quét nguyên liệu tủ lạnh để gợi ý món ăn và tự động sinh danh sách đi chợ theo tuần.
-- **Tạo động lực duy trì lối sống lành mạnh**: Gamification nuôi linh vật sức khỏe và đồng bộ vận động từ Smartwatch.
+- **Tạo động lực duy trì lối sống lành mạnh**: Gamification nuôi linh vật sức khỏe.
 
 ---
 
@@ -27,7 +27,6 @@
 
 #### 2. Dashboard Thông minh (Smart Dashboard)
 - Tổng quan năng lượng nạp trong ngày (Calories, Carbs, Fat, Protein).
-- **Dynamic Calorie Budget**: Tự động tính toán ngân sách calo động (Calo mục tiêu + Calo tiêu hao từ vận động).
 - Hiển thị linh vật sức khỏe (Pet) biểu thị trạng thái dinh dưỡng trong ngày.
 - Lịch sử nhật ký dinh dưỡng gần nhất & Lối tắt ghi nhanh (Quick Log).
 - Thông báo nhắc nhở uống nước, ghi nhận bữa ăn đúng giờ.
@@ -74,10 +73,8 @@
 - **Smart Grocery List**: Tự động tổng hợp toàn bộ nguyên liệu cần mua cho cả tuần, cộng dồn khối lượng và phân nhóm theo quầy siêu thị (Quầy rau, Quầy thịt, Gia vị,...).
 - Ước tính tổng chi phí đi chợ cho cả tuần và hỗ trợ check-off tiện lợi khi mua sắm.
 
-#### 10. Đồng bộ Sức khỏe & Thiết bị đeo (Health Connect / Apple Health Integration)
-- Kết nối và đồng bộ dữ liệu với Google Health Connect / Apple Health.
-- Tự động lấy số bước chân, quãng đường và năng lượng tiêu hao (Active Calories) trong ngày.
-- Cập nhật năng lượng tiêu thụ vào biểu đồ tổng quan calo.
+#### 10. ~~Đồng bộ Sức khỏe & Thiết bị đeo (Health Connect / Apple Health Integration)~~
+Đã bỏ ngày 27/10/2026 theo quyết định của nhóm: không đồng bộ bước chân hay calo vận động; ngân sách calo trong ngày là mục tiêu calo của hồ sơ sức khỏe, và không còn thử thách bước chân.
 
 #### 11. Gamification: Linh vật sức khỏe & Thử thách (Health Pet & Challenges)
 - Nuôi linh vật sức khỏe ảo (Pet) phản ánh trạng thái dinh dưỡng thực tế của người dùng.

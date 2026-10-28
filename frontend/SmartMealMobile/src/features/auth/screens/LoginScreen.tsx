@@ -12,11 +12,7 @@ import type { AuthStackParamList } from '@/navigation/types';
 import { isApiError } from '@/services/api';
 import { useAuthStore } from '@/state/auth/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
-import { AuthGoogleButton } from '../components/AuthGoogleButton';
-import { AuthSocialDivider } from '../components/AuthSocialDivider';
-import { useGoogleLogin } from '../hooks/useGoogleLogin';
 import { useLogin } from '../hooks/useLogin';
-import type { SessionOpenResult } from '../types/auth.types';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Email không hợp lệ' }),
@@ -38,15 +34,6 @@ export function LoginScreen({ navigation, route }: Props) {
   const setPendingUser = useAuthStore(state => state.setPendingUser);
   const continueAsGuest = useAuthStore(state => state.continueAsGuest);
   const loginMutation = useLogin();
-  const handleSessionOpen = ({ user, needsSurvey }: SessionOpenResult) => {
-    if (!needsSurvey) {
-      login(user);
-      return;
-    }
-    setPendingUser(user);
-    navigation.reset({ index: 0, routes: [{ name: AUTH_ROUTES.HEALTH_PROFILE_BASIC_INFO }] });
-  };
-  const googleLogin = useGoogleLogin({ onSuccess: handleSessionOpen });
   const {
     control,
     handleSubmit,
@@ -171,23 +158,6 @@ export function LoginScreen({ navigation, route }: Props) {
           <AppText variant="caption" color="secondary" className="text-center">
             Email đã được xác minh. Hãy đăng nhập lại.
           </AppText>
-        ) : null}
-        {/* Expo Go không có Google Sign-In native → ẩn nút, đăng nhập email/mật khẩu vẫn dùng bình thường. */}
-        {googleLogin.isAvailable ? (
-          <>
-            <AuthSocialDivider />
-            <AuthGoogleButton
-              label="Tiếp tục với Google"
-              onPress={googleLogin.start}
-              onCredential={googleLogin.acceptCredential}
-              disabled={googleLogin.isLoading || googleLogin.isPrompting}
-            />
-            {googleLogin.error ? (
-              <AppText variant="caption" color="error" className="text-center">
-                {googleLogin.error.message}
-              </AppText>
-            ) : null}
-          </>
         ) : null}
       </View>
 

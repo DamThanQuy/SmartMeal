@@ -185,7 +185,6 @@ public class AccountTests : IClassFixture<ApiFactory>
             carbsGrams = 28, fatGrams = 0, proteinGrams = 3, logMethod = "Manual"
         })).EnsureSuccessStatusCode();
         (await client.PostJsonAsync("/api/nutritiondiary/water", new { amountMl = 250, date = "2026-09-01" })).EnsureSuccessStatusCode();
-        (await client.PostJsonAsync("/api/health-sync/steps-and-calories", new { date = "2026-09-01", source = "Manual", steps = 1000, burnedCalories = 50 })).EnsureSuccessStatusCode();
         (await client.PostJsonAsync("/api/recipes/collections", new { name = "Bộ sưu tập của tôi", isPublic = false })).EnsureSuccessStatusCode();
         (await client.GetAsync("/api/gamification/pet")).EnsureSuccessStatusCode();
     }
@@ -206,7 +205,7 @@ public class AccountTests : IClassFixture<ApiFactory>
         Assert.Equal(1, deleted["waterLogs"]);
         Assert.Equal(1, deleted["healthProfile"]);
         Assert.Equal(1, deleted["weightEntries"]);
-        Assert.Equal(1, deleted["healthSyncLogs"]);
+        Assert.Equal(0, deleted["healthSyncLogs"]); // bảng cũ của Health Connect (đã bỏ) — vẫn được dọn nếu còn dữ liệu
         Assert.Equal(1, deleted["collections"]);
         Assert.Equal(1, deleted["pet"]);
 
