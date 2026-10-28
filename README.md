@@ -41,7 +41,7 @@
 
 | Thành phần | Công nghệ sử dụng |
 | :--- | :--- |
-| **Mobile App** | React Native 0.86 + Expo SDK 57 (TypeScript), TanStack Query, Zustand, Axios, NativeWind, React Hook Form + Zod, AsyncStorage / expo-secure-store |
+| **Mobile App** | React Native 0.88 + Expo SDK 58 (TypeScript), TanStack Query, Zustand, Axios, NativeWind, React Hook Form + Zod, AsyncStorage / expo-secure-store |
 | **Backend API** | ASP.NET Core (.NET 9), Entity Framework Core 9, RESTful Architecture |
 | **Database** | PostgreSQL 16 |
 | **Authentication** | JWT + refresh token, đăng nhập email + mật khẩu, OTP qua email (quên mật khẩu) |

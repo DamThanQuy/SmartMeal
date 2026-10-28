@@ -5,6 +5,7 @@ const jestExpoPreset = require('jest-expo/jest-preset');
 
 module.exports = {
   ...jestExpoPreset,
+  setupFiles: [...jestExpoPreset.setupFiles, '<rootDir>/jest.setup.js'],
   moduleNameMapper: {
     ...jestExpoPreset.moduleNameMapper,
     '\\.css$': '<rootDir>/__mocks__/styleMock.js',
