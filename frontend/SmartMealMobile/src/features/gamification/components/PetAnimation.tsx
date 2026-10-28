@@ -205,8 +205,12 @@ export function PetAnimation({ stage, xpRatio = 0, size = 200 }: PetAnimationPro
   // Micro-scale từ XP ratio
   const xpScale = 1 + xpRatio * 0.15;
 
-  // Bob (nhún nhảy liên tục)
+  // Bob (nhún nhảy khi xuất hiện - trong DEV tắt loop để UIAutomator đạt idle state ngay lập tức)
   useEffect(() => {
+    if (__DEV__) {
+      bobY.set(0);
+      return;
+    }
     bobY.set(
       withRepeat(
         withSequence(

@@ -1,0 +1,35 @@
+{
+  "name": "smartmeal-e2e-runner",
+  "version": "1.0.0",
+  "description": "SmartMeal Mobile End-to-End Test Automation Suite via ADB and UIAutomator",
+  "main": "index.js",
+  "scripts": {
+    "start": "node run.js",
+    "test": "node run.js --all",
+    "test:core": "node run.js --core",
+    "test:all": "node run.js --all",
+    "test:01": "node run.js 01",
+    "test:02": "node run.js 02",
+    "test:03": "node run.js 03",
+    "test:04": "node run.js 04",
+    "test:05": "node run.js 05",
+    "test:06": "node run.js 06",
+    "test:07": "node run.js 07",
+    "test:08": "node run.js 08",
+    "test:09": "node run.js 09",
+    "test:10": "node run.js 10",
+    "test:11": "node run.js 11",
+    "test:12": "node run.js 12",
+    "reverse": "node -e \"require('./lib/adb-driver').reversePorts(); console.log('Reversed ports 8081, 5000, 5432')\""
+  },
+  "keywords": [
+    "e2e",
+    "testing",
+    "android",
+    "adb",
+    "uiautomator",
+    "smartmeal"
+  ],
+  "author": "SmartMeal QA Automation Team",
+  "license": "ISC"
+}
