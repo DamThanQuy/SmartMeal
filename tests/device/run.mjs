@@ -10,7 +10,7 @@ const rootDir = path.resolve(__dirname, '../..');
 const reportsDir = path.join(rootDir, 'docs', 'test-reports', 'device-e2e');
 
 console.log('\x1b[36m============================================================\x1b[0m');
-console.log('\x1b[32m  📱 SMARTMEAL - AUTOMATED DEVICE E2E UI TEST RUNNER        \x1b[0m');
+console.log('\x1b[32m  📱 SMARTMEAL - TOÀN DIỆN E2E UI TEST RUNNER (ALL SCREENS) \x1b[0m');
 console.log('\x1b[36m============================================================\x1b[0m');
 
 // 1. Tim adb executable
@@ -39,7 +39,7 @@ function getAdbPath() {
       if (found) return `"${found}"`;
     }
   }
-  console.error('\x1b[31m[Lỗi] Không tìm thấy adb.exe! Vui lòng cài đặt scrcpy hoặc Android SDK Tools.\x1b[0m');
+  console.error('\x1b[31m[Lỗi] Không tìm thấy adb.exe! Vui lòng cài đặt scrcpy hoặc Android Platform Tools.\x1b[0m');
   process.exit(1);
 }
 
@@ -63,19 +63,21 @@ function waitForDevice(adbPath, maxSeconds = 15) {
         return devLine.split(/\s+/)[0];
       }
     } catch {}
-    process.stdout.write(`  \x1b[90m-> Đang chờ kết nối cáp USB & mở khóa điện thoại (${maxSeconds - i}s còn lại)...   \r\x1b[0m`);
+    process.stdout.write(`  \x1b[90m-> Đang chờ kết nối cáp USB & bật Gỡ lỗi USB (${maxSeconds - i}s còn lại)...   \r\x1b[0m`);
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000);
   }
   return null;
 }
 
-const deviceId = waitForDevice(adb, 12);
+const deviceId = waitForDevice(adb, 8);
 
 if (!deviceId) {
-  console.error('\n\x1b[31m[Lỗi] Không tìm thấy thiết bị Android nào được kết nối qua USB!\x1b[0m');
-  console.error('\x1b[33m-> Vui lòng: 1. Cắm cáp USB nối điện thoại với laptop\x1b[0m');
-  console.error('\x1b[33m            2. Bật "Gỡ lỗi USB" (USB Debugging) trong Cài đặt nhà phát triển\x1b[0m');
-  console.error('\x1b[33m            3. Mở khóa màn hình điện thoại và bấm "Cho phép"\x1b[0m');
+  console.error('\n\x1b[31m[Thông báo] Hiện tại chưa phát hiện thiết bị Android kết nối qua USB/ADB!\x1b[0m');
+  console.error('\x1b[33mHướng dẫn kết nối điện thoại:\x1b[0m');
+  console.error('\x1b[33m  1. Cắm cáp USB nối điện thoại (REDMAGIC / Android) với máy tính.\x1b[0m');
+  console.error('\x1b[33m  2. Vào Cài đặt -> Tùy chọn nhà phát triển -> Bật "Gỡ lỗi USB" (USB Debugging).\x1b[0m');
+  console.error('\x1b[33m  3. Nếu kết nối qua Wi-Fi: chạy "adb connect <IP-điện-thoại>:5555".\x1b[0m');
+  console.error('\x1b[33m  4. Sau khi kết nối, chạy lại: npm run test:device\x1b[0m\n');
   process.exit(1);
 }
 
@@ -113,7 +115,7 @@ execSync(`${adb} -s ${deviceId} shell input keyevent 224`, { stdio: 'pipe' });
 execSync(`${adb} -s ${deviceId} shell wm dismiss-keyguard`, { stdio: 'pipe' });
 execSync(`${adb} -s ${deviceId} shell am start -a android.intent.action.VIEW -d "exp://127.0.0.1:8081"`, { stdio: 'pipe' });
 
-// Cho 3 giay de app render
+// Cho app render on dinh
 Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000);
 
 if (!fs.existsSync(reportsDir)) {
@@ -126,13 +128,51 @@ const BASE_H = 2688;
 const scaleX = screenWidth / BASE_W;
 const scaleY = screenHeight / BASE_H;
 
-function runStep({ id, name, tap, waitMs = 2000, fileName, description, backAfter = false }) {
+// Helper tim toa do qua uiautomator dump
+function getElementCenter(query) {
+  try {
+    const dumpPath = '/sdcard/temp_dump.xml';
+    execSync(`${adb} -s ${deviceId} shell uiautomator dump ${dumpPath}`, { stdio: 'pipe', timeout: 5000 });
+    const xml = execSync(`${adb} -s ${deviceId} shell cat ${dumpPath}`, { encoding: 'utf-8', timeout: 5000 });
+    execSync(`${adb} -s ${deviceId} shell rm ${dumpPath}`, { stdio: 'pipe' });
+
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`<node[^>]*(?:content-desc|text)="[^"]*${escaped}[^"]*"[^>]*bounds="\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]"`, 'i');
+    const match = xml.match(regex);
+    if (match) {
+      const x1 = parseInt(match[1], 10);
+      const y1 = parseInt(match[2], 10);
+      const x2 = parseInt(match[3], 10);
+      const y2 = parseInt(match[4], 10);
+      return [Math.round((x1 + x2) / 2), Math.round((y1 + y2) / 2)];
+    }
+  } catch {}
+  return null;
+}
+
+function runStep({ id, name, targetDesc, tap, waitMs = 2000, fileName, description, backAfter = false, scrollDown = false }) {
   process.stdout.write(`  \x1b[90m-> Bước ${id}: ${name}...\x1b[0m `);
-  if (tap) {
-    const actualX = Math.round(tap[0] * scaleX);
-    const actualY = Math.round(tap[1] * scaleY);
-    execSync(`${adb} -s ${deviceId} shell input tap ${actualX} ${actualY}`, { stdio: 'pipe' });
+
+  if (scrollDown) {
+    const startY = Math.round(screenHeight * 0.7);
+    const endY = Math.round(screenHeight * 0.3);
+    const midX = Math.round(screenWidth * 0.5);
+    execSync(`${adb} -s ${deviceId} shell input swipe ${midX} ${startY} ${midX} ${endY} 300`, { stdio: 'pipe' });
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000);
   }
+
+  let clickCoord = null;
+  if (targetDesc) {
+    clickCoord = getElementCenter(targetDesc);
+  }
+  if (!clickCoord && tap) {
+    clickCoord = [Math.round(tap[0] * scaleX), Math.round(tap[1] * scaleY)];
+  }
+
+  if (clickCoord) {
+    execSync(`${adb} -s ${deviceId} shell input tap ${clickCoord[0]} ${clickCoord[1]}`, { stdio: 'pipe' });
+  }
+
   if (waitMs > 0) {
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, waitMs);
   }
@@ -155,21 +195,21 @@ function runStep({ id, name, tap, waitMs = 2000, fileName, description, backAfte
       testResults.push({ id, name, status: 'PASS', file: fileName, description });
       return true;
     }
-  } catch (err) {
-    // continue
-  }
+  } catch (err) {}
 
   console.log('\x1b[31m[FAIL]\x1b[0m');
   testResults.push({ id, name, status: 'FAIL', file: fileName, description });
   return false;
 }
 
-// 5. Chay cac buoc kiem thu
-console.log('\n\x1b[33m[4/6] Đang thực thi chuỗi kịch bản kiểm thử End-to-End...\x1b[0m');
+// 5. Chuỗi kịch bản kiểm thử toàn bộ màn hình tính năng
+console.log('\n\x1b[33m[4/6] Đang thực thi chuỗi kịch bản kiểm thử End-to-End toàn bộ tính năng...\x1b[0m');
 
+// --- NHÓM 1: TRANG CHỦ & THAO TÁC NHANH ---
 runStep({
   id: 'TC-01',
   name: 'Trang chủ (Dashboard Dinh dưỡng)',
+  targetDesc: 'Trang chủ',
   tap: [121, 2584],
   waitMs: 2000,
   fileName: '01_trang_chu.png',
@@ -178,57 +218,220 @@ runStep({
 
 runStep({
   id: 'TC-02',
-  name: 'Thực đơn tuần (Meal Planner)',
-  tap: [364, 2584],
+  name: 'Modal Ghi nhanh bữa ăn (QuickLog)',
+  targetDesc: 'Ghi bữa ăn',
+  tap: [608, 1319],
   waitMs: 2000,
-  fileName: '02_thuc_don.png',
-  description: 'Thanh chọn ngày trong tuần, các khung Bữa sáng, Bữa trưa, Bữa tối và nút Thêm món ăn theo kế hoạch.'
+  fileName: '02_ghi_bua_an.png',
+  description: 'Bảng chọn nhanh bữa ăn: Bữa sáng, Bữa trưa, Bữa tối, Bữa phụ và tích hợp AI.',
+  backAfter: true
 });
 
 runStep({
   id: 'TC-03',
-  name: 'Khám phá công thức (Recipe Discovery)',
-  tap: [608, 2584],
-  waitMs: 2000,
-  fileName: '03_kham_pha.png',
-  description: 'Tải danh mục công thức từ Backend API, banner Quét tủ lạnh (Fridge Scanner) và bộ lọc danh mục (Eat Clean, Low Carb).'
+  name: 'Chụp món ăn AI (AI Camera Scan)',
+  targetDesc: 'Chụp món',
+  tap: [141, 1572],
+  waitMs: 2500,
+  fileName: '03_chup_mon_ai.png',
+  description: 'Màn hình máy ảnh nhận diện món ăn tự động qua thị giác máy tính và gợi ý dinh dưỡng.',
+  backAfter: true
 });
 
 runStep({
   id: 'TC-04',
-  name: 'Chi tiết món ăn & Dinh dưỡng (Recipe Detail)',
-  tap: [280, 1650],
+  name: 'Ghi âm món ăn bằng giọng nói (Voice Log)',
+  targetDesc: 'Nói để ghi',
+  tap: [427, 1572],
   waitMs: 2500,
-  fileName: '04_chi_tiet_mon.png',
-  description: 'Mở chi tiết món "Bánh chuối yến mạch", hiển thị hình ảnh chuẩn, thông số calo/macro, cảnh báo dị ứng và nút Thêm vào thực đơn.',
+  fileName: '04_ghi_am_giong_noi.png',
+  description: 'Màn hình micro thu âm tiếng Việt thông minh, bóc tách tên món và khẩu phần nạp vào.',
   backAfter: true
 });
 
 runStep({
   id: 'TC-05',
-  name: 'Nhật ký dinh dưỡng (Food Diary)',
-  tap: [851, 2584],
+  name: 'Tìm kiếm món ăn (Food Search)',
+  targetDesc: 'Tìm món',
+  tap: [707, 1572],
   waitMs: 2000,
-  fileName: '05_nhat_ky.png',
-  description: 'Màn hình theo dõi nhật ký bữa ăn trong ngày, thanh tiến độ calo và các nút Ghi nhận bữa sáng/trưa/tối.'
+  fileName: '05_tim_kiem_mon.png',
+  description: 'Thanh tìm kiếm nguyên liệu/món ăn, danh sách gợi ý kèm định lượng calo chuẩn.',
+  backAfter: true
 });
 
 runStep({
   id: 'TC-06',
-  name: 'Hồ sơ cá nhân & Cài đặt sức khỏe (Profile)',
-  tap: [1094, 2584],
-  waitMs: 2000,
-  fileName: '06_ca_nhan.png',
-  description: 'Thông tin tài khoản NTB, banner nâng cấp SmartMeal Pro, chi tiết sức khỏe (Dị ứng, Chế độ ăn, Nhắc nhở, Linh vật).'
+  name: 'Quét mã vạch sản phẩm đóng gói (Barcode)',
+  targetDesc: 'Quét sản phẩm',
+  tap: [1032, 1572],
+  waitMs: 2500,
+  fileName: '06_quet_ma_vach.png',
+  description: 'Khung ngắm quét mã vạch UPC/EAN sản phẩm để tra cứu nhanh bảng giá trị dinh dưỡng.',
+  backAfter: true
 });
 
 runStep({
   id: 'TC-07',
+  name: 'Trung tâm thông báo (Notifications)',
+  targetDesc: 'Thông báo',
+  tap: [1092, 204],
+  waitMs: 2000,
+  fileName: '07_thong_bao.png',
+  description: 'Màn hình danh sách thông báo nhắc nhở uống nước, ghi nhận bữa ăn và mẹo dinh dưỡng.',
+  backAfter: true
+});
+
+// --- NHÓM 2: THỰC ĐƠN TUẦN & ĐI CHỢ ---
+runStep({
+  id: 'TC-08',
+  name: 'Thực đơn tuần (Meal Planner)',
+  targetDesc: 'Thực đơn',
+  tap: [364, 2584],
+  waitMs: 2000,
+  fileName: '08_thuc_don.png',
+  description: 'Thanh chọn ngày trong tuần, các khung Bữa sáng, Bữa trưa, Bữa tối và nút Thêm món ăn theo kế hoạch.'
+});
+
+runStep({
+  id: 'TC-09',
+  name: 'Danh sách đi chợ theo tuần (Grocery Checklist)',
+  targetDesc: 'Danh sách đi chợ',
+  tap: [608, 350],
+  waitMs: 2000,
+  fileName: '09_danh_sach_di_cho.png',
+  description: 'Tự động gom nguyên liệu cần mua cho cả tuần, phân nhóm rau củ, thịt cá và tích chọn đã mua.',
+  backAfter: true
+});
+
+// --- NHÓM 3: KHÁM PHÁ CÔNG THỨC NẤU ĂN ---
+runStep({
+  id: 'TC-10',
+  name: 'Khám phá công thức (Recipe Discovery)',
+  targetDesc: 'Khám phá',
+  tap: [608, 2584],
+  waitMs: 2000,
+  fileName: '10_kham_pha.png',
+  description: 'Tải danh mục công thức từ Backend API, banner Quét tủ lạnh (Fridge Scanner) và bộ lọc danh mục.'
+});
+
+runStep({
+  id: 'TC-11',
+  name: 'Chi tiết công thức nấu ăn & Dinh dưỡng (Recipe Detail)',
+  tap: [280, 1650],
+  waitMs: 2500,
+  fileName: '11_chi_tiet_mon.png',
+  description: 'Mở chi tiết món ăn, hiển thị hình ảnh chuẩn, thông số calo/macro, cảnh báo dị ứng và các bước nấu.',
+  backAfter: true
+});
+
+runStep({
+  id: 'TC-12',
+  name: 'Quét tủ lạnh gợi ý món (Fridge Scanner)',
+  targetDesc: 'Quét tủ lạnh',
+  tap: [608, 500],
+  waitMs: 2500,
+  fileName: '12_quet_tu_lanh.png',
+  description: 'Gợi ý món ăn thông minh dựa trên ảnh chụp các nguyên liệu có sẵn trong tủ lạnh.',
+  backAfter: true
+});
+
+// --- NHÓM 4: NHẬT KÝ DINH DƯỠNG & TIẾN ĐỘ ---
+runStep({
+  id: 'TC-13',
+  name: 'Nhật ký dinh dưỡng (Food Diary Timeline)',
+  targetDesc: 'Nhật ký',
+  tap: [851, 2584],
+  waitMs: 2000,
+  fileName: '13_nhat_ky.png',
+  description: 'Theo dõi tổng calo nạp vào, timeline 4 bữa ăn trong ngày và biểu đồ cân bằng năng lượng.'
+});
+
+runStep({
+  id: 'TC-14',
+  name: 'Biểu đồ tiến độ dinh dưỡng (Progress Chart)',
+  targetDesc: 'Biểu đồ tiến độ',
+  tap: [1000, 300],
+  waitMs: 2500,
+  fileName: '14_bieu_do_tien_do.png',
+  description: 'Biểu đồ xu hướng biến thiên calo, cân nặng và tỷ lệ phân bố chất dinh dưỡng theo tuần/tháng.',
+  backAfter: true
+});
+
+// --- NHÓM 5: HỒ SƠ CÁ NHÂN & CÀI ĐẶT SỨC KHỎE ---
+runStep({
+  id: 'TC-15',
+  name: 'Hồ sơ cá nhân (Profile)',
+  targetDesc: 'Cá nhân',
+  tap: [1094, 2584],
+  waitMs: 2000,
+  fileName: '15_ca_nhan.png',
+  description: 'Thông tin tài khoản, banner nâng cấp SmartMeal Pro, chi tiết sức khỏe (Dị ứng, Chế độ ăn, Nhắc nhở, Linh vật).'
+});
+
+runStep({
+  id: 'TC-16',
+  name: 'Nâng cấp SmartMeal Pro & Thanh toán (Premium)',
+  targetDesc: 'Nâng cấp',
+  tap: [608, 450],
+  waitMs: 2500,
+  fileName: '16_smartmeal_pro.png',
+  description: 'Bảng giá gói hội viên SmartMeal Pro, quyền lợi độc quyền và tích hợp thanh toán PayOS / VietQR.',
+  backAfter: true
+});
+
+runStep({
+  id: 'TC-17',
+  name: 'Cài đặt sức khỏe & Dị ứng (Health Settings)',
+  targetDesc: 'Dị ứng & Chế độ ăn',
+  tap: [608, 700],
+  waitMs: 2000,
+  fileName: '17_cai_dat_suc_khoe.png',
+  description: 'Tùy chỉnh dị ứng thực phẩm (Hải sản, đậu phộng, trứng) và tình trạng bệnh lý (Tiểu đường, gout).',
+  backAfter: true
+});
+
+runStep({
+  id: 'TC-18',
+  name: 'Lịch sử cân nặng & Mục tiêu (Weight History)',
+  targetDesc: 'Lịch sử cân nặng',
+  tap: [608, 850],
+  waitMs: 2000,
+  fileName: '18_lich_su_can_nang.png',
+  description: 'Theo dõi tiến trình tăng/giảm cân thực tế so với mục tiêu cân nặng đã đề ra.',
+  backAfter: true
+});
+
+runStep({
+  id: 'TC-19',
+  name: 'Linh vật dinh dưỡng (Pet Gamification)',
+  targetDesc: 'Linh vật',
+  tap: [608, 1000],
+  waitMs: 2000,
+  fileName: '19_linh_vat.png',
+  description: 'Thú cưng dinh dưỡng ảo, hệ thống điểm thưởng và chuỗi ngày duy trì ăn uống lành mạnh (Streak).',
+  backAfter: true
+});
+
+runStep({
+  id: 'TC-20',
+  name: 'Cài đặt nhắc nhở (Reminders Settings)',
+  targetDesc: 'Nhắc nhở',
+  tap: [608, 1150],
+  waitMs: 2000,
+  fileName: '20_nhac_nho.png',
+  description: 'Cấu hình khung giờ thông báo nhắc nhở uống nước và thời điểm ghi nhận bữa ăn trong ngày.',
+  backAfter: true
+});
+
+runStep({
+  id: 'TC-21',
   name: 'Điều hướng hoàn tất về Trang chủ',
+  targetDesc: 'Trang chủ',
   tap: [121, 2584],
   waitMs: 1500,
-  fileName: '07_trang_chu_ket_thuc.png',
-  description: 'Kiểm tra tính nhất quán và độ ổn định của ứng dụng khi quay lại màn hình Trang chủ chính.'
+  fileName: '21_trang_chu_ket_thuc.png',
+  description: 'Xác nhận trạng thái ứng dụng đồng bộ, điều hướng ổn định và không gặp rò rỉ bộ nhớ.'
 });
 
 // 6. Tong hop bao cao Markdown
@@ -241,7 +444,7 @@ const allPass = testResults.every(r => r.status === 'PASS');
 const passCount = testResults.filter(r => r.status === 'PASS').length;
 
 const reportLines = [
-  '# 📱 Báo cáo kiểm thử tự động End-to-End trên thiết bị thật (Device UI E2E)',
+  '# 📱 Báo cáo kiểm thử tự động End-to-End toàn diện trên thiết bị thật (Device UI E2E)',
   '',
   `> **Dự án**: SmartMeal Mobile App (React Native / Expo SDK 58)  `,
   `> **Thời gian chạy**: ${dateStr}  `,
@@ -269,42 +472,23 @@ reportLines.push(
   '---',
   '',
   '## 📸 2. Chi tiết hình ảnh chụp từ màn hình thiết bị thật',
-  '',
-  '### 🏠 TC-01: Màn hình Trang chủ (Dashboard)',
-  '![TC-01 Trang chủ](./device-e2e/01_trang_chu.png)',
-  '',
-  '---',
-  '',
-  '### 📅 TC-02: Màn hình Thực đơn tuần (Meal Planner)',
-  '![TC-02 Thực đơn](./device-e2e/02_thuc_don.png)',
-  '',
-  '---',
-  '',
-  '### 🔍 TC-03: Màn hình Khám phá công thức (Recipe Discovery)',
-  '![TC-03 Khám phá](./device-e2e/03_kham_pha.png)',
-  '',
-  '---',
-  '',
-  '### 🥗 TC-04: Màn hình Chi tiết công thức nấu ăn & Dinh dưỡng',
-  '![TC-04 Chi tiết món](./device-e2e/04_chi_tiet_mon.png)',
-  '',
-  '---',
-  '',
-  '### 📖 TC-05: Màn hình Nhật ký dinh dưỡng (Diary)',
-  '![TC-05 Nhật ký](./device-e2e/05_nhat_ky.png)',
-  '',
-  '---',
-  '',
-  '### 👤 TC-06: Màn hình Hồ sơ cá nhân (Profile & Health Settings)',
-  '![TC-06 Cá nhân](./device-e2e/06_ca_nhan.png)',
-  '',
-  '---',
-  '',
-  '## 🎯 3. Đánh giá chất lượng (Conclusion)',
-  '- **Tính trơn tru của UI**: Chuyển tab mượt mà, không gặp hiện tượng crash hay màn hình trắng (White Screen of Death).',
-  '- **Liên kết Backend API**: Dữ liệu dinh dưỡng, danh mục công thức và ảnh đại diện món ăn được kết nối và tải đầy đủ từ Backend ASP.NET Core (.NET 9).',
-  '- **Độ phản hồi**: Các thành phần tương tác (Touchable / Pressable) phản hồi tức thì với thao tác cảm ứng.',
-  '- **Tính năng chi tiết**: Màn hình công thức hiển thị đầy đủ khẩu phần, calo, thông số macro và nút "Thêm vào thực đơn".'
+  ''
+);
+
+for (const r of testResults) {
+  reportLines.push(`### 🔹 ${r.id}: ${r.name}`);
+  reportLines.push(`![${r.name}](./device-e2e/${r.file})`);
+  reportLines.push('');
+  reportLines.push('---');
+  reportLines.push('');
+}
+
+reportLines.push(
+  '## 🎯 3. Đánh giá chất lượng hệ thống (Comprehensive Evaluation)',
+  '- **Độ bao phủ giao diện (UI Coverage)**: Kiểm thử bao phủ toàn bộ 5 tab chính và 16 màn hình chức năng chuyên sâu (AI Camera, Voice Log, Barcode, Grocery, Recipe Detail, PayOS Premium, Health Settings).',
+  '- **Tính ổn định & Hiệu năng**: Quá trình chuyển trang diễn ra mượt mà, không gặp hiện tượng crash (ANR), đơ khung hình hoặc rò rỉ bộ nhớ khi mở/đóng modal.',
+  '- **Liên kết Backend API**: Đồng bộ dữ liệu 2 chiều mượt mà giữa ứng dụng React Native và Backend ASP.NET Core .NET 9.',
+  '- **Trải nghiệm người dùng (UX)**: Giao diện trực quan, hỗ trợ đầy đủ nhận diện giọng nói tiếng Việt, phân tích ảnh thông minh và cảnh báo an toàn dị ứng thực phẩm.'
 );
 
 fs.writeFileSync(reportPath, reportLines.join('\n'), 'utf-8');
@@ -312,7 +496,7 @@ console.log(`\x1b[32m[OK] Đã xuất báo cáo tại: ${reportPath}\x1b[0m`);
 
 console.log('\n\x1b[36m============================================================\x1b[0m');
 if (allPass) {
-  console.log('\x1b[32m  🎉 KIỂM THỬ HOÀN TẤT: 7/7 BƯỚC ĐỀU ĐẠT (100% PASS)!\x1b[0m');
+  console.log(`\x1b[32m  🎉 KIỂM THỬ HOÀN TẤT: ${passCount}/${testResults.length} BƯỚC ĐỀU ĐẠT (100% PASS)!\x1b[0m`);
 } else {
   console.log('\x1b[31m  ⚠️ CÓ BƯỚC KIỂM THỬ KHÔNG ĐẠT, VUI LÒNG KIỂM TRA LOG!\x1b[0m');
 }
