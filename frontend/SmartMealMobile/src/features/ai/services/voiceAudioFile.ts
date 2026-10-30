@@ -7,7 +7,7 @@ import { File, Paths } from 'expo-file-system';
 export function writeVoiceFile(fileName: string, bytes: Uint8Array): string {
   const file = new File(Paths.cache, fileName);
   file.create({ overwrite: true });
-  file.write(bytes);
+  file.writeSync(bytes);
   return file.uri;
 }
 

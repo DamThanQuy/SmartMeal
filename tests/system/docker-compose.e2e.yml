@@ -1,0 +1,112 @@
+name: smartmeal-e2e
+
+# Disposable QA only: no host .env, published database port, or persistent volume.
+x-qa-environment: &qa-environment
+  ASPNETCORE_ENVIRONMENT: Development
+  Jwt__Key: smartmeal-e2e-only-jwt-signing-key-0123456789-abcdefghijklmnopqrstuvwxyz
+  Jwt__Issuer: SmartMealE2E
+  Jwt__Audience: SmartMealE2E
+  Seed__AdminEmail: admin@smartmeal.com
+  Seed__AdminPassword: Admin@123456
+  Smtp__Host: ""
+  Smtp__Username: ""
+  Smtp__Password: ""
+  Gemini__ApiKey: ""
+  PayOS__ClientId: ""
+  PayOS__ApiKey: ""
+  PayOS__ChecksumKey: ""
+  SePay__BankCode: MBBank
+  SePay__AccountNumber: "0000000000"
+  SePay__AccountName: SMARTMEAL QA ONLY
+  # A fake local webhook key enables checkout without querying a payment provider.
+  SePay__WebhookApiKey: smartmeal-e2e-fake-webhook-key
+  SePay__ApiToken: ""
+  SePay__ApiBaseUrl: http://127.0.0.1:9
+  OpenFoodFacts__Enabled: "false"
+  Ai__AllowDemoFallback: "true"
+  Subscription__AllowMockActivation: "true"
+  RateLimiting__AuthPermitsPerMinute: "100000"
+  RateLimiting__ScannerPermitsPerMinute: "100000"
+  RateLimiting__VoiceTranscribePermitsPerMinute: "100000"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: smartmeal_qa
+      POSTGRES_PASSWORD: smartmeal_qa_disposable
+      POSTGRES_DB: smartmeal_e2e
+    # Override the image's VOLUME so even its data lives only in disposable memory.
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U smartmeal_qa -d smartmeal_e2e"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  api:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    environment:
+      <<: *qa-environment
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Host=db;Database=smartmeal_e2e;Username=smartmeal_qa;Password=smartmeal_qa_disposable
+      Cors__AllowedOrigins: http://127.0.0.1:3001,http://localhost:3001,http://127.0.0.1:8082,http://localhost:8082
+      Storage__Root: /tmp/smartmeal-e2e-uploads
+      Storage__PublicBaseUrl: http://127.0.0.1:5001
+    ports:
+      - "127.0.0.1:5001:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  backend-tests:
+    image: mcr.microsoft.com/dotnet/sdk:9.0
+    working_dir: /work/backend
+    environment:
+      <<: *qa-environment
+      # ApiFactory runs in Testing; tests opt into explicit admin seeding with
+      # WithSetting. Do not inherit the live QA API's sample admin credentials.
+      # The shared anchor's Development value would override UseEnvironment("Testing")
+      # and seed the default admin password the tests assert is absent.
+      ASPNETCORE_ENVIRONMENT: Testing
+      Seed__AdminPassword: ""
+      Seed__AdminEmail: ""
+      SMARTMEAL_TEST_DB: Host=db;Database=postgres;Username=smartmeal_qa;Password=smartmeal_qa_disposable
+    volumes:
+      - type: bind
+        source: ../../backend
+        target: /src
+        read_only: true
+      - type: bind
+        source: ${SMARTMEAL_E2E_OUTPUT:?Set SMARTMEAL_E2E_OUTPUT to the absolute run output directory}
+        target: /results
+    # Build in the container's disposable layer, avoiding Windows bin/obj and
+    # keeping test builds from modifying the developer's checkout. DotNetEnv sees
+    # only /work/backend and its ancestors, with no host environment file.
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        mkdir -p /work/backend /results/backend
+        tar -C /src --exclude=.env --exclude=bin --exclude=obj -cf - . | tar -C /work/backend -xf -
+        exec "$$@"
+      - --
+    command:
+      - dotnet
+      - test
+      - SmartMeal.Tests/SmartMeal.Tests.csproj
+      - --configuration
+      - Release
+      - --logger
+      - trx;LogFileName=backend.trx
+      - --results-directory
+      - /results/backend
+    depends_on:
+      db:
+        condition: service_healthy
+

@@ -1,0 +1,14 @@
+{
+  "name": "smartmeal-workspace",
+  "private": true,
+  "scripts": {
+    "start": "powershell -ExecutionPolicy Bypass -File ./start.ps1",
+    "dev": "powershell -ExecutionPolicy Bypass -File ./start.ps1",
+    "test:device": "node tests/device/run.mjs",
+    "test:e2e": "node tests/system/run.mjs",
+    "test:e2e:runner": "node --test tests/system/report.test.mjs"
+  },
+  "engines": {
+    "node": ">=24.3.0"
+  }
+}

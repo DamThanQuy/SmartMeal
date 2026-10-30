@@ -328,7 +328,7 @@ export function CreateFoodScreen({ navigation, route }: Props) {
         <AppButton label="Hủy" variant="outline" onPress={() => navigation.goBack()} className="flex-shrink" />
         <AppButton
           label="Lưu và ghi vào nhật ký"
-          onPress={onSubmit}
+          onPress={() => void onSubmit()}
           loading={isSaving}
           className="flex-1"
         />

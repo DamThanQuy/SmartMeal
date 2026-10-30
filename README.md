@@ -41,7 +41,7 @@
 
 | Thành phần | Công nghệ sử dụng |
 | :--- | :--- |
-| **Mobile App** | React Native 0.86 + Expo SDK 57 (TypeScript), TanStack Query, Zustand, Axios, NativeWind, React Hook Form + Zod, AsyncStorage / expo-secure-store |
+| **Mobile App** | React Native 0.88 + Expo SDK 58 (TypeScript), TanStack Query, Zustand, Axios, NativeWind, React Hook Form + Zod, AsyncStorage / expo-secure-store |
 | **Backend API** | ASP.NET Core (.NET 9), Entity Framework Core 9, RESTful Architecture |
 | **Database** | PostgreSQL 16 |
 | **Authentication** | JWT + refresh token, đăng nhập email + mật khẩu, OTP qua email (quên mật khẩu) |
@@ -240,6 +240,16 @@ Docker Compose không chạy app; app chạy riêng bằng Expo: `cd frontend/Sm
 - **NTBAao**: Team Collaborator.
 
 ---
+
+## Kiểm thử tự động toàn hệ thống
+
+Tại thư mục gốc, dùng Node.js 24.3+ và Docker Desktop:
+
+```powershell
+npm run test:e2e
+```
+
+Lệnh tự dựng database/API QA riêng, chạy `SmartMeal.Tests`, test mobile/admin có gọi API thật, rồi chạy Playwright trên browser, chụp ảnh và ghi báo cáo vào `docs/test-reports`. Xem [hướng dẫn và phạm vi kiểm thử](tests/system/README.md).
 
 ## 📄 License
 Dự án được phát triển phục vụ mục đích học tập tại **Đại học FPT**.

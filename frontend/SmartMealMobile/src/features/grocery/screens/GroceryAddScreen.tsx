@@ -169,7 +169,7 @@ export function GroceryAddScreen({ navigation, route }: Props) {
           <AppButton label="Hủy" variant="outline" onPress={() => navigation.goBack()} className="flex-shrink" />
           <AppButton
             label="Thêm vào danh sách"
-            onPress={onSubmit}
+            onPress={() => void onSubmit()}
             loading={addManualItem.isPending}
             className="flex-1"
           />
