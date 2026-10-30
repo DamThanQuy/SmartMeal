@@ -9,7 +9,9 @@ import { NavigationContainer } from '@react-navigation/native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect } from 'react';
-import { StatusBar } from 'react-native';
+import { LogBox, StatusBar } from 'react-native';
+
+LogBox.ignoreAllLogs(true);
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { bootstrapSession, startSessionLifecycle } from '@/features/auth';
@@ -22,30 +24,13 @@ import { queryClient } from '@/services/api';
 import { useAuthStore } from '@/state/auth/authStore';
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
 
-// Giữ splash screen native hiển thị cho tới khi ThemeProvider đọc xong theme mode đã lưu
-// (AsyncStorage bất đồng bộ) và biết người dùng đã đăng nhập hay chưa (AppContent bên dưới) —
-// tránh chớp sáng/tối hoặc chớp màn Welcome lúc khởi động.
-SplashScreen.preventAutoHideAsync();
-
 function AppContent() {
   const { colors, resolvedScheme } = useTheme();
   const bootstrapStatus = useAuthStore(state => state.bootstrapStatus);
 
-  // AppContent chỉ mount sau khi theme đã sẵn sàng; còn phải chờ khôi phục phiên (đọc token +
-  // GET /auth/me — sessionService.bootstrapSession) xong rồi mới ẩn splash.
   useEffect(() => {
-    if (bootstrapStatus !== 'loading') {
-      void SplashScreen.hideAsync().catch(e => console.warn('hideAsync err:', e));
-    }
+    void SplashScreen.hideAsync().catch(() => {});
   }, [bootstrapStatus]);
-
-  // Fallback an toàn: nếu sau 3s vẫn bị treo splash vì lý do gì, tự động ép ẩn splash để vào app
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      void SplashScreen.hideAsync().catch(() => {});
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, []);
 
   return (
     <NavigationContainer
@@ -66,10 +51,19 @@ function AppContent() {
 
 function App() {
   useEffect(() => {
+    // Luôn đảm bảo splash screen được ẩn nhanh chóng
+    void SplashScreen.hideAsync().catch(() => {});
+    const hideTimer = setTimeout(() => {
+      void SplashScreen.hideAsync().catch(() => {});
+    }, 500);
+
     // Phiên đăng nhập: đăng ký handler 401 + tự dọn khi đăng xuất, rồi khôi phục phiên đã lưu.
     const stopSessionLifecycle = startSessionLifecycle();
     void bootstrapSession();
-    return stopSessionLifecycle;
+    return () => {
+      clearTimeout(hideTimer);
+      stopSessionLifecycle();
+    };
   }, []);
 
   return (
