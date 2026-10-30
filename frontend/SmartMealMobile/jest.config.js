@@ -2,14 +2,20 @@
 // transform giữa preset và config này — require preset trực tiếp rồi extend cho chắc giữ đủ
 // transform/mock gốc của jest-expo (asset transformer, moduleNameMapper cho @expo/vector-icons...).
 const jestExpoPreset = require('jest-expo/jest-preset');
+const path = require('node:path');
+// npm có thể hoist expo-modules-core; dùng đúng bản mà Expo resolve được.
+const expoDirectory = path.dirname(require.resolve('expo/package.json'));
+const expoModulesCoreDirectory = path.dirname(
+  require.resolve('expo-modules-core/package.json', { paths: [expoDirectory] }),
+);
 
 module.exports = {
   ...jestExpoPreset,
   modulePaths: ['<rootDir>/node_modules/expo/node_modules'],
   moduleNameMapper: {
     ...jestExpoPreset.moduleNameMapper,
-    '^expo-modules-core$': '<rootDir>/node_modules/expo/node_modules/expo-modules-core',
-    '^expo-modules-core/(.*)$': '<rootDir>/node_modules/expo/node_modules/expo-modules-core/$1',
+    '^expo-modules-core$': expoModulesCoreDirectory,
+    '^expo-modules-core/(.*)$': path.join(expoModulesCoreDirectory, '$1'),
     '\\.css$': '<rootDir>/__mocks__/styleMock.js',
   },
   transform: {

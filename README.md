@@ -83,7 +83,7 @@ Trước khi bắt đầu, máy tính của bạn cần cài đặt sẵn:
 - **Git**: [Tải tại đây](https://git-scm.com/)
 - **Docker Desktop**: [Tải tại đây](https://www.docker.com/products/docker-desktop/) *(Khuyên dùng: một lệnh chạy cả PostgreSQL lẫn Backend API)*
 - **.NET 9.0 SDK** *(chỉ cần khi chạy/debug API ngoài Docker)*: [Tải tại đây](https://dotnet.microsoft.com/download/dotnet/9.0)
-- **Node.js 20+ và npm** *(nếu làm phần Mobile)*: [Tải tại đây](https://nodejs.org/) — app chạy bằng Expo (`npx expo start`), xem `frontend/SmartMealMobile/README.md`
+- **Node.js 24 LTS mới nhất và npm** *(nếu làm phần Mobile hoặc chạy E2E)*: [Tải tại đây](https://nodejs.org/en/download) — app chạy bằng Expo (`npx expo start`), xem `frontend/SmartMealMobile/README.md`
 - **IDE khuyên dùng**: Visual Studio Code, Visual Studio 2022, Rider hoặc Android Studio.
 
 ---

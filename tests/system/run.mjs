@@ -256,7 +256,11 @@ try {
   await acquireLock();
   stages.push({ id: 'runner-lock', name: 'Exclusive system QA run', kind: 'check', status: 'passed', exitCode: 0, durationMs: 0 });
   const [major, minor] = process.versions.node.split('.').map(Number);
-  if (major < 24 || (major === 24 && minor < 3)) throw new Error(`Node >=24.3 is required; found ${process.versions.node}`);
+  if (major < 24 || (major === 24 && minor < 3)) {
+    throw new Error(`Node >=24.3 is required; found ${process.versions.node} at ${process.execPath}. ` +
+      'Install or select the latest Node.js 24 LTS, reopen your terminal, and check "node --version" and "node -p process.execPath" before retrying. ' +
+      'See tests/system/README.md for Windows setup.');
+  }
   stages.push({ id: 'node', name: 'Node >=24.3', kind: 'check', status: 'passed', exitCode: 0, durationMs: 0 });
   await stage('runner-unit', 'Runner report and failure-propagation tests', process.execPath,
     ['--test', path.join(directory, 'report.test.mjs')], { timeout: 60_000 });

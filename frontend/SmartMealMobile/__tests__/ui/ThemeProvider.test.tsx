@@ -1,6 +1,6 @@
 /**
- * ThemeProvider — hồi quy cho commit 3bf9673 "không treo splash screen khi chờ font Inter tải xong":
- * children phải render ngay khi đọc xong theme mode, kể cả khi useFonts chưa xong (hoặc lỗi).
+ * ThemeProvider — children render ngay với theme mặc định để không chặn khởi động;
+ * theme đã lưu được áp dụng sau khi AsyncStorage đọc xong, font không chặn render.
  */
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
@@ -83,17 +83,30 @@ describe('ThemeProvider', () => {
     expect(hasContent(tree)).toBe(true);
   });
 
-  it('chưa đọc xong theme mode đã lưu thì chưa render (tránh chớp sáng/tối)', () => {
-    let tree: ReactTestRenderer | undefined;
-    act(() => {
-      tree = renderer.create(
-        <ThemeProvider>
-          <Probe />
-        </ThemeProvider>,
-      );
+  it('render ngay với theme mặc định khi storage còn chờ, rồi áp dụng theme đã lưu', async () => {
+    let resolveStoredMode!: (value: string | null) => void;
+    const pendingThemeRead = new Promise<string | null>(resolve => {
+      resolveStoredMode = resolve;
+    });
+    jest.mocked(AsyncStorage.getItem).mockReturnValueOnce(pendingThemeRead);
+    const onReady = jest.fn();
+
+    const tree = await mount(onReady);
+
+    expect(hasContent(tree)).toBe(true);
+    expect(seen.theme?.mode).toBe('system');
+    expect(seen.theme?.colors).toBe(lightColors);
+    expect(onReady).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveStoredMode('dark');
     });
 
-    expect(tree!.toJSON()).toBeNull();
+    expect(hasContent(tree)).toBe(true);
+    expect(seen.theme?.mode).toBe('dark');
+    expect(seen.theme?.resolvedScheme).toBe('dark');
+    expect(seen.theme?.colors).toBe(darkColors);
+    expect(onReady).toHaveBeenCalledTimes(1);
   });
 
   it('khôi phục chế độ tối đã lưu và dùng bảng màu tối', async () => {

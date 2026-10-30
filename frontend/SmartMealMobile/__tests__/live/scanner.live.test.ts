@@ -26,7 +26,7 @@ describeLive('scanner (backend thật)', () => {
   let scannerService: ScannerModule['scannerService'];
   let useAuthStore: AuthStoreModule['useAuthStore'];
 
-  beforeAll(async () => {
+  beforeAll(() => {
     installLiveBackend();
     ({ authService } = require('@/features/auth/services/authService') as AuthModule);
     ({ healthProfileService } = require('@/features/health/services/healthProfileService') as HealthModule);
@@ -34,7 +34,9 @@ describeLive('scanner (backend thật)', () => {
     ({ nutritionService } = require('@/features/nutrition/services/nutritionService') as NutritionModule);
     ({ scannerService } = require('@/features/scanner/services/scannerService') as ScannerModule);
     ({ useAuthStore } = require('@/state/auth/authStore') as AuthStoreModule);
+  });
 
+  beforeAll(async () => {
     const { user } = await authService.register({ fullName: 'Người Quét', email: uniqueEmail('scanner'), password: 'Passw0rd!' });
     useAuthStore.setState({ pendingUser: user, user: null, isAuthenticated: false });
     await healthProfileService.submitHealthProfile({

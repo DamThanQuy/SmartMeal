@@ -36,8 +36,7 @@ function isThemeMode(value: string | undefined): value is ThemeMode {
 export interface ThemeProviderProps {
   children: React.ReactNode;
   /**
-   * Gọi đúng 1 lần khi đã đọc xong theme mode từ AsyncStorage (hydrate) — dùng để App.tsx biết lúc
-   * nào an toàn ẩn splash screen, tránh nhấp nháy sáng/tối lúc khởi động.
+   * Gọi đúng 1 lần khi đã đọc xong theme mode từ AsyncStorage (hydrate).
    */
   onReady?: () => void;
 }
@@ -56,8 +55,8 @@ export function ThemeProvider({ children, onReady }: ThemeProviderProps) {
   const [mode, setModeState] = useState<ThemeMode>('system');
   const [isHydrated, setIsHydrated] = useState(true);
 
-  // AsyncStorage là bất đồng bộ (khác MMKV) — phải đọc xong giá trị lưu trước khi render children,
-  // nếu không màn hình sẽ chớp từ 'system' sang giá trị đã lưu (hoặc đọc undefined ngay lần đầu).
+  // Render ngay với theme hệ thống để không chặn khởi động; AsyncStorage đọc bất đồng bộ
+  // rồi cập nhật sang theme đã lưu khi có kết quả.
   useEffect(() => {
     let isMounted = true;
     storageService.getString(STORAGE_KEYS.THEME_MODE).then(stored => {
@@ -96,7 +95,7 @@ export function ThemeProvider({ children, onReady }: ThemeProviderProps) {
     [mode, resolvedScheme, colors],
   );
 
-  // Đọc xong theme mode lưu trước đó thì cho phép render ngay (font Inter có thể tải ngầm hoặc fallback hệ thống)
+  // Không chặn khởi động khi theme còn hydrate; font Inter tải ngầm hoặc dùng fallback hệ thống.
   if (!isHydrated) {
     return null;
   }

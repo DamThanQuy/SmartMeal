@@ -8,6 +8,25 @@ npm run test:e2e
 
 Yêu cầu có **Node.js 24.3 trở lên** và **Docker Desktop / Docker Compose v2**. Không cần cài .NET SDK trên Windows: bộ `SmartMeal.Tests` chạy trong container SDK .NET 9. Lần đầu cần Internet để tải package, browser và image Docker. Runner tự kiểm tra dependencies; nếu thiếu hoặc không hợp lệ sẽ dùng `npm ci` từ lockfile.
 
+## Sửa lỗi phiên bản Node trên Windows
+
+Nếu lệnh báo `Node >=24.3 is required; found 22.19.0`, runner đã dừng trước khi chạy các bộ kiểm thử. Kiểm tra phiên bản và đường dẫn Node mà PowerShell đang chọn:
+
+```powershell
+node --version
+node -p process.execPath
+Get-Command node -All
+```
+
+Cài hoặc chọn **bản Node.js 24 LTS mới nhất** từ [trang Node.js chính thức](https://nodejs.org/en/download), sau đó đóng và mở lại PowerShell (hoặc ứng dụng đang mở terminal). Nếu đã cài nhiều bản Node, chọn lại bản 24 trong công cụ quản lý phiên bản hoặc đưa thư mục của bản đó lên trước trong `PATH`. Không hạ kiểm tra phiên bản trong runner: dependencies của Admin cũng yêu cầu Node mới hơn bản 22.19.0.
+
+Chạy lại hai lệnh kiểm tra phiên bản và đường dẫn ở trên, rồi chạy:
+
+```powershell
+$env:SMARTMEAL_E2E_SLOWMO = '600'
+npm run test:e2e -- --headed
+```
+
 ## Lệnh tự làm những gì?
 
 1. Kiểm tra Node, Docker và các dependencies của mobile, admin, browser tests; cài Chromium và WebKit nếu cần.
