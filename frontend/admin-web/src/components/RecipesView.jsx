@@ -25,7 +25,7 @@ const AVAILABLE_TAGS = [
   { code: 'keto', name: 'Keto' },
   { code: 'vegan', name: 'Thuần Chay (Vegan)' },
   { code: 'highProtein', name: 'Giàu Đạm (High Protein)' },
-  { code: 'quick', name: 'Nhanh Dưới 20p' },
+  { code: 'quick', name: 'Nhanh Gọn (< 15 phút)' },
   { code: 'budget', name: 'Tiết Kiệm Ngân Sách' },
   { code: 'lowCarb', name: 'Ít Tinh Bột (Low Carb)' },
   { code: 'vegetarian', name: 'Ăn Chay (Vegetarian)' },
@@ -34,6 +34,7 @@ const AVAILABLE_TAGS = [
 export default function RecipesView({ onNotify, initialOpenAdd = false, onResetAddTrigger }) {
   const { confirm, dialog } = useConfirm();
   const [recipes, setRecipes] = useState([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [mealFilter, setMealFilter] = useState('all');
@@ -80,7 +81,10 @@ export default function RecipesView({ onNotify, initialOpenAdd = false, onResetA
         difficulty: diffFilter !== 'all' ? diffFilter : ''
       };
       const data = await api.getRecipes(params);
-      setRecipes(data);
+      const items = Array.isArray(data) ? data : (data?.items || []);
+      const count = Array.isArray(data) ? data.length : (data?.total ?? items.length);
+      setRecipes(items);
+      setTotal(count);
     } catch (err) {
       onNotify('Lỗi tải danh sách món ăn: ' + err.message, 'error');
     } finally {
@@ -436,6 +440,16 @@ export default function RecipesView({ onNotify, initialOpenAdd = false, onResetA
             </div>
           ))}
         </div>
+      )}
+
+      {!loading && (
+        <Pagination
+          page={page}
+          total={total}
+          pageSize={16}
+          onPageChange={setPage}
+          itemLabel="món ăn"
+        />
       )}
 
       {/* Modal: Thêm / Sửa Món Ăn */}

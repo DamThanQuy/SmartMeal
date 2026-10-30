@@ -428,7 +428,20 @@ await using (var scope = app.Services.CreateAsyncScope())
     try
     {
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        await db.Database.MigrateAsync();
+        const int maxRetries = 5;
+        for (var retry = 1; retry <= maxRetries; retry++)
+        {
+            try
+            {
+                await db.Database.MigrateAsync();
+                break;
+            }
+            catch (Exception ex) when (retry < maxRetries)
+            {
+                logger.LogWarning("[Database] Lần thử {Retry}/{Max} thất bại: {Message}. Đang thử lại sau 2 giây...", retry, maxRetries, ex.Message);
+                await Task.Delay(2000);
+            }
+        }
         // Tài khoản dùng thử (smartmealuser@gmail.com) có mật khẩu đã biết nên CHỈ được tạo ở môi trường Development.
         // Tài khoản Admin: môi trường thật chỉ tạo khi khai báo Seed:AdminPassword (không có mật khẩu mặc định);
         // Development dùng mật khẩu mẫu nếu không khai báo.

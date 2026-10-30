@@ -5,8 +5,11 @@ const jestExpoPreset = require('jest-expo/jest-preset');
 
 module.exports = {
   ...jestExpoPreset,
+  modulePaths: ['<rootDir>/node_modules/expo/node_modules'],
   moduleNameMapper: {
     ...jestExpoPreset.moduleNameMapper,
+    '^expo-modules-core$': '<rootDir>/node_modules/expo/node_modules/expo-modules-core',
+    '^expo-modules-core/(.*)$': '<rootDir>/node_modules/expo/node_modules/expo-modules-core/$1',
     '\\.css$': '<rootDir>/__mocks__/styleMock.js',
   },
   transform: {

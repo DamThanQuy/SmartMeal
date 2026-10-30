@@ -40,11 +40,12 @@ const SEPAY_SESSION = {
 
 function loadService(appEnv: 'development' | 'production' = 'development') {
   const apiMock = { get: jest.fn(), post: jest.fn() };
-  const linking = { openURL: jest.fn().mockResolvedValue(undefined) };
+  const { Linking } = require('react-native');
+  const openUrlSpy = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined as never);
+  const linking = { openURL: openUrlSpy };
 
   jest.resetModules();
   jest.doMock('@/config/env', () => ({ ENV: { appEnv } }));
-  jest.doMock('react-native', () => ({ Linking: linking }));
   jest.doMock('@/services/api', () => ({
     api: apiMock,
     ENDPOINTS: jest.requireActual('@/services/api/endpoints').ENDPOINTS,

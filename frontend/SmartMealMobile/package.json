@@ -72,11 +72,14 @@
   },
   "scripts": {
     "start": "expo start",
+    "start:tunnel": "expo start --tunnel ngrok",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "jest"
+    "test": "jest",
+    "test:unit": "jest --testPathIgnorePatterns=live",
+    "test:live": "jest __tests__/live --testTimeout=30000"
   },
   "private": true
 }
