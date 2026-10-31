@@ -5,6 +5,7 @@
 > **Thiết bị kiểm thử**: NX789J (Android 16)  
 > **Mã định danh thiết bị**: `FY2430710A58`  
 > **Kết quả tổng quan**: **21/21 BƯỚC ĐẠT (100% PASS)**  
+> **Bảng tính Excel**: [📊 DEVICE_E2E_REPORT.xlsx](./DEVICE_E2E_REPORT.xlsx)  
 
 ---
 

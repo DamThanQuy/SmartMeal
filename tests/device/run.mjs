@@ -3,6 +3,7 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { exportTestReportToExcel } from './exportExcel.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -467,6 +468,7 @@ const reportLines = [
   `> **Thiết bị kiểm thử**: ${deviceModel} (Android ${androidVer})  `,
   `> **Mã định danh thiết bị**: \`${deviceId}\`  `,
   `> **Kết quả tổng quan**: **${passCount}/${testResults.length} BƯỚC ĐẠT (${allPass ? '100% PASS' : 'CÓ LỖI'})**  `,
+  `> **Bảng tính Excel**: [📊 DEVICE_E2E_REPORT.xlsx](./DEVICE_E2E_REPORT.xlsx)  `,
   '',
   '---',
   '',
@@ -508,7 +510,25 @@ reportLines.push(
 );
 
 fs.writeFileSync(reportPath, reportLines.join('\n'), 'utf-8');
-console.log(`\x1b[32m[OK] Đã xuất báo cáo tại: ${reportPath}\x1b[0m`);
+console.log(`\x1b[32m[OK] Đã xuất báo cáo Markdown tại: ${reportPath}\x1b[0m`);
+
+// 7. Xuất báo cáo kiểm thử định dạng Excel (.xlsx)
+console.log('\n\x1b[33m[6/6] Đang xuất báo cáo kiểm thử sang file Excel (.xlsx)...\x1b[0m');
+const excelPath = path.join(rootDir, 'docs', 'test-reports', 'DEVICE_E2E_REPORT.xlsx');
+try {
+  await exportTestReportToExcel({
+    reportPath: excelPath,
+    deviceModel,
+    androidVer,
+    deviceId,
+    resolution: `${screenWidth}x${screenHeight}`,
+    timestamp: dateStr,
+    results: testResults
+  });
+  console.log(`\x1b[32m[OK] Đã xuất báo cáo Excel tại: ${excelPath}\x1b[0m`);
+} catch (excelErr) {
+  console.error(`\x1b[31m[Cảnh báo] Lỗi xuất Excel: ${excelErr.message}\x1b[0m`);
+}
 
 console.log('\n\x1b[36m============================================================\x1b[0m');
 if (allPass) {
@@ -516,5 +536,6 @@ if (allPass) {
 } else {
   console.log('\x1b[31m  ⚠️ CÓ BƯỚC KIỂM THỬ KHÔNG ĐẠT, VUI LÒNG KIỂM TRA LOG!\x1b[0m');
 }
-console.log(`  Báo cáo chi tiết: docs/test-reports/DEVICE_E2E_REPORT.md`);
+console.log(`  Báo cáo Markdown: docs/test-reports/DEVICE_E2E_REPORT.md`);
+console.log(`  Báo cáo Excel   : docs/test-reports/DEVICE_E2E_REPORT.xlsx`);
 console.log('\x1b[36m============================================================\x1b[0m\n');

@@ -46,6 +46,9 @@ client_secret*.json
 token.json
 token.pickle
 
+# Node & Dependencies
+node_modules/
+
 # Generated full-system QA artifacts and isolated browser-test dependencies
 .e2e-results/
 tests/system/node_modules/
