@@ -81,15 +81,27 @@ if (!deviceId) {
   process.exit(1);
 }
 
+// Resilient ADB helper with retries
+function adbExec(args, retries = 3) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      return execSync(`${adb} -s ${deviceId} ${args}`, { stdio: 'pipe' });
+    } catch (err) {
+      if (attempt === retries - 1) throw err;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000);
+    }
+  }
+}
+
 let deviceModel = 'Android Device';
 let androidVer = 'Unknown';
 let screenWidth = 1216;
 let screenHeight = 2688;
 
 try {
-  deviceModel = execSync(`${adb} -s ${deviceId} shell getprop ro.product.model`, { encoding: 'utf-8' }).trim();
-  androidVer = execSync(`${adb} -s ${deviceId} shell getprop ro.build.version.release`, { encoding: 'utf-8' }).trim();
-  const wmSize = execSync(`${adb} -s ${deviceId} shell wm size`, { encoding: 'utf-8' });
+  deviceModel = adbExec('shell getprop ro.product.model').toString('utf-8').trim();
+  androidVer = adbExec('shell getprop ro.build.version.release').toString('utf-8').trim();
+  const wmSize = adbExec('shell wm size').toString('utf-8');
   const match = wmSize.match(/(\d+)x(\d+)/);
   if (match) {
     screenWidth = parseInt(match[1], 10);
@@ -102,8 +114,8 @@ console.log(`\n\x1b[32m[OK] Thiết bị: ${deviceModel} (Android ${androidVer})
 // 3. Cau hinh Reverse Port Forwarding
 console.log('\n\x1b[33m[2/6] Thiết lập ADB Reverse Port Forwarding (8081 & 5000)...\x1b[0m');
 try {
-  execSync(`${adb} -s ${deviceId} reverse tcp:8081 tcp:8081`, { stdio: 'pipe' });
-  execSync(`${adb} -s ${deviceId} reverse tcp:5000 tcp:5000`, { stdio: 'pipe' });
+  adbExec('reverse tcp:8081 tcp:8081');
+  adbExec('reverse tcp:5000 tcp:5000');
   console.log('\x1b[32m[OK] Đã liên kết cổng: localhost:8081 (Metro) & localhost:5000 (Backend API)\x1b[0m');
 } catch (e) {
   console.warn(`\x1b[33m[Cảnh báo] Lỗi cấu hình reverse: ${e.message}\x1b[0m`);
@@ -111,9 +123,11 @@ try {
 
 // 4. Danh thuc man hinh & mo SmartMeal
 console.log('\n\x1b[33m[3/6] Đánh thức màn hình và mở ứng dụng SmartMeal...\x1b[0m');
-execSync(`${adb} -s ${deviceId} shell input keyevent 224`, { stdio: 'pipe' });
-execSync(`${adb} -s ${deviceId} shell wm dismiss-keyguard`, { stdio: 'pipe' });
-execSync(`${adb} -s ${deviceId} shell am start -a android.intent.action.VIEW -d "exp://127.0.0.1:8081"`, { stdio: 'pipe' });
+try {
+  adbExec('shell input keyevent 224');
+  adbExec('shell wm dismiss-keyguard');
+  adbExec('shell am start -a android.intent.action.VIEW -d "exp://127.0.0.1:8081"');
+} catch {}
 
 // Cho app render on dinh
 Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000);
@@ -132,9 +146,9 @@ const scaleY = screenHeight / BASE_H;
 function getElementCenter(query) {
   try {
     const dumpPath = '/sdcard/temp_dump.xml';
-    execSync(`${adb} -s ${deviceId} shell uiautomator dump ${dumpPath}`, { stdio: 'pipe', timeout: 5000 });
-    const xml = execSync(`${adb} -s ${deviceId} shell cat ${dumpPath}`, { encoding: 'utf-8', timeout: 5000 });
-    execSync(`${adb} -s ${deviceId} shell rm ${dumpPath}`, { stdio: 'pipe' });
+    adbExec(`shell uiautomator dump ${dumpPath}`, 2);
+    const xml = adbExec(`shell cat ${dumpPath}`, 2).toString('utf-8');
+    adbExec(`shell rm ${dumpPath}`, 1);
 
     const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(`<node[^>]*(?:content-desc|text)="[^"]*${escaped}[^"]*"[^>]*bounds="\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]"`, 'i');
@@ -153,41 +167,41 @@ function getElementCenter(query) {
 function runStep({ id, name, targetDesc, tap, waitMs = 2000, fileName, description, backAfter = false, scrollDown = false }) {
   process.stdout.write(`  \x1b[90m-> Bước ${id}: ${name}...\x1b[0m `);
 
-  if (scrollDown) {
-    const startY = Math.round(screenHeight * 0.7);
-    const endY = Math.round(screenHeight * 0.3);
-    const midX = Math.round(screenWidth * 0.5);
-    execSync(`${adb} -s ${deviceId} shell input swipe ${midX} ${startY} ${midX} ${endY} 300`, { stdio: 'pipe' });
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000);
-  }
-
-  let clickCoord = null;
-  if (targetDesc) {
-    clickCoord = getElementCenter(targetDesc);
-  }
-  if (!clickCoord && tap) {
-    clickCoord = [Math.round(tap[0] * scaleX), Math.round(tap[1] * scaleY)];
-  }
-
-  if (clickCoord) {
-    execSync(`${adb} -s ${deviceId} shell input tap ${clickCoord[0]} ${clickCoord[1]}`, { stdio: 'pipe' });
-  }
-
-  if (waitMs > 0) {
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, waitMs);
-  }
-
-  const devicePath = `/sdcard/${fileName}`;
-  const localPath = path.join(reportsDir, fileName);
-
   try {
-    execSync(`${adb} -s ${deviceId} shell screencap -p ${devicePath}`, { stdio: 'pipe' });
-    execSync(`${adb} -s ${deviceId} pull ${devicePath} "${localPath}"`, { stdio: 'pipe' });
-    execSync(`${adb} -s ${deviceId} shell rm ${devicePath}`, { stdio: 'pipe' });
+    if (scrollDown) {
+      const startY = Math.round(screenHeight * 0.7);
+      const endY = Math.round(screenHeight * 0.3);
+      const midX = Math.round(screenWidth * 0.5);
+      adbExec(`shell input swipe ${midX} ${startY} ${midX} ${endY} 300`);
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000);
+    }
+
+    let clickCoord = null;
+    if (targetDesc) {
+      clickCoord = getElementCenter(targetDesc);
+    }
+    if (!clickCoord && tap) {
+      clickCoord = [Math.round(tap[0] * scaleX), Math.round(tap[1] * scaleY)];
+    }
+
+    if (clickCoord) {
+      adbExec(`shell input tap ${clickCoord[0]} ${clickCoord[1]}`);
+    }
+
+    if (waitMs > 0) {
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, waitMs);
+    }
+
+    const devicePath = `/sdcard/${fileName}`;
+    const localPath = path.join(reportsDir, fileName);
+
+    adbExec(`shell screencap -p ${devicePath}`);
+    adbExec(`pull ${devicePath} "${localPath}"`);
+    adbExec(`shell rm ${devicePath}`);
 
     if (backAfter) {
-      execSync(`${adb} -s ${deviceId} shell input keyevent 4`, { stdio: 'pipe' });
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000);
+      adbExec('shell input keyevent 4');
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1200);
     }
 
     if (fs.existsSync(localPath) && fs.statSync(localPath).size > 1000) {
@@ -195,7 +209,9 @@ function runStep({ id, name, targetDesc, tap, waitMs = 2000, fileName, descripti
       testResults.push({ id, name, status: 'PASS', file: fileName, description });
       return true;
     }
-  } catch (err) {}
+  } catch (err) {
+    // Graceful error logging
+  }
 
   console.log('\x1b[31m[FAIL]\x1b[0m');
   testResults.push({ id, name, status: 'FAIL', file: fileName, description });
