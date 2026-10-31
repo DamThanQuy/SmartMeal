@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { exportTestReportToExcel } from './exportExcel.mjs';
+import { exportTestReportToHtml } from './exportHtml.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -468,7 +469,8 @@ const reportLines = [
   `> **Thiết bị kiểm thử**: ${deviceModel} (Android ${androidVer})  `,
   `> **Mã định danh thiết bị**: \`${deviceId}\`  `,
   `> **Kết quả tổng quan**: **${passCount}/${testResults.length} BƯỚC ĐẠT (${allPass ? '100% PASS' : 'CÓ LỖI'})**  `,
-  `> **Bảng tính Excel**: [📊 DEVICE_E2E_REPORT.xlsx](./DEVICE_E2E_REPORT.xlsx)  `,
+  `> **Báo cáo trực quan HTML**: [🌐 DEVICE_E2E_REPORT.html](./DEVICE_E2E_REPORT.html)  `,
+  `> **Bảng tính Excel chi tiết**: [📊 DEVICE_E2E_REPORT.xlsx](./DEVICE_E2E_REPORT.xlsx)  `,
   '',
   '---',
   '',
@@ -513,7 +515,7 @@ fs.writeFileSync(reportPath, reportLines.join('\n'), 'utf-8');
 console.log(`\x1b[32m[OK] Đã xuất báo cáo Markdown tại: ${reportPath}\x1b[0m`);
 
 // 7. Xuất báo cáo kiểm thử định dạng Excel (.xlsx)
-console.log('\n\x1b[33m[6/6] Đang xuất báo cáo kiểm thử sang file Excel (.xlsx)...\x1b[0m');
+console.log('\n\x1b[33m[6/7] Đang xuất báo cáo kiểm thử sang file Excel (.xlsx)...\x1b[0m');
 const excelPath = path.join(rootDir, 'docs', 'test-reports', 'DEVICE_E2E_REPORT.xlsx');
 try {
   await exportTestReportToExcel({
@@ -530,12 +532,31 @@ try {
   console.error(`\x1b[31m[Cảnh báo] Lỗi xuất Excel: ${excelErr.message}\x1b[0m`);
 }
 
+// 8. Xuất báo cáo kiểm thử định dạng HTML tương tác (.html)
+console.log('\n\x1b[33m[7/7] Đang xuất báo cáo kiểm thử Dashboard HTML (.html)...\x1b[0m');
+const htmlPath = path.join(rootDir, 'docs', 'test-reports', 'DEVICE_E2E_REPORT.html');
+try {
+  exportTestReportToHtml({
+    reportPath: htmlPath,
+    deviceModel,
+    androidVer,
+    deviceId,
+    resolution: `${screenWidth}x${screenHeight}`,
+    timestamp: dateStr,
+    results: testResults
+  });
+  console.log(`\x1b[32m[OK] Đã xuất báo cáo HTML tại: ${htmlPath}\x1b[0m`);
+} catch (htmlErr) {
+  console.error(`\x1b[31m[Cảnh báo] Lỗi xuất HTML: ${htmlErr.message}\x1b[0m`);
+}
+
 console.log('\n\x1b[36m============================================================\x1b[0m');
 if (allPass) {
   console.log(`\x1b[32m  🎉 KIỂM THỬ HOÀN TẤT: ${passCount}/${testResults.length} BƯỚC ĐỀU ĐẠT (100% PASS)!\x1b[0m`);
 } else {
   console.log('\x1b[31m  ⚠️ CÓ BƯỚC KIỂM THỬ KHÔNG ĐẠT, VUI LÒNG KIỂM TRA LOG!\x1b[0m');
 }
-console.log(`  Báo cáo Markdown: docs/test-reports/DEVICE_E2E_REPORT.md`);
-console.log(`  Báo cáo Excel   : docs/test-reports/DEVICE_E2E_REPORT.xlsx`);
+console.log(`  Báo cáo HTML     : docs/test-reports/DEVICE_E2E_REPORT.html`);
+console.log(`  Báo cáo Excel    : docs/test-reports/DEVICE_E2E_REPORT.xlsx`);
+console.log(`  Báo cáo Markdown : docs/test-reports/DEVICE_E2E_REPORT.md`);
 console.log('\x1b[36m============================================================\x1b[0m\n');

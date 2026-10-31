@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartMeal - Báo cáo kiểm thử E2E (21/21 PASS)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0d9488;
+      --primary-dark: #0f766e;
+      --primary-light: #ccfbf1;
+      --success: #16a34a;
+      --success-bg: #dcfce7;
+      --danger: #e11d48;
+      --danger-bg: #ffe4e6;
+      --bg: #0b1120;
+      --surface: #131d33;
+      --surface-border: #1e293b;
+      --card-bg: #18223a;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 32px 24px;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, rgba(13, 148, 136, 0.25) 0%, rgba(15, 23, 42, 0.9) 100%);
+      border: 1px solid rgba(13, 148, 136, 0.4);
+      border-radius: 20px;
+      padding: 32px;
+      margin-bottom: 28px;
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+      position: relative;
+      overflow: hidden;
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -10%;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(13, 148, 136, 0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(13, 148, 136, 0.2);
+      border: 1px solid var(--primary);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #5eead4;
+      margin-bottom: 14px;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+      background: linear-gradient(to right, #ffffff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .meta-line {
+      color: var(--text-muted);
+      font-size: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: center;
+    }
+    .meta-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .action-links {
+      margin-top: 18px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      color: #38bdf8;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-link:hover {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: #38bdf8;
+      transform: translateY(-1px);
+    }
+    /* Metrics Cards */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 18px;
+      margin-bottom: 28px;
+    }
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 16px;
+      padding: 22px;
+      position: relative;
+      overflow: hidden;
+    }
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+    }
+    .metric-card.total::before { background: #38bdf8; }
+    .metric-card.pass::before { background: var(--success); }
+    .metric-card.fail::before { background: var(--danger); }
+    .metric-card.rate::before { background: var(--primary); }
+    .metric-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+    .metric-value {
+      font-size: 32px;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      color: #fff;
+    }
+    .metric-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .metric-value.pass { color: #4ade80; }
+    .metric-value.fail { color: #fb7185; }
+    .metric-value.rate { color: #2dd4bf; }
+    /* Toolbar / Filters */
+    .toolbar {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .filter-chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .chip {
+      background: var(--card-bg);
+      border: 1px solid var(--surface-border);
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .chip:hover {
+      color: #fff;
+      border-color: #475569;
+    }
+    .chip.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .search-box {
+      flex: 1;
+      min-width: 260px;
+      max-width: 400px;
+      position: relative;
+    }
+    .search-input {
+      width: 100%;
+      background: var(--card-bg);
+      border: 1px solid var(--surface-border);
+      color: #fff;
+      padding: 8px 14px 8px 36px;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+    }
+    .search-input:focus {
+      border-color: var(--primary);
+    }
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    /* Test Cases Grid */
+    .test-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 20px;
+    }
+    .test-card {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+    .test-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(13, 148, 136, 0.6);
+      box-shadow: 0 12px 28px -10px rgba(0, 0, 0, 0.6);
+    }
+    .card-thumb-wrap {
+      width: 100%;
+      height: 220px;
+      background: #000;
+      position: relative;
+      cursor: pointer;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card-thumb {
+      max-height: 100%;
+      max-width: 100%;
+      object-fit: contain;
+      transition: transform 0.3s;
+    }
+    .card-thumb-wrap:hover .card-thumb {
+      transform: scale(1.04);
+    }
+    .thumb-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      gap: 6px;
+    }
+    .card-thumb-wrap:hover .thumb-overlay {
+      opacity: 1;
+    }
+    .card-body {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .test-id {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .status-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      letter-spacing: 0.05em;
+    }
+    .status-badge.pass {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .status-badge.fail {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .group-tag {
+      font-size: 11px;
+      font-weight: 600;
+      color: #2dd4bf;
+      margin-bottom: 4px;
+    }
+    .test-name {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+    .test-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.45;
+      flex: 1;
+    }
+    /* Lightbox Modal */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .lightbox.active {
+      display: flex;
+    }
+    .lightbox-content {
+      max-width: 90vw;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+    .lightbox-img {
+      max-height: 82vh;
+      max-width: 90vw;
+      border-radius: 12px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9);
+      border: 1px solid #334155;
+    }
+    .lightbox-caption {
+      margin-top: 12px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+    }
+    .lightbox-close {
+      position: absolute;
+      top: -40px;
+      right: 0;
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 28px;
+      cursor: pointer;
+    }
+    /* Footer */
+    .footer {
+      margin-top: 48px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      border-top: 1px solid var(--surface-border);
+      padding-top: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">🥗 SMARTMEAL AUTOMATION QA</div>
+      <h1>Báo cáo kiểm thử tự động End-to-End (Device UI E2E)</h1>
+      <div class="meta-line">
+        <span class="meta-tag">📱 <strong>Thiết bị:</strong> NX789J (REDMAGIC 10 Pro) (Android 16)</span>
+        <span class="meta-tag">🆔 <strong>Serial:</strong> <code>FY2430710A58</code></span>
+        <span class="meta-tag">📐 <strong>Màn hình:</strong> 1216x2688</span>
+        <span class="meta-tag">⏰ <strong>Thời gian:</strong> 08:23:00 31/10/2026</span>
+      </div>
+      <div class="action-links">
+        <a class="btn-link" href="./DEVICE_E2E_REPORT.xlsx" download>📊 Tải file Excel (.xlsx)</a>
+        <a class="btn-link" href="./DEVICE_E2E_REPORT.md">📝 Xem bản Markdown (.md)</a>
+        <a class="btn-link" href="https://github.com/DamThanQuy/SmartMeal" target="_blank">🌐 GitHub Repository</a>
+      </div>
+    </header>
+
+    <!-- Metrics Cards -->
+    <div class="metrics-grid">
+      <div class="metric-card total">
+        <div class="metric-title">Tổng ca kiểm thử</div>
+        <div class="metric-value">21</div>
+        <div class="metric-sub">Bao phủ toàn bộ tính năng</div>
+      </div>
+      <div class="metric-card pass">
+        <div class="metric-title">Ca kiểm thử Đạt</div>
+        <div class="metric-value pass">21</div>
+        <div class="metric-sub">Tỉ lệ đạt: 100%</div>
+      </div>
+      <div class="metric-card fail">
+        <div class="metric-title">Ca kiểm thử Lỗi</div>
+        <div class="metric-value fail">0</div>
+        <div class="metric-sub">Hoàn hảo 0 lỗi</div>
+      </div>
+      <div class="metric-card rate">
+        <div class="metric-title">Đánh giá chung</div>
+        <div class="metric-value rate">100% PASS</div>
+        <div class="metric-sub">Sẵn sàng nghiệm thu</div>
+      </div>
+    </div>
+
+    <!-- Toolbar / Filters -->
+    <div class="toolbar">
+      <div class="filter-chips">
+        <button class="chip active" onclick="filterStatus('all')">Tất cả (21)</button>
+        <button class="chip" onclick="filterStatus('PASS')">Đạt (21)</button>
+        <button class="chip" onclick="filterStatus('FAIL')">Lỗi (0)</button>
+      </div>
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input class="search-input" type="text" id="searchInput" placeholder="Tìm kiếm tính năng, mã test..." oninput="searchCards()">
+      </div>
+    </div>
+
+    <!-- Test Cases Grid -->
+    <div class="test-grid" id="testGrid">
+      
+      <div class="test-card" data-status="PASS" data-text="TC-01 Trang chủ (Dashboard Dinh dưỡng) Hiển thị Lời chào, Thẻ Calo mục tiêu 930/1768 kcal, chỉ số Đạm/Tinh bột/Chất béo và các nút thao tác nhanh. Trang chủ & Thao tác nhanh">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/01_trang_chu.png', 'TC-01: Trang chủ (Dashboard Dinh dưỡng)')">
+          <img class="card-thumb" src="./device-e2e/01_trang_chu.png" alt="Trang chủ (Dashboard Dinh dưỡng)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-01</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Trang chủ & Thao tác nhanh</div>
+          <div class="test-name">Trang chủ (Dashboard Dinh dưỡng)</div>
+          <div class="test-desc">Hiển thị Lời chào, Thẻ Calo mục tiêu 930/1768 kcal, chỉ số Đạm/Tinh bột/Chất béo và các nút thao tác nhanh.</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-02 Modal Ghi nhanh bữa ăn (QuickLog) Bảng chọn nhanh bữa ăn: Bữa sáng, Bữa trưa, Bữa tối, Bữa phụ và tích hợp AI. Trang chủ & Thao tác nhanh">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/02_ghi_bua_an.png', 'TC-02: Modal Ghi nhanh bữa ăn (QuickLog)')">
+          <img class="card-thumb" src="./device-e2e/02_ghi_bua_an.png" alt="Modal Ghi nhanh bữa ăn (QuickLog)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-02</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Trang chủ & Thao tác nhanh</div>
+          <div class="test-name">Modal Ghi nhanh bữa ăn (QuickLog)</div>
+          <div class="test-desc">Bảng chọn nhanh bữa ăn: Bữa sáng, Bữa trưa, Bữa tối, Bữa phụ và tích hợp AI.</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-03 Chụp món ăn AI (AI Camera Scan) Màn hình máy ảnh nhận diện món ăn tự động qua thị giác máy tính và gợi ý dinh dưỡng. Trang chủ & Thao tác nhanh">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/03_chup_mon_ai.png', 'TC-03: Chụp món ăn AI (AI Camera Scan)')">
+          <img class="card-thumb" src="./device-e2e/03_chup_mon_ai.png" alt="Chụp món ăn AI (AI Camera Scan)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-03</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Trang chủ & Thao tác nhanh</div>
+          <div class="test-name">Chụp món ăn AI (AI Camera Scan)</div>
+          <div class="test-desc">Màn hình máy ảnh nhận diện món ăn tự động qua thị giác máy tính và gợi ý dinh dưỡng.</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-04 Ghi âm món ăn bằng giọng nói (Voice Log) Màn hình micro thu âm tiếng Việt thông minh, bóc tách tên món và khẩu phần nạp vào. Trang chủ & Thao tác nhanh">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/04_ghi_am_giong_noi.png', 'TC-04: Ghi âm món ăn bằng giọng nói (Voice Log)')">
+          <img class="card-thumb" src="./device-e2e/04_ghi_am_giong_noi.png" alt="Ghi âm món ăn bằng giọng nói (Voice Log)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-04</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Trang chủ & Thao tác nhanh</div>
+          <div class="test-name">Ghi âm món ăn bằng giọng nói (Voice Log)</div>
+          <div class="test-desc">Màn hình micro thu âm tiếng Việt thông minh, bóc tách tên món và khẩu phần nạp vào.</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-05 Tìm kiếm món ăn (Food Search) Thanh tìm kiếm nguyên liệu/món ăn, danh sách gợi ý kèm định lượng calo chuẩn. Trang chủ & Thao tác nhanh">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/05_tim_kiem_mon.png', 'TC-05: Tìm kiếm món ăn (Food Search)')">
+          <img class="card-thumb" src="./device-e2e/05_tim_kiem_mon.png" alt="Tìm kiếm món ăn (Food Search)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-05</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Trang chủ & Thao tác nhanh</div>
+          <div class="test-name">Tìm kiếm món ăn (Food Search)</div>
+          <div class="test-desc">Thanh tìm kiếm nguyên liệu/món ăn, danh sách gợi ý kèm định lượng calo chuẩn.</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-06 Quét mã vạch sản phẩm đóng gói (Barcode) Khung ngắm quét mã vạch UPC/EAN sản phẩm để tra cứu nhanh bảng giá trị dinh dưỡng. Trang chủ & Thao tác nhanh">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/06_quet_ma_vach.png', 'TC-06: Quét mã vạch sản phẩm đóng gói (Barcode)')">
+          <img class="card-thumb" src="./device-e2e/06_quet_ma_vach.png" alt="Quét mã vạch sản phẩm đóng gói (Barcode)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-06</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Trang chủ & Thao tác nhanh</div>
+          <div class="test-name">Quét mã vạch sản phẩm đóng gói (Barcode)</div>
+          <div class="test-desc">Khung ngắm quét mã vạch UPC/EAN sản phẩm để tra cứu nhanh bảng giá trị dinh dưỡng.</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-07 Trung tâm thông báo (Notifications) Màn hình danh sách thông báo nhắc nhở uống nước, ghi nhận bữa ăn và mẹo dinh dưỡng. Trang chủ & Thao tác nhanh">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/07_thong_bao.png', 'TC-07: Trung tâm thông báo (Notifications)')">
+          <img class="card-thumb" src="./device-e2e/07_thong_bao.png" alt="Trung tâm thông báo (Notifications)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-07</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Trang chủ & Thao tác nhanh</div>
+          <div class="test-name">Trung tâm thông báo (Notifications)</div>
+          <div class="test-desc">Màn hình danh sách thông báo nhắc nhở uống nước, ghi nhận bữa ăn và mẹo dinh dưỡng.</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-08 Thực đơn tuần (Meal Planner) Thanh chọn ngày trong tuần, các khung Bữa sáng, Bữa trưa, Bữa tối và nút Thêm món ăn theo kế hoạch. Thực đơn tuần & Đi chợ">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/08_thuc_don.png', 'TC-08: Thực đơn tuần (Meal Planner)')">
+          <img class="card-thumb" src="./device-e2e/08_thuc_don.png" alt="Thực đơn tuần (Meal Planner)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-08</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Thực đơn tuần & Đi chợ</div>
+          <div class="test-name">Thực đơn tuần (Meal Planner)</div>
+          <div class="test-desc">Thanh chọn ngày trong tuần, các khung Bữa sáng, Bữa trưa, Bữa tối và nút Thêm món ăn theo kế hoạch.</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-09 Danh sách đi chợ theo tuần (Grocery Checklist) Tự động gom nguyên liệu cần mua cho cả tuần, phân nhóm rau củ, thịt cá và tích chọn đã mua. Thực đơn tuần & Đi chợ">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/09_danh_sach_di_cho.png', 'TC-09: Danh sách đi chợ theo tuần (Grocery Checklist)')">
+          <img class="card-thumb" src="./device-e2e/09_danh_sach_di_cho.png" alt="Danh sách đi chợ theo tuần (Grocery Checklist)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-09</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Thực đơn tuần & Đi chợ</div>
+          <div class="test-name">Danh sách đi chợ theo tuần (Grocery Checklist)</div>
+          <div class="test-desc">Tự động gom nguyên liệu cần mua cho cả tuần, phân nhóm rau củ, thịt cá và tích chọn đã mua.</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-10 Khám phá công thức (Recipe Discovery) Tải danh mục công thức từ Backend API, banner Quét tủ lạnh (Fridge Scanner) và bộ lọc danh mục. Khám phá & Gợi ý công thức">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/10_kham_pha.png', 'TC-10: Khám phá công thức (Recipe Discovery)')">
+          <img class="card-thumb" src="./device-e2e/10_kham_pha.png" alt="Khám phá công thức (Recipe Discovery)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-10</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Khám phá & Gợi ý công thức</div>
+          <div class="test-name">Khám phá công thức (Recipe Discovery)</div>
+          <div class="test-desc">Tải danh mục công thức từ Backend API, banner Quét tủ lạnh (Fridge Scanner) và bộ lọc danh mục.</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-11 Chi tiết công thức nấu ăn & Dinh dưỡng (Recipe Detail) Mở chi tiết món ăn, hiển thị hình ảnh chuẩn, thông số calo/macro, cảnh báo dị ứng và các bước nấu. Khám phá & Gợi ý công thức">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/11_chi_tiet_mon.png', 'TC-11: Chi tiết công thức nấu ăn & Dinh dưỡng (Recipe Detail)')">
+          <img class="card-thumb" src="./device-e2e/11_chi_tiet_mon.png" alt="Chi tiết công thức nấu ăn & Dinh dưỡng (Recipe Detail)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-11</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Khám phá & Gợi ý công thức</div>
+          <div class="test-name">Chi tiết công thức nấu ăn & Dinh dưỡng (Recipe Detail)</div>
+          <div class="test-desc">Mở chi tiết món ăn, hiển thị hình ảnh chuẩn, thông số calo/macro, cảnh báo dị ứng và các bước nấu.</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-12 Quét tủ lạnh gợi ý món (Fridge Scanner) Gợi ý món ăn thông minh dựa trên ảnh chụp các nguyên liệu có sẵn trong tủ lạnh. Khám phá & Gợi ý công thức">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/12_quet_tu_lanh.png', 'TC-12: Quét tủ lạnh gợi ý món (Fridge Scanner)')">
+          <img class="card-thumb" src="./device-e2e/12_quet_tu_lanh.png" alt="Quét tủ lạnh gợi ý món (Fridge Scanner)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-12</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Khám phá & Gợi ý công thức</div>
+          <div class="test-name">Quét tủ lạnh gợi ý món (Fridge Scanner)</div>
+          <div class="test-desc">Gợi ý món ăn thông minh dựa trên ảnh chụp các nguyên liệu có sẵn trong tủ lạnh.</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-13 Nhật ký dinh dưỡng (Food Diary Timeline) Theo dõi tổng calo nạp vào, timeline 4 bữa ăn trong ngày và biểu đồ cân bằng năng lượng. Nhật ký dinh dưỡng & Tiến độ">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/13_nhat_ky.png', 'TC-13: Nhật ký dinh dưỡng (Food Diary Timeline)')">
+          <img class="card-thumb" src="./device-e2e/13_nhat_ky.png" alt="Nhật ký dinh dưỡng (Food Diary Timeline)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-13</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Nhật ký dinh dưỡng & Tiến độ</div>
+          <div class="test-name">Nhật ký dinh dưỡng (Food Diary Timeline)</div>
+          <div class="test-desc">Theo dõi tổng calo nạp vào, timeline 4 bữa ăn trong ngày và biểu đồ cân bằng năng lượng.</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-14 Biểu đồ tiến độ dinh dưỡng (Progress Chart) Biểu đồ xu hướng biến thiên calo, cân nặng và tỷ lệ phân bố chất dinh dưỡng theo tuần/tháng. Nhật ký dinh dưỡng & Tiến độ">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/14_bieu_do_tien_do.png', 'TC-14: Biểu đồ tiến độ dinh dưỡng (Progress Chart)')">
+          <img class="card-thumb" src="./device-e2e/14_bieu_do_tien_do.png" alt="Biểu đồ tiến độ dinh dưỡng (Progress Chart)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-14</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Nhật ký dinh dưỡng & Tiến độ</div>
+          <div class="test-name">Biểu đồ tiến độ dinh dưỡng (Progress Chart)</div>
+          <div class="test-desc">Biểu đồ xu hướng biến thiên calo, cân nặng và tỷ lệ phân bố chất dinh dưỡng theo tuần/tháng.</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-15 Hồ sơ cá nhân (Profile) Thông tin tài khoản, banner nâng cấp SmartMeal Pro, chi tiết sức khỏe (Dị ứng, Chế độ ăn, Nhắc nhở, Linh vật). Hồ sơ cá nhân & Sức khỏe">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/15_ca_nhan.png', 'TC-15: Hồ sơ cá nhân (Profile)')">
+          <img class="card-thumb" src="./device-e2e/15_ca_nhan.png" alt="Hồ sơ cá nhân (Profile)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-15</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Hồ sơ cá nhân & Sức khỏe</div>
+          <div class="test-name">Hồ sơ cá nhân (Profile)</div>
+          <div class="test-desc">Thông tin tài khoản, banner nâng cấp SmartMeal Pro, chi tiết sức khỏe (Dị ứng, Chế độ ăn, Nhắc nhở, Linh vật).</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-16 Nâng cấp SmartMeal Pro & Thanh toán (Premium) Bảng giá gói hội viên SmartMeal Pro, quyền lợi độc quyền và tích hợp thanh toán PayOS / VietQR. Hồ sơ cá nhân & Sức khỏe">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/16_smartmeal_pro.png', 'TC-16: Nâng cấp SmartMeal Pro & Thanh toán (Premium)')">
+          <img class="card-thumb" src="./device-e2e/16_smartmeal_pro.png" alt="Nâng cấp SmartMeal Pro & Thanh toán (Premium)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-16</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Hồ sơ cá nhân & Sức khỏe</div>
+          <div class="test-name">Nâng cấp SmartMeal Pro & Thanh toán (Premium)</div>
+          <div class="test-desc">Bảng giá gói hội viên SmartMeal Pro, quyền lợi độc quyền và tích hợp thanh toán PayOS / VietQR.</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-17 Cài đặt sức khỏe & Dị ứng (Health Settings) Tùy chỉnh dị ứng thực phẩm (Hải sản, đậu phộng, trứng) và tình trạng bệnh lý (Tiểu đường, gout). Hồ sơ cá nhân & Sức khỏe">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/17_cai_dat_suc_khoe.png', 'TC-17: Cài đặt sức khỏe & Dị ứng (Health Settings)')">
+          <img class="card-thumb" src="./device-e2e/17_cai_dat_suc_khoe.png" alt="Cài đặt sức khỏe & Dị ứng (Health Settings)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-17</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Hồ sơ cá nhân & Sức khỏe</div>
+          <div class="test-name">Cài đặt sức khỏe & Dị ứng (Health Settings)</div>
+          <div class="test-desc">Tùy chỉnh dị ứng thực phẩm (Hải sản, đậu phộng, trứng) và tình trạng bệnh lý (Tiểu đường, gout).</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-18 Lịch sử cân nặng & Mục tiêu (Weight History) Theo dõi tiến trình tăng/giảm cân thực tế so với mục tiêu cân nặng đã đề ra. Hồ sơ cá nhân & Sức khỏe">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/18_lich_su_can_nang.png', 'TC-18: Lịch sử cân nặng & Mục tiêu (Weight History)')">
+          <img class="card-thumb" src="./device-e2e/18_lich_su_can_nang.png" alt="Lịch sử cân nặng & Mục tiêu (Weight History)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-18</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Hồ sơ cá nhân & Sức khỏe</div>
+          <div class="test-name">Lịch sử cân nặng & Mục tiêu (Weight History)</div>
+          <div class="test-desc">Theo dõi tiến trình tăng/giảm cân thực tế so với mục tiêu cân nặng đã đề ra.</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-19 Linh vật dinh dưỡng (Pet Gamification) Thú cưng dinh dưỡng ảo, hệ thống điểm thưởng và chuỗi ngày duy trì ăn uống lành mạnh (Streak). Hồ sơ cá nhân & Sức khỏe">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/19_linh_vat.png', 'TC-19: Linh vật dinh dưỡng (Pet Gamification)')">
+          <img class="card-thumb" src="./device-e2e/19_linh_vat.png" alt="Linh vật dinh dưỡng (Pet Gamification)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-19</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Hồ sơ cá nhân & Sức khỏe</div>
+          <div class="test-name">Linh vật dinh dưỡng (Pet Gamification)</div>
+          <div class="test-desc">Thú cưng dinh dưỡng ảo, hệ thống điểm thưởng và chuỗi ngày duy trì ăn uống lành mạnh (Streak).</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-20 Cài đặt nhắc nhở (Reminders Settings) Cấu hình khung giờ thông báo nhắc nhở uống nước và thời điểm ghi nhận bữa ăn trong ngày. Hồ sơ cá nhân & Sức khỏe">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/20_nhac_nho.png', 'TC-20: Cài đặt nhắc nhở (Reminders Settings)')">
+          <img class="card-thumb" src="./device-e2e/20_nhac_nho.png" alt="Cài đặt nhắc nhở (Reminders Settings)" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-20</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Hồ sơ cá nhân & Sức khỏe</div>
+          <div class="test-name">Cài đặt nhắc nhở (Reminders Settings)</div>
+          <div class="test-desc">Cấu hình khung giờ thông báo nhắc nhở uống nước và thời điểm ghi nhận bữa ăn trong ngày.</div>
+        </div>
+      </div>
+      
+      <div class="test-card" data-status="PASS" data-text="TC-21 Điều hướng hoàn tất về Trang chủ Xác nhận trạng thái ứng dụng đồng bộ, điều hướng ổn định và không gặp rò rỉ bộ nhớ. Chu kỳ hoàn tất điều hướng">
+        <div class="card-thumb-wrap" onclick="openLightbox('./device-e2e/21_trang_chu_ket_thuc.png', 'TC-21: Điều hướng hoàn tất về Trang chủ')">
+          <img class="card-thumb" src="./device-e2e/21_trang_chu_ket_thuc.png" alt="Điều hướng hoàn tất về Trang chủ" loading="lazy">
+          <div class="thumb-overlay">🔍 Phóng to ảnh chụp</div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="test-id">TC-21</span>
+            <span class="status-badge pass">PASS</span>
+          </div>
+          <div class="group-tag">Chu kỳ hoàn tất điều hướng</div>
+          <div class="test-name">Điều hướng hoàn tất về Trang chủ</div>
+          <div class="test-desc">Xác nhận trạng thái ứng dụng đồng bộ, điều hướng ổn định và không gặp rò rỉ bộ nhớ.</div>
+        </div>
+      </div>
+      
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Báo cáo tự động sinh bởi <strong>SmartMeal E2E Automation Runner</strong> &bull; React Native 0.88 & Expo SDK 58 &bull; ASP.NET Core .NET 9</p>
+      <p style="margin-top: 6px; font-size: 12px; color: #64748b;">Dữ liệu kiểm thử thực thi trên thiết bị thật REDMAGIC 10 Pro qua ADB Reverse Port Forwarding.</p>
+    </footer>
+  </div>
+
+  <!-- Lightbox Modal -->
+  <div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
+    <div class="lightbox-content">
+      <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+      <img class="lightbox-img" id="lightboxImg" src="" alt="Screenshot">
+      <div class="lightbox-caption" id="lightboxCaption"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentFilter = 'all';
+
+    function filterStatus(status) {
+      currentFilter = status;
+      document.querySelectorAll('.filter-chips .chip').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.toLowerCase().includes(status.toLowerCase()) || (status === 'all' && btn.textContent.includes('Tất cả')));
+      });
+      applyFilters();
+    }
+
+    function searchCards() {
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const query = document.getElementById('searchInput').value.toLowerCase().trim();
+      const cards = document.querySelectorAll('.test-card');
+
+      cards.forEach(card => {
+        const matchesStatus = currentFilter === 'all' || card.dataset.status === currentFilter;
+        const matchesSearch = !query || card.dataset.text.toLowerCase().includes(query);
+        card.style.display = (matchesStatus && matchesSearch) ? 'flex' : 'none';
+      });
+    }
+
+    function openLightbox(src, caption) {
+      document.getElementById('lightboxImg').src = src;
+      document.getElementById('lightboxCaption').textContent = caption;
+      document.getElementById('lightbox').classList.add('active');
+    }
+
+    function closeLightbox(e) {
+      if (!e || e.target.id === 'lightbox' || e.target.classList.contains('lightbox-close')) {
+        document.getElementById('lightbox').classList.remove('active');
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeLightbox();
+    });
+  </script>
+</body>
+</html>
