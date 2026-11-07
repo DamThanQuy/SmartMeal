@@ -17,7 +17,7 @@ const stamp = new Intl.DateTimeFormat('sv-SE', {
   timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit',
   hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
 }).format(new Date()).replace(/[^0-9]/g, '');
-const runId = `${stamp}-${process.pid}`;
+const runId = `${stamp}-${process.pid}-${randomUUID().slice(0, 8)}`;
 const runDir = path.join(repoRoot, '.e2e-results', runId);
 const lockPath = path.join(repoRoot, '.e2e-results/system-run.lock');
 const lockOwner = { pid: process.pid, runId, token: randomUUID(), startedAt };
@@ -29,6 +29,7 @@ const notes = ['Browser mobile coverage uses Chromium/WebKit, not a physical iPh
 const children = new Set();
 const fresh = process.argv.includes('--fresh');
 const headed = process.argv.includes('--headed');
+const publish = !process.argv.includes('--no-publish');
 const compose = ['compose', '-p', 'smartmeal-e2e', '-f', path.join(directory, 'docker-compose.e2e.yml')];
 const env = { ...process.env, SMARTMEAL_E2E_OUTPUT: runDir, EXPO_NO_DOTENV: '1', CI: '1' };
 const liveEnv = {
@@ -262,8 +263,13 @@ try {
       'See tests/system/README.md for Windows setup.');
   }
   stages.push({ id: 'node', name: 'Node >=24.3', kind: 'check', status: 'passed', exitCode: 0, durationMs: 0 });
+  if (publish && !await stage('report-publish-ready', 'Public report publishing access', process.execPath,
+    [path.join(directory, 'publish.mjs'), '--check'], { timeout: 60_000 })) {
+    throw new Error('Report publishing is not configured or available. See tests/system/README.md, or use --no-publish for a local-only run.');
+  }
+  if (!publish) notes.push('Local-only run explicitly requested with --no-publish; the public report was not updated.');
   await stage('runner-unit', 'Runner report and failure-propagation tests', process.execPath,
-    ['--test', path.join(directory, 'report.test.mjs')], { timeout: 60_000 });
+    ['--test', path.join(directory, 'report.test.mjs'), path.join(directory, 'publish.test.mjs')], { timeout: 60_000 });
   const git = await execute('git', ['rev-parse', 'HEAD'], { logFile: path.join(runDir, 'git.log') });
   if (git.exitCode === 0) gitSha = git.output.trim();
   const npmCli = await npmCommand();
@@ -365,10 +371,21 @@ try {
   if (composeTouched) await stage('qa-logs', 'Capture QA backend logs', 'docker', [...compose, 'logs', '--no-color', 'api'], { timeout: 30_000, cleanup: true });
   for (const child of [...children]) await stop(child);
   if (composeTouched) await stage('qa-cleanup', 'Remove disposable QA Compose project', 'docker', [...compose, 'down', '-v', '--remove-orphans'], { timeout: 120_000, cleanup: true });
-  try { await releaseLock(); }
-  catch (error) { blocked('runner-lock-release', 'Release owned runner lock', error.message); }
   let browserCases = [];
   try { browserCases = collectBrowserCases(JSON.parse(await readFile(path.join(runDir, 'playwright.json'), 'utf8'))); } catch { /* Stage records missing evidence as a failure. */ }
+  if (publish && ownsLock) {
+    if (!interrupted && await exists(path.join(runDir, 'playwright-report/index.html'))) {
+      const published = await stage('report-publish', 'Publish and verify public Playwright report', process.execPath,
+        [path.join(directory, 'publish.mjs'), runDir], { timeout: 600_000, requiredFile: path.join(runDir, 'publication.json'), cleanup: true });
+      if (published) {
+        const publication = JSON.parse(await readFile(path.join(runDir, 'publication.json'), 'utf8'));
+        notes.push(`Public Playwright report: ${publication.url}`, `This run: ${publication.reportUrl}`);
+        console.log(`[E2E] Public report: ${publication.url}\n[E2E] This run: ${publication.reportUrl}`);
+      }
+    } else blocked('report-publish', 'Publish public Playwright report', interrupted ? 'Run interrupted; incomplete evidence was not published' : 'No browser report was generated; the public report was not updated');
+  }
+  try { await releaseLock(); }
+  catch (error) { blocked('runner-lock-release', 'Release owned runner lock', error.message); }
   try {
     const report = await writeSystemReport({ repoRoot, runDir, runId, startedAt, finishedAt: new Date().toISOString(), gitSha, stages, notes, browserCases });
     console.log(`[E2E] ${report.outcome}: ${report.reportPath}`);

@@ -6,6 +6,26 @@ Từ **thư mục gốc SmartMeal**, chạy:
 npm run test:e2e
 ```
 
+Lệnh này cũng **tự cập nhật báo cáo Playwright công khai** tại:
+
+<https://smartmeal-playwright-results.trimanole.chatgpt.site>
+
+Máy hiện tại đã được cấu hình khóa publish một lần trong `.e2e-results/publisher.json` (Git bỏ qua file này). Không cần mở Codex hoặc thao tác Sites sau mỗi lần test. Runner kiểm tra quyền publish trước khi dựng QA; sau test, nó upload và kiểm tra toàn bộ file rồi mới đổi báo cáo mới nhất. Mỗi lượt có thêm link riêng `/runs/<run-id>/` để gửi kết quả cố định. Báo cáo của các lượt Playwright thất bại vẫn được upload để xem lỗi; exit code vẫn khác 0.
+
+Nếu upload hoặc xác minh báo cáo lỗi, toàn bộ lệnh trả exit code khác 0; báo cáo công khai trước đó vẫn được giữ. Có thể chỉ chạy lại bước publish, không cần test lại:
+
+```powershell
+npm run test:e2e:publish -- .e2e-results/<run-id>
+```
+
+Trên máy khác/CI, cấu hình một lần hai biến `SMARTMEAL_E2E_PUBLISH_URL` (URL ở trên) và `SMARTMEAL_E2E_PUBLISH_TOKEN` (khóa do người quản lý báo cáo cấp), hoặc tạo `.e2e-results/publisher.json` với hai trường `url`, `token`. Không commit, in log hay gửi công khai khóa này. Đây là khóa ghi báo cáo; người xem không cần khóa. Phần hosting dùng `tests/system/report-site/worker.mjs`, binding R2 `BUCKET` và secret `REPORT_PUBLISH_KEY_SHA256`; chỉ cần triển khai lại hosting khi thay code của endpoint, không cần deploy lại code Site sau mỗi lần test.
+
+Chạy local và chủ động bỏ qua publish:
+
+```powershell
+npm run test:e2e -- --no-publish
+```
+
 Yêu cầu có **Node.js 24.3 trở lên** và **Docker Desktop / Docker Compose v2**. Không cần cài .NET SDK trên Windows: bộ `SmartMeal.Tests` chạy trong container SDK .NET 9. Lần đầu cần Internet để tải package, browser và image Docker. Runner tự kiểm tra dependencies; nếu thiếu hoặc không hợp lệ sẽ dùng `npm ci` từ lockfile.
 
 ## Sửa lỗi phiên bản Node trên Windows

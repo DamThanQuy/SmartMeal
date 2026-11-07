@@ -6,7 +6,8 @@
     "dev": "powershell -ExecutionPolicy Bypass -File ./start.ps1",
     "test:device": "node tests/device/run.mjs",
     "test:e2e": "node tests/system/run.mjs",
-    "test:e2e:runner": "node --test tests/system/report.test.mjs"
+    "test:e2e:runner": "node --test tests/system/report.test.mjs tests/system/publish.test.mjs",
+    "test:e2e:publish": "node tests/system/publish.mjs"
   },
   "engines": {
     "node": ">=24.3.0"
